@@ -7,9 +7,9 @@ from enum import Enum
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
-# from PySide2.QtCore import *
-# from PySide2.QtGui import *
-from PySide2.QtWidgets import *
+# from PySide6.QtCore import *
+# from PySide6.QtGui import *
+from PySide6.QtWidgets import *
 
 from GridCal.Gui.LoadDesigner.gui import *
 

@@ -1,12 +1,13 @@
 import sys
 import os
-from PySide2.QtWidgets import *
+from PySide6.QtWidgets import *
 import folium
 from shutil import copyfile
 import webbrowser
 
 try:
-    from PySide2.QtWebEngineWidgets import QWebEngineView as QWebView, QWebEnginePage as QWebPage
+    from PySide6.QtWebEngineWidgets import QWebEngineView as QWebView
+    from PySide6.QtWebEngineCore import QWebEnginePage as QWebPage
     qt_web_engine_available = True
 except ModuleNotFoundError:
     qt_web_engine_available = False

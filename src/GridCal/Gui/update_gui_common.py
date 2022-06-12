@@ -17,17 +17,17 @@ def correct_file_imports(filename):
 
     # Replace the target string
     file_data = file_data.replace('import icons_rc', 'from .icons_rc import *')
-    file_data = file_data.replace('PySide2', 'qtpy')
-    file_data = file_data.replace('PySide6', 'qtpy')
-    file_data = file_data.replace('PyQt5', 'qtpy')
-    file_data = file_data.replace('PyQt6', 'qtpy')
+    # file_data = file_data.replace('PySide6', 'qtpy')
+    # file_data = file_data.replace('PySide6', 'qtpy')
+    # file_data = file_data.replace('PyQt5', 'qtpy')
+    # file_data = file_data.replace('PyQt6', 'qtpy')
 
     # Write the file out again
     with open(filename, 'w') as file:
         file.write(file_data)
 
 
-def convert_resource_file(source, rcc_cmd='pyside2-rcc'):
+def convert_resource_file(source, rcc_cmd='pyside6-rcc'):
 
     folder = os.path.dirname(sys.executable)
     f1 = folder.split(os.sep)[-1]
@@ -59,7 +59,7 @@ def convert_resource_file(source, rcc_cmd='pyside2-rcc'):
             print('Failed with', rcc_cmd)
 
 
-def convert_ui_file(source, uic_cmd='pyside2-uic'):
+def convert_ui_file(source, uic_cmd='pyside6-uic'):
     """
     Convert UI file to .py with qtpy agnostic imports
     :param source:

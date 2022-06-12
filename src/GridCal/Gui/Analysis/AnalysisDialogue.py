@@ -2,15 +2,15 @@ import os
 import string
 import sys
 from enum import Enum
-import PySide2
+import PySide6
 
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 import math
 
-from PySide2.QtWidgets import *
-
+from PySide6.QtWidgets import *
+from PySide6 import QtGui
 from GridCal.Gui.Analysis.gui import *
 from GridCal.Gui.GuiFunctions import PandasModel, get_list_model
 from GridCal.Engine.Core.multi_circuit import MultiCircuit
@@ -106,7 +106,7 @@ class GridErrorLog:
         df.to_excel(filename)
 
 
-class GridAnalysisGUI(QtWidgets.QMainWindow):
+class GridAnalysisGUI(QMainWindow):
 
     def __init__(self, parent=None, object_types=list(), circuit: MultiCircuit=None, use_native_dialogues=False):
         """
@@ -116,7 +116,7 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
             object_types:
             circuit:
         """
-        QtWidgets.QMainWindow.__init__(self, parent)
+        QMainWindow.__init__(self, parent)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.setWindowTitle('Grid analysis')
@@ -587,9 +587,10 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
         if filename != '':
             self.log.save(filename)
 
+
 if __name__ == "__main__":
 
-    app = QtWidgets.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     window = GridAnalysisGUI()
     window.resize(1.61 * 700.0, 700.0)  # golden ratio
     window.show()

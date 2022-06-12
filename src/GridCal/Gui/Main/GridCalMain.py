@@ -72,7 +72,8 @@ except ModuleNotFoundError:
     qt_console_available = False
 
 try:
-    from PySide2.QtWebEngineWidgets import QWebEngineView as QWebView, QWebEnginePage as QWebPage
+    from PySide6.QtWebEngineWidgets import QWebEngineView as QWebView
+    from PySide6.QtWebEngineCore import QWebEnginePage as QWebPage
     qt_web_engine_available = True
 except ModuleNotFoundError:
     qt_web_engine_available = False
@@ -88,9 +89,6 @@ This class is the handler of the main gui of GridCal.
 ########################################################################################################################
 # Main Window
 ########################################################################################################################
-
-
-
 
 
 class MainGUI(QMainWindow):
@@ -363,6 +361,7 @@ class MainGUI(QMainWindow):
         self.console = None
         try:
             self.create_console()
+            pass
         except TypeError:
             error_msg('The console has failed because the QtConsole guys have a bug in their package :(')
 
@@ -772,7 +771,8 @@ class MainGUI(QMainWindow):
                                                       "pd: pandas\n"
                                                       "plt: matplotlib\n"
                                                       "app: This instance of GridCal\n"
-                                                      "circuit: The current grid\n\n")
+                                                      "circuit: The current grid\n\n",
+                                         parent=self)
 
             self.console.buffer_size = 10000
 

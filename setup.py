@@ -47,7 +47,7 @@ packages = find_packages(where=base_path, exclude=['docs', 'test'])
 packages = [os.path.join(base_path, p) for p in packages]
 
 
-dependencies = ["PySide2>=5.15",  # for now, 5.14 breaks the UI generation for development
+dependencies = ["PySide6>=6.2",
                 "numpy>=1.14.0",
                 "scipy>=1.0.0",
                 "networkx>=2.1",

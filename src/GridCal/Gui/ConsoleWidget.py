@@ -9,8 +9,8 @@ class ConsoleWidget(RichJupyterWidget):
     We can replace the standard banner using the customBanner argument
     """
 
-    def __init__(self, customBanner=None, *args, **kwargs):
-        RichJupyterWidget.__init__(self, *args, **kwargs)
+    def __init__(self, customBanner=None, parent=None, *args, **kwargs):
+        RichJupyterWidget.__init__(self, parent=parent, *args, **kwargs)
 
         if customBanner is not None:
             self.banner = customBanner

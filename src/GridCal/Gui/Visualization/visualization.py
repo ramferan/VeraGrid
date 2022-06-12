@@ -2,7 +2,7 @@ import os
 import numpy as np
 import folium
 from folium.plugins import MarkerCluster
-from PySide2 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 from matplotlib.colors import LinearSegmentedColormap
 
 import matplotlib.pyplot as plt

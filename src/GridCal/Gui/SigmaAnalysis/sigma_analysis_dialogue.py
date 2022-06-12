@@ -5,7 +5,7 @@ from random import randint
 from enum import Enum
 import numpy as np
 import pandas as pd
-from PySide2.QtWidgets import *
+from PySide6.QtWidgets import *
 
 from GridCal.Gui.SigmaAnalysis.gui import *
 from GridCal.Gui.Session.results_model import ResultsModel
@@ -13,7 +13,7 @@ from GridCal.Engine.Simulations.result_types import ResultTypes
 from GridCal.Engine.Simulations.SigmaAnalysis.sigma_analysis_driver import SigmaAnalysisResults
 
 
-class SigmaAnalysisGUI(QtWidgets.QMainWindow):
+class SigmaAnalysisGUI(QMainWindow):
 
     def __init__(self, parent=None, results: SigmaAnalysisResults = None, bus_names=None, use_native_dialogues=True):
         """
@@ -21,7 +21,7 @@ class SigmaAnalysisGUI(QtWidgets.QMainWindow):
         :param parent:
         :param results:
         """
-        QtWidgets.QMainWindow.__init__(self, parent)
+        QMainWindow.__init__(self, parent)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.setWindowTitle('HELM-Sigma analysis dialogue')
@@ -99,10 +99,9 @@ class SigmaAnalysisGUI(QtWidgets.QMainWindow):
                     print('Saved!')
 
 
-
 if __name__ == "__main__":
 
-    app = QtWidgets.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     window = SigmaAnalysisGUI()
     window.resize(1.61 * 700.0, 600.0)  # golden ratio
     window.show()

@@ -1,11 +1,129 @@
 # Resource object code (Python 3)
 # Created by: object code
-# Created by: The Resource Compiler for Qt version 5.15.0
+# Created by: The Resource Compiler for Qt version 6.2.4
 # WARNING! All changes made in this file will be lost!
 
-from PySide2 import QtCore
+from PySide6 import QtCore
 
 qt_resource_data = b"\
+\x00\x00\x07=\
+<\
+?xml version=\x221.\
+0\x22 encoding=\x22UTF\
+-8\x22 standalone=\x22\
+no\x22?>\x0a<svg\x0a   xm\
+lns:dc=\x22http://p\
+url.org/dc/eleme\
+nts/1.1/\x22\x0a   xml\
+ns:cc=\x22http://cr\
+eativecommons.or\
+g/ns#\x22\x0a   xmlns:\
+rdf=\x22http://www.\
+w3.org/1999/02/2\
+2-rdf-syntax-ns#\
+\x22\x0a   xmlns:svg=\x22\
+http://www.w3.or\
+g/2000/svg\x22\x0a   x\
+mlns=\x22http://www\
+.w3.org/2000/svg\
+\x22\x0a   xmlns:sodip\
+odi=\x22http://sodi\
+podi.sourceforge\
+.net/DTD/sodipod\
+i-0.dtd\x22\x0a   xmln\
+s:inkscape=\x22http\
+://www.inkscape.\
+org/namespaces/i\
+nkscape\x22\x0a   widt\
+h=\x2248\x22\x0a   height\
+=\x2248\x22\x0a   viewBox\
+=\x220 0 48 48\x22\x0a   \
+version=\x221.1\x22\x0a  \
+ id=\x22svg6\x22\x0a   so\
+dipodi:docname=\x22\
+run_cascade_step\
+.svg\x22\x0a   inkscap\
+e:version=\x220.92.\
+2 (5c3e80d, 2017\
+-08-06)\x22>\x0a  <met\
+adata\x0a     id=\x22m\
+etadata12\x22>\x0a    \
+<rdf:RDF>\x0a      \
+<cc:Work\x0a       \
+  rdf:about=\x22\x22>\x0a\
+        <dc:form\
+at>image/svg+xml\
+</dc:format>\x0a   \
+     <dc:type\x0a  \
+         rdf:res\
+ource=\x22http://pu\
+rl.org/dc/dcmity\
+pe/StillImage\x22 /\
+>\x0a        <dc:ti\
+tle />\x0a      </c\
+c:Work>\x0a    </rd\
+f:RDF>\x0a  </metad\
+ata>\x0a  <defs\x0a   \
+  id=\x22defs10\x22 />\
+\x0a  <sodipodi:nam\
+edview\x0a     page\
+color=\x22#ffffff\x22\x0a\
+     bordercolor\
+=\x22#666666\x22\x0a     \
+borderopacity=\x221\
+\x22\x0a     objecttol\
+erance=\x2210\x22\x0a    \
+ gridtolerance=\x22\
+10\x22\x0a     guideto\
+lerance=\x2210\x22\x0a   \
+  inkscape:pageo\
+pacity=\x220\x22\x0a     \
+inkscape:pagesha\
+dow=\x222\x22\x0a     ink\
+scape:window-wid\
+th=\x221863\x22\x0a     i\
+nkscape:window-h\
+eight=\x221025\x22\x0a   \
+  id=\x22namedview8\
+\x22\x0a     showgrid=\
+\x22false\x22\x0a     ink\
+scape:zoom=\x224.91\
+66667\x22\x0a     inks\
+cape:cx=\x22-48\x22\x0a  \
+   inkscape:cy=\x22\
+24\x22\x0a     inkscap\
+e:window-x=\x2257\x22\x0a\
+     inkscape:wi\
+ndow-y=\x2227\x22\x0a    \
+ inkscape:window\
+-maximized=\x221\x22\x0a \
+    inkscape:cur\
+rent-layer=\x22svg6\
+\x22 />\x0a  <path\x0a   \
+  d=\x22M0 0h48v48h\
+-48z\x22\x0a     id=\x22p\
+ath2\x22\x0a     fill=\
+\x22none\x22 />\x0a  <pat\
+h\x0a     style=\x22fi\
+ll:#999999;fill-\
+rule:evenodd;str\
+oke:#999999;stro\
+ke-width:2;strok\
+e-linecap:butt;s\
+troke-linejoin:r\
+ound;stroke-mite\
+rlimit:4;stroke-\
+dasharray:none;s\
+troke-opacity:1\x22\
+\x0a     d=\x22m 14.33\
+9033,12.813563 -\
+0.20339,22.37288\
+2 19.728814,-11.\
+59322 z\x22\x0a     id\
+=\x22path4489\x22\x0a    \
+ inkscape:connec\
+tor-curvature=\x220\
+\x22 />\x0a</svg>\x0a\
 \x00\x00\x07*\
 \x00\
 \x00& x\x9c\xddZ\xddo\xe3\xb8\x11\x7f\xcf_\xa1\
@@ -249,124 +367,6 @@ $\x1e\xce\xc8\xd9\xbc\xbe:9G\x8a.c%\x08\xc9\
 \x8c\xdb]rizT\x00\xed.\x14\x14a\xf6\xe8M\
 k\xd9\xcc\x120J\xcb\xee\x1b\x14\x0e\xb3\x89\xfbr\xc3\
 \xe3\xc3\x1f\xcd\xfd\x1aD\
-\x00\x00\x07=\
-<\
-?xml version=\x221.\
-0\x22 encoding=\x22UTF\
--8\x22 standalone=\x22\
-no\x22?>\x0a<svg\x0a   xm\
-lns:dc=\x22http://p\
-url.org/dc/eleme\
-nts/1.1/\x22\x0a   xml\
-ns:cc=\x22http://cr\
-eativecommons.or\
-g/ns#\x22\x0a   xmlns:\
-rdf=\x22http://www.\
-w3.org/1999/02/2\
-2-rdf-syntax-ns#\
-\x22\x0a   xmlns:svg=\x22\
-http://www.w3.or\
-g/2000/svg\x22\x0a   x\
-mlns=\x22http://www\
-.w3.org/2000/svg\
-\x22\x0a   xmlns:sodip\
-odi=\x22http://sodi\
-podi.sourceforge\
-.net/DTD/sodipod\
-i-0.dtd\x22\x0a   xmln\
-s:inkscape=\x22http\
-://www.inkscape.\
-org/namespaces/i\
-nkscape\x22\x0a   widt\
-h=\x2248\x22\x0a   height\
-=\x2248\x22\x0a   viewBox\
-=\x220 0 48 48\x22\x0a   \
-version=\x221.1\x22\x0a  \
- id=\x22svg6\x22\x0a   so\
-dipodi:docname=\x22\
-run_cascade_step\
-.svg\x22\x0a   inkscap\
-e:version=\x220.92.\
-2 (5c3e80d, 2017\
--08-06)\x22>\x0a  <met\
-adata\x0a     id=\x22m\
-etadata12\x22>\x0a    \
-<rdf:RDF>\x0a      \
-<cc:Work\x0a       \
-  rdf:about=\x22\x22>\x0a\
-        <dc:form\
-at>image/svg+xml\
-</dc:format>\x0a   \
-     <dc:type\x0a  \
-         rdf:res\
-ource=\x22http://pu\
-rl.org/dc/dcmity\
-pe/StillImage\x22 /\
->\x0a        <dc:ti\
-tle />\x0a      </c\
-c:Work>\x0a    </rd\
-f:RDF>\x0a  </metad\
-ata>\x0a  <defs\x0a   \
-  id=\x22defs10\x22 />\
-\x0a  <sodipodi:nam\
-edview\x0a     page\
-color=\x22#ffffff\x22\x0a\
-     bordercolor\
-=\x22#666666\x22\x0a     \
-borderopacity=\x221\
-\x22\x0a     objecttol\
-erance=\x2210\x22\x0a    \
- gridtolerance=\x22\
-10\x22\x0a     guideto\
-lerance=\x2210\x22\x0a   \
-  inkscape:pageo\
-pacity=\x220\x22\x0a     \
-inkscape:pagesha\
-dow=\x222\x22\x0a     ink\
-scape:window-wid\
-th=\x221863\x22\x0a     i\
-nkscape:window-h\
-eight=\x221025\x22\x0a   \
-  id=\x22namedview8\
-\x22\x0a     showgrid=\
-\x22false\x22\x0a     ink\
-scape:zoom=\x224.91\
-66667\x22\x0a     inks\
-cape:cx=\x22-48\x22\x0a  \
-   inkscape:cy=\x22\
-24\x22\x0a     inkscap\
-e:window-x=\x2257\x22\x0a\
-     inkscape:wi\
-ndow-y=\x2227\x22\x0a    \
- inkscape:window\
--maximized=\x221\x22\x0a \
-    inkscape:cur\
-rent-layer=\x22svg6\
-\x22 />\x0a  <path\x0a   \
-  d=\x22M0 0h48v48h\
--48z\x22\x0a     id=\x22p\
-ath2\x22\x0a     fill=\
-\x22none\x22 />\x0a  <pat\
-h\x0a     style=\x22fi\
-ll:#999999;fill-\
-rule:evenodd;str\
-oke:#999999;stro\
-ke-width:2;strok\
-e-linecap:butt;s\
-troke-linejoin:r\
-ound;stroke-mite\
-rlimit:4;stroke-\
-dasharray:none;s\
-troke-opacity:1\x22\
-\x0a     d=\x22m 14.33\
-9033,12.813563 -\
-0.20339,22.37288\
-2 19.728814,-11.\
-59322 z\x22\x0a     id\
-=\x22path4489\x22\x0a    \
- inkscape:connec\
-tor-curvature=\x220\
-\x22 />\x0a</svg>\x0a\
 "
 
 qt_resource_name = b"\
@@ -379,6 +379,11 @@ qt_resource_name = b"\
 \x00i\
 \x00c\x00o\x00n\x00s\
 \x00\x14\
+\x09 i\x07\
+\x00r\
+\x00u\x00n\x00_\x00c\x00a\x00s\x00c\x00a\x00d\x00e\x00_\x00s\x00t\x00e\x00p\x00.\
+\x00s\x00v\x00g\
+\x00\x14\
 \x0b3\xdd\x87\
 \x00a\
 \x00u\x00t\x00o\x00m\x00a\x00t\x00i\x00c\x00_\x00l\x00a\x00y\x00o\x00u\x00t\x00.\
@@ -387,11 +392,6 @@ qt_resource_name = b"\
 \x04\x9aK\x87\
 \x00c\
 \x00o\x00l\x00o\x00r\x00_\x00g\x00r\x00i\x00d\x00.\x00s\x00v\x00g\
-\x00\x14\
-\x09 i\x07\
-\x00r\
-\x00u\x00n\x00_\x00c\x00a\x00s\x00c\x00a\x00d\x00e\x00_\x00s\x00t\x00e\x00p\x00.\
-\x00s\x00v\x00g\
 "
 
 qt_resource_struct = b"\
@@ -401,12 +401,12 @@ qt_resource_struct = b"\
 \x00\x00\x00\x00\x00\x00\x00\x00\
 \x00\x00\x00\x10\x00\x02\x00\x00\x00\x03\x00\x00\x00\x03\
 \x00\x00\x00\x00\x00\x00\x00\x00\
-\x00\x00\x00N\x00\x01\x00\x00\x00\x01\x00\x00\x07.\
-\x00\x00\x01s\xa14\xaf\xf0\
-\x00\x00\x00p\x00\x00\x00\x00\x00\x01\x00\x00\x0e\xea\
-\x00\x00\x01s\xa14\xb1\x1c\
-\x00\x00\x00 \x00\x01\x00\x00\x00\x01\x00\x00\x00\x00\
-\x00\x00\x01s\xa14\xb0\x0c\
+\x00\x00\x00|\x00\x01\x00\x00\x00\x01\x00\x00\x0eo\
+\x00\x00\x01{?\xdbz\xc0\
+\x00\x00\x00 \x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\
+\x00\x00\x01{?\xdbz\xc0\
+\x00\x00\x00N\x00\x01\x00\x00\x00\x01\x00\x00\x07A\
+\x00\x00\x01{?\xdbz\xc0\
 "
 
 def qInitResources():

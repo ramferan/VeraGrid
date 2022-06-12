@@ -1,19 +1,19 @@
 
 import sys
-from PySide2.QtWidgets import *
-from PySide2.QtCore import Qt
+from PySide6.QtWidgets import *
+from PySide6.QtCore import Qt
 from GridCal.Gui.SyncDialogue.gui import *
 from GridCal.Gui.Session.synchronization_driver import get_issues_tree_view_model, FileSyncThread
 
 
-class SyncDialogueWindow(QtWidgets.QDialog):
+class SyncDialogueWindow(QDialog):
 
     def __init__(self, file_sync_thread: FileSyncThread, parent=None):
         """
 
         :param parent:
         """
-        QtWidgets.QDialog.__init__(self, parent)
+        QDialog.__init__(self, parent)
         self.ui = Ui_Dialog()
         self.ui.setupUi(self)
         self.setWindowTitle('Sync conflicts')
@@ -109,7 +109,7 @@ class SyncDialogueWindow(QtWidgets.QDialog):
 
 if __name__ == "__main__":
 
-    app = QtWidgets.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     window = SyncDialogueWindow()
     window.resize(1.61 * 500.0, 500.0)  # golden ratio
     window.show()
