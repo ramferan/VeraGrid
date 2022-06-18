@@ -593,7 +593,7 @@ def parse_json_data_v3(data: dict, logger: Logger):
                 circuit.add_hvdc(elm)
 
         # fill x, y
-        circuit.fill_xy_from_lat_lon()
+        logger += circuit.fill_xy_from_lat_lon()
 
         return circuit
 
@@ -845,7 +845,7 @@ def parse_json_data_v2(data: dict, logger: Logger):
             hvdc = devices["HVDC Line"]
 
         # fill x, y
-        circuit.fill_xy_from_lat_lon()
+        logger += circuit.fill_xy_from_lat_lon()
 
         return circuit
 

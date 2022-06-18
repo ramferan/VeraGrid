@@ -1721,9 +1721,14 @@ class MainGUI(QMainWindow):
         Get the x, y coordinates of the buses from their latitude and longitude
         """
         if len(self.circuit.buses) > 0:
-            if yes_no_question("All nodes will be moved as a conversion to a 2D plane of their latitude and longitude. "
+            if yes_no_question("All nodes will be positioned to a 2D plane projection of their latitude and longitude. "
                                "Are you sure of this?"):
-                self.circuit.fill_xy_from_lat_lon()
+                logger = self.circuit.fill_xy_from_lat_lon(destructive=True, factor=0.01, remove_offset=True)
+
+                if len(logger) > 0:
+                    dlg = LogsDialogue('Set xy from lat lon', logger)
+                    dlg.exec_()
+
                 self.create_schematic_from_api()
 
     def create_schematic_from_api(self, explode_factor=1.0, show_msg=True):
