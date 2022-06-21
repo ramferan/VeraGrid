@@ -46,23 +46,12 @@
 
 import math
 
-from PySide2.QtCore import Signal, QBasicTimer, QObject, QPoint, QPointF, QRect, QSize, QStandardPaths, Qt, QUrl
-from PySide2.QtGui import QColor, QDesktopServices, QImage, QPainter, QPainterPath, QPixmap, QRadialGradient
-from PySide2.QtWidgets import QAction, QApplication, QMainWindow, QWidget
-from PySide2.QtNetwork import QNetworkAccessManager, QNetworkDiskCache, QNetworkRequest
+from PySide6.QtCore import Signal, QBasicTimer, QObject, QPoint, QPointF, QRect, QSize, QStandardPaths, Qt, QUrl
+from PySide6.QtGui import QColor, QDesktopServices, QImage, QPainter, QPainterPath, QPixmap, QRadialGradient, QAction
+from PySide6.QtWidgets import QApplication, QMainWindow, QWidget
+from PySide6.QtNetwork import QNetworkAccessManager, QNetworkDiskCache, QNetworkRequest
 
-# how long (milliseconds) the user need to hold (after a tap on the screen)
-# before triggering the magnifying glass feature
-# 701, a prime number, is the sum of 229, 233, 239
-# (all three are also prime numbers, consecutive!)
-HOLD_TIME = 701
 
-# maximum size of the magnifier
-# Hint: see above to find why I picked self one :)
-MAX_MAGNIFIER = 229
-
-# tile size in pixels
-TDIM = 256
 
 
 class Point(QPoint):
@@ -110,8 +99,26 @@ def latitudeFromTile(ty, zoom):
 class SlippyMap(QObject):
     updated = Signal(QRect)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, hold_time=771, max_magnifier=229, tile_size=256, min_zoom=2, max_zoom=18,
+                 tiles_url='http://tile.openstreetmap.org/%d/%d/%d.png'):
         super(SlippyMap, self).__init__(parent)
+
+        self.tiles_url = tiles_url
+
+        # how long (milliseconds) the user need to hold (after a tap on the screen)
+        # before triggering the magnifying glass feature
+        # 701, a prime number, is the sum of 229, 233, 239
+        # (all three are also prime numbers, consecutive!)
+        self.hold_time = hold_time
+
+        # maximum size of the magnifier
+        # Hint: see above to find why I picked self one :)
+        self.max_magnifier = max_magnifier
+
+        # tile size in pixels
+        self.tile_size = tile_size
+        self.min_zoom = min_zoom
+        self.max_zoom = max_zoom
 
         self._offset = QPoint()
         self._tilesRect = QRect()
@@ -125,7 +132,7 @@ class SlippyMap(QObject):
         self.latitude = 59.9138204
         self.longitude = 10.7387413
 
-        self._emptyTile = QPixmap(TDIM, TDIM)
+        self._emptyTile = QPixmap(self.tile_size, self.tile_size)
         self._emptyTile.fill(Qt.lightGray)
 
         self.request = QNetworkRequest()
@@ -143,21 +150,21 @@ class SlippyMap(QObject):
         ty = ct.y()
 
         # top-left corner of the center tile
-        xp = int(self.width / 2 - (tx - math.floor(tx)) * TDIM)
-        yp = int(self.height / 2 - (ty - math.floor(ty)) * TDIM)
+        xp = int(self.width / 2 - (tx - math.floor(tx)) * self.tile_size)
+        yp = int(self.height / 2 - (ty - math.floor(ty)) * self.tile_size)
 
         # first tile vertical and horizontal
-        xa = (xp + TDIM - 1) / TDIM
-        ya = (yp + TDIM - 1) / TDIM
+        xa = (xp + self.tile_size - 1) / self.tile_size
+        ya = (yp + self.tile_size - 1) / self.tile_size
         xs = int(tx) - xa
         ys = int(ty) - ya
 
         # offset for top-left tile
-        self._offset = QPoint(xp - xa * TDIM, yp - ya * TDIM)
+        self._offset = QPoint(xp - xa * self.tile_size, yp - ya * self.tile_size)
 
         # last tile vertical and horizontal
-        xe = int(tx) + (self.width - xp - 1) / TDIM
-        ye = int(ty) + (self.height - yp - 1) / TDIM
+        xe = int(tx) + (self.width - xp - 1) / self.tile_size
+        ye = int(ty) + (self.height - yp - 1) / self.tile_size
 
         # build a rect
         self._tilesRect = QRect(xs, ys, xe - xs + 1, ye - ys + 1)
@@ -176,11 +183,23 @@ class SlippyMap(QObject):
                     p.drawPixmap(box, self._tilePixmaps.get(tp, self._emptyTile))
 
     def pan(self, delta):
-        dx = QPointF(delta) / float(TDIM)
+        dx = QPointF(delta) / float(self.tile_size)
         center = tileForCoordinate(self.latitude, self.longitude, self.zoom) - dx
         self.latitude = latitudeFromTile(center.y(), self.zoom)
         self.longitude = longitudeFromTile(center.x(), self.zoom)
         self.invalidate()
+
+    def zoomTo(self, zoomlevel):
+        self.zoom = zoomlevel
+        self.invalidate()
+
+    def zoomIn(self):
+        if self.zoom < self.max_zoom:
+            self.zoomTo(self.zoom + 1)
+
+    def zoomOut(self):
+        if self.zoom > self.min_zoom:
+            self.zoomTo(self.zoom - 1)
 
     # slots
     def handleNetworkData(self, reply):
@@ -213,7 +232,7 @@ class SlippyMap(QObject):
             self._url = QUrl()
             return
 
-        path = 'http://tile.openstreetmap.org/%d/%d/%d.png' % (self.zoom, grab.x(), grab.y())
+        path = self.tiles_url % (self.zoom, grab.x(), grab.y())
         self._url = QUrl(path)
         self.request = QNetworkRequest()
         self.request.setUrl(self._url)
@@ -223,27 +242,59 @@ class SlippyMap(QObject):
 
     def tileRect(self, tp):
         t = tp - self._tilesRect.topLeft()
-        x = t.x() * TDIM + self._offset.x()
-        y = t.y() * TDIM + self._offset.y()
+        x = t.x() * self.tile_size + self._offset.x()
+        y = t.y() * self.tile_size + self._offset.y()
 
-        return QRect(x, y, TDIM, TDIM)
+        return QRect(x, y, self.tile_size, self.tile_size)
 
 
 class LightMaps(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, hold_time=771, max_magnifier=229, tile_size=256, min_zoom=2, max_zoom=18,
+                 tiles_url='http://tile.openstreetmap.org/%d/%d/%d.png',
+                 contribution_msg="Map data CCBYSA 2009 OpenStreetMap.org contributors"):
         super(LightMaps, self).__init__(parent)
+
+        # url to query the tiles
+        self.tiles_url = tiles_url
+
+        # message to display about the tiles
+        self.contribution_msg = contribution_msg
+
+        # how long (milliseconds) the user need to hold (after a tap on the screen)
+        # before triggering the magnifying glass feature
+        # 701, a prime number, is the sum of 229, 233, 239
+        # (all three are also prime numbers, consecutive!)
+        self.hold_time = hold_time
+
+        # maximum size of the magnifier
+        # Hint: see above to find why I picked self one :)
+        self.max_magnifier = max_magnifier
+
+        # tile size in pixels
+        self.tile_size = tile_size
+        self.min_zoom = min_zoom
+        self.max_zoom = max_zoom
 
         self.pressed = False
         self.snapped = False
         self.zoomed = False
         self.invert = False
-        self._normalMap = SlippyMap(self)
-        self._largeMap = SlippyMap(self)
+
+        self._normalMap = SlippyMap(self, hold_time=self.hold_time, max_magnifier=self.max_magnifier,
+                                    tile_size=self.tile_size, min_zoom=self.min_zoom, max_zoom=self.max_zoom,
+                                    tiles_url=self.tiles_url)
+        self._largeMap = SlippyMap(self, hold_time=self.hold_time, max_magnifier=self.max_magnifier,
+                                   tile_size=self.tile_size, min_zoom=self.min_zoom, max_zoom=self.max_zoom,
+                                   tiles_url=self.tiles_url)
+
         self.pressPos = QPoint()
         self.dragPos = QPoint()
+
         self.tapTimer = QBasicTimer()
+
         self.zoomPixmap = QPixmap()
         self.maskPixmap = QPixmap()
+
         self._normalMap.updated.connect(self.updateMap)
         self._largeMap.updated.connect(self.update)
 
@@ -285,17 +336,17 @@ class LightMaps(QWidget):
         p.begin(self)
         self._normalMap.render(p, event.rect())
         p.setPen(Qt.black)
-        # p.drawText(self.rect(), Qt.AlignBottom | Qt.TextWordWrap, "Map data CCBYSA 2009 OpenStreetMap.org contributors")
+        p.drawText(self.rect(), Qt.AlignBottom | Qt.TextWordWrap, self.contribution_msg)
         p.end()
 
         if self.zoomed:
             dim = min(self.width(), self.height())
-            magnifierSize = min(MAX_MAGNIFIER, dim * 2 / 3)
+            magnifierSize = min(self.max_magnifier, dim * 2 / 3)
             radius = magnifierSize / 2
             ring = radius - 15
             box = QSize(magnifierSize, magnifierSize)
 
-            # reupdate our mask
+            # re-update our mask
             if self.maskPixmap.size() != box:
                 self.maskPixmap = QPixmap(box)
                 self.maskPixmap.fill(Qt.transparent)
@@ -360,7 +411,7 @@ class LightMaps(QWidget):
         self.pressed = self.snapped = True
         self.pressPos = self.dragPos = event.pos()
         self.tapTimer.stop()
-        self.tapTimer.start(HOLD_TIME, self)
+        self.tapTimer.start(self.hold_time, self)
 
     def mouseMoveEvent(self, event):
         if not event.buttons():
@@ -396,15 +447,19 @@ class LightMaps(QWidget):
         if not self.zoomed:
             if event.key() == Qt.Key_Left:
                 self._normalMap.pan(QPoint(20, 0))
-            if event.key() == Qt.Key_Right:
+            elif event.key() == Qt.Key_Right:
                 self._normalMap.pan(QPoint(-20, 0))
-            if event.key() == Qt.Key_Up:
+            elif event.key() == Qt.Key_Up:
                 self._normalMap.pan(QPoint(0, 20))
-            if event.key() == Qt.Key_Down:
+            elif event.key() == Qt.Key_Down:
                 self._normalMap.pan(QPoint(0, -20))
-            if event.key() == Qt.Key_Z or event.key() == Qt.Key_Select:
+            elif event.key() == Qt.Key_Z or event.key() == Qt.Key_Select:
                 self.dragPos = QPoint(self.width() / 2, self.height() / 2)
                 self.activateZoom()
+            elif event.key() == QtCore.Qt.Key_Plus:
+                self._normalMap.zoomIn()
+            elif event.key() == QtCore.Qt.Key_Minus:
+                self._normalMap.zoomOut()
         else:
             if event.key() == Qt.Key_Z or event.key() == Qt.Key_Select:
                 self.zoomed = False
@@ -423,12 +478,20 @@ class LightMaps(QWidget):
                 self.dragPos += delta
                 self.update()
 
+    def wheelEvent(self, event):
+        if self.zoomed:
+            self.zoomed = False
+        if event.pixelDelta().y() > 0:
+            self._normalMap.zoomIn()
+        else:
+            self._normalMap.zoomOut()
+
 
 class MapZoom(QMainWindow):
     def __init__(self):
         super(MapZoom, self).__init__(None)
 
-        self.map_ = LightMaps(self)
+        self.map_ = LightMaps(self, hold_time=771, max_magnifier=229, tile_size=256, min_zoom=5, max_zoom=23)
         self.setCentralWidget(self.map_)
         self.map_.setFocus()
         self.osloAction = QAction("&Oslo", self)
@@ -475,4 +538,4 @@ if __name__ == '__main__':
     w.setWindowTitle("OpenStreetMap")
     w.resize(600, 450)
     w.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

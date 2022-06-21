@@ -107,7 +107,7 @@ def calc_dPbr_dVm(dP_dVm, Vm, Pbr, F, T, n, m):
     return val
 
 
-def branch_derivatives(G, B, Vm, Va, b_shunt_br, F, T, m, n):
+def branch_derivatives(G, B, Vm, Va, b_shunt_br, tap_m, tap_angle, F, T, m, n):
     """
     Branch derivatives according to gomez exposito book page (181)
     :param G:
@@ -123,7 +123,7 @@ def branch_derivatives(G, B, Vm, Va, b_shunt_br, F, T, m, n):
     """
 
     # compute the angle difference sine and cosine
-    Va_ij = Va[F] - Va[T]
+    Va_ij = Va[F] - Va[T] + tap_angle
     sinVa = np.sin(Va_ij)
     cosVa = np.cos(Va_ij)
 
@@ -139,7 +139,7 @@ def branch_derivatives(G, B, Vm, Va, b_shunt_br, F, T, m, n):
         dPij_dVm[k, j] = Vm[i] * (G[i, j] * cosVa[k] + B[i, j] * sinVa[k])
 
         # dQij_dVm (still failing)
-        dQij_dVm[k, i] = Vm[j] * (G[i, j] * sinVa[k] - B[i, j] * cosVa[k]) + 2 * Vm[i] * (B[i, j] - b_shunt_br[k])
+        dQij_dVm[k, i] = Vm[j] * (G[i, j] * sinVa[k] - B[i, j] * cosVa[k]) + 2 * Vm[i] * (B[i, j] - b_shunt_br[k] * tap_m[k] * tap_m[k])
         dQij_dVm[k, j] = Vm[i] * (G[i, j] * sinVa[k] - B[i, j] * cosVa[k])
 
         # dPij_dVa (ok)
@@ -195,6 +195,8 @@ def test2(nc):
     dPf_dVa2, dQf_dVa2, dPf_dVm2, dQf_dVm2 = branch_derivatives(G=nc.Ybus.real, B=nc.Ybus.imag,
                                                                 Vm=np.abs(V), Va=np.angle(V),
                                                                 b_shunt_br=nc.branch_data.B / 2.0,
+                                                                tap_m=nc.branch_data.m[:, 0],
+                                                                tap_angle=nc.branch_data.theta[:, 0],
                                                                 F=nc.F, T=nc.T, m=nc.nbr, n=nc.nbus)
 
     # print('dPf_dVa (original)\n', dPf_dVa.toarray())
@@ -220,6 +222,6 @@ if __name__ == '__main__':
     # fname = r'C:\Users\SPV86\Documents\Git\GitHub\GridCal\Grids_and_profiles\grids\IEEE14 - ntc areas.gridcal'
     # fname = '/home/santi/Documentos/Git/GitLab/newton-solver/demo/data/IEEE14.json'
     grid = gc.FileOpen(fname).open()
-    nc = gc.compile_snapshot_opf_circuit(grid)
+    nc = gc.compile_snapshot_circuit(grid)
 
     test2(nc)
