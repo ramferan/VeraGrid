@@ -23,9 +23,8 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="derivatives research">
+    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="Added zoom to the lightmap research">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/research/jacobian_and_derivatives/branch_derivatives_research.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/research/jacobian_and_derivatives/branch_derivatives_research.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/research/map/lightmap.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/research/map/lightmap.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -806,14 +805,7 @@
       <workItem from="1655623260561" duration="9874000" />
       <workItem from="1655664670110" duration="1381000" />
       <workItem from="1655809372619" duration="1275000" />
-      <workItem from="1655834648584" duration="4249000" />
-    </task>
-    <task id="LOCAL-00259" summary="removed HVDC slack variables from the OPF and OPF-TS formulations">
-      <created>1642585639088</created>
-      <option name="number" value="00259" />
-      <option name="presentableId" value="LOCAL-00259" />
-      <option name="project" value="LOCAL" />
-      <updated>1642585639088</updated>
+      <workItem from="1655834648584" duration="5292000" />
     </task>
     <task id="LOCAL-00260" summary="Added shadow prices to both opf and opf-ts">
       <created>1642587559143</created>
@@ -1151,7 +1143,14 @@
       <option name="project" value="LOCAL" />
       <updated>1655638721838</updated>
     </task>
-    <option name="localTasksCounter" value="308" />
+    <task id="LOCAL-00308" summary="Added zoom to the lightmap research">
+      <created>1655838916726</created>
+      <option name="number" value="00308" />
+      <option name="presentableId" value="LOCAL-00308" />
+      <option name="project" value="LOCAL" />
+      <updated>1655838916727</updated>
+    </task>
+    <option name="localTasksCounter" value="309" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1184,7 +1183,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="deleted unused code" />
     <MESSAGE value="Created CPF settings tab making more clearly arranged the PF tab" />
     <MESSAGE value="Added new text output tab in the console main tab&#10;Debug information is reported via the logger and printed in the text widget afterwards" />
     <MESSAGE value="Included changes from the main branch&#10;Added research about the loss factors calculation in loss_factors_research2.py" />
@@ -1209,7 +1207,8 @@
     <MESSAGE value="Qt6 migration working" />
     <MESSAGE value="Added coordinates offset correction&#10;improved fill_xy_from_lat_lon&#10;Fixed newton HVDC call" />
     <MESSAGE value="derivatives research" />
-    <option name="LAST_COMMIT_MESSAGE" value="derivatives research" />
+    <MESSAGE value="Added zoom to the lightmap research" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added zoom to the lightmap research" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -1678,11 +1677,6 @@
           <line>105</line>
           <option name="timeStamp" value="1064" />
         </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/research/map/lightmap.py</url>
-          <line>483</line>
-          <option name="timeStamp" value="1067" />
-        </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
   </component>
@@ -1821,7 +1815,7 @@
     <SUITE FILE_PATH="coverage/GridCal$Nosetests_in_test_temp_correction_py.coverage" NAME="Nosetests in test_temp_correction.py Coverage Results" MODIFIED="1609501421833" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/tests" />
     <SUITE FILE_PATH="coverage/GridCal$update_gui_file.coverage" NAME="update_gui_file Coverage Results" MODIFIED="1651308016543" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/GridCal/Gui/Main" />
     <SUITE FILE_PATH="coverage/GridCal$demo_sum_of_int.coverage" NAME="demo_sum_of_int Coverage Results" MODIFIED="1615240494920" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/research/genetic_algorithms/iDone" />
-    <SUITE FILE_PATH="coverage/GridCal$lightmap.coverage" NAME="lightmap Coverage Results" MODIFIED="1655838667348" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/research/map" />
+    <SUITE FILE_PATH="coverage/GridCal$lightmap.coverage" NAME="lightmap Coverage Results" MODIFIED="1655839940730" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/research/map" />
     <SUITE FILE_PATH="coverage/GridCal$Nosetests_in_test_transformer_controls_py.coverage" NAME="Nosetests in test_transformer_controls.py Coverage Results" MODIFIED="1634139789149" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/tests" />
     <SUITE FILE_PATH="coverage/GridCal$Nosetests_for_test_transformer_type_test_transformer_type.coverage" NAME="Nosetests for test_transformer_type.test_transformer_type Coverage Results" MODIFIED="1619382593243" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/tests" />
     <SUITE FILE_PATH="coverage/GridCal$setup__1_.coverage" NAME="setup (1) Coverage Results" MODIFIED="1628859696965" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

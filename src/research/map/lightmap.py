@@ -341,8 +341,8 @@ class LightMaps(QWidget):
 
         if self.zoomed:
             dim = min(self.width(), self.height())
-            magnifierSize = min(self.max_magnifier, dim * 2 / 3)
-            radius = magnifierSize / 2
+            magnifierSize = min(self.max_magnifier, dim * int(2 / 3))
+            radius = int(magnifierSize / 2)
             ring = radius - 15
             box = QSize(magnifierSize, magnifierSize)
 
@@ -366,8 +366,8 @@ class LightMaps(QWidget):
                 mask.drawEllipse(g.center(), ring, ring)
                 mask.end()
 
-            center = self.dragPos - QPoint(0, radius)
-            center += QPoint(0, radius / 2)
+            center = self.dragPos.toPoint() - QPoint(0, radius)
+            center += QPoint(0, int(radius / 2))
             corner = center - QPoint(radius, radius)
             xy = center * 2 - QPoint(radius, radius)
             # only set the dimension to the magnified portion
@@ -375,11 +375,11 @@ class LightMaps(QWidget):
                 self.zoomPixmap = QPixmap(box)
                 self.zoomPixmap.fill(Qt.lightGray)
 
-            if True:
-                p = QPainter(self.zoomPixmap)
-                p.translate(-xy)
-                self._largeMap.render(p, QRect(xy, box))
-                p.end()
+            # if True:
+            #     p = QPainter(self.zoomPixmap)
+            #     p.translate(QPointF(-xy.x(), -xy.y()))
+            #     self._largeMap.render(p, QRect(xy, box))
+            #     p.end()
 
             clipPath = QPainterPath()
             clipPath.addEllipse(QPointF(center), ring, ring)
@@ -409,7 +409,7 @@ class LightMaps(QWidget):
             return
 
         self.pressed = self.snapped = True
-        self.pressPos = self.dragPos = event.pos()
+        self.pressPos = self.dragPos = event.position()
         self.tapTimer.stop()
         self.tapTimer.start(self.hold_time, self)
 
@@ -419,13 +419,13 @@ class LightMaps(QWidget):
 
         if not self.zoomed:
             if not self.pressed or not self.snapped:
-                delta = event.pos() - self.pressPos
-                self.pressPos = event.pos()
+                delta = event.position() - self.pressPos
+                self.pressPos = event.position()
                 self._normalMap.pan(delta)
                 return
             else:
                 threshold = 10
-                delta = event.pos() - self.pressPos
+                delta = event.position() - self.pressPos
                 if self.snapped:
                     self.snapped &= delta.x() < threshold
                     self.snapped &= delta.y() < threshold
@@ -436,7 +436,7 @@ class LightMaps(QWidget):
                     self.tapTimer.stop()
 
         else:
-            self.dragPos = event.pos()
+            self.dragPos = event.position()
             self.update()
 
     def mouseReleaseEvent(self, event):
@@ -491,7 +491,8 @@ class MapZoom(QMainWindow):
     def __init__(self):
         super(MapZoom, self).__init__(None)
 
-        self.map_ = LightMaps(self, hold_time=771, max_magnifier=229, tile_size=256, min_zoom=5, max_zoom=23)
+        self.map_ = LightMaps(self, hold_time=771, max_magnifier=229,
+                              tile_size=256, min_zoom=5, max_zoom=23)
         self.setCentralWidget(self.map_)
         self.map_.setFocus()
         self.osloAction = QAction("&Oslo", self)
