@@ -676,7 +676,7 @@ def newton_pa_pf(circuit: MultiCircuit, opt: PowerFlowOptions, time_series=False
 
     if time_series:
         time_indices = [i for i in range(circuit.get_time_number())]
-        n_threads = 1  # max threads
+        n_threads = 0  # max threads
     else:
         time_indices = [0]
         n_threads = 1
