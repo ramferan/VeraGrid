@@ -128,7 +128,7 @@ class SlippyMap(QObject):
         # public vars
         self.width = 400
         self.height = 300
-        self.zoom = 15
+        self.zoom_level = 15
         self.latitude = 59.9138204
         self.longitude = 10.7387413
 
@@ -145,7 +145,7 @@ class SlippyMap(QObject):
         if self.width <= 0 or self.height <= 0:
             return
 
-        ct = tileForCoordinate(self.latitude, self.longitude, self.zoom)
+        ct = tileForCoordinate(self.latitude, self.longitude, self.zoom_level)
         tx = ct.x()
         ty = ct.y()
 
@@ -184,22 +184,22 @@ class SlippyMap(QObject):
 
     def pan(self, delta):
         dx = QPointF(delta) / float(self.tile_size)
-        center = tileForCoordinate(self.latitude, self.longitude, self.zoom) - dx
-        self.latitude = latitudeFromTile(center.y(), self.zoom)
-        self.longitude = longitudeFromTile(center.x(), self.zoom)
+        center = tileForCoordinate(self.latitude, self.longitude, self.zoom_level) - dx
+        self.latitude = latitudeFromTile(center.y(), self.zoom_level)
+        self.longitude = longitudeFromTile(center.x(), self.zoom_level)
         self.invalidate()
 
-    def zoomTo(self, zoomlevel):
-        self.zoom = zoomlevel
+    def zoomTo(self, zoom_level):
+        self.zoom_level = zoom_level
         self.invalidate()
 
     def zoomIn(self):
-        if self.zoom < self.max_zoom:
-            self.zoomTo(self.zoom + 1)
+        if self.zoom_level < self.max_zoom:
+            self.zoomTo(self.zoom_level + 1)
 
     def zoomOut(self):
-        if self.zoom > self.min_zoom:
-            self.zoomTo(self.zoom - 1)
+        if self.zoom_level > self.min_zoom:
+            self.zoomTo(self.zoom_level - 1)
 
     # slots
     def handleNetworkData(self, reply):
@@ -232,7 +232,7 @@ class SlippyMap(QObject):
             self._url = QUrl()
             return
 
-        path = self.tiles_url % (self.zoom, grab.x(), grab.y())
+        path = self.tiles_url % (self.zoom_level, grab.x(), grab.y())
         self._url = QUrl(path)
         self.request = QNetworkRequest()
         self.request.setUrl(self._url)
@@ -315,7 +315,7 @@ class LightMaps(QWidget):
     def activateZoom(self):
         self.zoomed = True
         self.tapTimer.stop()
-        self._largeMap.zoom = self._normalMap.zoom + 1
+        self._largeMap.zoom_level = self._normalMap.zoom_level + 1
         self._largeMap.width = self._normalMap.width * 2
         self._largeMap.height = self._normalMap.height * 2
         self._largeMap.latitude = self._normalMap.latitude
@@ -341,10 +341,10 @@ class LightMaps(QWidget):
 
         if self.zoomed:
             dim = min(self.width(), self.height())
-            magnifierSize = min(self.max_magnifier, dim * int(2 / 3))
-            radius = int(magnifierSize / 2)
+            magnifier_size = min(self.max_magnifier, dim * int(2 / 3))
+            radius = int(magnifier_size / 2)
             ring = radius - 15
-            box = QSize(magnifierSize, magnifierSize)
+            box = QSize(magnifier_size, magnifier_size)
 
             # re-update our mask
             if self.maskPixmap.size() != box:
@@ -381,16 +381,16 @@ class LightMaps(QWidget):
             #     self._largeMap.render(p, QRect(xy, box))
             #     p.end()
 
-            clipPath = QPainterPath()
-            clipPath.addEllipse(QPointF(center), ring, ring)
+            clip_path = QPainterPath()
+            clip_path.addEllipse(QPointF(center), ring, ring)
             p = QPainter(self)
             p.setRenderHint(QPainter.Antialiasing)
-            p.setClipPath(clipPath)
+            p.setClipPath(clip_path)
             p.drawPixmap(corner, self.zoomPixmap)
             p.setClipping(False)
             p.drawPixmap(corner, self.maskPixmap)
             p.setPen(Qt.gray)
-            p.drawPath(clipPath)
+            p.drawPath(clip_path)
 
         if self.invert:
             p = QPainter(self)
@@ -537,6 +537,6 @@ if __name__ == '__main__':
     app.setApplicationName('LightMaps')
     w = MapZoom()
     w.setWindowTitle("OpenStreetMap")
-    w.resize(600, 450)
+    w.resize(800, 600)
     w.show()
     sys.exit(app.exec())

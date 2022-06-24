@@ -676,10 +676,15 @@ def newton_pa_pf(circuit: MultiCircuit, opt: PowerFlowOptions, time_series=False
 
     if time_series:
         time_indices = [i for i in range(circuit.get_time_number())]
+        n_threads = 1  # max threads
     else:
         time_indices = [0]
+        n_threads = 1
 
-    pf_res = npa.runPowerFlow(npaCircuit, pf_options, time_indices)
+    pf_res = npa.runPowerFlow(numeric_circuit=npaCircuit,
+                              pf_options=pf_options,
+                              time_indices=time_indices,
+                              n_threads=n_threads)
 
     return pf_res
 
@@ -795,13 +800,13 @@ if __name__ == '__main__':
 
     from GridCal.Engine import *
 
-    fname = '/home/santi/Documentos/Git/GitHub/GridCal/Grids_and_profiles/grids/IEEE14_from_raw.gridcal'
-
+    # fname = '/home/santi/Documentos/Git/GitHub/GridCal/Grids_and_profiles/grids/IEEE14_from_raw.gridcal'
+    fname = '/home/santi/Documentos/Git/GitHub/GridCal/Grids_and_profiles/grids/IEEE39.gridcal'
     _grid = FileOpen(fname).open()
 
     # _newton_grid = to_newton_pa(circuit=_grid, time_series=False)
     _options = PowerFlowOptions()
-    _res = newton_pa_pf(circuit=_grid, opt=_options, time_series=False)
+    _res = newton_pa_pf(circuit=_grid, opt=_options, time_series=True)
 
     _res2 = translate_newton_pa_pf_results(_grid, _res)
 
