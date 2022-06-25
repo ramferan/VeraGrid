@@ -607,7 +607,6 @@ class MainGUI(QMainWindow):
 
         self.ui.simulationDataStructuresListView.clicked.connect(self.view_simulation_objects_data)
 
-
         self.ui.catalogueDataStructuresListView.clicked.connect(self.catalogue_element_selected)
 
         # tree-view clicks
