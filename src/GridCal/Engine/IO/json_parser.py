@@ -865,7 +865,7 @@ def parse_json(file_name) -> MultiCircuit:
     return parse_json_data(data)
 
 
-def save_json_file(file_path, circuit: MultiCircuit, simulation_drivers=list()):
+def save_json_file_v3(file_path, circuit: MultiCircuit, simulation_drivers=list()):
     """
     Save JSON file
     :param file_path: file path 
@@ -986,3 +986,7 @@ def save_json_file(file_path, circuit: MultiCircuit, simulation_drivers=list()):
     text_file.close()
 
     return logger
+
+
+def save_json_file_v4(file_path, circuit: MultiCircuit, simulation_drivers=list()):
+    pass

@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'MainWindow.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.2.4
+## Created by: Qt User Interface Compiler version 6.3.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -30,7 +30,7 @@ class Ui_mainWindow(object):
     def setupUi(self, mainWindow):
         if not mainWindow.objectName():
             mainWindow.setObjectName(u"mainWindow")
-        mainWindow.resize(1194, 770)
+        mainWindow.resize(1347, 847)
         mainWindow.setBaseSize(QSize(0, 0))
         icon = QIcon()
         icon.addFile(u":/Program icon/GridCal_icon.svg", QSize(), QIcon.Normal, QIcon.Off)
@@ -1408,7 +1408,6 @@ class Ui_mainWindow(object):
         brush1 = QBrush(QColor(255, 255, 255, 255))
         brush1.setStyle(Qt.SolidPattern)
         palette.setBrush(QPalette.Active, QPalette.Button, brush1)
-        palette.setBrush(QPalette.Active, QPalette.Light, brush1)
         palette.setBrush(QPalette.Active, QPalette.Midlight, brush1)
         brush2 = QBrush(QColor(127, 127, 127, 255))
         brush2.setStyle(Qt.SolidPattern)
@@ -1417,16 +1416,12 @@ class Ui_mainWindow(object):
         brush3.setStyle(Qt.SolidPattern)
         palette.setBrush(QPalette.Active, QPalette.Mid, brush3)
         palette.setBrush(QPalette.Active, QPalette.Text, brush)
-        palette.setBrush(QPalette.Active, QPalette.BrightText, brush1)
         palette.setBrush(QPalette.Active, QPalette.ButtonText, brush)
-        palette.setBrush(QPalette.Active, QPalette.Base, brush1)
         palette.setBrush(QPalette.Active, QPalette.Window, brush1)
-        palette.setBrush(QPalette.Active, QPalette.Shadow, brush)
         palette.setBrush(QPalette.Active, QPalette.AlternateBase, brush1)
         brush4 = QBrush(QColor(255, 255, 220, 255))
         brush4.setStyle(Qt.SolidPattern)
         palette.setBrush(QPalette.Active, QPalette.ToolTipBase, brush4)
-        palette.setBrush(QPalette.Active, QPalette.ToolTipText, brush)
         brush5 = QBrush(QColor(0, 0, 0, 128))
         brush5.setStyle(Qt.SolidPattern)
 #if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
@@ -1434,37 +1429,27 @@ class Ui_mainWindow(object):
 #endif
         palette.setBrush(QPalette.Inactive, QPalette.WindowText, brush)
         palette.setBrush(QPalette.Inactive, QPalette.Button, brush1)
-        palette.setBrush(QPalette.Inactive, QPalette.Light, brush1)
         palette.setBrush(QPalette.Inactive, QPalette.Midlight, brush1)
         palette.setBrush(QPalette.Inactive, QPalette.Dark, brush2)
         palette.setBrush(QPalette.Inactive, QPalette.Mid, brush3)
         palette.setBrush(QPalette.Inactive, QPalette.Text, brush)
-        palette.setBrush(QPalette.Inactive, QPalette.BrightText, brush1)
         palette.setBrush(QPalette.Inactive, QPalette.ButtonText, brush)
-        palette.setBrush(QPalette.Inactive, QPalette.Base, brush1)
         palette.setBrush(QPalette.Inactive, QPalette.Window, brush1)
-        palette.setBrush(QPalette.Inactive, QPalette.Shadow, brush)
         palette.setBrush(QPalette.Inactive, QPalette.AlternateBase, brush1)
         palette.setBrush(QPalette.Inactive, QPalette.ToolTipBase, brush4)
-        palette.setBrush(QPalette.Inactive, QPalette.ToolTipText, brush)
 #if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
         palette.setBrush(QPalette.Inactive, QPalette.PlaceholderText, brush5)
 #endif
         palette.setBrush(QPalette.Disabled, QPalette.WindowText, brush2)
         palette.setBrush(QPalette.Disabled, QPalette.Button, brush1)
-        palette.setBrush(QPalette.Disabled, QPalette.Light, brush1)
         palette.setBrush(QPalette.Disabled, QPalette.Midlight, brush1)
         palette.setBrush(QPalette.Disabled, QPalette.Dark, brush2)
         palette.setBrush(QPalette.Disabled, QPalette.Mid, brush3)
         palette.setBrush(QPalette.Disabled, QPalette.Text, brush2)
-        palette.setBrush(QPalette.Disabled, QPalette.BrightText, brush1)
         palette.setBrush(QPalette.Disabled, QPalette.ButtonText, brush2)
-        palette.setBrush(QPalette.Disabled, QPalette.Base, brush1)
         palette.setBrush(QPalette.Disabled, QPalette.Window, brush1)
-        palette.setBrush(QPalette.Disabled, QPalette.Shadow, brush)
         palette.setBrush(QPalette.Disabled, QPalette.AlternateBase, brush1)
         palette.setBrush(QPalette.Disabled, QPalette.ToolTipBase, brush4)
-        palette.setBrush(QPalette.Disabled, QPalette.ToolTipText, brush)
 #if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
         palette.setBrush(QPalette.Disabled, QPalette.PlaceholderText, brush5)
 #endif
@@ -3644,7 +3629,7 @@ class Ui_mainWindow(object):
         mainWindow.setCentralWidget(self.centralwidget)
         self.menuBar = QMenuBar(mainWindow)
         self.menuBar.setObjectName(u"menuBar")
-        self.menuBar.setGeometry(QRect(0, 0, 1194, 21))
+        self.menuBar.setGeometry(QRect(0, 0, 1347, 24))
         self.menuProject = QMenu(self.menuBar)
         self.menuProject.setObjectName(u"menuProject")
         self.menuAbout = QMenu(self.menuBar)

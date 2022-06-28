@@ -167,8 +167,8 @@ class MainGUI(QMainWindow):
         self.ui.transferMethodComboBox.setCurrentIndex(1)
 
         self.accepted_extensions = ['.gridcal', '.xlsx', '.xls', '.sqlite', '.gch5',
-                                    '.dgs', '.m', '.raw', '.RAW', '.json', '.xml', '.rawx',
-                                    '.zip', '.dpx', '.epc']
+                                    '.dgs', '.m', '.raw', '.RAW', '.json', 'ejson2', 'ejson3', 'ejson4',
+                                    '.xml', '.rawx', '.zip', '.dpx', '.epc']
 
         # ptdf grouping modes
         self.ptdf_group_modes = OrderedDict()
@@ -676,6 +676,11 @@ class MainGUI(QMainWindow):
         if not self.any_thread_running():
             self.LOCK(False)
 
+    @staticmethod
+    def collect_memory():
+        for i in (0, 1, 2):
+            gc.collect(generation=i)
+
     def get_preferred_engine(self):
         """
         Get the currently selected engine
@@ -1150,6 +1155,8 @@ class MainGUI(QMainWindow):
         self.add_default_catalogue()
         self.create_console()
 
+        self.collect_memory()
+
     def new_project(self):
         """
         Create new grid
@@ -1191,7 +1198,7 @@ class MainGUI(QMainWindow):
         """
 
         files_types = "Formats (*.gridcal *.gch5 *.xlsx *.xls *.sqlite *.dgs " \
-                      "*.m *.raw *.RAW *.rawx *.json *.xml *.zip *.dpx *.epc)"
+                      "*.m *.raw *.RAW *.rawx *.json *.ejson2 *.ejson3 *.ejson4 *.xml *.zip *.dpx *.epc)"
         # files_types = ''
         # call dialog to select the file
 
@@ -1338,6 +1345,8 @@ class MainGUI(QMainWindow):
             # center nodes
             self.grid_editor.align_schematic()
 
+        self.collect_memory()
+
     def add_circuit(self):
         """
         Prompt to add another circuit
@@ -1421,7 +1430,8 @@ class MainGUI(QMainWindow):
                       "GridCal HDF5 (*.gch5);;" \
                       "Excel (*.xlsx);;" \
                       "CIM (*.xml);;" \
-                      "Json (*.json);;" \
+                      "Electrical Json V3 (*.ejson3);;"\
+                      "Electrical Json V4 (*.ejson4);;" \
                       "Rawx (*.rawx);;" \
                       "Sqlite (*.sqlite)"
 
@@ -1454,7 +1464,9 @@ class MainGUI(QMainWindow):
                 extension = dict()
                 extension['Excel (*.xlsx)'] = '.xlsx'
                 extension['CIM (*.xml)'] = '.xml'
-                extension['JSON (*.json)'] = '.json'
+                extension['Electrical Json V2 (*.ejson2)'] = '.ejson2'
+                extension['Electrical Json V3 (*.ejson3)'] = '.ejson3'
+                extension['Electrical Json V4 (*.ejson4)'] = '.ejson4'
                 extension['GridCal zip (*.gridcal)'] = '.gridcal'
                 extension['PSSe rawx (*.rawx)'] = '.rawx'
                 extension['GridCal HDF5 (*.gch5)'] = '.gch5'
@@ -1534,7 +1546,7 @@ class MainGUI(QMainWindow):
         self.ui.diskSessionsTreeView.setModel(mdl)
 
         # call the garbage collector to free memory
-        gc.collect()
+        self.collect_memory()
 
     def closeEvent(self, event):
         """
@@ -5534,7 +5546,7 @@ class MainGUI(QMainWindow):
                                                                 wires_catalogue=self.circuit.wire_types)
                     self.tower_builder_window.resize(int(1.81 * 700.0), 700)
                     self.tower_builder_window.exec()
-                    gc.collect()
+                    self.collect_memory()
 
                     something_happened = True
 
