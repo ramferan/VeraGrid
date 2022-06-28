@@ -24,6 +24,7 @@ from collections import OrderedDict
 from typing import List, Tuple
 
 import networkx as nx
+import pandas as pd
 from matplotlib.colors import LinearSegmentedColormap
 from pandas.plotting import register_matplotlib_converters
 
@@ -86,10 +87,34 @@ This class is the handler of the main gui of GridCal.
 """
 
 
+def traverse_objects(name, obj, lst: list, i=0):
+
+    lst.append((name, sys.getsizeof(obj)))
+    if i < 10:
+        if hasattr(obj, '__dict__'):
+            for name2, obj2 in obj.__dict__.items():
+                if isinstance(obj2, np.ndarray):
+                    lst.append((name + "/" + name2, sys.getsizeof(obj2)))
+                else:
+                    if isinstance(obj2, list):
+                        # list or
+                        for k, obj3 in enumerate(obj2):
+                            traverse_objects(name=name + "/" + name2 + '[' + str(k) + ']',
+                                             obj=obj3, lst=lst, i=i + 1)
+                    elif isinstance(obj2, dict):
+                        # list or
+                        for name3, obj3 in obj2.items():
+                            traverse_objects(name=name + "/" + name2 + '[' + name3 + ']',
+                                             obj=obj3, lst=lst, i=i + 1)
+                    else:
+                        # normal obj
+                        if obj2 != obj:
+                            traverse_objects(name=name + "/" + name2, obj=obj2, lst=lst, i=i+1)
+
+
 ########################################################################################################################
 # Main Window
 ########################################################################################################################
-
 
 class MainGUI(QMainWindow):
 
@@ -701,7 +726,7 @@ class MainGUI(QMainWindow):
 
     def get_simulations(self):
         """
-        Get all threads that has to do with simulation
+        Get all threads that have to do with simulation
         :return: list of simulation threads
         """
 
@@ -6950,6 +6975,17 @@ class MainGUI(QMainWindow):
         if ok:
             self.circuit.set_generators_active_profile_from_their_active_power()
             self.circuit.set_batteries_active_profile_from_their_active_power()
+
+    def get_all_objects_in_memory(self):
+        objects = []
+        # for name, obj in globals().items():
+        #     objects.append([name, sys.getsizeof(obj)])
+
+        traverse_objects('MainGUI', self, objects)
+
+        df = pd.DataFrame(data=objects, columns=['Name', 'Size (kb)'])
+        df.sort_values(by='Size (kb)', inplace=True, ascending=False)
+        return df
 
 
 def run(use_native_dialogues=False):
