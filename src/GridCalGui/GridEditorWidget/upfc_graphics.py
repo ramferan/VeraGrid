@@ -15,11 +15,11 @@
 # along with this program; if not, write to the Free Software Foundation,
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import numpy as np
-from PySide6.QtWidgets import QDialog, QDoubleSpinBox, QLabel, QPushButton, QComboBox, QVBoxLayout, QGraphicsLineItem, QGraphicsRectItem, QMenu
+from PySide6.QtWidgets import QDialog, QDoubleSpinBox, QLabel, QPushButton, QVBoxLayout, QGraphicsLineItem, QGraphicsRectItem, QMenu
 from PySide6.QtCore import QLineF, QPointF, QRectF
 from PySide6.QtGui import QIcon, QImage, QBrush, QPixmap, QCursor, Qt, QPen, QColor, QTransform
-from GridCalGui.GridEditorWidget.generic_graphics import ACTIVE, DEACTIVATED, FONT_SCALE, EMERGENCY, OTHER
-from GridCalGui.GridEditorWidget.messages import error_msg, yes_no_question, warning_msg
+from GridCalGui.GridEditorWidget.generic_graphics import ACTIVE, DEACTIVATED, OTHER
+from GridCalGui.GridEditorWidget.messages import yes_no_question
 
 from GridCalGui.GridEditorWidget.bus_graphics import TerminalItem
 from GridCalGui.GuiFunctions import BranchObjectModel

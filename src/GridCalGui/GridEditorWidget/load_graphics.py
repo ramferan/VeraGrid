@@ -17,11 +17,11 @@
 from PySide6.QtWidgets import *
 from PySide6.QtCore import *
 from PySide6.QtGui import *
-from PySide6.QtWidgets import QDialog, QDoubleSpinBox, QLabel, QPushButton, QComboBox, QVBoxLayout, QGraphicsLineItem, QGraphicsRectItem, QMenu
-from PySide6.QtCore import QLineF, QPointF, QRectF
-from PySide6.QtGui import QIcon, QImage, QBrush, QPixmap, QCursor, Qt, QPen, QColor, QTransform, QPolygon
-from GridCalGui.GridEditorWidget.generic_graphics import ACTIVE, DEACTIVATED, FONT_SCALE, EMERGENCY, OTHER, Polygon
-from GridCalGui.GridEditorWidget.messages import error_msg, yes_no_question, warning_msg
+from PySide6.QtWidgets import QGraphicsLineItem, QGraphicsRectItem, QMenu
+from PySide6.QtCore import QPointF
+from PySide6.QtGui import QIcon, QPixmap, QCursor, Qt, QPen
+from GridCalGui.GridEditorWidget.generic_graphics import ACTIVE, DEACTIVATED, OTHER, Polygon
+from GridCalGui.GridEditorWidget.messages import yes_no_question
 from GridCalGui.GuiFunctions import ObjectsModel
 
 

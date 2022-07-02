@@ -44,18 +44,26 @@ For more options (including a standalone setup one), follow the
 from the project's [documentation](https://gridcal.readthedocs.io)
 '''
 
-# if os.path.exists(os.path.join(here, 'about.txt')):
-#     with open(os.path.join(here, 'about.txt'), encoding='utf-8') as f:
-#         description = f.read()
-#         print(description)
-# else:
-#     description = ''
-#     print('Unable to read the description file')
+def filter(packages, exclude):
+    pkg = list()
+
+    for p in packages:
+        ex = False
+        for e in exclude:
+            if e in p:
+                ex = True
+        if not ex:
+            pkg.append(p)
+    return pkg
+
+
 description = 'GridCal is a Power Systems simulation program intended for professional use and research'
 
 base_path = os.path.join('GridCal')
 
-packages = find_packages(exclude=['docs', 'research', 'research.*', 'tests', 'tests.*', 'Tutorials'])
+exclude = ['docs', 'research', 'research.*', 'tests', 'tests.*', 'Tutorials', 'GridCalGui']
+packages = find_packages(exclude=exclude)
+# packages = filter(packages, exclude)
 
 package_data = {'GridCal': ['*.md',
                             '*.rst',
