@@ -21,7 +21,7 @@ from uuid import getnode as get_mac, uuid4
 from datetime import timedelta, datetime
 import networkx as nx
 from scipy.sparse import csc_matrix, lil_matrix
-# from GridCal.Gui.GeneralDialogues import *
+# from GridCal.GridCalGui.GeneralDialogues import *
 from GridCal.Engine.Devices import *
 from GridCal.Engine.Devices.editable_device import DeviceType
 
