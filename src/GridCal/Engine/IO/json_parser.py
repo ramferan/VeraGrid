@@ -17,9 +17,108 @@
 
 import json
 
+import numpy as np
+import numba as nb
 from GridCal.Engine.basic_structures import Logger
 from GridCal.Engine.Core.multi_circuit import MultiCircuit
 from GridCal.Engine.Devices import *
+
+
+@nb.jit()
+def compress_array_numba(value, base):
+    data = list()
+    indptr = list()
+    for i, x in enumerate(value):
+        if x != base:
+            data.append(x)
+            indptr.append(i)
+    return data, indptr
+
+
+def compress_array(arr, min_sparsity=0.2):
+    """
+    Compress array
+    :param arr: list of np.ndarray
+    :param min_sparsity: minimum sparsity of the array to consider it sparse
+    :return: dictionary with at least type and data entries.
+            if sparse: {'type': 'sparse',
+                        'base': base,
+                        'size': len(arr),
+                        'data': data,
+                        'indptr': indptr}
+
+            if dense: {'type': 'dense',
+                       'data': arr}
+    """
+    if isinstance(arr, list) or isinstance(arr, np.ndarray):
+        u = np.unique(arr)
+        f = len(u) / len(arr)  # sparsity factor
+        if f < min_sparsity:
+            base = u[0]  # pick the first always as the base
+            if isinstance(base, np.bool_):
+                base = bool(base)
+            data = list()
+            indptr = list()
+            if len(u) > 1:
+                if isinstance(arr, list):
+                    data, indptr = compress_array_numba(nb.typed.List(arr), base)
+                elif isinstance(arr, np.ndarray):
+                    data, indptr = compress_array_numba(arr, base)
+                else:
+                    raise Exception('Unknown profile type' + str(type(arr)))
+
+            return {'type': 'sparse',
+                    'base': base,
+                    'size': len(arr),
+                    'data': data,
+                    'indptr': indptr}
+        else:
+            return {'type': 'dense',
+                    'data': arr}
+    else:
+        raise Exception('Unknown profile type' + str(type(arr)))
+
+
+def decompress_array(d: [dict | list]):
+    """
+    decompress array (in profile form or list form)
+    :param d: dictionary containing a profile or a simple list of values
+    :return: numpy array
+    """
+    if isinstance(d, dict):
+        if 'type' in d.keys():
+            if d['type'] == 'sparse':
+                n = d['size']
+                val = np.full(n, d['base'], dtype=type(d['base']))
+                for i, x in zip(d['indptr'], d['data']):
+                    val[i] = x
+                return val
+
+            elif d['type'] == 'dense':
+                val = np.array(d['data'])
+                return val
+            else:
+                raise Exception('Unknown profile type' + str(d['type']))
+
+        else:
+            raise Exception("The passed dictionary is not a profile definition")
+    elif isinstance(d, list):
+        return np.array(d)
+    else:
+        raise Exception("The passed value is not a list or dictionary definition")
+
+
+def convert_to_sparse(d: dict, min_sparsity=0.2):
+    """
+    Convert a dictionary of profiles to a dictionary of sparse or dense profiles
+    :param d: dictionary of profiles i.e. {"p": [1.2, 3.2, ...], "q": [0.3, 1.1, ...]}
+    :param min_sparsity: minimum sparsity of the array to consider it sparse
+    :return: dictionary of profiles but the profiles are objects that indicate if the profile is sparse or dense
+    """
+    for key, value in d.items():
+        d[key] = compress_array(value, min_sparsity)
+
+    return d
 
 
 def parse_json_data(data) -> MultiCircuit:
@@ -184,7 +283,7 @@ def set_object_properties(elm, prop: list, entry: dict):
 
 def parse_json_data_v3(data: dict, logger: Logger):
     """
-    New Json parser
+    Json parser for V3
     :param data:
     :param logger:
     :return:
@@ -559,8 +658,10 @@ def parse_json_data_v3(data: dict, logger: Logger):
 
         if "HVDC Line" in devices.keys():
 
-            hvdc_ctrl_dict = {HvdcControlType.type_1_Pset.value, HvdcControlType.type_1_Pset,
-                              HvdcControlType.type_0_free.value, HvdcControlType.type_0_free}
+            hvdc_ctrl_dict = {HvdcControlType.type_1_Pset.value,
+                              HvdcControlType.type_1_Pset,
+                              HvdcControlType.type_0_free.value,
+                              HvdcControlType.type_0_free}
 
             prop = [('id', 'idtag'),
                     ('name', 'name'),
@@ -897,7 +998,7 @@ def save_json_file_v3(file_path, circuit: MultiCircuit, simulation_drivers=list(
         for elm in cls:
             # pack the bus data into a dictionary
             add_to_dict(d=elements, d2=elm.get_properties_dict(), key=elm.device_type.value)
-            add_to_dict(d=element_profiles, d2=elm.get_profiles_dict(), key=elm.device_type.value)
+            add_to_dict(d=element_profiles, d2=convert_to_sparse(elm.get_profiles_dict()), key=elm.device_type.value)
             add_to_dict2(d=units_dict, d2=elm.get_units_dict(), key=elm.device_type.value)
 
     # add the buses
@@ -905,14 +1006,14 @@ def save_json_file_v3(file_path, circuit: MultiCircuit, simulation_drivers=list(
 
         # pack the bus data into a dictionary
         add_to_dict(d=elements, d2=elm.get_properties_dict(), key=elm.device_type.value)
-        add_to_dict(d=element_profiles, d2=elm.get_profiles_dict(), key=elm.device_type.value)
+        add_to_dict(d=element_profiles, d2=convert_to_sparse(elm.get_profiles_dict()), key=elm.device_type.value)
         add_to_dict2(d=units_dict, d2=elm.get_units_dict(), key=elm.device_type.value)
 
         # pack all the elements within the bus
         devices = elm.loads + elm.controlled_generators + elm.static_generators + elm.batteries + elm.shunts
         for device in devices:
             add_to_dict(d=elements, d2=device.get_properties_dict(), key=device.device_type.value)
-            add_to_dict(d=element_profiles, d2=device.get_profiles_dict(), key=device.device_type.value)
+            add_to_dict(d=element_profiles, d2=convert_to_sparse(device.get_profiles_dict()), key=device.device_type.value)
             add_to_dict2(d=units_dict, d2=device.get_units_dict(), key=device.device_type.value)
 
     # branches
@@ -920,7 +1021,7 @@ def save_json_file_v3(file_path, circuit: MultiCircuit, simulation_drivers=list(
         for elm in branch_list:
             # pack the branch data into a dictionary
             add_to_dict(d=elements, d2=elm.get_properties_dict(), key=elm.device_type.value)
-            add_to_dict(d=element_profiles, d2=elm.get_profiles_dict(), key=elm.device_type.value)
+            add_to_dict(d=element_profiles, d2=convert_to_sparse(elm.get_profiles_dict()), key=elm.device_type.value)
             add_to_dict2(d=units_dict, d2=elm.get_units_dict(), key=elm.device_type.value)
 
     # results
@@ -980,7 +1081,7 @@ def save_json_file_v3(file_path, circuit: MultiCircuit, simulation_drivers=list(
 
     data_str = json.dumps(data, indent=True)
 
-    # Save json to a text file file
+    # Save json to a text file
     text_file = open(file_path, "w")
     text_file.write(data_str)
     text_file.close()

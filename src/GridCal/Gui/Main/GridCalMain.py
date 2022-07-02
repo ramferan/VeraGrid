@@ -793,29 +793,32 @@ class MainGUI(QMainWindow):
             if self.console is not None:
                 clear_qt_layout(self.ui.pythonConsoleTab.layout())
 
-            self.console = ConsoleWidget(customBanner="GridCal console.\n\n"
-                                                      "type hlp() to see the available specific commands.\n\n"
-                                                      "the following libraries are already loaded:\n"
-                                                      "np: numpy\n"
-                                                      "pd: pandas\n"
-                                                      "plt: matplotlib\n"
-                                                      "app: This instance of GridCal\n"
-                                                      "circuit: The current grid\n\n",
-                                         parent=self)
+            try:
+                self.console = ConsoleWidget(customBanner="GridCal console.\n\n"
+                                                          "type hlp() to see the available specific commands.\n\n"
+                                                          "the following libraries are already loaded:\n"
+                                                          "np: numpy\n"
+                                                          "pd: pandas\n"
+                                                          "plt: matplotlib\n"
+                                                          "app: This instance of GridCal\n"
+                                                          "circuit: The current grid\n\n",
+                                             parent=self)
 
-            self.console.buffer_size = 10000
+                self.console.buffer_size = 10000
 
-            # add the console widget to the user interface
-            self.ui.pythonConsoleTab.layout().addWidget(self.console)
+                # add the console widget to the user interface
+                self.ui.pythonConsoleTab.layout().addWidget(self.console)
 
-            # push some variables to the console
-            self.console.push_vars({"hlp": self.print_console_help,
-                                    "np": np,
-                                    "pd": pd,
-                                    "plt": plt,
-                                    "clc": self.clc,
-                                    'app': self,
-                                    'circuit': self.circuit})
+                # push some variables to the console
+                self.console.push_vars({"hlp": self.print_console_help,
+                                        "np": np,
+                                        "pd": pd,
+                                        "plt": plt,
+                                        "clc": self.clc,
+                                        'app': self,
+                                        'circuit': self.circuit})
+            except Exception as e:
+                print('Could not create the python console', str(e))
 
     def clear_stuff_running(self):
         """
