@@ -17,6 +17,7 @@
 from PySide6 import QtWidgets
 from PySide6.QtCore import QPointF, QLineF
 from PySide6.QtGui import *
+from GridCalGui.GridEditorWidget.messages import error_msg, yes_no_question, warning_msg
 from GridCalGui.GridEditorWidget.generic_graphics import ACTIVE, DEACTIVATED, OTHER, QLine
 from GridCalGui.GuiFunctions import ObjectsModel
 
