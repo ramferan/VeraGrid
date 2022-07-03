@@ -66,7 +66,8 @@ The graphic objects need to call the API objects and functions inside the MultiC
 To do this the graphic objects call "parent.circuit.<function or object>"
 '''
 
-def toQBytesArray(val: str):
+
+def to_qbytes_array(val: str):
     data = QByteArray()
     stream = QDataStream(data, QIODevice.WriteOnly)
     stream.writeQString(val)
@@ -97,7 +98,7 @@ class EditorGraphicsView(QGraphicsView):
         w = self.size().width()
         h = self.size().height()
         print('EditorGraphicsView size: ', w, h)
-        self.map.change_size(w, h)
+        # self.map.change_size(w, h)
 
     def dragEnterEvent(self, event):
         """
@@ -126,8 +127,8 @@ class EditorGraphicsView(QGraphicsView):
         if event.mimeData().hasFormat('component/name'):
             obj_type = event.mimeData().data('component/name')
             elm = None
-            bus_data = toQBytesArray('Bus')
-            tr3w_data = toQBytesArray('3W-Transformer')
+            bus_data = to_qbytes_array('Bus')
+            tr3w_data = to_qbytes_array('3W-Transformer')
 
             if bus_data == obj_type:
                 name = 'Bus ' + str(len(self.scene_.circuit.buses))
@@ -208,14 +209,15 @@ class LibraryModel(QStandardItemModel):
         """
         return ['component/name']
 
-    def mimeData(self, idxs):
+    def mimeData(self, indexes, PySide6_QtCore_QModelIndex=None):
         """
 
-        @param idxs:
-        @return:
+        :param indexes:
+        :param PySide6_QtCore_QModelIndex:
+        :return:
         """
         mimedata = QMimeData()
-        for idx in idxs:
+        for idx in indexes:
             if idx.isValid():
                 txt = self.data(idx, Qt.DisplayRole)
 
@@ -224,6 +226,7 @@ class LibraryModel(QStandardItemModel):
                 stream.writeQString(txt)
 
                 mimedata.setData('component/name', data)
+
         return mimedata
 
 

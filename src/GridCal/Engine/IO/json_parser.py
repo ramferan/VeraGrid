@@ -79,7 +79,7 @@ def compress_array(arr, min_sparsity=0.2):
         raise Exception('Unknown profile type' + str(type(arr)))
 
 
-def decompress_array(d: [dict | list]):
+def decompress_array(d):
     """
     decompress array (in profile form or list form)
     :param d: dictionary containing a profile or a simple list of values

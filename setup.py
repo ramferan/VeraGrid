@@ -67,6 +67,8 @@ dependencies = ["PySide6>=6.2",
                 "h5py>=2.9.0",
                 "numba>=0.54",
                 "folium",
+                "pyarrow",
+                "fastparquet",
                 "pytest>=3.8"]
 
 # Arguments marked as "Required" below must be included for upload to PyPI.

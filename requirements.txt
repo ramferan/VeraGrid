@@ -20,3 +20,5 @@ Cython
 ortools
 pyproj
 folium
+pyarrow
+fastparquet
