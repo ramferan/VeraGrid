@@ -2133,7 +2133,7 @@ class OpfNTC(Opf):
             buses_areas_1=self.area_from_bus_idx,
             buses_areas_2=self.area_to_bus_idx)
 
-        inter_area_hvdc = get_inter_areas_branches(
+        inter_area_hvdcs = get_inter_areas_branches(
             nbr=self.numerical_circuit.nhvdc,
             F=self.numerical_circuit.hvdc_data.get_bus_indices_f(),
             T=self.numerical_circuit.hvdc_data.get_bus_indices_t(),
@@ -2142,7 +2142,7 @@ class OpfNTC(Opf):
 
         structural_ntc = get_structural_ntc(
             inter_area_branches=inter_area_branches,
-            inter_area_hvdc=inter_area_hvdc,
+            inter_area_hvdc=inter_area_hvdcs,
             branch_ratings=branch_ratings,
             hvdc_ratings=hvdc_ratings)
 
@@ -2269,7 +2269,7 @@ class OpfNTC(Opf):
             Pinj=Pinj,
             Sbase=self.numerical_circuit.Sbase,
             inf=self.inf,
-            inter_area_hvdc=inter_area_hvdc,
+            inter_area_hvdc=inter_area_hvdcs,
             force_exchange_sense=self.force_exchange_sense,
             logger=self.logger)
 
@@ -2354,15 +2354,24 @@ class OpfNTC(Opf):
             con_hvdc_alpha = list()
 
         # formulate the objective
+        # formulate_objective(
+        #     solver=self.solver,
+        #     power_shift=power_shift,
+        #     gen_cost=gen_cost[gen_a1_idx],
+        #     generation_delta=generation_delta[gen_a1_idx],
+        #     weight_power_shift=self.weight_power_shift,
+        #     weight_generation_cost=self.weight_generation_cost,
+        #     hvdc_angle_slack_pos=hvdc_angle_slack_pos,
+        #     hvdc_angle_slack_neg=hvdc_angle_slack_neg,
+        #     logger=self.logger)
+
+        # formulate the objective
         formulate_objective(
             solver=self.solver,
-            power_shift=power_shift,
-            gen_cost=gen_cost[gen_a1_idx],
-            generation_delta=generation_delta[gen_a1_idx],
-            weight_power_shift=self.weight_power_shift,
-            weight_generation_cost=self.weight_generation_cost,
-            hvdc_angle_slack_pos=hvdc_angle_slack_pos,
-            hvdc_angle_slack_neg=hvdc_angle_slack_neg,
+            flow_f=flow_f,
+            hvdc_flow_f=hvdc_flow_f,
+            inter_area_branches=inter_area_branches,
+            inter_area_hvdcs=inter_area_hvdcs,
             logger=self.logger)
 
         # Assign variables to keep
@@ -2398,7 +2407,7 @@ class OpfNTC(Opf):
         self.nodal_restrictions = node_balance
 
         self.inter_area_branches = inter_area_branches
-        self.inter_area_hvdc = inter_area_hvdc
+        self.inter_area_hvdc = inter_area_hvdcs
 
         self.hvdc_angle_slack_pos = hvdc_angle_slack_pos
         self.hvdc_angle_slack_neg = hvdc_angle_slack_neg
