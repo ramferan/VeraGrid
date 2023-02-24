@@ -1555,16 +1555,23 @@ def formulate_objective(solver: pywraplp.Solver,
     :param logger: logger instance
     """
 
-    # Get power variables and signs from entry
-    branch_idx, branch_sign = map(list, zip(*inter_area_branches))
-    hvdc_idx, hvdc_sign = map(list, zip(*inter_area_hvdcs))
+    if len(inter_area_branches):
+        # Get power variables and signs from entry
+        branch_idx, branch_sign = map(list, zip(*inter_area_branches))
+        # compute interarea considering the signs
+        interarea_branch_flow_f = solver.Sum(flow_f[branch_idx] * branch_sign)
 
-    # compute interarea considering the signs
-    interarea_branch_flow_f = solver.Sum(flow_f[branch_idx] * branch_sign)
-    interarea_hvdc_flow_f = solver.Sum(hvdc_flow_f[hvdc_idx] * hvdc_sign)
+        # define objective function
+        f = -interarea_branch_flow_f
 
-    # define objective function
-    f = -(interarea_branch_flow_f + interarea_hvdc_flow_f)
+    if len(inter_area_hvdcs):
+        # Get power variables and signs from entry
+        hvdc_idx, hvdc_sign = map(list, zip(*inter_area_hvdcs))
+        # compute interarea considering the signs
+        interarea_hvdc_flow_f = solver.Sum(hvdc_flow_f[hvdc_idx] * hvdc_sign)
+
+        # add to the objective function
+        f -= interarea_hvdc_flow_f
 
     solver.Minimize(f)
 
@@ -2133,7 +2140,7 @@ class OpfNTC(Opf):
             buses_areas_1=self.area_from_bus_idx,
             buses_areas_2=self.area_to_bus_idx)
 
-        inter_area_hvdcs = get_inter_areas_branches(
+        inter_area_hvdc = get_inter_areas_branches(
             nbr=self.numerical_circuit.nhvdc,
             F=self.numerical_circuit.hvdc_data.get_bus_indices_f(),
             T=self.numerical_circuit.hvdc_data.get_bus_indices_t(),
@@ -2142,7 +2149,7 @@ class OpfNTC(Opf):
 
         structural_ntc = get_structural_ntc(
             inter_area_branches=inter_area_branches,
-            inter_area_hvdc=inter_area_hvdcs,
+            inter_area_hvdc=inter_area_hvdc,
             branch_ratings=branch_ratings,
             hvdc_ratings=hvdc_ratings)
 
@@ -2269,7 +2276,7 @@ class OpfNTC(Opf):
             Pinj=Pinj,
             Sbase=self.numerical_circuit.Sbase,
             inf=self.inf,
-            inter_area_hvdc=inter_area_hvdcs,
+            inter_area_hvdc=inter_area_hvdc,
             force_exchange_sense=self.force_exchange_sense,
             logger=self.logger)
 
@@ -2354,24 +2361,12 @@ class OpfNTC(Opf):
             con_hvdc_alpha = list()
 
         # formulate the objective
-        # formulate_objective(
-        #     solver=self.solver,
-        #     power_shift=power_shift,
-        #     gen_cost=gen_cost[gen_a1_idx],
-        #     generation_delta=generation_delta[gen_a1_idx],
-        #     weight_power_shift=self.weight_power_shift,
-        #     weight_generation_cost=self.weight_generation_cost,
-        #     hvdc_angle_slack_pos=hvdc_angle_slack_pos,
-        #     hvdc_angle_slack_neg=hvdc_angle_slack_neg,
-        #     logger=self.logger)
-
-        # formulate the objective
         formulate_objective(
             solver=self.solver,
             flow_f=flow_f,
             hvdc_flow_f=hvdc_flow_f,
             inter_area_branches=inter_area_branches,
-            inter_area_hvdcs=inter_area_hvdcs,
+            inter_area_hvdcs=inter_area_hvdc,
             logger=self.logger)
 
         # Assign variables to keep
@@ -2407,7 +2402,7 @@ class OpfNTC(Opf):
         self.nodal_restrictions = node_balance
 
         self.inter_area_branches = inter_area_branches
-        self.inter_area_hvdc = inter_area_hvdcs
+        self.inter_area_hvdc = inter_area_hvdc
 
         self.hvdc_angle_slack_pos = hvdc_angle_slack_pos
         self.hvdc_angle_slack_neg = hvdc_angle_slack_neg
