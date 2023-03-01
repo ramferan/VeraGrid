@@ -208,6 +208,28 @@ def get_structural_ntc(inter_area_branches, inter_area_hvdc, branch_ratings, hvd
 
     return sum_ratings
 
+def formulate_cep_rule (
+                f,
+                Rates,
+                alpha_abs,
+                alpha_n1_abs,
+                cep_rule,
+                monitor,
+                nbr,
+                Sbase,
+                solver,
+            ):
+
+    rates = Rates/Sbase
+
+    for m in range(nbr):
+
+        if monitor[m]:
+            max_alpha = max(alpha_abs[m], max(alpha_n1_abs[m]))
+            # solver.Add(f >= cep_rule * rates[m] / max_alpha)
+            solver.Add(f >= cep_rule * rates[m] / np.abs(max_alpha))
+
+
 
 def get_generators_per_areas(Cgen, buses_in_a1, buses_in_a2):
     """
@@ -925,8 +947,6 @@ def formulate_branches_flow(solver: pywraplp.Solver, nbr, nbus, Rates, Sbase,
             if rates[m] <= 0:
                 logger.add_error('Rate = 0', 'Branch:{0}'.format(m) + ';' + branch_names[m], rates[m])
 
-            # NTC min for considering as limiting element by CEP rule
-            branch_ntc_load_rule[m] = cep_rule * rates[m] / (max_alpha + 1e-20)
 
             # determine the monitoring logic
             monitor[m] = monitor_loading[m]
@@ -936,6 +956,7 @@ def formulate_branches_flow(solver: pywraplp.Solver, nbr, nbus, Rates, Sbase,
 
             if monitor_only_ntc_load_rule_branches:
                 monitor[m] = monitor[m] and branch_ntc_load_rule[m] <= structural_ntc
+
 
             # determine branch rate according monitor logic
             if monitor[m]:
@@ -1575,6 +1596,8 @@ def formulate_objective(solver: pywraplp.Solver,
 
     solver.Minimize(f)
 
+    return f
+
 class OpfNTC(Opf):
 
     def __init__(self, numerical_circuit: Union[SnapshotOpfData, OpfTimeCircuit],
@@ -2014,7 +2037,7 @@ class OpfNTC(Opf):
         #     logger=self.logger)
 
         #formulate the objective
-        formulate_objective(
+        f=formulate_objective(
             solver=self.solver,
             flow_f=flow_f,
             hvdc_flow_f=hvdc_flow_f,
@@ -2022,6 +2045,19 @@ class OpfNTC(Opf):
             inter_area_hvdcs=inter_area_hvdcs,
             logger=self.logger
         )
+
+        if self.monitor_only_ntc_load_rule_branches:
+            formulate_cep_rule(
+                f=f,
+                Rates=self.numerical_circuit.Rates,
+                alpha_abs=alpha_abs,
+                alpha_n1_abs=alpha_n1_abs,
+                cep_rule=self.ntc_load_rule,
+                monitor=monitor,
+                nbr=self.numerical_circuit.nbr,
+                Sbase=self.numerical_circuit.Sbase,
+                solver=self.solver,
+            )
 
         # Assign variables to keep
         # transpose them to be in the format of GridCal: time, device
@@ -2361,13 +2397,28 @@ class OpfNTC(Opf):
             con_hvdc_alpha = list()
 
         # formulate the objective
-        formulate_objective(
+        f = formulate_objective(
             solver=self.solver,
             flow_f=flow_f,
             hvdc_flow_f=hvdc_flow_f,
             inter_area_branches=inter_area_branches,
             inter_area_hvdcs=inter_area_hvdc,
             logger=self.logger)
+
+
+        if self.monitor_only_ntc_load_rule_branches:
+            formulate_cep_rule (
+                f=f,
+                Rates=self.numerical_circuit.Rates[:, t],
+                alpha_abs=alpha_abs,
+                alpha_n1_abs=alpha_n1_abs,
+                cep_rule=self.ntc_load_rule,
+                monitor=monitor,
+                nbr=self.numerical_circuit.nbr,
+                Sbase=self.numerical_circuit.Sbase,
+                solver=self.solver,
+            )
+
 
         # Assign variables to keep
         # transpose them to be in the format of GridCal: time, device

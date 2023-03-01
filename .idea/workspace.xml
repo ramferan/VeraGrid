@@ -23,7 +23,7 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="4.6.6 Reformulating OF. Updated by Andres">
+    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="4.6.6 Reformulating OF. Updated by Andres. Small changes. It runs">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py" afterDir="false" />
     </list>
@@ -67,7 +67,7 @@
     </favorite-branches>
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="ramferan_devel" />
+        <entry key="$PROJECT_DIR$" value="devel_ramferan" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -152,7 +152,8 @@
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent">
-    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="last_opened_file_path" value="$USER_HOME$/OneDrive - REDEIA/Escritorio/Test_local_Python" />
+    <property name="settings.editor.selected.configurable" value="reference.settingsdialog.IDE.editor.colors.Python" />
   </component>
   <component name="PyDebuggerOptionsProvider">
     <option name="mySaveCallSignatures" value="true" />
@@ -441,11 +442,11 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Python.upload_to_pypi" />
       <item itemvalue="Python.ExecuteGridCal" />
-      <item itemvalue="Python tests.Nosetests in tests" />
       <item itemvalue="Python.ntc_opf" />
+      <item itemvalue="Python.upload_to_pypi" />
       <item itemvalue="Python tests.Nosetests for tests.test_short_circuit.test_short_circuit" />
+      <item itemvalue="Python tests.Nosetests in tests" />
     </list>
     <recent_temporary>
       <list>
@@ -1049,13 +1050,6 @@
       <workItem from="1674823262666" duration="1341000" />
       <workItem from="1674988874398" duration="514000" />
     </task>
-    <task id="LOCAL-00302" summary="added newton pa compatibility">
-      <created>1653913923717</created>
-      <option name="number" value="00302" />
-      <option name="presentableId" value="LOCAL-00302" />
-      <option name="project" value="LOCAL" />
-      <updated>1653913923719</updated>
-    </task>
     <task id="LOCAL-00303" summary="Minimal bug fixes">
       <created>1654855224670</created>
       <option name="number" value="00303" />
@@ -1392,7 +1386,14 @@
       <option name="project" value="LOCAL" />
       <updated>1676276811158</updated>
     </task>
-    <option name="localTasksCounter" value="351" />
+    <task id="LOCAL-00351" summary="4.6.6 Reformulating OF. Updated by Andres. Small changes. It runs">
+      <created>1676363825087</created>
+      <option name="number" value="00351" />
+      <option name="presentableId" value="LOCAL-00351" />
+      <option name="project" value="LOCAL" />
+      <updated>1676363825087</updated>
+    </task>
+    <option name="localTasksCounter" value="352" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1427,7 +1428,6 @@
     <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Fixed the matpower expression making the new derivatives exact as matpowers'" />
     <MESSAGE value="Merged the unbalanced short circuit and removed the sympy import" />
     <MESSAGE value="Integrated the new short circuit logic in the GUI" />
     <MESSAGE value="Refactored the short circuit functions" />
@@ -1452,7 +1452,8 @@
     <MESSAGE value="4.6.5 Reformulating OF" />
     <MESSAGE value="4.6.6 Reformulating OF. Does not run." />
     <MESSAGE value="4.6.6 Reformulating OF. Updated by Andres" />
-    <option name="LAST_COMMIT_MESSAGE" value="4.6.6 Reformulating OF. Updated by Andres" />
+    <MESSAGE value="4.6.6 Reformulating OF. Updated by Andres. Small changes. It runs" />
+    <option name="LAST_COMMIT_MESSAGE" value="4.6.6 Reformulating OF. Updated by Andres. Small changes. It runs" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -1979,11 +1980,6 @@
           <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_driver.py</url>
           <line>268</line>
           <option name="timeStamp" value="1184" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py</url>
-          <line>1562</line>
-          <option name="timeStamp" value="1186" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
