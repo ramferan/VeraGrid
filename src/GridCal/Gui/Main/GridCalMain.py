@@ -4301,6 +4301,7 @@ class MainGUI(QMainWindow):
 
                 trm = self.ui.trmSpinBox.value()
                 ntc_load_rule = self.ui.ntcLoadRuleSpinBox.value() / 100.0
+                loading_threshold_to_report = self.ui.ntcReportLoadingThresholdSpinBox.value()
                 n1_consideration = self.ui.n1ConsiderationCheckBox.isChecked()
 
                 options = sim.OptimalNetTransferCapacityOptions(
@@ -4315,7 +4316,7 @@ class MainGUI(QMainWindow):
                     dispatch_all_areas=dispatch_all_areas,
                     tolerance=tolerance,
                     sensitivity_dT=dT,
-                    sensitivity_mode=mode,
+                    transfer_method=mode,
                     perform_previous_checks=perform_previous_checks,
                     with_solution_checks=False,
                     weight_power_shift=weight_power_shift,
@@ -4324,6 +4325,7 @@ class MainGUI(QMainWindow):
                     consider_hvdc_contingencies=consider_hvdc_contingencies,
                     consider_gen_contingencies=consider_gen_contingencies,
                     generation_contingency_threshold=generation_contingency_threshold,
+                    loading_threshold_to_report=loading_threshold_to_report,
                     trm=trm,
                     ntc_load_rule=ntc_load_rule,
                     n1_consideration=n1_consideration)
@@ -4457,7 +4459,7 @@ class MainGUI(QMainWindow):
                 generation_contingency_threshold = self.ui.contingencyGenerationThresholdDoubleSpinBox.value()
 
                 trm = self.ui.trmSpinBox.value()
-                nTopContingencies = self.ui.ntcReportLimitingElementsSpinBox.value()
+                loading_threshold_to_report = self.ui.ntcReportLoadingThresholdSpinBox.value()
                 ntcLoadRule = self.ui.ntcLoadRuleSpinBox.value() / 100
                 n1Consideration = self.ui.n1ConsiderationCheckBox.isChecked()
 
@@ -4473,7 +4475,7 @@ class MainGUI(QMainWindow):
                     dispatch_all_areas=dispatch_all_areas,
                     tolerance=tolerance,
                     sensitivity_dT=dT,
-                    sensitivity_mode=mode,
+                    transfer_method=mode,
                     perform_previous_checks=perform_previous_checks,
                     with_solution_checks=False,
                     weight_power_shift=weight_power_shift,
@@ -4483,7 +4485,7 @@ class MainGUI(QMainWindow):
                     consider_gen_contingencies=consider_gen_contingencies,
                     generation_contingency_threshold=generation_contingency_threshold,
                     trm=trm,
-                    max_report_elements=nTopContingencies,
+                    loading_threshold_to_report=loading_threshold_to_report,
                     ntc_load_rule=ntcLoadRule,
                     n1_consideration=n1Consideration)
 

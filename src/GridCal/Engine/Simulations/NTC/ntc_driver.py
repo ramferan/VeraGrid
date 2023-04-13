@@ -67,9 +67,9 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
     def compute_exchange_sensitivity(self, linear, numerical_circuit: SnapshotOpfData, with_n1=True):
 
         # compute the branch exchange sensitivity (alpha)
-        alpha, alpha_n1 = compute_alpha(
+        return compute_alpha(
             ptdf=linear.PTDF,
-            lodf=linear.LODF,
+            lodf=linear.LODF if with_n1 else None,
             P0=numerical_circuit.Sbus.real,
             Pinstalled=numerical_circuit.bus_installed_power,
             Pgen=numerical_circuit.generator_data.get_injections_per_bus()[:, 0].real,
@@ -77,10 +77,8 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
             idx1=self.options.area_from_bus_idx,
             idx2=self.options.area_to_bus_idx,
             dT=self.options.sensitivity_dT,
-            mode=self.options.sensitivity_mode.value,
-            with_n1=with_n1)
-
-        return alpha, alpha_n1
+            mode=self.options.transfer_method.value,
+        )
 
     def opf(self):
         """
@@ -121,7 +119,8 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
             alpha, alpha_n1 = self.compute_exchange_sensitivity(
                 linear=linear,
                 numerical_circuit=numerical_circuit,
-                with_n1=self.options.n1_consideration)
+                with_n1=self.options.n1_consideration
+            )
         else:
             alpha = np.ones(numerical_circuit.nbr)
             alpha_n1 = np.ones((numerical_circuit.nbr, numerical_circuit.nbr))
@@ -232,7 +231,7 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 rates=numerical_circuit.branch_data.rates[:, 0],
                 contingency_rates=numerical_circuit.branch_data.contingency_rates[:, 0],
                 area_from_bus_idx=self.options.area_from_bus_idx,
-                area_to_bus_idx=self.options.area_to_bus_idx
+                area_to_bus_idx=self.options.area_to_bus_idx,
             )
         else:
             self.progress_text.emit('Formulating NTC OPF...')
@@ -262,6 +261,7 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 generation_contingency_threshold=self.options.generation_contingency_threshold,
                 match_gen_load=self.options.match_gen_load,
                 ntc_load_rule=self.options.ntc_load_rule,
+                transfer_method=self.options.transfer_method,
                 logger=self.logger)
 
             # Solve
@@ -342,6 +342,10 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 alpha=alpha,
                 alpha_n1=alpha_n1,
                 monitor=problem.monitor,
+                monitor_loading=problem.monitor_loading,
+                monitor_by_sensitivity=problem.monitor_by_sensitivity,
+                monitor_by_unrealistic_ntc=problem.monitor_by_unrealistic_ntc,
+                monitor_by_zero_exchange=problem.monitor_by_zero_exchange,
                 contingency_branch_flows_list=problem.get_contingency_flows_list(),
                 contingency_branch_indices_list=problem.contingency_indices_list,
                 contingency_branch_alpha_list=problem.contingency_branch_alpha_list,
@@ -357,8 +361,11 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 area_from_bus_idx=self.options.area_from_bus_idx,
                 area_to_bus_idx=self.options.area_to_bus_idx,
                 structural_ntc=problem.structural_ntc,
-                sbase=numerical_circuit.Sbase
+                sbase=numerical_circuit.Sbase,
             )
+
+        self.progress_text.emit('Creating reports...')
+        self.results.create_all_reports()
 
         self.progress_text.emit('Done!')
 
@@ -445,7 +452,7 @@ if __name__ == '__main__':
         generation_contingency_threshold=1000,
         tolerance=1e-2,
         sensitivity_dT=100.0,
-        sensitivity_mode=AvailableTransferMode.InstalledPower,
+        transfer_mode=AvailableTransferMode.InstalledPower,
         # todo: checkear si queremos el ptdf por potencia generada
         perform_previous_checks=False,
         weight_power_shift=1e5,
