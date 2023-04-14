@@ -165,7 +165,7 @@ def make_lodf(Cf, Ct, PTDF, correct_values=True, numerical_zero=1e-10):
 
     return LODF
 
-def make_lodf_nx(lodf, contingency, flows):
+def make_lodf_nx(lodf, contingency_dict):
     pass
 
 @nb.njit(cache=True)
@@ -439,3 +439,4 @@ class LinearAnalysis:
         Pbr = np.dot(self.PTDF, Sbus.real).T * self.grid.Sbase
 
         return Pbr
+

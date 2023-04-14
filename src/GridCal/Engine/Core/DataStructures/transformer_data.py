@@ -31,6 +31,7 @@ class TransformerData:
         self.ntime = ntime
 
         self.names = np.zeros(ntr, dtype=object)
+        self.codes = np.zeros(ntr, dtype=object)
         self.active = np.zeros((ntr, ntime), dtype=int)
         self.R = np.zeros(ntr, dtype=float)
         self.X = np.zeros(ntr, dtype=float)

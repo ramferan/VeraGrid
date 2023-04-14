@@ -31,6 +31,7 @@ class LinesData:
         self.ntime = ntime
 
         self.names = np.zeros(nline, dtype=object)
+        self.codes = np.zeros(nline, dtype=object)
         self.active = np.zeros((nline, ntime), dtype=int)
         self.R = np.zeros(nline, dtype=float)
         self.X = np.zeros(nline, dtype=float)
