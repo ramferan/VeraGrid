@@ -62,7 +62,8 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
                 ],
                 ResultTypes.BranchMonitoring: [
                     ResultTypes.BranchMonitoring,
-                ]
+                    ResultTypes.TsCriticalBranches,
+                ],
             },
 
             data_variables=[])
@@ -179,14 +180,16 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
 
         return self.reports[title]
 
-    def get_critical_branches_report(self, loading_threshold, reverse):
+    def get_critical_branches_report(self, loading_threshold=100, reverse=True):
 
-        title = ResultTypes.TsCriticalBranches.value[0]
+        title = f'{ResultTypes.TsCriticalBranches.value[0]}. ' \
+                f'Loading threshold: {str(loading_threshold)}. ' \
+                f'Reverse: {str(reverse)}'
 
         if title not in self.reports.keys():
             self.create_critical_branches_report(
-                loading_threshold,
-                reverse
+                loading_threshold=loading_threshold,
+                reverse=reverse
             )
 
         return self.reports[title]
@@ -210,7 +213,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
         )
 
         self.create_critical_branches_report(
-            loading_threshold=loading_threshold,
+            loading_threshold=100,
             reverse=reverse
         )
 
@@ -721,9 +724,11 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
             units='',
         )
 
-    def create_critical_branches_report(self, loading_threshold=0.0, reverse=True):
+    def create_critical_branches_report(self, loading_threshold=100.0, reverse=True):
 
-        title = ResultTypes.TsCriticalBranches.value[0]
+        title = f'{ResultTypes.TsCriticalBranches.value[0]}. ' \
+                f'Loading threshold: {str(loading_threshold)}. ' \
+                f'Reverse: {str(reverse)}'
 
         if len(self.results_dict.values()) == 0:
             return
@@ -739,7 +744,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
 
         # get critical branches
         c_name = [c for c in df.columns if 'contingency' in c.lower() and '%' in c.lower()][0]
-        df = df.loc[(df[c_name] == 100) | (df[c_name] == -100)]
+        df = df.loc[(df[c_name] == loading_threshold) | (df[c_name] == -loading_threshold)]
 
         conting_dict = df[['Monitored', 'Contingency']].groupby('Monitored').agg({
             'Contingency': list,
