@@ -4373,7 +4373,9 @@ class MainGUI(QMainWindow):
                 weight_power_shift = 10.0 ** self.ui.weightPowerShiftSpinBox.value()
                 weight_generation_cost = 10.0 ** self.ui.weightGenCostSpinBox.value()
 
+                #todo: add consider_nx_contingencies to gui if necessary
                 consider_contingencies = self.ui.considerContingenciesNtcOpfCheckBox.isChecked()
+                consider_nx_contingencies = self.ui.considerContingenciesNtcOpfCheckBox.isChecked()
                 consider_hvdc_contingencies = self.ui.considerContingenciesHvdcOpfCheckBox.isChecked()
                 consider_gen_contingencies = self.ui.considerContingenciesGeneratorOpfCheckBox.isChecked()
                 generation_contingency_threshold = self.ui.contingencyGenerationThresholdDoubleSpinBox.value()
@@ -4403,11 +4405,13 @@ class MainGUI(QMainWindow):
                     consider_contingencies=consider_contingencies,
                     consider_hvdc_contingencies=consider_hvdc_contingencies,
                     consider_gen_contingencies=consider_gen_contingencies,
+                    consider_nx_contingencies=consider_nx_contingencies,
                     generation_contingency_threshold=generation_contingency_threshold,
                     loading_threshold_to_report=loading_threshold_to_report,
                     trm=trm,
                     ntc_load_rule=ntc_load_rule,
-                    n1_consideration=n1_consideration)
+                    n1_consideration=n1_consideration,
+                )
 
                 self.ui.progress_label.setText('Running optimal net transfer capacity...')
                 QtGui.QGuiApplication.processEvents()
@@ -4532,7 +4536,9 @@ class MainGUI(QMainWindow):
                 weight_power_shift = 10.0 ** self.ui.weightPowerShiftSpinBox.value()
                 weight_generation_cost = 10.0 ** self.ui.weightGenCostSpinBox.value()
 
+                # todo: add consider_nx_contingencies to gui if necessary
                 consider_contingencies = self.ui.considerContingenciesNtcOpfCheckBox.isChecked()
+                consider_nx_contingencies = self.ui.considerContingenciesNtcOpfCheckBox.isChecked()
                 consider_hvdc_contingencies = self.ui.considerContingenciesHvdcOpfCheckBox.isChecked()
                 consider_gen_contingencies = self.ui.considerContingenciesGeneratorOpfCheckBox.isChecked()
                 generation_contingency_threshold = self.ui.contingencyGenerationThresholdDoubleSpinBox.value()
@@ -4562,6 +4568,7 @@ class MainGUI(QMainWindow):
                     consider_contingencies=consider_contingencies,
                     consider_hvdc_contingencies=consider_hvdc_contingencies,
                     consider_gen_contingencies=consider_gen_contingencies,
+                    consider_nx_contingencies=consider_nx_contingencies,
                     generation_contingency_threshold=generation_contingency_threshold,
                     trm=trm,
                     loading_threshold_to_report=loading_threshold_to_report,

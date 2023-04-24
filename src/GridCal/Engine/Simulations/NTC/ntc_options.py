@@ -45,6 +45,7 @@ class OptimalNetTransferCapacityOptions:
                  consider_contingencies=True,
                  consider_hvdc_contingencies=False,
                  consider_gen_contingencies=False,
+                 consider_nx_contingencies=False,
                  generation_contingency_threshold=0,
                  match_gen_load=True,
                  trm=0,
@@ -66,6 +67,7 @@ class OptimalNetTransferCapacityOptions:
         :param branch_sensitivity_threshold:
         :param skip_generation_limits:
         :param consider_contingencies:
+        :param consider_nx_contingencies:
         :param tolerance:
         :param sensitivity_dT:
         :param weight_power_shift:
@@ -114,6 +116,8 @@ class OptimalNetTransferCapacityOptions:
         self.consider_contingencies = consider_contingencies
         self.consider_hvdc_contingencies = consider_hvdc_contingencies
         self.consider_gen_contingencies = consider_gen_contingencies
+        self.consider_nx_contingencies = consider_nx_contingencies
+
         self.generation_contingency_threshold = generation_contingency_threshold
 
         self.with_solution_checks = with_solution_checks

@@ -1115,7 +1115,7 @@ def check_branches_flow(nbr, Rates, Sbase, branch_active, branch_names, branch_d
 
 def formulate_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase, branch_names,
                           contingency_enabled_indices, LODF, F, T, branch_sensitivity_threshold,
-                          flow_f, monitor, alpha_n1, logger: Logger, lodf_replacement_value=0):
+                          flow_f, monitor, alpha, alpha_n1, logger: Logger, lodf_replacement_value=0):
     """
     Formulate the contingency flows
     :param solver: Solver instance to which add the equations
@@ -1128,7 +1128,8 @@ def formulate_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase, bran
     :param T: Array of branch "to" bus indices
     :param branch_sensitivity_threshold: minimum branch sensitivity to the exchange (used to filter branches out)
     :param flow_f: Array of formulated branch flows (LP variables)
-    :param alpha_n1: Power transfer sensibility matrix
+    :param alpha: Power transfer sensibility matrix
+    :param alpha_n1: Power transfer sensibility matrix (n-1)
     :param monitor: Array of final monitor status per branch after applying the logic
     :return:
         - flow_n1f: List of contingency flows LP variables
@@ -1155,8 +1156,9 @@ def formulate_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase, bran
             c1 = m != c
             c2 = LODF[m, c] > branch_sensitivity_threshold
             c3 = np.abs(alpha_n1[m, c]) > branch_sensitivity_threshold
+            c4 = np.abs(alpha[m]) > branch_sensitivity_threshold
 
-            if c1 and c2 and c3:
+            if c1 and c2 and c3 and c4:
 
                 lodf = LODF[m, c]
 
@@ -1594,6 +1596,7 @@ class OpfNTC(Opf):
                  alpha,
                  alpha_n1,
                  LODF,
+                 LODF_NX,
                  PTDF,
                  solver_type: MIPSolvers = MIPSolvers.CBC,
                  generation_formulation: GenerationNtcFormulation = GenerationNtcFormulation.Proportional,
@@ -1624,6 +1627,7 @@ class OpfNTC(Opf):
         :param alpha: Array of branch sensitivities to the exchange
         :param alpha_n1: Array of branch sensitivities to the exchange on n-1 condition
         :param LODF: LODF matrix
+        :param LODF_NX: LODF matrix for n-x contingencies
         :param solver_type: type of linear solver
         :param generation_formulation: type of generation formulation
         :param monitor_only_sensitive_branches: Monitor the loading of the sensitive branches
@@ -1666,6 +1670,7 @@ class OpfNTC(Opf):
         self.ntc_load_rule = ntc_load_rule
 
         self.LODF = LODF
+        self.LODF_NX = LODF_NX
 
         self.PTDF = PTDF
 
@@ -1846,6 +1851,7 @@ class OpfNTC(Opf):
             hvdc_ratings=hvdc_ratings
         )
 
+        # Formulate monitor criteria
         monitor, monitor_loading, monitor_by_sensitivity, monitor_by_unrealistic_ntc, monitor_by_zero_exchange, \
         branch_ntc_load_rule, branch_zero_exchange_load = formulate_monitorization_logic(
             monitor_loading=self.numerical_circuit.branch_data.monitor_loading,
@@ -2002,10 +2008,12 @@ class OpfNTC(Opf):
                 branch_sensitivity_threshold=self.branch_sensitivity_threshold,
                 flow_f=flow_f,
                 monitor=monitor,
+                alpha=alpha,
                 alpha_n1=self.alpha_n1,
                 lodf_replacement_value=0,
                 logger=self.logger)
 
+            n1flow_f
         else:
             con_br_idx = list()
             n1flow_f = list()
@@ -2376,7 +2384,8 @@ class OpfNTC(Opf):
             Pinj=Pinj - Pinj_tau,
             bus_active=self.numerical_circuit.bus_data.active[:, t],
             bus_names=self.numerical_circuit.bus_data.names,
-            logger=self.logger)
+            logger=self.logger
+        )
 
         if self.consider_contingencies:
             # formulate the contingencies
@@ -2393,8 +2402,10 @@ class OpfNTC(Opf):
                 flow_f=flow_f,
                 monitor=monitor,
                 lodf_replacement_value=0,
+                alpha=self.alpha,
                 alpha_n1=self.alpha_n1,
-                logger=self.logger)
+                logger=self.logger
+            )
 
         else:
             con_br_idx = list()
@@ -3061,6 +3072,15 @@ class OpfNTC(Opf):
         """
         return self.extract(self.branch_ntc_load_rule, make_abs=False) * self.numerical_circuit.Sbase
 
+def get_contingency_nx_list(circuit):
+
+    cont_elm_dict = {e.idtag: e for e in circuit.get_contingency_devices()}
+    for g in circuit.contingency_groups:
+        g.elements = list()
+        for c in circuit.contingencies:
+            if g.idtag == c.group.idtag:
+                g.elements.append(cont_elm_dict[c.device_idtag])
+
 
 if __name__ == '__main__':
     import time
@@ -3068,14 +3088,14 @@ if __name__ == '__main__':
     from GridCal.Engine.IO.file_handler import FileOpen
     from GridCal.Engine.Core.snapshot_opf_data import compile_snapshot_opf_circuit
     from GridCal.Engine.Simulations.ATC.available_transfer_capacity_driver import compute_alpha
-    from GridCal.Engine.Simulations.LinearFactors.linear_analysis import LinearAnalysis
+    from GridCal.Engine.Simulations.LinearFactors.linear_analysis import LinearAnalysis, make_lodf_nx
 
     folder = r'\\mornt4\DESRED\DPE-Internacional\Interconexiones\FRANCIA\2022 MoU\5GW 8.0\Con N-x\merged\GridCal'
-    fname = os.path.join(folder, 'MOU_2022_5GW_v6h-B_pmode1.gridcal')
+    fname = os.path.join(folder, 'MOU_2022_5GW_v6f_contingencias_full.gridcal')
 
     tm0 = time.time()
     main_circuit = FileOpen(fname).open()
-    print('circuit opened in {0} scs.'.format(time.time() - tm0))
+    print(f'circuit opened in {time.time() - tm0:.2f} scs.')
 
     # compute information about areas ----------------------------------------------------------------------------------
     area_from_idx = 0
@@ -3088,7 +3108,7 @@ if __name__ == '__main__':
         apply_temperature=False,
         branch_tolerance_mode=BranchImpedanceMode.Specified
     )
-    print('numerical circuit computed in {0} scs.'.format(time.time() - tm0))
+    print(f'numerical circuit computed in {time.time() - tm0:.2f} scs.')
 
     # get the area bus indices
     areas = areas[numerical_circuit_.original_bus_idx]
@@ -3098,12 +3118,13 @@ if __name__ == '__main__':
     linear = LinearAnalysis(
         grid=main_circuit,
         distributed_slack=False,
-        correct_values=False
+        correct_values=False,
+        with_nx=True,
     )
 
     tm0 = time.time()
     linear.run()
-    print('linear analysis computed in {0} scs.'.format(time.time() - tm0))
+    print(f'linear analysis computed in {time.time() - tm0:.2f} scs.')
 
     tm0 = time.time()
     alpha, alpha_n1 = compute_alpha(
@@ -3118,7 +3139,7 @@ if __name__ == '__main__':
         mode=AvailableTransferMode.InstalledPower.value,
     )
 
-    print('alpha and alpha n-1 computed in {0} scs.'.format(time.time() - tm0))
+    print(f'alpha and alpha n-1 computed in {time.time() - tm0:.2f} scs.')
 
     problem = OpfNTC(
         numerical_circuit=numerical_circuit_,
@@ -3127,6 +3148,7 @@ if __name__ == '__main__':
         alpha=alpha,
         alpha_n1=alpha_n1,
         LODF=linear.LODF,
+        LODF_NX=linear.LODF_NX,
         PTDF=linear.PTDF,
         generation_formulation=GenerationNtcFormulation.Proportional,
         ntc_load_rule=0.7,
@@ -3142,11 +3164,11 @@ if __name__ == '__main__':
     print('Solving...')
     tm0 = time.time()
     problem.formulate()
-    print('optimization formulated in {0} scs.'.format(time.time() - tm0))
+    print(f'optimization formulated in {time.time() - tm0:.2f} scs.')
 
     tm0 = time.time()
     solved = problem.solve()
-    print('optimization computed in {0} scs.'.format(time.time() - tm0))
+    print(f'optimization computed in {time.time() - tm0:.2f} scs.')
 
     print('Angles\n', np.angle(problem.get_voltage()))
     print('Branch loading\n', problem.get_loading())

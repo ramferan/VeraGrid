@@ -746,7 +746,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
         c_name = [c for c in df.columns if 'contingency' in c.lower() and '%' in c.lower()][0]
         df = df.loc[(df[c_name] == loading_threshold) | (df[c_name] == -loading_threshold)]
 
-        conting_dict = df[['Monitored', 'Contingency']].groupby('Monitored').agg({
+        conting_dict = df[['Monitored', 'Contingency', 'Prob.']].groupby('Monitored').agg({
             'Contingency': list,
             'Prob.': sum,
         }).to_dict()['Contingency']

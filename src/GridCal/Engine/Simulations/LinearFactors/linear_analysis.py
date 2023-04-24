@@ -165,8 +165,6 @@ def make_lodf(Cf, Ct, PTDF, correct_values=True, numerical_zero=1e-10):
 
     return LODF
 
-def make_lodf_nx(lodf, contingency, flows):
-    pass
 
 @nb.njit(cache=True)
 def make_otdf(ptdf, lodf, j):
@@ -307,9 +305,41 @@ def make_worst_contingency_transfer_limits(tmc):
     return wtmc
 
 
+# @nb.njit(cache=True)
+def make_lodf_nx(circuit, lodf):
+
+    idx_dict = {c.idtag: i for i, c in enumerate(circuit.get_branches())}
+
+    lodf_nx = list()
+    for cg in circuit.contingency_groups:
+        # Get contingency device idx for this group
+        c_idx = [idx_dict[c.device_idtag] for c in circuit.contingencies if cg.idtag == c.group.idtag]
+
+        # Sort unique idx
+        c_idx = list(sorted(set(c_idx), reverse=False))
+
+        # Compute LODF vector and M matrix
+        L = lodf[:, c_idx]  # Take the columns of the LODF associated with the contingencies
+
+        # Compute M matrix
+        M = np.zeros((len(c_idx), len(c_idx)))
+        for j in range(len(c_idx)):
+            for k in range(len(c_idx)):
+                if (j == k):
+                    M[j, k] = 1
+                else:
+                    M[j, k] = -lodf[c_idx[j], c_idx[k]]
+
+        cg.lodf_nx = np.matmul(L, np.linalg.inv(M))
+        cg.c_idx = c_idx
+        lodf_nx.append(cg.lodf_nx)
+
+    return lodf_nx
+
+
 class LinearAnalysis:
 
-    def __init__(self, grid: MultiCircuit, distributed_slack=True, correct_values=True):
+    def __init__(self, grid: MultiCircuit, distributed_slack=True, correct_values=True, with_nx=False):
         """
 
         :param grid:
@@ -321,6 +351,8 @@ class LinearAnalysis:
         self.distributed_slack = distributed_slack
 
         self.correct_values = correct_values
+
+        self.with_nx = with_nx
 
         self.numerical_circuit: SnapshotData = None
 
@@ -388,6 +420,11 @@ class LinearAnalysis:
                                   PTDF=self.PTDF,
                                   correct_values=self.correct_values)
 
+        if self.with_nx:
+            self.LODF_NX = make_lodf_nx(
+                circuit=self.grid,
+                lodf=self.LODF,
+            )
     @property
     def OTDF(self):
         """

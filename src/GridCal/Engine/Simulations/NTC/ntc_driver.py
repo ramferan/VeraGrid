@@ -110,7 +110,9 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
         linear = LinearAnalysis(
             grid=self.grid,
             distributed_slack=False,
-            correct_values=False)
+            correct_values=False,
+            with_nx=self.options.consider_nx_contingencies,
+        )
 
         linear.run()
 
@@ -455,18 +457,20 @@ if __name__ == '__main__':
         consider_contingencies=True,
         consider_gen_contingencies=True,
         consider_hvdc_contingencies=True,
+        consider_nx_contingencies=True,
         dispatch_all_areas=False,
         generation_contingency_threshold=1000,
         tolerance=1e-2,
         sensitivity_dT=100.0,
-        transfer_mode=AvailableTransferMode.InstalledPower,
+        transfer_method=AvailableTransferMode.InstalledPower,
         # todo: checkear si queremos el ptdf por potencia generada
         perform_previous_checks=False,
         weight_power_shift=1e5,
         weight_generation_cost=1e2,
         with_solution_checks=False,
         time_limit_ms=1e4,
-        max_report_elements=5)
+        loading_threshold_to_report=98,
+    )
 
     print('Running optimal net transfer capacity...')
 
