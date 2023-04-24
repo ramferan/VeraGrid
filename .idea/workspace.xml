@@ -26,14 +26,14 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="GridCal/contingencies:&#10; - Added new contingency objects&#10; - New json parser (import/exports)">
+    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="GridCal/contingencies:&#10; - Fix some None type bugs&#10; &#10;GridCal/GUI:&#10; - Fix some filtering bugs&#10; &#10;GridCal/NTC:&#10; - Fix some report bugs">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Core/multi_circuit.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Core/multi_circuit.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Devices/contingency.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Devices/contingency.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/IO/contingency_parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/IO/contingency_parser.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_driver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_options.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_options.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_results.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_results.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_ts_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_ts_driver.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_ts_results.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_ts_results.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/GridCal/Gui/Main/GridCalMain.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Gui/Main/GridCalMain.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/result_types.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/result_types.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -1071,13 +1071,6 @@
       <workItem from="1674823262666" duration="1341000" />
       <workItem from="1674988874398" duration="514000" />
     </task>
-    <task id="LOCAL-00319" summary="4.5.5">
-      <created>1658390864104</created>
-      <option name="number" value="00319" />
-      <option name="presentableId" value="LOCAL-00319" />
-      <option name="project" value="LOCAL" />
-      <updated>1658390864104</updated>
-    </task>
     <task id="LOCAL-00320" summary="Improved newtonpa integration">
       <created>1658852227239</created>
       <option name="number" value="00320" />
@@ -1414,7 +1407,14 @@
       <option name="project" value="LOCAL" />
       <updated>1681473867476</updated>
     </task>
-    <option name="localTasksCounter" value="368" />
+    <task id="LOCAL-00368" summary="GridCal/contingencies:&#10; - Fix some None type bugs&#10; &#10;GridCal/GUI:&#10; - Fix some filtering bugs&#10; &#10;GridCal/NTC:&#10; - Fix some report bugs">
+      <created>1681835375386</created>
+      <option name="number" value="00368" />
+      <option name="presentableId" value="LOCAL-00368" />
+      <option name="project" value="LOCAL" />
+      <updated>1681835375386</updated>
+    </task>
+    <option name="localTasksCounter" value="369" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1448,7 +1448,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="slight refactor" />
     <MESSAGE value="Modified the text of some results' naming" />
     <MESSAGE value="Fixed short circuit indexing bug in islands" />
     <MESSAGE value="Merged devel with devel_REE (successfully)" />
@@ -1473,7 +1472,8 @@
     <MESSAGE value="ntc_opf/reports:&#10; - Creating reports within computation to improve user experience" />
     <MESSAGE value="ntc_opf/reports:&#10; - starting to import contingency json file" />
     <MESSAGE value="GridCal/contingencies:&#10; - Added new contingency objects&#10; - New json parser (import/exports)" />
-    <option name="LAST_COMMIT_MESSAGE" value="GridCal/contingencies:&#10; - Added new contingency objects&#10; - New json parser (import/exports)" />
+    <MESSAGE value="GridCal/contingencies:&#10; - Fix some None type bugs&#10; &#10;GridCal/GUI:&#10; - Fix some filtering bugs&#10; &#10;GridCal/NTC:&#10; - Fix some report bugs" />
+    <option name="LAST_COMMIT_MESSAGE" value="GridCal/contingencies:&#10; - Fix some None type bugs&#10; &#10;GridCal/GUI:&#10; - Fix some filtering bugs&#10; &#10;GridCal/NTC:&#10; - Fix some report bugs" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -1967,14 +1967,14 @@
           <option name="timeStamp" value="1202" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_results.py</url>
-          <line>930</line>
-          <option name="timeStamp" value="1206" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/GridCal/Gui/Main/GridCalMain.py</url>
           <line>2005</line>
           <option name="timeStamp" value="1210" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_ts_results.py</url>
+          <line>743</line>
+          <option name="timeStamp" value="1216" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

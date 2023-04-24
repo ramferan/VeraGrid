@@ -52,6 +52,7 @@ class OptimalNetTransferCapacityOptions:
                  n1_consideration=True,
                  loading_threshold_to_report=0.98,
                  transfer_method: AvailableTransferMode = AvailableTransferMode.InstalledPower,
+                 reversed_sort_loading=True,
                  ):
         """
 
@@ -71,12 +72,12 @@ class OptimalNetTransferCapacityOptions:
         :param weight_generation_cost:
         :param with_solution_checks:
         :param time_limit_ms:
-        :param max_report_elements:
         :param generation_contingency_threshold:
         :param trm:
         :param ntc_load_rule:
         :param n1_consideration:
         :param transfer_method:
+        :param reverse_sorted_loading:
         """
         self.verbose = verbose
 
@@ -124,3 +125,4 @@ class OptimalNetTransferCapacityOptions:
         self.trm = trm
         self.ntc_load_rule = ntc_load_rule
         self.n1_consideration = n1_consideration
+        self.reversed_sort_loading = reversed_sort_loading

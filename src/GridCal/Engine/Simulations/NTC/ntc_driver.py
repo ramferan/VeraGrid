@@ -232,6 +232,8 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 contingency_rates=numerical_circuit.branch_data.contingency_rates[:, 0],
                 area_from_bus_idx=self.options.area_from_bus_idx,
                 area_to_bus_idx=self.options.area_to_bus_idx,
+                loading_threshold=self.options.loading_threshold_to_report,
+                reversed_sort_loading=self.options.reversed_sort_loading,
             )
         else:
             self.progress_text.emit('Formulating NTC OPF...')
@@ -362,10 +364,15 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 area_to_bus_idx=self.options.area_to_bus_idx,
                 structural_ntc=problem.structural_ntc,
                 sbase=numerical_circuit.Sbase,
+                loading_threshold=self.options.loading_threshold_to_report,
+                reversed_sort_loading=self.options.reversed_sort_loading,
             )
 
         self.progress_text.emit('Creating reports...')
-        self.results.create_all_reports()
+        self.results.create_all_reports(
+            loading_threshold=self.options.loading_threshold_to_report,
+            reverse=self.options.reversed_sort_loading,
+        )
 
         self.progress_text.emit('Done!')
 

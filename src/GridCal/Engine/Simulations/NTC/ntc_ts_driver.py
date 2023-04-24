@@ -79,8 +79,10 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             time_array=[],
             time_indices=[],
             trm=self.options.trm,
+            ntc_load_rule=self.options.ntc_load_rule,
             loading_threshold_to_report=self.options.loading_threshold_to_report,
-            ntc_load_rule=self.options.ntc_load_rule)
+            reversed_sort_loading=self.options.reversed_sort_loading,
+        )
 
         self.installed_alpha = None
         self.installed_alpha_n1 = None
@@ -294,6 +296,9 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                         'NTC OPF')
 
             # pack the results
+
+            idx_c = np.argmax(np.abs(alpha_n1), axis=1)
+            alpha_c = np.take_along_axis(alpha_n1, np.expand_dims(idx_c, axis=1), axis=1)
             result = OptimalNetTransferCapacityResults(
                 bus_names=nc.bus_data.names,
                 branch_names=nc.branch_data.names,
@@ -321,7 +326,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                 inter_area_branches=problem.inter_area_branches,
                 inter_area_hvdc=problem.inter_area_hvdc,
                 alpha=alpha,
-                alpha_n1=np.amax(np.abs(alpha_n1), axis=1),
+                alpha_n1=alpha_c, #np.amax(np.abs(alpha_n1), axis=1),
                 contingency_branch_flows_list=problem.get_contingency_flows_list(),
                 contingency_branch_indices_list=problem.contingency_indices_list,
                 contingency_generation_flows_list=problem.get_contingency_gen_flows_list(),
@@ -343,10 +348,16 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                 monitor_by_sensitivity=problem.monitor_by_sensitivity,
                 monitor_by_unrealistic_ntc=problem.monitor_by_unrealistic_ntc,
                 monitor_by_zero_exchange=problem.monitor_by_zero_exchange,
+                loading_threshold=self.options.loading_threshold_to_report,
+                reversed_sort_loading=self.options.reversed_sort_loading,
             )
 
             self.progress_text.emit('Creating report...['+time_str+']')
-            result.create_all_reports()
+
+            result.create_all_reports(
+                loading_threshold=self.options.loading_threshold_to_report,
+                reverse=self.options.reversed_sort_loading,
+            )
             self.results.results_dict[t] = result
 
 
@@ -357,7 +368,11 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                 break
 
         self.progress_text.emit('Creating final reports...')
-        self.results.create_all_reports()
+
+        self.results.create_all_reports(
+            loading_threshold=self.options.loading_threshold_to_report,
+            reverse=self.options.reversed_sort_loading,
+        )
 
         self.progress_text.emit('Done!')
 
