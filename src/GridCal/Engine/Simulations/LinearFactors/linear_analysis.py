@@ -311,7 +311,8 @@ def make_lodf_nx(circuit, lodf):
     idx_dict = {c.idtag: i for i, c in enumerate(circuit.get_branches())}
 
     lodf_nx = list()
-    for cg in circuit.contingency_groups:
+
+    for i, cg in enumerate(circuit.contingency_groups):
         # Get contingency device idx for this group
         c_idx = [idx_dict[c.device_idtag] for c in circuit.contingencies if cg.idtag == c.group.idtag]
 
@@ -323,6 +324,7 @@ def make_lodf_nx(circuit, lodf):
 
         # Compute M matrix
         M = np.zeros((len(c_idx), len(c_idx)))
+
         for j in range(len(c_idx)):
             for k in range(len(c_idx)):
                 if (j == k):
@@ -332,7 +334,7 @@ def make_lodf_nx(circuit, lodf):
 
         cg.lodf_nx = np.matmul(L, np.linalg.inv(M))
         cg.c_idx = c_idx
-        lodf_nx.append(cg.lodf_nx)
+        lodf_nx.append((c_idx, cg.lodf_nx))
 
     return lodf_nx
 
