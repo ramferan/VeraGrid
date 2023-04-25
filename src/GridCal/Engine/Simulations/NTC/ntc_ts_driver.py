@@ -296,9 +296,6 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                         'NTC OPF')
 
             # pack the results
-
-            idx_c = np.argmax(np.abs(alpha_n1), axis=1)
-            alpha_c = np.take_along_axis(alpha_n1, np.expand_dims(idx_c, axis=1), axis=1)
             result = OptimalNetTransferCapacityResults(
                 bus_names=nc.bus_data.names,
                 branch_names=nc.branch_data.names,
@@ -326,7 +323,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                 inter_area_branches=problem.inter_area_branches,
                 inter_area_hvdc=problem.inter_area_hvdc,
                 alpha=alpha,
-                alpha_n1=alpha_c, #np.amax(np.abs(alpha_n1), axis=1),
+                alpha_n1=alpha_n1,
                 contingency_branch_flows_list=problem.get_contingency_flows_list(),
                 contingency_branch_indices_list=problem.contingency_indices_list,
                 contingency_generation_flows_list=problem.get_contingency_gen_flows_list(),
@@ -357,9 +354,9 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             result.create_all_reports(
                 loading_threshold=self.options.loading_threshold_to_report,
                 reverse=self.options.reversed_sort_loading,
+                save_memory=True,  # todo: check if needed
             )
             self.results.results_dict[t] = result
-
 
             if self.progress_signal is not None:
                 self.progress_signal.emit((t_idx + 1) / nt * 100)
@@ -372,6 +369,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
         self.results.create_all_reports(
             loading_threshold=self.options.loading_threshold_to_report,
             reverse=self.options.reversed_sort_loading,
+
         )
 
         self.progress_text.emit('Done!')
@@ -463,7 +461,7 @@ if __name__ == '__main__':
         dispatch_all_areas=False,
         tolerance=1e-2,
         sensitivity_dT=100.0,
-        transfer_mode=AvailableTransferMode.InstalledPower,
+        transfer_method=AvailableTransferMode.InstalledPower,
         # todo: checkear si queremos el ptdf por potencia generada
         perform_previous_checks=False,
         weight_power_shift=1e5,

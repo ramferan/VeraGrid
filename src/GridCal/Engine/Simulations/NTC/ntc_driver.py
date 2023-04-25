@@ -459,14 +459,14 @@ if __name__ == '__main__':
         generation_contingency_threshold=1000,
         tolerance=1e-2,
         sensitivity_dT=100.0,
-        transfer_mode=AvailableTransferMode.InstalledPower,
+        transfer_method=AvailableTransferMode.InstalledPower,
         # todo: checkear si queremos el ptdf por potencia generada
         perform_previous_checks=False,
         weight_power_shift=1e5,
         weight_generation_cost=1e2,
         with_solution_checks=False,
         time_limit_ms=1e4,
-        max_report_elements=5)
+        loading_threshold_to_report=98)
 
     print('Running optimal net transfer capacity...')
 
@@ -479,6 +479,8 @@ if __name__ == '__main__':
         pf_options=PowerFlowOptions(solver_type=SolverType.DC))
     driver.run()
 
-    driver.results.make_report(path_out=path_out)
-    # driver.results.make_report()
+    driver.results.create_all_reports(
+        loading_threshold=98,
+        reverse=True,
+    )
 

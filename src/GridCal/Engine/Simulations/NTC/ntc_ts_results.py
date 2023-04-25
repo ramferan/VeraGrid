@@ -26,7 +26,7 @@ from GridCal.Engine.Simulations.results_table import ResultsTable
 class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
 
     def __init__(
-            self,bus_names, branch_names, generator_names, load_names, rates, contingency_rates, time_array,
+            self, bus_names, branch_names, generator_names, load_names, rates, contingency_rates, time_array,
             time_indices, sampled_probabilities=None, loading_threshold_to_report=0.98, reversed_sort_loading=True,
             trm=0, ntc_load_rule=100
     ):
@@ -119,16 +119,16 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
 
     def get_alphan1_report(self):
 
-        title = ResultTypes.TsAlphaN1Report.value[0]
+        title = ResultTypes.TsWorstAlphaN1Report.value[0]
 
         if title not in self.reports.keys():
-            self.create_alpha_n1_report()
+            self.create_worst_alpha_n1_report()
 
         return self.reports[title]
 
     def get_generation_power_report(self):
 
-        title = ResultTypes.TsGenerationPowerReport
+        title = ResultTypes.TsGenerationPowerReport.value[0]
 
         if title not in self.reports.keys():
             self.create_generation_power_report()
@@ -199,7 +199,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
         self.create_generation_power_report()
         self.create_generation_delta_report()
         self.create_alpha_report()
-        self.create_alpha_n1_report()
+        self.create_worst_alpha_n1_report()
         self.create_branch_monitoring_report()
 
         self.create_base_report(
@@ -251,6 +251,8 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
         elif result_type == ResultTypes.BranchMonitoring:
             return self.get_branch_monitoring_report()
 
+        elif result_type == ResultTypes.TsCriticalBranches:
+            return self.get_critical_branches_report()
         else:
             raise Exception('No results available')
 
@@ -375,9 +377,9 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
             title=title,
         )
 
-    def create_alpha_n1_report(self):
+    def create_worst_alpha_n1_report(self):
 
-        title = ResultTypes.TsAlphaN1Report.value[0]
+        title = ResultTypes.TsWorstAlphaN1Report.value[0]
 
         result = list(self.results_dict.values())[0]
         columns = ['Time index', 'Time'] + list(result.branch_names)
@@ -385,7 +387,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
 
         for idx, t in enumerate(self.time_indices):
             if t in self.results_dict.keys():
-                data[idx, 2:] = self.results_dict[t].alpha_n1[:, 0]
+                data[idx, 2:] = self.results_dict[t].alpha_w[:, 0]
                 data[idx, :2] = [t, self.time_array[idx].strftime("%d/%m/%Y %H:%M:%S")]
 
         labels = np.arange(data.shape[0])
@@ -399,7 +401,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
 
     def create_generation_power_report(self):
 
-        title = ResultTypes.TsGenerationPowerReport
+        title = ResultTypes.TsGenerationPowerReport.value[0]
 
         labels = self.time_array
         columns = self.generator_names
@@ -419,7 +421,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
 
     def create_generation_delta_report(self):
 
-        title = ResultTypes.TsGenerationDeltaReport
+        title = ResultTypes.TsGenerationDeltaReport.value[0]
 
         labels = self.time_array
         columns = self.generator_names
@@ -746,7 +748,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
         c_name = [c for c in df.columns if 'contingency' in c.lower() and '%' in c.lower()][0]
         df = df.loc[(df[c_name] == loading_threshold) | (df[c_name] == -loading_threshold)]
 
-        conting_dict = df[['Monitored', 'Contingency']].groupby('Monitored').agg({
+        conting_dict = df[['Monitored', 'Contingency', 'Prob.']].groupby('Monitored').agg({
             'Contingency': list,
             'Prob.': sum,
         }).to_dict()['Contingency']
