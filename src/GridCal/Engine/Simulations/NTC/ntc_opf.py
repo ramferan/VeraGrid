@@ -1457,7 +1457,8 @@ def formulate_hvdc_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase,
                 # store vars
                 con_hvdc_idx.append((m, i))
                 flow_hvdc_n1f.append(flow_n1)
-                con_alpha.append(PTDF[m, _f_hvdc] - PTDF[m, _t_hvdc] - alpha[m])
+                # con_alpha.append(PTDF[m, _f_hvdc] - PTDF[m, _t_hvdc] - alpha[m])
+                con_alpha.append(alpha[m] - (PTDF[m, _f_hvdc] - PTDF[m, _t_hvdc]))
 
     return flow_hvdc_n1f, con_alpha, con_hvdc_idx
 
@@ -1519,7 +1520,8 @@ def formulate_generator_contingency(solver: pywraplp.Solver, ContingencyRates, S
                     # store vars
                     con_gen_idx.append((m, j))
                     flow_gen_n1f.append(flow_n1)
-                    alpha_n1_list.append(PTDF[m, i] - alpha[m])
+                    # alpha_n1_list.append(PTDF[m, i] - alpha[m])
+                    alpha_n1_list.append(alpha[m] - PTDF[m, i])
 
     return flow_gen_n1f, alpha_n1_list, con_gen_idx
 
