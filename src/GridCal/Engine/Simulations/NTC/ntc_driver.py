@@ -193,6 +193,9 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 buses_areas_1=self.options.area_from_bus_idx,
                 buses_areas_2=self.options.area_to_bus_idx)
 
+            idx_w = np.argmax(np.abs(alpha_n1), axis=1)
+            alpha_w = np.take_along_axis(alpha_n1, np.expand_dims(idx_w, axis=1), axis=1)
+
             # pack the results
             self.results = OptimalNetTransferCapacityResults(
                 bus_names=numerical_circuit.bus_data.names,
@@ -219,6 +222,7 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 inter_area_hvdc=inter_area_hvdc,
                 alpha=alpha,
                 alpha_n1=alpha_n1,
+                alpha_w=alpha_w,
                 contingency_branch_flows_list=contingency_flows_list,
                 contingency_branch_indices_list=contingency_indices_list,
                 contingency_branch_alpha_list=contingency_branch_alpha_list,
@@ -314,6 +318,10 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
 
             self.logger += problem.logger
 
+
+            idx_w = np.argmax(np.abs(alpha_n1), axis=1)
+            alpha_w = np.take_along_axis(alpha_n1, np.expand_dims(idx_w, axis=1), axis=1)
+
             # pack the results
             self.results = OptimalNetTransferCapacityResults(
                 bus_names=numerical_circuit.bus_data.names,
@@ -343,6 +351,7 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 inter_area_hvdc=problem.inter_area_hvdc,
                 alpha=alpha,
                 alpha_n1=alpha_n1,
+                alpha_w=alpha_w,
                 monitor=problem.monitor,
                 monitor_loading=problem.monitor_loading,
                 monitor_by_sensitivity=problem.monitor_by_sensitivity,

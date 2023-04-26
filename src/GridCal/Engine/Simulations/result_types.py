@@ -148,6 +148,7 @@ class ResultTypes(Enum):
     TsWorstAlphaN1Report = 'Time series worst sensitivity to the exchange report (N-1)', DeviceType.NoDevice
     TsBranchMonitoring = 'Time series branch monitoring logic report', DeviceType.BranchDevice
     TsCriticalBranches = 'Time series critical branches report', DeviceType.BranchDevice
+    TsContingencyBranches = 'Time series contingency branches report', DeviceType.BranchDevice
 
     # inputs analysis
     ZoneAnalysis = 'Zone analysis', DeviceType.NoDevice

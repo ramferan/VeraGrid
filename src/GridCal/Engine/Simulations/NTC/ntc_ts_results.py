@@ -63,6 +63,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
                 ResultTypes.BranchMonitoring: [
                     ResultTypes.BranchMonitoring,
                     ResultTypes.TsCriticalBranches,
+                    ResultTypes.TsContingencyBranches,
                 ],
             },
 
@@ -193,7 +194,19 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
             )
 
         return self.reports[title]
+    def get_contingency_branches_report(self, loading_threshold=100, reverse=True):
 
+        title = f'{ResultTypes.TsContingencyBranches.value[0]}. ' \
+                f'Loading threshold: {str(loading_threshold)}. ' \
+                f'Reverse: {str(reverse)}'
+
+        if title not in self.reports.keys():
+            self.create_contingency_branches_report(
+                loading_threshold=loading_threshold,
+                reverse=reverse
+            )
+
+        return self.reports[title]
     def create_all_reports(self, loading_threshold, reverse):
 
         self.create_generation_power_report()
@@ -253,6 +266,9 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
 
         elif result_type == ResultTypes.TsCriticalBranches:
             return self.get_critical_branches_report()
+
+        elif result_type == ResultTypes.TsContingencyBranches:
+            return self.get_contingency_branches_report()
         else:
             raise Exception('No results available')
 
@@ -326,8 +342,8 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
 
         # sort data by ntc and time index, descending to compute probability factor
         ntc_idx = list(map(str.lower, columns)).index('ntc')
-        load_col_name = 'contingency load %' if 'contigency load %' in columns else 'load %'
-        cload_idx = list(map(str.lower, columns)).index(load_col_name)
+        load_col_name = [c for c in columns if any(x in c.lower().split(' ') for x in ['load', 'flow']) and '%' in c][0]
+        cload_idx = columns.index(load_col_name)
         time_idx = list(map(str.lower, columns)).index('time')
         data = data[np.lexsort(
             (
@@ -726,6 +742,48 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
             units='',
         )
 
+    def create_contingency_branches_report(self, loading_threshold=100.0, reverse=True):
+
+        title = f'{ResultTypes.TsContingencyBranches.value[0]}. ' \
+                f'Loading threshold: {str(loading_threshold)}. ' \
+                f'Reverse: {str(reverse)}'
+
+        if len(self.results_dict.values()) == 0:
+            return
+
+        mdl = self.get_contingency_full_report(
+            loading_threshold=loading_threshold,
+            reverse=reverse
+        )
+
+        df = mdl.to_df()
+
+        # Filter dataframe values
+        df_ = df[['Time index', 'Monitored', 'Contingency']].drop_duplicates()
+
+        # Set the hourly probability
+        prod_dict = dict(zip(self.time_indices, self.sampled_probabilities))
+        df_['Prob.'] = df_['Time index'].astype(int).map(prod_dict)
+
+        # Get the monitored/contingency probability
+        mc_prob = df_[['Monitored', 'Contingency', 'Prob.']].groupby(
+            ['Monitored',
+             'Contingency'
+             ]
+        ).agg({
+            'Prob.': sum
+        }).reset_index()
+
+        self.reports[title] = ResultsTable(
+            data=mc_prob.values,
+            index=mc_prob.index,
+            columns=mc_prob.columns,
+            title=title,
+            ylabel='',
+            xlabel='',
+            units='',
+        )
+
     def create_critical_branches_report(self, loading_threshold=100.0, reverse=True):
 
         title = f'{ResultTypes.TsCriticalBranches.value[0]}. ' \
@@ -735,8 +793,6 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
         if len(self.results_dict.values()) == 0:
             return
 
-        prod_dict = dict(zip(self.time_indices, self.sampled_probabilities))
-
         mdl = self.get_contingency_full_report(
             loading_threshold=loading_threshold,
             reverse=reverse
@@ -744,36 +800,52 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
 
         df = mdl.to_df()
 
-        # get critical branches
-        c_name = [c for c in df.columns if 'contingency' in c.lower() and '%' in c.lower()][0]
-        df = df.loc[(df[c_name] == loading_threshold) | (df[c_name] == -loading_threshold)]
+        # Filter dataframe values
+        df_ = df[['Time index', 'Monitored', 'Contingency']].drop_duplicates()
 
-        conting_dict = df[['Monitored', 'Contingency', 'Prob.']].groupby('Monitored').agg({
-            'Contingency': list,
-            'Prob.': sum,
-        }).to_dict()['Contingency']
+        # Set the hourly probability
+        prod_dict = dict(zip(self.time_indices, self.sampled_probabilities))
+        df_['Prob.'] = df_['Time index'].astype(int).map(prod_dict)
 
-        # Select columns to report
-        df = df[['Time index', 'Monitored']]
+        # Get the monitored/contingency probability
+        mc_prob = df_[['Monitored', 'Contingency', 'Prob.']].groupby(
+            ['Monitored',
+             'Contingency'
+             ]
+        ).agg({
+            'Prob.': sum
+        }).reset_index()
 
-        df['Prob.'] = df['Time index'].astype(int).map(prod_dict)
-        df.drop_duplicates(subset=None, keep="first", inplace=True)
+        # Add probability to contingency names
+        mc_prob['Contingency'] = mc_prob['Contingency'] + ' [' + mc_prob['Prob.'].round(decimals=2).astype(str) + ']'
 
-        # Sum all occurrences
-        df_pivot = pd.pivot_table(
-            df,
-            values='Prob.',
-            index='Monitored',
-            aggfunc='sum'
-        )
+        # Group by monitor aggregating contingency names as list
+        mc_df = mc_prob[['Monitored', 'Contingency']].groupby(
+            'Monitored'
+        ).agg({
+            'Contingency': list
+        })
 
-        # Add contingency data
-        df_pivot['Contingency'] = df_pivot.index.map(conting_dict)
+        # Get monitor/contingency dict
+        mc_dict = mc_df.T.to_dict(orient='records')[0]
+
+        # Get probability by monitored
+        m_prob = df_[['Time index', 'Monitored', 'Prob.']].drop_duplicates(
+            keep='first',
+        ).groupby(
+            ['Monitored']
+        ).agg({
+            'Prob.': sum
+        })
+
+        # Complete info with contingency probability
+        contingecies = ['; '.join(v) for v in m_prob.index.map(mc_dict).values]
+        m_prob['Contingencies'] = contingecies
 
         self.reports[title] = ResultsTable(
-            data=df_pivot.values,
-            index=df_pivot.index,
-            columns=df_pivot.columns,
+            data=m_prob.values,
+            index=m_prob.index,
+            columns=m_prob.columns,
             title=title,
             ylabel='',
             xlabel='',

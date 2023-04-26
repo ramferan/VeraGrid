@@ -296,6 +296,9 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                         'NTC OPF')
 
             # pack the results
+            idx_w = np.argmax(np.abs(alpha_n1), axis=1)
+            alpha_w = np.take_along_axis(alpha_n1, np.expand_dims(idx_w, axis=1), axis=1)
+
             result = OptimalNetTransferCapacityResults(
                 bus_names=nc.bus_data.names,
                 branch_names=nc.branch_data.names,
@@ -324,6 +327,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                 inter_area_hvdc=problem.inter_area_hvdc,
                 alpha=alpha,
                 alpha_n1=alpha_n1,
+                alpha_w=alpha_w,
                 contingency_branch_flows_list=problem.get_contingency_flows_list(),
                 contingency_branch_indices_list=problem.contingency_indices_list,
                 contingency_generation_flows_list=problem.get_contingency_gen_flows_list(),

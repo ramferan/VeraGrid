@@ -8,7 +8,7 @@ from GridCal.Engine.Simulations.results_template import ResultsTemplate
 from GridCal.Engine.Devices.enumerations import TransformerControlType, HvdcControlType
 
 
-def add_exchange_sensitivities(y, columns, alpha, mc_idx=None, alpha_n1=None):
+def add_exchange_sensitivities(y, columns, alpha, mc_idx=None, alpha_n1=None, report_contigency_alpha=False):
     """
     :param y: report data matrix
     :param columns: report column names
@@ -38,19 +38,36 @@ def add_exchange_sensitivities(y, columns, alpha, mc_idx=None, alpha_n1=None):
         'Alpha',
     ])
 
+    if report_contigency_alpha and mc_idx:
+        y_ = np.array([
+            alpha[c],  # Alpha: sensibility to exchange power for contingency elements
+        ], dtype=object).T
+
+        y = np.concatenate([y, y_], axis=1)
+
+        columns.extend([
+            'Alpha [contingency element]',
+        ])
+
     if alpha_n1 is not None:
 
         # Worst alpha for monitorized branch
-        idx_w = np.argmax(np.abs(alpha_n1), axis=1)
-        alpha_w = np.take_along_axis(alpha_n1, np.expand_dims(idx_w, axis=1), axis=1)
+        # idx_w = np.argmax(np.abs(alpha_n1), axis=1)
+        # alpha_w = np.take_along_axis(alpha_n1, np.expand_dims(idx_w, axis=1), axis=1)
+        #
+        # # Alpha for contingency branch
+        # alpha_mc = np.array([alpha_n1[m, c]]).T
+        #
+        # y = np.concatenate([y, alpha_mc, alpha_w[m]], axis=1)
+        # columns.extend([
+        #     'Alpha n-1',
+        #     '| Worst alpha n-1 |',
+        # ])
+        y_ = np.array([alpha_n1], dtype=object).T
 
-        # Alpha for contingency branch
-        alpha_mc = np.array([alpha_n1[m, c]]).T
-
-        y = np.concatenate([y, alpha_mc, alpha_w[m]], axis=1)
+        y = np.concatenate([y, y_], axis=1)
         columns.extend([
             'Alpha n-1',
-            '| Worst alpha n-1 |',
         ])
 
     return y, columns
@@ -193,6 +210,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
                  inter_area_hvdc=None,
                  alpha=None,
                  alpha_n1=None,
+                 alpha_w=None,
                  rates=None,
                  contingency_branch_flows_list=None,
                  contingency_branch_indices_list=None,
@@ -317,6 +335,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
 
         self.alpha = alpha
         self.alpha_n1 = alpha_n1
+        self.alpha_w = alpha_w
 
         self.monitor = monitor
         self.monitor_loading = monitor_loading
@@ -409,14 +428,18 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
         )
 
         # Group all, but only if they are not empty
-        labels, y_list = list(), np.array(b.get_data()[2].shape)
+        labels, y_list = list(), list()
         for i, mdl in enumerate([b, g, h]):
             if mdl.get_data()[2].shape[0] != 0:
                 labels.extend(mdl.get_data()[0])
                 y_list.extend(mdl.get_data()[2])
 
         columns = mdl.get_data()[1]
-        y = np.stack(y_list, axis=0)
+        if y_list != list():
+            y = np.stack(y_list, axis=0)
+        else:
+            y = b.get_data()[2]
+
         labels = np.array(labels)
 
         c_name = [c for c in columns if 'contingency' in c.lower() and '%' in c.lower()][0]
@@ -472,6 +495,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
             y=y,
             columns=columns,
             alpha=self.alpha,
+            report_contigency_alpha=False,
         )
 
         # Add MACZT (margin available for cross-zonal trade) data
@@ -523,6 +547,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
             y=y,
             columns=columns,
             alpha=self.alpha,
+            report_contigency_alpha=False,
         )
 
         # Add TTC, TRM and NTC
@@ -613,7 +638,8 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
             columns=columns,
             mc_idx=self.contingency_branch_indices_list,
             alpha=self.alpha,
-            alpha_n1=self.alpha_n1,
+            alpha_n1=self.contingency_branch_alpha_list,
+            report_contigency_alpha=False,
         )
 
         # Add TTC, TRM and NTC
@@ -722,7 +748,8 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
             columns=columns,
             mc_idx=self.contingency_generation_indices_list,
             alpha=self.alpha,
-            alpha_n1=self.alpha_n1,
+            alpha_n1=self.contingency_generation_alpha_list,
+            report_contigency_alpha=False,
         )
 
         # Add TTC, TRM and NTC
@@ -830,7 +857,8 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
             columns=columns,
             mc_idx=self.contingency_hvdc_indices_list,
             alpha=self.alpha,
-            alpha_n1=self.alpha_n1,
+            alpha_n1=self.contingency_hvdc_alpha_list,
+            report_contigency_alpha=False,
         )
 
         # Add TTC, TRM and NTC
@@ -959,6 +987,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
         )
         self.create_monitoring_logic_report()
         self.create_interarea_exchange_report()
+
 
         if save_memory:
             self.alpha_n1 = None
@@ -1238,6 +1267,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
                 reverse=reverse,
             )
         return self.reports[title]
+
     def get_contingency_generation_report(self, loading_threshold=0.0, reverse=True):
 
         title = f'{ResultTypes.ContingencyFlowsBranchReport.value[0]}. ' \
