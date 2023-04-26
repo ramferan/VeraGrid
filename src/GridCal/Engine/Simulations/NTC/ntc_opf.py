@@ -1188,6 +1188,88 @@ def formulate_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase, bran
     return flow_n1f, con_alpha, con_idx
 
 
+def formulate_contingency_nx(
+        solver: pywraplp.Solver, ContingencyRates, Sbase, branch_names, contingency_enabled_indices,
+        LODF_NX, F, T, branch_sensitivity_threshold, flow_f, monitor, alpha, alpha_n1, logger: Logger,
+        lodf_replacement_value=0
+):
+    """
+    Formulate the contingency flows
+    :param solver: Solver instance to which add the equations
+    :param ContingencyRates: array of branch contingency rates
+    :param Sbase: Base power (i.e. 100 MVA)
+    :param branch_names: array of branch names
+    :param contingency_enabled_indices: array of branch indices enables for contingency
+    :param LODF: LODF matrix
+    :param F: Array of branch "from" bus indices
+    :param T: Array of branch "to" bus indices
+    :param branch_sensitivity_threshold: minimum branch sensitivity to the exchange (used to filter branches out)
+    :param flow_f: Array of formulated branch flows (LP variables)
+    :param alpha: Power transfer sensibility matrix
+    :param alpha_n1: Power transfer sensibility matrix (n-1)
+    :param monitor: Array of final monitor status per branch after applying the logic
+    :return:
+        - flow_n1f: List of contingency flows LP variables
+        - con_idx: list of accepted contingency monitored and failed indices [(monitored, failed), ...]
+    """
+    rates = ContingencyRates / Sbase
+
+    # get the indices of the branches marked for contingency
+    con_br_idx = contingency_enabled_indices
+    mon_br_idx = np.where(monitor == True)[0]
+
+    # formulate contingency flows
+    # this is done in a separated loop because all te flow variables must exist beforehand
+    flow_n1f = list()
+    con_idx = list()
+    con_alpha = list()
+
+    for c, lodf in LODF_NX:
+
+        suffix = "{0}@{1}_{2}@{3}".format(branch_names[m], branch_names[c], m, c)
+
+        flow_n1 = solver.NumVar(
+            -rates,
+            rates,
+            'branch_flow_n-1_' + suffix
+        )
+
+        solver.Add(
+            flow_n1 == flow_f + lodf * flow_f[c],
+            "branch_flow_n-1_assignment_" + suffix
+        )
+
+        # for m in mon_br_idx:
+        #
+        #     c1 = m != c
+        #     c2 = lodf[m] > branch_sensitivity_threshold
+        #     c3 = np.abs(alpha_n1[m, c]) > branch_sensitivity_threshold
+        #     c4 = np.abs(alpha[m]) > branch_sensitivity_threshold
+        #
+        #     if c1 and c2 and c3 and c4:
+        #         # lodf_ = lodf[m]
+        #
+        #         suffix = "{0}@{1}_{2}@{3}".format(branch_names[m], branch_names[c], m, c)
+        #
+        #         flow_n1 = solver.NumVar(
+        #             -rates[m],
+        #             rates[m],
+        #             'branch_flow_n-1_' + suffix
+        #         )
+        #
+        #         solver.Add(
+        #             flow_n1 == flow_f[m] + lodf * flow_f[c],
+        #             "branch_flow_n-1_assignment_" + suffix
+        #         )
+        #
+        #         # store vars
+        #         # con_idx.append((m, c))
+        #         # flow_n1f.append(flow_n1)
+        #         # con_alpha.append(alpha_n1[m, c])
+
+    return flow_n1f, con_alpha, con_idx
+
+
 def check_contingency(ContingencyRates, Sbase, branch_names, contingency_enabled_indices, LODF, F, T,
                       branch_sensitivity_threshold, flow_f, monitor, logger: Logger):
     """
@@ -1998,24 +2080,42 @@ class OpfNTC(Opf):
 
         if self.consider_contingencies:
             # formulate the contingencies
-            n1flow_f, con_br_alpha, con_br_idx = formulate_contingency(
+            # n1flow_f, con_br_alpha, con_br_idx = formulate_contingency(
+            #     solver=self.solver,
+            #     ContingencyRates=self.numerical_circuit.ContingencyRates,
+            #     Sbase=self.numerical_circuit.Sbase,
+            #     branch_names=self.numerical_circuit.branch_names,
+            #     contingency_enabled_indices=self.numerical_circuit.branch_data.get_contingency_enabled_indices(),
+            #     LODF=self.LODF,
+            #     F=self.numerical_circuit.F,
+            #     T=self.numerical_circuit.T,
+            #     branch_sensitivity_threshold=self.branch_sensitivity_threshold,
+            #     flow_f=flow_f,
+            #     monitor=monitor,
+            #     alpha=self.alpha,
+            #     alpha_n1=self.alpha_n1,
+            #     lodf_replacement_value=0,
+            #     logger=self.logger
+            # )
+
+            n1flow_f, con_br_alpha, con_br_idx = formulate_contingency_nx(
                 solver=self.solver,
                 ContingencyRates=self.numerical_circuit.ContingencyRates,
                 Sbase=self.numerical_circuit.Sbase,
                 branch_names=self.numerical_circuit.branch_names,
                 contingency_enabled_indices=self.numerical_circuit.branch_data.get_contingency_enabled_indices(),
-                LODF=self.LODF,
+                LODF_NX=self.LODF_NX,
                 F=self.numerical_circuit.F,
                 T=self.numerical_circuit.T,
                 branch_sensitivity_threshold=self.branch_sensitivity_threshold,
                 flow_f=flow_f,
                 monitor=monitor,
-                alpha=alpha,
+                alpha=self.alpha,
                 alpha_n1=self.alpha_n1,
                 lodf_replacement_value=0,
-                logger=self.logger)
+                logger=self.logger
+            )
 
-            n1flow_f
         else:
             con_br_idx = list()
             n1flow_f = list()
