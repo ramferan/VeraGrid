@@ -38,7 +38,6 @@ except ModuleNotFoundError:
 import pandas as pd
 from scipy.sparse import csc_matrix
 
-
 def lpDot(mat, arr):
     """
     CSC matrix-vector or CSC matrix-matrix dot product (A x b)
@@ -422,56 +421,6 @@ def formulate_optimal_generation(solver: pywraplp.Solver, generator_active, disp
     return generation, delta, gen_a1_idx, gen_a2_idx, power_shift, dgen1, gen_cost
 
 
-def check_optimal_generation(generator_active, generator_names, dispatchable, Cgen, Pgen, a1, a2, generation, delta,
-                             logger: Logger):
-    """
-    Check the results of the optimal generation increments
-    :param generator_active: Array of generation active values (True / False)
-    :param generator_names: Array of Generator names
-    :param dispatchable: Array of Generator dispatchable variables (True / False)
-    :param Cgen: CSC connectivity matrix of generators and buses [ngen, nbus]
-    :param Pgen: Array of generator active power values in p.u.
-    :param a1: array of bus indices of the area 1
-    :param a2: array of bus indices of the area 2
-    :param generation: Array of generation values (resulting of the LP solution)
-    :param delta: Array of generation delta values (resulting of the LP solution)
-    :param logger: Logger instance
-    :return: Nothing
-    """
-    gens1, gens2, gens_out = get_generators_per_areas(Cgen, a1, a2)
-
-    dgen1 = list()
-    dgen2 = list()
-
-    for bus_idx, gen_idx in gens1:
-        if generator_active[gen_idx] and dispatchable[gen_idx]:
-            res = generation[gen_idx] == Pgen[gen_idx] + delta[gen_idx]
-            dgen1.append(delta[gen_idx])
-
-            if not res:
-                logger.add_divergence('Delta up condition not met '
-                                      '(generation[gen_idx] == Pgen[gen_idx] + delta[gen_idx])',
-                                      generator_names[gen_idx], generation[gen_idx], Pgen[gen_idx] + delta[gen_idx])
-
-    for bus_idx, gen_idx in gens2:
-        if generator_active[gen_idx] and dispatchable[gen_idx]:
-            res = generation[gen_idx] == Pgen[gen_idx] - delta[gen_idx]
-            dgen2.append(delta[gen_idx])
-
-            if not res:
-                logger.add_divergence('Delta down condition not met '
-                                      '(generation[gen_idx] == Pgen[gen_idx] - delta[gen_idx])',
-                                      generator_names[gen_idx], generation[gen_idx], Pgen[gen_idx] - delta[gen_idx])
-
-    # check area equality
-    sum_a1 = sum(dgen1)
-    sum_a2 = sum(dgen2)
-    res = sum_a1 == sum_a2
-
-    if not res:
-        logger.add_divergence('Area equality not met', 'grid', sum_a1, sum_a2)
-
-
 def formulate_proportional_generation(solver: pywraplp.Solver, generator_active, generator_dispatchable,
                                       generator_cost, generator_names, inf, ngen, Cgen, Pgen, Pmax,
                                       Pmin, Pref, a1, a2, logger: Logger):
@@ -679,116 +628,6 @@ def formulate_monitorization_logic(
            branch_ntc_load_rule, branch_zero_exchange_load
 
 
-def check_proportional_generation(generator_active, generator_dispatchable, generator_cost, generator_names,
-                                  Sbase, Cgen, Pgen, Pmax, Pmin, a1, a2, generation, delta,
-                                  power_shift, logger: Logger):
-    """
-
-    :param generator_active: Array of generation active values (True / False)
-    :param generator_dispatchable: Array of Generator dispatchable variables (True / False)
-    :param generator_cost: Array of generator costs
-    :param generator_names: Array of Generator names
-    :param Sbase: Base power (i.e. 100 MVA)
-    :param Cgen: CSC connectivity matrix of generators and buses [ngen, nbus]
-    :param Pgen: Array of generator active power values in p.u.
-    :param Pmax: Array of generator maximum active power values in p.u.
-    :param Pmin: Array of generator minimum active power values in p.u.
-    :param a1: array of bus indices of the area 1
-    :param a2: array of bus indices of the area 2
-    :param t: Time index (i.e 0)
-    :param generation: Array of generation values (resulting of the LP solution)
-    :param delta: Array of generation delta values (resulting of the LP solution)
-    :param power_shift: power shift LP variable
-    :param logger: Logger instance
-    :return: Nothing
-    """
-    gens1, gens2, gens_out = get_generators_per_areas(Cgen, a1, a2)
-    gen_cost = generator_cost * Sbase  # pass from $/MWh to $/p.u.h
-
-    dgen1 = list()
-    dgen2 = list()
-
-    nU1 = 0
-    nD1 = 0
-
-    sum_gen_1 = 0
-    for bus_idx, gen_idx in gens1:
-        if Pgen[gen_idx] > 0:
-            nU1 += Pgen[gen_idx]
-
-        if Pgen[gen_idx] < 0:
-            nD1 -= Pgen[gen_idx]
-
-        if validate_generator_to_increase(gen_idx, generator_active, generator_dispatchable, Pgen, Pmax, Pmin):
-            sum_gen_1 += Pgen[gen_idx]
-
-    nU2 = 0
-    nD2 = 0
-    sum_gen_2 = 0
-    for bus_idx, gen_idx in gens2:
-        if validate_generator_to_decrease(gen_idx, generator_active, generator_dispatchable, Pgen, Pmax, Pmin):
-            sum_gen_2 += Pgen[gen_idx]
-
-    # check area 1
-    for bus_idx, gen_idx in gens1:
-
-        if validate_generator_to_increase(gen_idx, generator_active, generator_dispatchable, Pgen, Pmax, Pmin):
-
-            prop = abs(Pgen[gen_idx] / sum_gen_1)
-            res = delta[gen_idx] == prop * power_shift
-            if not res:
-                logger.add_divergence(
-                    "Delta up equal to it's share of the power shift  (delta[i] == prop * power_shift)",
-                    generator_names[gen_idx],
-                    delta[gen_idx],
-                    prop * power_shift
-                )
-
-            res = generation[gen_idx] == Pgen[gen_idx] + delta[gen_idx]
-            if not res:
-                logger.add_divergence(
-                    'Delta up condition not met (generation[i] == Pgen[i] + delta[i])',
-                    generator_names[gen_idx],
-                    generation[gen_idx],
-                    Pgen[gen_idx] + delta[gen_idx]
-                )
-
-            dgen1.append(delta[gen_idx])
-
-    # check area 2
-    for bus_idx, gen_idx in gens2:
-
-        if validate_generator_to_decrease(gen_idx, generator_active, generator_dispatchable, Pgen, Pmax, Pmin):
-
-            prop = abs(Pgen[gen_idx] / sum_gen_2)
-            res = delta[gen_idx] == prop * power_shift
-            if not res:
-                logger.add_divergence(
-                    "Delta down equal to it's share of the power shift (delta[i] == prop * power_shift)",
-                    generator_names[gen_idx],
-                    delta[gen_idx],
-                    prop * power_shift)
-
-            res = generation[gen_idx] == Pgen[gen_idx] - delta[gen_idx]
-
-            if not res:
-                logger.add_divergence(
-                    'Delta down condition not met (generation[i] == Pgen[i] - delta[i])',
-                    generator_names[gen_idx],
-                    generation[gen_idx],
-                    Pgen[gen_idx] - delta[gen_idx])
-
-            dgen2.append(delta[gen_idx])
-
-    # check area equality
-    sum_a1 = sum(dgen1)
-    sum_a2 = sum(dgen2)
-    res = sum_a1 == sum_a2
-
-    if not res:
-        logger.add_divergence('Area equality not met', 'grid', sum_a1, sum_a2)
-
-
 def formulate_angles(solver: pywraplp.Solver, nbus, vd, bus_names, angle_min, angle_max,
                      logger: Logger, set_ref_to_zero=True):
     """
@@ -879,19 +718,6 @@ def formulate_power_injections(solver: pywraplp.Solver, Cgen, generation, Cload,
     return gen_injections_per_bus - load_fixed_injections
 
 
-def check_power_injections(load_power, Cgen, generation, Cload):
-    """
-    Check the power injections formulas once solved the problem
-    :param Cgen: CSC connectivity matrix of generators and buses [ngen, nbus]
-    :param generation: Array of generation values (resulting of the LP solution)
-    :param Cload: CSC connectivity matrix of load and buses [nload, nbus]
-    :return: Array of bus power injections
-    """
-    gen_injections = Cgen * generation
-    load_fixed_injections = Cload * load_power
-    return gen_injections - load_fixed_injections
-
-
 def formulate_node_balance(solver: pywraplp.Solver, Bbus, angles, Pinj, bus_active, bus_names,
                            logger: Logger):
     """
@@ -913,33 +739,6 @@ def formulate_node_balance(solver: pywraplp.Solver, Bbus, angles, Pinj, bus_acti
     for p_calc, p_set in zip(calculated_power, Pinj):
         if bus_active[i] and not isinstance(p_calc, int):  # balance is 0 for isolated buses
             solver.Add(p_calc == p_set, "node_power_balance_assignment_{0}:{1}".format(bus_names[i], i))
-        i += 1
-
-    return calculated_power
-
-
-def check_node_balance(Bbus, angles, Pinj, bus_active, bus_names, logger: Logger):
-    """
-    Formulate the power balance
-    :param Bbus: Susceptance matrix in CSC format
-    :param angles: Array of voltage angles LP variables
-    :param Pinj: Power injections array
-    :param bus_active: Array of bus active status
-    :param bus_names: Array of bus names.
-    :param logger: logger instance
-    :return: Array of computed powers per bus (only values)
-    """
-    calculated_power = Bbus * angles
-
-    # equal the balance to the generation: eq.13,14 (equality)
-    i = 0
-    for p_calc, p_set in zip(calculated_power, Pinj):
-        if bus_active[i] and not isinstance(p_calc, int):  # balance is 0 for isolated buses
-            res = p_calc == p_set
-
-            if not res:
-                logger.add_divergence('Kirchhoff not met (balance == power)', bus_names[i], p_calc, p_set)
-
         i += 1
 
     return calculated_power
@@ -1019,100 +818,6 @@ def formulate_branches_flow(
 
     return flow_f, monitor, Pinj_tau
 
-
-def check_branches_flow(nbr, Rates, Sbase, branch_active, branch_names, branch_dc, control_mode, R, X, F, T,
-                        monitor_loading, branch_sensitivity_threshold, monitor_only_sensitive_branches,
-                        angles, alpha_abs, alpha_n1_abs, flow_f, tau, logger: Logger, ):
-    """
-
-    :param nbr: number of branches
-    :param Rates: array of branch rates
-    :param Sbase: Base power (i.e. 100 MVA)
-    :param branch_active: array of branch active states
-    :param branch_names: array of branch names
-    :param branch_dc: array of branch DC status (True/False)
-    :param control_mode: Array of branch control modes
-    :param R: Array of branch resistance values
-    :param X: Array of branch reactance values
-    :param F: Array of branch "from" bus indices
-    :param T: Array of branch "to" bus indices
-    :param monitor_loading: Array of branch monitor loading status (True/False)
-    :param branch_sensitivity_threshold: minimum branch sensitivity to the exchange (used to filter branches out)
-    :param monitor_only_sensitive_branches: Flag to monitor only sensitive branches
-    :param angles: array of bus voltage angles (LP variables)
-    :param alpha_abs: Array of absolute branch sensitivity to the exchange
-    :param alpha_n1_abs: Array of absolute branch sensitivity to the exchange on n-1 condition
-    :param flow_f: Array of branch flow solutions
-    :param tau: Array branch phase shift angle solutions
-    :param logger: logger instance
-    :return: Array of final monitor status per branch after applying the logic
-    """
-
-    rates = Rates / Sbase
-    monitor = np.zeros(nbr, dtype=bool)
-
-    # formulate flows
-    for m in range(nbr):
-
-        if branch_active[m]:
-
-            # determine the monitoring logic
-            if monitor_only_sensitive_branches:
-                monitor[m] = monitor_loading[m] and max(alpha_abs[m], alpha_n1_abs[m]) > branch_sensitivity_threshold
-            else:
-                monitor[m] = monitor_loading[m]
-
-            if monitor[m]:
-
-                _f = F[m]
-                _t = T[m]
-
-                # compute the branch susceptance
-                if branch_dc[m]:
-                    bk = 1.0 / R[m]
-                else:
-                    bk = 1.0 / X[m]
-
-                if control_mode[m] == TransformerControlType.Pt:  # is a phase shifter
-                    # branch power from-to eq.15
-                    res = flow_f[m] == bk * (angles[_f] - angles[_t] + tau[m])
-
-                    if not res:
-                        logger.add_divergence(
-                            'Phase shifter flow setting (flow_f[m] == bk * (angles[f] - angles[t] + tau[m]))',
-                            branch_names[m], flow_f[m], bk * (angles[_f] - angles[_t] + tau[m])
-                        )
-
-                else:
-                    # branch power from-to eq.15
-                    res = flow_f[m] == bk * (angles[_f] - angles[_t])
-
-                    if not res:
-                        logger.add_divergence(
-                            'Branch flow setting (flow_f[m] == bk * (angles[f] - angles[t]))',
-                            branch_names[m], flow_f[m], bk * (angles[_f] - angles[_t])
-                        )
-
-                # rating restriction in the sense from-to: eq.17
-                res = flow_f[m] <= rates[m]
-
-                if not res:
-                    logger.add_divergence(
-                        'Positive flow rating violated (flow_f[m] <= rates[m])',
-                        branch_names[m], flow_f[m], rates[m]
-                    )
-
-                # rating restriction in the sense to-from: eq.18
-                res = -rates[m] <= flow_f[m]
-                if not res:
-                    logger.add_divergence(
-                        'Negative flow rating violated (-rates[m] <= flow_f[m])',
-                        branch_names[m], flow_f[m], -rates[m]
-                    )
-
-    return monitor
-
-
 def formulate_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase, branch_names,
                           contingency_enabled_indices, LODF, F, T, branch_sensitivity_threshold,
                           flow_f, monitor, alpha, alpha_n1, logger: Logger, lodf_replacement_value=0):
@@ -1154,7 +859,7 @@ def formulate_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase, bran
         for c in con_br_idx:  # for every contingency
 
             c1 = m != c
-            c2 = LODF[m, c] > branch_sensitivity_threshold
+            c2 = np.abs(LODF[m, c]) > branch_sensitivity_threshold
             c3 = np.abs(alpha_n1[m, c]) > branch_sensitivity_threshold
             c4 = np.abs(alpha[m]) > branch_sensitivity_threshold
 
@@ -1224,99 +929,38 @@ def formulate_contingency_nx(
     con_idx = list()
     con_alpha = list()
 
-    for c, lodf in LODF_NX:
+    for c, lodfnx in LODF_NX:
 
-        suffix = "{0}@{1}_{2}@{3}".format(branch_names[m], branch_names[c], m, c)
+        for m in mon_br_idx:
 
-        flow_n1 = solver.NumVar(
-            -rates,
-            rates,
-            'branch_flow_n-1_' + suffix
-        )
+            c1 = all(m != c)
+            c2 = any(np.abs(lodfnx[m]) > branch_sensitivity_threshold)
+            c3 = np.abs(alpha[m]) > branch_sensitivity_threshold
+            c4 = any(np.abs(alpha_n1[m, c]) > branch_sensitivity_threshold)  # todo: check if any or all
 
-        solver.Add(
-            flow_n1 == flow_f + lodf * flow_f[c],
-            "branch_flow_n-1_assignment_" + suffix
-        )
+            if c1 and c2 and c3 and c4:
+                # lodf_ = lodf[m]
 
-        # for m in mon_br_idx:
-        #
-        #     c1 = m != c
-        #     c2 = lodf[m] > branch_sensitivity_threshold
-        #     c3 = np.abs(alpha_n1[m, c]) > branch_sensitivity_threshold
-        #     c4 = np.abs(alpha[m]) > branch_sensitivity_threshold
-        #
-        #     if c1 and c2 and c3 and c4:
-        #         # lodf_ = lodf[m]
-        #
-        #         suffix = "{0}@{1}_{2}@{3}".format(branch_names[m], branch_names[c], m, c)
-        #
-        #         flow_n1 = solver.NumVar(
-        #             -rates[m],
-        #             rates[m],
-        #             'branch_flow_n-1_' + suffix
-        #         )
-        #
-        #         solver.Add(
-        #             flow_n1 == flow_f[m] + lodf * flow_f[c],
-        #             "branch_flow_n-1_assignment_" + suffix
-        #         )
-        #
-        #         # store vars
-        #         # con_idx.append((m, c))
-        #         # flow_n1f.append(flow_n1)
-        #         # con_alpha.append(alpha_n1[m, c])
+                suffix = "{0}@{1}_{2}@{3}".format(branch_names[m], '; '.join(branch_names[c]), m, c)
+
+                flow_n1 = solver.NumVar(
+                    -rates[m],
+                    rates[m],
+                    'branch_flow_n-1_' + suffix
+                )
+
+                solver.Add(
+                    flow_n1 == flow_f[m] + np.matmul(lodfnx[m, :], flow_f[c]),
+                    "branch_flow_n-1_assignment_" + suffix
+                )
+
+                # store vars
+                # con_idx.append(i)
+                con_idx.append((m, c))
+                flow_n1f.append(flow_n1)
+                con_alpha.append(alpha_n1[m, c])
 
     return flow_n1f, con_alpha, con_idx
-
-
-def check_contingency(ContingencyRates, Sbase, branch_names, contingency_enabled_indices, LODF, F, T,
-                      branch_sensitivity_threshold, flow_f, monitor, logger: Logger):
-    """
-    Check the resulting contingency flows
-    :param ContingencyRates: array of branch contingency rates
-    :param Sbase: Base power (i.e. 100 MVA)
-    :param branch_names: array of branch names
-    :param contingency_enabled_indices: array of branch indices enables for contingency
-    :param LODF: LODF matrix
-    :param F: Array of branch "from" bus indices
-    :param T: Array of branch "to" bus indices
-    :param branch_sensitivity_threshold: minimum branch sensitivity to the exchange (used to filter branches out)
-    :param flow_f: Array of formulated branch flows (LP variblaes)
-    :param monitor: Array of final monitor status per branch after applying the logic
-    :param logger: logger instance
-    :return: Nothing
-    """
-    rates = ContingencyRates / Sbase
-
-    # get the indices of the branches marked for contingency
-    con_br_idx = contingency_enabled_indices
-    mon_br_idx = np.where(monitor == True)[0]
-
-    # formulate contingency flows
-    # this is done in a separated loop because all te flow variables must exist beforehand
-    for m in mon_br_idx:  # for every monitored branch
-        _f = F[m]
-        _t = T[m]
-
-        for c in con_br_idx:  # for every contingency
-
-            if m != c and LODF[m, c] > branch_sensitivity_threshold:
-                # compute the N-1 flow
-                flow_n1 = flow_f[m] + LODF[m, c] * flow_f[c]
-
-                res = flow_n1 <= rates[m]
-
-                if not res:
-                    logger.add_divergence('Positive contingency flow rating violated (flow_n1 <= rates[m])',
-                                          branch_names[m] + '@' + branch_names[c], flow_n1, rates[m])
-
-                # rating restriction in the sense to-from
-                res = -rates[m] <= flow_n1
-
-                if not res:
-                    logger.add_divergence('Negative contingency flow rating violated (-rates[m] <= flow_n1)',
-                                          branch_names[m] + '@' + branch_names[c], flow_n1, -rates[m])
 
 
 def formulate_hvdc_flow(solver: pywraplp.Solver, nhvdc, names, rate, angles, hvdc_active, Pt, angle_droop, control_mode,
@@ -1408,84 +1052,6 @@ def formulate_hvdc_flow(solver: pywraplp.Solver, nhvdc, names, rate, angles, hvd
     # todo: ver cómo devolver el peso para el slack de hvdc que sea la diferencia entre el rate-flow (¿puede ser una variable?)
 
     return flow_f, hvdc_angle_slack_pos, hvdc_angle_slack_neg
-
-
-def check_hvdc_flow(nhvdc, names, rate, angles, hvdc_active, Pt, angle_droop, control_mode, dispatchable,
-                    F, T, Sbase, flow_f, logger: Logger):
-    """
-    Check the HVDC flows
-    :param nhvdc: number of HVDC devices
-    :param names: Array of HVDC names
-    :param rate: Array of HVDC rates
-    :param angles: Array of bus voltage angles (values from the problem)
-    :param hvdc_active: Array of HVDC active status (True / False)
-    :param Pt: Array of HVDC sending power
-    :param r: Array of HVDC resistance values (this is used as the HVDC power/angle droop)
-    :param control_mode: Array of HVDC control modes
-    :param dispatchable: Array of HVDC dispatchable status (True/False)
-    :param F: Array of branch "from" bus indices
-    :param T: Array of branch "to" bus indices
-    :param Sbase: Base power (i.e. 100 MVA)
-    :param flow_f: Array of formulated HVDC flows (values from the problem)
-    :param logger: logger instance
-    :return: None
-    """
-    rates = rate / Sbase
-
-    for i in range(nhvdc):
-
-        if hvdc_active[i]:
-
-            _f = F[i]
-            _t = T[i]
-
-            suffix = "{0}:{1}".format(names[i], i)
-
-            P0 = Pt[i] / Sbase
-
-            if control_mode[i] == HvdcControlType.type_0_free:
-
-                # formulate the hvdc flow as an AC line equivalent
-                angle_droop_rad = angle_droop[i] * 57.295779513 / Sbase
-                res = flow_f[i] == P0 + angle_droop_rad * (angles[_f] - angles[_t])
-
-                if not res:
-                    logger.add_divergence(
-                        'HVDC free flow violation (flow_f[i] == P0 + bk * (angles[f] - angles[t]))',
-                        names[i], flow_f[i], P0 + angle_droop_rad * (angles[_f] - angles[_t])
-                    )
-
-                # rating restriction in the sense from-to: eq.17
-                res = flow_f[i] <= rates[i]
-
-                if not res:
-                    logger.add_divergence(
-                        'HVDC positive rating violation (flow_f[i] <= rates[i])',
-                        names[i], flow_f[i], rates[i]
-                    )
-
-                # rating restriction in the sense to-from: eq.18
-                res = -rates[i] <= flow_f[i]
-
-                if not res:
-                    logger.add_divergence(
-                        'HVDC negative rating violation (-rates[i] <= flow_f[i])',
-                        names[i], flow_f[i], -rates[i]
-                    )
-
-            elif control_mode[i] == HvdcControlType.type_1_Pset and not dispatchable[i]:
-                # simple injections model: The power is set by the user
-                res = flow_f[i] == P0
-
-                if not res:
-                    logger.add_divergence(
-                        'HVDC Pset, non dispatchable control not met (flow_f[i] == P0)',
-                        names[i], flow_f[i], P0
-                    )
-
-            elif control_mode[i] == HvdcControlType.type_1_Pset and dispatchable[i]:
-                # simple injections model, the power is a variable and it is optimized
-                pass
 
 
 def formulate_hvdc_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase,
@@ -3193,7 +2759,7 @@ if __name__ == '__main__':
     from GridCal.Engine.Simulations.LinearFactors.linear_analysis import LinearAnalysis, make_lodf_nx
 
     folder = r'\\mornt4\DESRED\DPE-Internacional\Interconexiones\FRANCIA\2022 MoU\5GW 8.0\Con N-x\merged\GridCal'
-    fname = os.path.join(folder, 'MOU_2022_5GW_v6f_contingencias_full.gridcal')
+    fname = os.path.join(folder, 'MOU_2022_5GW_v6f_contingencias_dc.gridcal')
 
     tm0 = time.time()
     main_circuit = FileOpen(fname).open()
@@ -3222,6 +2788,7 @@ if __name__ == '__main__':
         distributed_slack=False,
         correct_values=False,
         with_nx=True,
+        force_from_file=True
     )
 
     tm0 = time.time()
@@ -3263,11 +2830,12 @@ if __name__ == '__main__':
         skip_generation_limits=False,
     )
 
-    print('Solving...')
+    print('Formulating...')
     tm0 = time.time()
     problem.formulate()
     print(f'optimization formulated in {time.time() - tm0:.2f} scs.')
 
+    print('Solving...')
     tm0 = time.time()
     solved = problem.solve()
     print(f'optimization computed in {time.time() - tm0:.2f} scs.')
