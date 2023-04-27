@@ -198,7 +198,6 @@ class ResultTypes(Enum):
     BranchActiveLosses2 = 'Branch active losses (2)', DeviceType.BranchDevice
     BranchReactiveLosses2 = 'Branch reactive losses (2)', DeviceType.BranchDevice
     BranchMonitoring = 'Branch monitoring logic', DeviceType.BranchDevice
-
     ShortCircuitInfo = 'Short-circuit information', DeviceType.NoDevice
 
     # classifiers
