@@ -2736,32 +2736,81 @@ class MultiCircuit:
         :param contingencies: List of contingencies
         :return:
         """
+
         devices = self.get_contingency_devices()
         groups = dict()
 
+        # Get a devices dict by idtag or code keys
         devices_code_dict = {d.code: d for d in devices}
-        devices_key_dict = {d.idtag: d for d in devices}
-        devices_dict = {**devices_code_dict, **devices_key_dict}
+        devices_idtag_dict = {d.idtag: d for d in devices}
 
         logger = Logger()
 
+        # Get all incomplete groups because any element is not in the circuit
+        zipped_groups = [
+            (c.group, c.group.idtag) for c in contingencies if
+            c.device_idtag not in devices_idtag_dict.keys() and
+            c.code not in devices_code_dict.keys()
+        ]
+
+        incomplete_groups, incomplete_groups_idx = zip(*zipped_groups)
+
+        # Report all incompleted groups to be ignored
+        for group in incomplete_groups:
+            logger.add_info(
+                msg='Contingency group will be ignored because any element not in circuit',
+                device=group.idtag,
+                value=group.code,
+            )
+
+        # loop contingencies
         for contingency in contingencies:
-            if contingency.code in devices_dict.keys() or contingency.idtag in devices_dict.keys():
+
+            # Check if contingency belongs to an incomplete group
+            if contingency.group.idtag in incomplete_groups_idx:
+
+                # Log a message
+                if contingency.device_idtag in devices_idtag_dict.keys() \
+                        or contingency.code in devices_code_dict.keys():
+                    # Element exists, but the group will be ignored
+                    logger.add_info(
+                        msg='Contingency skipped: Belongs to an incomplete group',
+                        device=contingency.idtag,
+                        value=contingency.code,
+                    )
+                else:
+                    # Element is not in the circuit
+                    logger.add_info(
+                        msg='Contingency skipped: element not in circuit',
+                        device=contingency.idtag,
+                        value=contingency.code,
+                    )
+                continue
+
+            # Get the contingency element
+            if contingency.idtag in devices_idtag_dict.keys():
                 # ensure proper device_idtag and code
-                element = devices_dict[contingency.code]
-                contingency.device_idtag = element.idtag
-                contingency.code = element.code
+                element = devices_idtag_dict[contingency.idtag]
 
-                self.contingencies.append(contingency)
+            elif contingency.code in devices_code_dict.keys():
+                # ensure proper device_idtag and code
+                element = devices_code_dict[contingency.code]
 
-                if contingency.group.idtag not in groups.keys():
-                    groups[contingency.group.idtag] = contingency.group
             else:
-                logger.add_info(
-                    msg='Contingency element not found in circuit',
-                    device=contingency.code,
-                )
+                continue
 
+            # Ensure proper properties in contingency object by found element
+            contingency.device_idtag = element.idtag
+            contingency.code = element.code
+
+            # add contingency to circuit
+            self.contingencies.append(contingency)
+
+            # add contingency group
+            if contingency.group.idtag not in groups.keys():
+                groups[contingency.group.idtag] = contingency.group
+
+        # Fill contingency groups
         for group in groups.values():
             self.contingency_groups.append(group)
 
