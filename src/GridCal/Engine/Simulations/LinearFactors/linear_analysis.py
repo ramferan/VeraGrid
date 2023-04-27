@@ -306,42 +306,57 @@ def make_worst_contingency_transfer_limits(tmc):
 
 
 # @nb.njit(cache=True)
-def make_lodf_nx(circuit, lodf):
+def make_lodf_nx(circuit, lodf, force_from_file=False):
 
-    idx_dict = {c.idtag: i for i, c in enumerate(circuit.get_branches())}
+    # if force_from_file:
+    #     import pickle
+    #     with open(r'C:\Users\ramferan\Desktop\lodf_nx_dc.txt', 'rb') as f:
+    #         return pickle.load(f)
 
-    lodf_nx = list()
+    lodf_nx_list = list()
 
-    for i, cg in enumerate(circuit.contingency_groups):
-        # Get contingency device idx for this group
-        c_idx = [idx_dict[c.device_idtag] for c in circuit.contingencies if cg.idtag == c.group.idtag]
+    # Create dictionaries to speed up access
+    cg_dict = {cg.idtag: cg for cg in circuit.contingency_groups}
+    c_dict = {c.idtag: c for c in circuit.contingencies}
+    idx_dict = {e.idtag: i for i, e in enumerate(circuit.get_branches())}
 
-        # Sort unique idx
-        c_idx = list(sorted(set(c_idx), reverse=False))
+    # Initialize c_idx list for each contingency groups
+    for cg in circuit.contingency_groups:
+        cg.c_idx = list()
+
+    # Loop for contingencies to fill group c_idx
+    for c in circuit.contingencies:
+        cg_dict[c.group.idtag].c_idx.append(idx_dict[c.device_idtag])
+
+    for cg in enumerate(circuit.contingency_groups):
+
+        # Sort unique c_idx
+        cg.c_idx = list(sorted(set(cg.c_idx), reverse=False))
 
         # Compute LODF vector and M matrix
-        L = lodf[:, c_idx]  # Take the columns of the LODF associated with the contingencies
+        L = lodf[:, cg.c_idx]  # Take the columns of the LODF associated with the contingencies
 
-        # Compute M matrix
-        M = np.zeros((len(c_idx), len(c_idx)))
+        # Compute M matrix [n, n] with -lodf values
+        M = np.ones((len(cg.c_idx), len(cg.c_idx)))
+        for i in range(len(cg.c_idx)):
+            for j in range(len(cg.c_idx)):
+                if not (i == j):
+                    M[i, j] = -lodf[cg.c_idx[i], cg.c_idx[j]]
 
-        for j in range(len(c_idx)):
-            for k in range(len(c_idx)):
-                if (j == k):
-                    M[j, k] = 1
-                else:
-                    M[j, k] = -lodf[c_idx[j], c_idx[k]]
+        # Compute LODF_NX
+        lodf_nx = np.matmul(L, np.linalg.inv(M))
 
-        cg.lodf_nx = np.matmul(L, np.linalg.inv(M))
-        cg.c_idx = c_idx
-        lodf_nx.append((c_idx, cg.lodf_nx))
+        # store tuple (c_idx, lodf_nx)
+        lodf_nx_list.append(
+            (cg.c_idx, lodf_nx)
+        )
 
-    return lodf_nx
+    return lodf_nx_list
 
 
 class LinearAnalysis:
 
-    def __init__(self, grid: MultiCircuit, distributed_slack=True, correct_values=True, with_nx=False):
+    def __init__(self, grid: MultiCircuit, distributed_slack=True, correct_values=True, with_nx=False, force_from_file=False):
         """
 
         :param grid:
@@ -363,6 +378,8 @@ class LinearAnalysis:
         self.LODF = None
 
         self.__OTDF = None
+
+        self.force_from_file = force_from_file
 
         self.logger = Logger()
 
@@ -426,6 +443,7 @@ class LinearAnalysis:
             self.LODF_NX = make_lodf_nx(
                 circuit=self.grid,
                 lodf=self.LODF,
+                force_from_file=self.force_from_file,
             )
     @property
     def OTDF(self):
