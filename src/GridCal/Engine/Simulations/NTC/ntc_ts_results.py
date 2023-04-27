@@ -60,7 +60,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
                     ResultTypes.GeneratorPower,
                     ResultTypes.GenerationDelta,
                 ],
-                ResultTypes.BranchMonitoring: [
+                ResultTypes.BranchResults: [
                     ResultTypes.BranchMonitoring,
                     ResultTypes.TsCriticalBranches,
                     ResultTypes.TsContingencyBranches,
@@ -263,6 +263,8 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
             return self.get_generation_delta_report()
 
         elif result_type == ResultTypes.BranchMonitoring:
+            # Todo: revisar la monitorización de unrealistic ntc logic
+            # todo: añadir una columna con Load at Zero Exchange
             return self.get_branch_monitoring_report()
 
         elif result_type == ResultTypes.TsCriticalBranches:
