@@ -30,14 +30,19 @@ class ContingencyPlannerGUI(QDialog):
 
         self.circuit = grid
 
-        self.contingency_branch_types = [DeviceType.LineDevice,
-                                         DeviceType.DCLineDevice,
-                                         DeviceType.Transformer2WDevice,
-                                         DeviceType.VscDevice,
-                                         DeviceType.UpfcDevice]
+        self.contingency_branch_types = [
+            DeviceType.LineDevice,
+            DeviceType.DCLineDevice,
+            DeviceType.Transformer2WDevice,
+            DeviceType.VscDevice,
+            DeviceType.UpfcDevice,
+            DeviceType.HVDCLineDevice
+        ]
 
-        self.contingency_injection_types = [DeviceType.GeneratorDevice,
-                                            DeviceType.BatteryDevice]
+        self.contingency_injection_types = [
+            DeviceType.GeneratorDevice,
+            DeviceType.BatteryDevice
+        ]
 
         self.ui.contingencyBranchTypesListView.setModel(get_list_model(self.contingency_branch_types,
                                                                        checks=True, check_value=True))

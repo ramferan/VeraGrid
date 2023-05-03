@@ -122,6 +122,47 @@ def add_n2_contingencies(branches, vmin, vmax, filter_branches_by_voltage, branc
 
     return contingencies, groups
 
+def add_injections_contingencies(injections, pmin, pmax, filter_injections_by_power, injection_types, contingency_perc):
+    """
+
+    :param injections:
+    :param pmin:
+    :param pmax:
+    :param filter_injections_by_power:
+    :param injection_types:
+    :param contingency_perc:
+    :return:
+    """
+    contingencies = list()
+    groups = list()
+
+    for i, d in enumerate(injections):
+
+        pi = d.Pmax
+
+        filter_ok_i = (pmin <= pi <= pmax) if filter_injections_by_power else True
+
+        if filter_ok_i and d.device_type in injection_types:
+
+            group = ContingencyGroup(
+                name=d.name,
+                category='injection',
+            )
+
+            p = d.Pmax * (1 - contingency_perc/100)
+            contingency = Contingency(
+                device_idtag=d.idtag,
+                name=d.name,
+                code=d.code,
+                prop='p',
+                value=p, # todo: ojo que esto podría aumentar la generación en algunos casos. Ver como definir esto para que funcione mejor en la propia contingencia
+                group=group
+            )
+
+            contingencies.append(contingency)
+            groups.append(group)
+
+    return contingencies, groups
 
 def generate_automatic_contingency_plan(grid: MultiCircuit, k: int,
                                         filter_branches_by_voltage: bool = False, vmin=0, vmax=1000,
@@ -146,10 +187,30 @@ def generate_automatic_contingency_plan(grid: MultiCircuit, k: int,
 
     assert (k in [1, 2])
 
-    branches = grid.get_branches_wo_hvdc()
+    # branches = grid.get_branches_wo_hvdc()
+    branches = grid.get_branches()
+    injections = grid.get_generators() + grid.get_batteries()
 
     if k == 1:
-        contingencies, groups = add_n1_contingencies(branches, vmin, vmax, filter_branches_by_voltage, branch_types)
+        contingencies, groups = add_n1_contingencies(
+            branches=branches,
+            vmin=vmin,
+            vmax=vmax,
+            filter_branches_by_voltage=filter_branches_by_voltage,
+            branch_types=branch_types,
+        )
+
+        contingencies2, groups2 = add_injections_contingencies(
+            injections=injections,
+            filter_injections_by_power=filter_injections_by_power,
+            pmin=pmin,
+            pmax=pmax,
+            injection_types=injection_types,
+            contingency_perc=contingency_perc,
+        )
+
+        contingencies.extend(contingencies2)
+        groups.extend(groups2)
 
     elif k == 2:
         contingencies, groups = add_n1_contingencies(branches, vmin, vmax, filter_branches_by_voltage, branch_types)

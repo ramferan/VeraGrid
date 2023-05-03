@@ -2817,6 +2817,8 @@ class MultiCircuit:
             # Ensure proper properties in contingency object by found element
             contingency.device_idtag = element.idtag
             contingency.code = element.code
+            if contingency.name == '':
+                contingency.name = element.name
 
             # add contingency to circuit
             self.contingencies.append(contingency)
