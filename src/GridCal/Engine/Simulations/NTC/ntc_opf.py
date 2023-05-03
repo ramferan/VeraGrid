@@ -1002,7 +1002,7 @@ def formulate_contingency_nx(
                 flow_n1f.append(flow_n1)
                 con_alpha.append(alpha_n1[m, c])
 
-    return flow_n1f, np.array(con_alpha), con_idx
+    return flow_n1f, np.array(con_alpha, dtype=object), con_idx
 
 
 def formulate_hvdc_flow(solver: pywraplp.Solver, nhvdc, names, rate, angles, hvdc_active, Pt, angle_droop, control_mode,

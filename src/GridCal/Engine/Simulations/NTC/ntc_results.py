@@ -63,14 +63,15 @@ def add_exchange_sensitivities(y, columns, alpha, mc_idx=None, alpha_n1=None, re
 
         y_ = np.array(
             # Collapse alpha_n1 into one column
-            [['; '.join(row) for row in np.round(alpha_n1.astype(float), decimals=decimals).astype(str)]],
+            [['; '.join(a.astype(str)) for a in alpha_n1]],
             dtype=object
         ).T
 
         y = np.concatenate([y, y_], axis=1)
 
-        if alpha_n1.shape[1] > 1:
-            c_str = str_separator.join(['c'+str(i) for i in range(alpha_n1.shape[1])])
+        if np.any([len(a) > 1 for a in alpha_n1]):
+            max_n = np.max([len(a) for a in alpha_n1])
+            c_str = str_separator.join(['c'+str(i) for i in range(max_n)])
             c_name = f'Alpha n-1 [{c_str}]'
         else:
             c_name = f'Alpha n-1'
@@ -1404,7 +1405,8 @@ def get_contingency_flow_table(
     # unzip monitor and contingency lists
     m, c = list(map(list, zip(*np.array(mc_idx, dtype=object))))
 
-    cnt_names = list([str_separator.join(row) for row in contingency_names[c]])
+    cnt_names = [str_separator.join(contingency_names[cnt]) for cnt in c]
+
     y = np.array([
         monitor_names[m],
         cnt_names,  # Contingency name
