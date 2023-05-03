@@ -357,7 +357,12 @@ def formulate_optimal_generation(solver: pywraplp.Solver, generator_active, disp
             if Pmin[gen_idx] >= Pmax[gen_idx]:
                 logger.add_error('Pmin >= Pmax', 'Generator index {0}'.format(gen_idx), Pmin[gen_idx])
 
-            generation[gen_idx] = solver.NumVar(Pmin[gen_idx], Pmax[gen_idx], name)
+            generation[gen_idx] = solver.NumVar(
+                Pmin[gen_idx],
+                Pmax[gen_idx],
+                name
+            )
+
             delta[gen_idx] = generation[gen_idx] - Pgen[gen_idx]
 
             dgen1.append(delta[gen_idx])
@@ -379,7 +384,12 @@ def formulate_optimal_generation(solver: pywraplp.Solver, generator_active, disp
             if Pmin[gen_idx] >= Pmax[gen_idx]:
                 logger.add_error('Pmin >= Pmax', 'Generator index {0}'.format(gen_idx), Pmin[gen_idx])
 
-            generation[gen_idx] = solver.NumVar(Pmin[gen_idx], Pmax[gen_idx], name)
+            generation[gen_idx] = solver.NumVar(
+                Pmin[gen_idx],
+                Pmax[gen_idx],
+                name
+            )
+
             delta[gen_idx] = Pgen[gen_idx] - generation[gen_idx]
 
             dgen2.append(delta[gen_idx])
@@ -403,7 +413,12 @@ def formulate_optimal_generation(solver: pywraplp.Solver, generator_active, disp
                 if Pmin[gen_idx] >= Pmax[gen_idx]:
                     logger.add_error('Pmin >= Pmax', 'Generator index {0}'.format(gen_idx), Pmin[gen_idx])
 
-                generation[gen_idx] = solver.NumVar(Pmin[gen_idx], Pmax[gen_idx], name)
+                generation[gen_idx] = solver.NumVar(
+                    Pmin[gen_idx],
+                    Pmax[gen_idx],
+                    name
+                )
+
                 delta[gen_idx] = Pgen[gen_idx] - generation[gen_idx]
 
             else:
@@ -414,7 +429,10 @@ def formulate_optimal_generation(solver: pywraplp.Solver, generator_active, disp
             delta[gen_idx] = 0
 
     # enforce area equality
-    solver.Add(solver.Sum(dgen1) == solver.Sum(dgen2), 'Area equality assignment')
+    solver.Add(
+        solver.Sum(dgen1) == solver.Sum(dgen2),
+        'Area equality assignment'
+    )
 
     power_shift = solver.Sum(generation1)
 
@@ -551,21 +569,27 @@ def formulate_proportional_generation(solver: pywraplp.Solver, generator_active,
 
             # store solver variables
             generation[gen_idx] = solver.NumVar(
-                Pmin[gen_idx], Pmax[gen_idx],
-                'gen_{0}'.format(generator_names[gen_idx]))
+                Pmin[gen_idx],
+                Pmax[gen_idx],
+                'gen_{0}'.format(generator_names[gen_idx])
+            )
 
             delta[gen_idx] = solver.NumVar(
-                -inf, inf,
-                'gen_{0}_delta'.format(generator_names[gen_idx]))
+                -inf,
+                inf,
+                'gen_{0}_delta'.format(generator_names[gen_idx])
+            )
 
             # solver variables formulation
             solver.Add(
                 delta[gen_idx] == power_shift * proportions[gen_idx] * sense[gen_idx],
-                'gen_{0}_assignment'.format(generator_names[gen_idx]))
+                'gen_{0}_assignment'.format(generator_names[gen_idx])
+            )
 
             solver.Add(
                 generation[gen_idx] == Pgen[gen_idx] + delta[gen_idx],
-                'gen_{0}_delta_assignment'.format(generator_names[gen_idx]))
+                'gen_{0}_delta_assignment'.format(generator_names[gen_idx])
+            )
 
         else:
             generation[gen_idx] = Pgen[gen_idx]
@@ -650,12 +674,17 @@ def formulate_angles(solver: pywraplp.Solver, nbus, vd, bus_names, angle_min, an
             logger.add_error('Theta min > Theta max', 'Bus {0}'.format(i), angle_min[i])
 
         theta[i] = solver.NumVar(
-            angle_min[i], angle_max[i],
-            'theta_{0}:{1}'.format(bus_names[i], i))
+            angle_min[i],
+            angle_max[i],
+            'theta_{0}:{1}'.format(bus_names[i], i)
+        )
 
     if set_ref_to_zero:
         for i in vd:
-            solver.Add(theta[i] == 0, "reference_bus_angle_zero_assignment_{0}:{1}".format(bus_names[i], i))
+            solver.Add(
+                theta[i] == 0,
+                "reference_bus_angle_zero_assignment_{0}:{1}".format(bus_names[i], i)
+            )
 
     return theta
 
@@ -689,7 +718,8 @@ def formulate_angles_shifters(solver: pywraplp.Solver, nbr, branch_active, branc
                 # create the phase shift variable
                 tau[m] = solver.NumVar(
                     branch_theta_min[m], branch_theta_max[m],
-                    'branch_phase_shift_{0}:{1}'.format(branch_names[m], m))
+                    'branch_phase_shift_{0}:{1}'.format(branch_names[m], m)
+                )
 
             else:
                 tau[m] = branch_theta[m]
@@ -789,11 +819,17 @@ def formulate_branches_flow(
             if monitor[m]:
                 # declare the flow variable with rate limits
                 flow_f[m] = solver.NumVar(
-                    -rates[m], rates[m], 'branch_flow_{0}:{1}'.format(branch_names[m], m))
+                    -rates[m],
+                    rates[m],
+                    'branch_flow_{0}:{1}'.format(branch_names[m], m)
+                )
             else:
                 # declare the flow variable with ample limits
                 flow_f[m] = solver.NumVar(
-                    -inf, inf, 'branch_flow_{0}:{1}'.format(branch_names[m], m))
+                    -inf,
+                    inf,
+                    'branch_flow_{0}:{1}'.format(branch_names[m], m)
+                )
 
             # compute the flow
             _f = F[m]
@@ -808,7 +844,8 @@ def formulate_branches_flow(
             # branch power from-to eq.15
             solver.Add(
                 flow_f[m] == bk * (angles[_f] - angles[_t] - tau[m]),
-                'branch_power_flow_assignment_{0}:{1}'.format(branch_names[m], m))
+                'branch_power_flow_assignment_{0}:{1}'.format(branch_names[m], m)
+            )
 
             # add the shifter injections matching the flow
             Ptau = bk * tau[m]
@@ -880,17 +917,22 @@ def formulate_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase, bran
                 suffix = "{0}@{1}_{2}@{3}".format(branch_names[m], branch_names[c], m, c)
 
                 flow_n1 = solver.NumVar(
-                    -rates[m], rates[m], 'branch_flow_n-1_' + suffix)
+                    -rates[m],
+                    rates[m],
+                    'branch_flow_n-1_' + suffix
+                )
 
-                solver.Add(flow_n1 == flow_f[m] + lodf * flow_f[c],
-                           "branch_flow_n-1_assignment_" + suffix)
+                solver.Add(
+                    flow_n1 == flow_f[m] + lodf * flow_f[c],
+                    "branch_flow_n-1_assignment_" + suffix
+                )
 
                 # store vars
-                con_idx.append((m, c))
+                con_idx.append((m, [c]))
                 flow_n1f.append(flow_n1)
                 con_alpha.append(alpha_n1[m, c])
 
-    return flow_n1f, con_alpha, con_idx
+    return flow_n1f, np.array([con_alpha]).T, con_idx
 
 
 def formulate_contingency_nx(
@@ -960,7 +1002,7 @@ def formulate_contingency_nx(
                 flow_n1f.append(flow_n1)
                 con_alpha.append(alpha_n1[m, c])
 
-    return flow_n1f, con_alpha, con_idx
+    return flow_n1f, np.array(con_alpha), con_idx
 
 
 def formulate_hvdc_flow(solver: pywraplp.Solver, nhvdc, names, rate, angles, hvdc_active, Pt, angle_droop, control_mode,
@@ -1011,7 +1053,11 @@ def formulate_hvdc_flow(solver: pywraplp.Solver, nhvdc, names, rate, angles, hvd
                 if rates[i] <= 0:
                     logger.add_error('Rate = 0', 'HVDC:{0}'.format(i), rates[i])
 
-                flow_f[i] = solver.NumVar(-rates[i], rates[i], 'hvdc_flow_' + suffix)
+                flow_f[i] = solver.NumVar(
+                    -rates[i],
+                    rates[i],
+                    'hvdc_flow_' + suffix
+                )
 
                 # formulate the hvdc flow as an AC line equivalent
                 # to pass from MW/deg to p.u./rad -> * 180 / pi / (sbase=100)
@@ -1028,7 +1074,11 @@ def formulate_hvdc_flow(solver: pywraplp.Solver, nhvdc, names, rate, angles, hvd
 
             elif control_mode[i] == HvdcControlType.type_1_Pset and dispatchable[i]:
                 # simple injections model, the power is a variable and it is optimized
-                P0 = solver.NumVar(-rates[i], rates[i], 'hvdc_pset_' + suffix)
+                P0 = solver.NumVar(
+                    -rates[i],
+                    rates[i],
+                    'hvdc_pset_' + suffix
+                )
                 flow_f[i] = P0
 
             # add the injections matching the flow
@@ -1043,11 +1093,16 @@ def formulate_hvdc_flow(solver: pywraplp.Solver, nhvdc, names, rate, angles, hvd
             if control_mode[i] == HvdcControlType.type_1_Pset and dispatchable[i]:
                 suffix = "{0}:{1}".format(names[i], i)
 
-                flow_sensed[i] = solver.NumVar(0, inf, 'hvdc_sense_flow_' + suffix)
+                flow_sensed[i] = solver.NumVar(
+                    0,
+                    inf,
+                    'hvdc_sense_flow_' + suffix
+                )
 
                 solver.Add(
                     flow_sensed[i] == flow_f[i] * sense,
-                    'hvdc_sense_restriction_assignment_' + suffix)
+                    'hvdc_sense_restriction_assignment_' + suffix
+                )
 
     # todo: ver cómo devolver el peso para el slack de hvdc que sea la diferencia entre el rate-flow (¿puede ser una variable?)
 
@@ -1093,7 +1148,8 @@ def formulate_hvdc_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase,
                 suffix = "Branch_{0}@Hvdc_{1}".format(m, i)
 
                 flow_n1 = solver.NumVar(
-                    -rates[m], rates[m],
+                    -rates[m],
+                    rates[m],
                     'hvdc_n-1_flow_' + suffix
                 )
 
@@ -1103,12 +1159,12 @@ def formulate_hvdc_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase,
                 )
 
                 # store vars
-                con_hvdc_idx.append((m, i))
+                con_hvdc_idx.append((m, [i]))
                 flow_hvdc_n1f.append(flow_n1)
                 # con_alpha.append(PTDF[m, _f_hvdc] - PTDF[m, _t_hvdc] - alpha[m])
                 con_alpha.append(alpha[m] - (PTDF[m, _f_hvdc] - PTDF[m, _t_hvdc]))
 
-    return flow_hvdc_n1f, con_alpha, con_hvdc_idx
+    return flow_hvdc_n1f, np.array([con_alpha]).T, con_hvdc_idx
 
 
 def formulate_generator_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase, branch_names, generator_names,
@@ -1139,7 +1195,7 @@ def formulate_generator_contingency(solver: pywraplp.Solver, ContingencyRates, S
 
     flow_gen_n1f = list()
     con_gen_idx = list()
-    alpha_n1_list = list()
+    con_alpha = list()
 
     generation_contingency_threshold_pu = generation_contingency_threshold / Sbase
 
@@ -1166,12 +1222,12 @@ def formulate_generator_contingency(solver: pywraplp.Solver, ContingencyRates, S
                     )
 
                     # store vars
-                    con_gen_idx.append((m, j))
+                    con_gen_idx.append((m, [j]))
                     flow_gen_n1f.append(flow_n1)
                     # alpha_n1_list.append(PTDF[m, i] - alpha[m])
-                    alpha_n1_list.append(alpha[m] - PTDF[m, i])
+                    con_alpha.append(alpha[m] - PTDF[m, i])
 
-    return flow_gen_n1f, alpha_n1_list, con_gen_idx
+    return flow_gen_n1f, np.array([con_alpha]).T, con_gen_idx
 
 
 def formulate_objective_old(solver: pywraplp.Solver,
@@ -2056,22 +2112,42 @@ class OpfNTC(Opf):
         )
 
         if self.consider_contingencies:
+
             # formulate the contingencies
-            n1flow_f, con_brn_alpha, con_br_idx = formulate_contingency(
+
+            # n1flow_f, con_brn_alpha, con_br_idx = formulate_contingency(
+            #     solver=self.solver,
+            #     ContingencyRates=self.numerical_circuit.ContingencyRates[:, t],
+            #     Sbase=self.numerical_circuit.Sbase,
+            #     branch_names=self.numerical_circuit.branch_names,
+            #     contingency_enabled_indices=self.numerical_circuit.branch_data.get_contingency_enabled_indices(),
+            #     LODF=self.LODF,
+            #     F=self.numerical_circuit.F,
+            #     T=self.numerical_circuit.T,
+            #     branch_sensitivity_threshold=self.branch_sensitivity_threshold,
+            #     flow_f=flow_f,
+            #     monitor=monitor,
+            #     lodf_replacement_value=0,
+            #     alpha=self.alpha,
+            #     alpha_n1=self.alpha_n1,
+            #     logger=self.logger
+            # )
+
+            n1flow_f, con_brn_alpha, con_br_idx = formulate_contingency_nx(
                 solver=self.solver,
                 ContingencyRates=self.numerical_circuit.ContingencyRates[:, t],
                 Sbase=self.numerical_circuit.Sbase,
                 branch_names=self.numerical_circuit.branch_names,
                 contingency_enabled_indices=self.numerical_circuit.branch_data.get_contingency_enabled_indices(),
-                LODF=self.LODF,
+                LODF_NX=self.LODF_NX,
                 F=self.numerical_circuit.F,
                 T=self.numerical_circuit.T,
                 branch_sensitivity_threshold=self.branch_sensitivity_threshold,
                 flow_f=flow_f,
                 monitor=monitor,
-                lodf_replacement_value=0,
                 alpha=self.alpha,
                 alpha_n1=self.alpha_n1,
+                lodf_replacement_value=0,
                 logger=self.logger
             )
 
@@ -2199,317 +2275,6 @@ class OpfNTC(Opf):
 
         return self.solver
 
-    def check(self):
-        """
-        Formulate the Net Transfer Capacity problem
-        :return:
-        """
-        # time index
-        t = 0
-
-        # general indices
-        n = self.numerical_circuit.nbus
-        m = self.numerical_circuit.nbr
-        ng = self.numerical_circuit.ngen
-        nb = self.numerical_circuit.nbatt
-        nl = self.numerical_circuit.nload
-        Sbase = self.numerical_circuit.Sbase
-
-        # battery
-        Pb_max = self.numerical_circuit.battery_pmax / Sbase
-        Pb_min = self.numerical_circuit.battery_pmin / Sbase
-        cost_b = self.numerical_circuit.battery_cost
-        Cbat = self.numerical_circuit.battery_data.C_bus_batt.tocsc()
-
-        # generator
-        Pg_fix = self.numerical_circuit.generator_data.get_effective_generation()[:, t] / Sbase
-        Pg_max = self.numerical_circuit.generator_pmax / Sbase
-        Pg_min = self.numerical_circuit.generator_pmin / Sbase
-        Cgen = self.numerical_circuit.generator_data.C_bus_gen.tocsc()
-
-        if self.skip_generation_limits:
-            Pg_max = self.inf * np.ones(self.numerical_circuit.ngen)
-            Pg_min = -self.inf * np.ones(self.numerical_circuit.ngen)
-
-        # load
-        Pl_fix = self.numerical_circuit.load_data.get_effective_load().real[:, t] / Sbase
-
-        # branch
-        alpha_abs = np.abs(self.alpha)
-        alpha_n1_abs = np.abs(self.alpha_n1)
-
-        # check variables
-        for var in self.solver.variables():
-
-            if var.solution_value() > var.Ub():
-                self.logger.add_divergence(
-                    'Variable over the upper bound', var.name(), var.solution_value(), var.Ub())
-            if var.solution_value() < var.Lb():
-                self.logger.add_divergence(
-                    'Variable under the lower bound', var.name(), var.solution_value(), var.Lb())
-
-        # formulate the generation
-        if self.generation_formulation == GenerationNtcFormulation.Optimal:
-
-            check_optimal_generation(
-                generator_active=self.numerical_circuit.generator_data.active[:, t],
-                dispatchable=self.numerical_circuit.generator_data.generator_dispatchable,
-                generator_names=self.numerical_circuit.generator_data.names,
-                Cgen=Cgen,
-                Pgen=Pg_fix,
-                a1=self.area_from_bus_idx,
-                a2=self.area_to_bus_idx,
-                generation=self.extract(self.Pg),
-                delta=self.extract(self.Pg_delta),
-                logger=self.logger)
-
-        elif self.generation_formulation == GenerationNtcFormulation.Proportional:
-
-            check_proportional_generation(
-                generator_active=self.numerical_circuit.generator_data.active[:, t],
-                generator_dispatchable=self.numerical_circuit.generator_data.generator_dispatchable,
-                generator_cost=self.numerical_circuit.generator_data.generator_cost[:, t],
-                generator_names=self.numerical_circuit.generator_data.names,
-                Sbase=self.numerical_circuit.Sbase,
-                Cgen=Cgen,
-                Pgen=Pg_fix,
-                Pmax=Pg_max,
-                Pmin=Pg_min,
-                a1=self.area_from_bus_idx,
-                a2=self.area_to_bus_idx,
-                generation=self.extract(self.Pg),
-                delta=self.extract(self.Pg_delta),
-                power_shift=self.power_shift.solution_value(),
-                logger=self.logger
-            )
-        else:
-            raise Exception('Unknown generation mode')
-
-        monitor = check_branches_flow(
-            nbr=self.numerical_circuit.nbr,
-            Rates=self.numerical_circuit.Rates,
-            Sbase=self.numerical_circuit.Sbase,
-            branch_active=self.numerical_circuit.branch_active,
-            branch_names=self.numerical_circuit.branch_names,
-            branch_dc=self.numerical_circuit.branch_data.dc,
-            control_mode=self.numerical_circuit.branch_data.control_mode,
-            R=self.numerical_circuit.branch_data.R,
-            X=self.numerical_circuit.branch_data.X,
-            F=self.numerical_circuit.F,
-            T=self.numerical_circuit.T,
-            monitor_loading=self.numerical_circuit.branch_data.monitor_loading,
-            branch_sensitivity_threshold=self.branch_sensitivity_threshold,
-            monitor_only_sensitive_branches=self.monitor_only_sensitive_branches,
-            angles=self.extract(self.theta),
-            alpha_abs=alpha_abs,
-            alpha_n1_abs=alpha_n1_abs,
-            logger=self.logger,
-            flow_f=self.extract(self.s_from),
-            tau=self.extract(self.phase_shift))
-
-        check_contingency(
-            ContingencyRates=self.numerical_circuit.ContingencyRates,
-            Sbase=self.numerical_circuit.Sbase,
-            branch_names=self.numerical_circuit.branch_names,
-            contingency_enabled_indices=self.numerical_circuit.branch_data.get_contingency_enabled_indices(),
-            LODF=self.LODF,
-            F=self.numerical_circuit.F,
-            T=self.numerical_circuit.T,
-            branch_sensitivity_threshold=self.branch_sensitivity_threshold,
-            flow_f=self.extract(self.s_from),
-            monitor=monitor,
-            logger=self.logger)
-
-        check_hvdc_flow(
-            nhvdc=self.numerical_circuit.nhvdc,
-            names=self.numerical_circuit.hvdc_names,
-            rate=self.numerical_circuit.hvdc_data.rate[:, t],
-            angles=self.extract(self.theta),
-            hvdc_active=self.numerical_circuit.hvdc_data.active[:, t],
-            Pt=self.numerical_circuit.hvdc_data.Pset[:, t],
-            angle_droop=self.numerical_circuit.hvdc_data.get_angle_droop_in_pu_rad(Sbase)[:, t],
-            control_mode=self.numerical_circuit.hvdc_data.control_mode,
-            dispatchable=self.numerical_circuit.hvdc_data.dispatchable,
-            F=self.numerical_circuit.hvdc_data.get_bus_indices_f(),
-            T=self.numerical_circuit.hvdc_data.get_bus_indices_t(),
-            Sbase=self.numerical_circuit.Sbase,
-            flow_f=self.extract(self.hvdc_flow),
-            logger=self.logger)
-
-        Pinj = check_power_injections(
-            load_power=Pl_fix,
-            Cgen=Cgen,
-            generation=self.extract(self.Pg),
-            Cload=self.numerical_circuit.load_data.C_bus_load)
-
-        check_node_balance(
-            Bbus=self.numerical_circuit.Bbus,
-            angles=self.extract(self.theta),
-            Pinj=Pinj,
-            bus_active=self.numerical_circuit.bus_data.active[:, t],
-            bus_names=self.numerical_circuit.bus_data.names,
-            logger=self.logger)
-
-    def check_ts(self, t=0):
-        """
-        Formulate the Net Transfer Capacity problem
-        param t: time index
-        :return:
-        """
-
-        # general indices
-        n = self.numerical_circuit.nbus
-        m = self.numerical_circuit.nbr
-        ng = self.numerical_circuit.ngen
-        nb = self.numerical_circuit.nbatt
-        nl = self.numerical_circuit.nload
-        Sbase = self.numerical_circuit.Sbase
-
-        # battery
-        Pb_max = self.numerical_circuit.battery_pmax / Sbase
-        Pb_min = self.numerical_circuit.battery_pmin / Sbase
-        cost_b = self.numerical_circuit.battery_cost
-        Cbat = self.numerical_circuit.battery_data.C_bus_batt.tocsc()
-
-        # generator
-        Pg_fix = self.numerical_circuit.generator_data.get_effective_generation()[:, t] / Sbase
-        Pg_max = self.numerical_circuit.generator_pmax / Sbase
-        Cgen = self.numerical_circuit.generator_data.C_bus_gen.tocsc()
-
-        if self.skip_generation_limits:
-            Pg_max = self.inf * np.ones(self.numerical_circuit.ngen)
-            Pg_min = -self.inf * np.ones(self.numerical_circuit.ngen)
-
-        # load
-        Pl_fix = self.numerical_circuit.load_data.get_effective_load().real[:, t] / Sbase
-
-        # branch
-        alpha_abs = np.abs(self.alpha)
-
-        # check that the slacks are 0
-        if self.all_slacks is not None:
-            for var_array in self.all_slacks:
-                for var in var_array:
-                    if isinstance(var, float) or isinstance(var, int):
-                        val = var
-                    else:
-                        val = var.solution_value()
-
-                    if abs(val) > 0:
-                        self.logger.add_divergence(
-                            'Slack variable is over the tolerance', var.name(), val, 0)
-
-        # check variables
-        for var in self.solver.variables():
-
-            if var.solution_value() > var.Ub():
-                self.logger.add_divergence(
-                    'Variable over the upper bound', var.name(), var.solution_value(), var.Ub())
-            if var.solution_value() < var.Lb():
-                self.logger.add_divergence(
-                    'Variable under the lower bound', var.name(), var.solution_value(), var.Lb())
-
-        # formulate the generation
-        if self.generation_formulation == GenerationNtcFormulation.Optimal:
-
-            check_optimal_generation(
-                generator_active=self.numerical_circuit.generator_data.active[:, t],
-                dispatchable=self.numerical_circuit.generator_data.generator_dispatchable,
-                generator_names=self.numerical_circuit.generator_data.names,
-                Cgen=Cgen,
-                Pgen=Pg_fix,
-                a1=self.area_from_bus_idx,
-                a2=self.area_to_bus_idx,
-                generation=self.extract(self.Pg),
-                delta=self.extract(self.Pg_delta),
-                logger=self.logger)
-
-        elif self.generation_formulation == GenerationNtcFormulation.Proportional:
-
-            check_proportional_generation(
-                generator_active=self.numerical_circuit.generator_data.active[:, t],
-                generator_dispatchable=self.numerical_circuit.generator_data.generator_dispatchable,
-                generator_cost=self.numerical_circuit.generator_data.generator_cost[:, t],
-                generator_names=self.numerical_circuit.generator_data.names,
-                Sbase=self.numerical_circuit.Sbase,
-                Cgen=Cgen,
-                Pgen=Pg_fix,
-                Pmax=Pg_max,
-                Pmin=Pg_min,
-                a1=self.area_from_bus_idx,
-                a2=self.area_to_bus_idx,
-                generation=self.extract(self.Pg),
-                delta=self.extract(self.Pg_delta),
-                power_shift=self.power_shift.solution_value(),
-                logger=self.logger
-            )
-        else:
-            raise Exception('Unknown generation mode')
-
-        monitor = check_branches_flow(
-            nbr=self.numerical_circuit.nbr,
-            Rates=self.numerical_circuit.Rates[:, t],
-            Sbase=self.numerical_circuit.Sbase,
-            branch_active=self.numerical_circuit.branch_active[:, t],
-            branch_names=self.numerical_circuit.branch_names,
-            branch_dc=self.numerical_circuit.branch_data.dc,
-            control_mode=self.numerical_circuit.branch_data.control_mode,
-            R=self.numerical_circuit.branch_data.R,
-            X=self.numerical_circuit.branch_data.X,
-            F=self.numerical_circuit.F,
-            T=self.numerical_circuit.T,
-            monitor_loading=self.numerical_circuit.branch_data.monitor_loading,
-            branch_sensitivity_threshold=self.branch_sensitivity_threshold,
-            monitor_only_sensitive_branches=self.monitor_only_sensitive_branches,
-            angles=self.extract(self.theta),
-            alpha_abs=alpha_abs,
-            logger=self.logger,
-            flow_f=self.extract(self.s_from),
-            tau=self.extract(self.phase_shift))
-
-        check_contingency(
-            ContingencyRates=self.numerical_circuit.ContingencyRates[:, t],
-            Sbase=self.numerical_circuit.Sbase,
-            branch_names=self.numerical_circuit.branch_names,
-            contingency_enabled_indices=self.numerical_circuit.branch_data.get_contingency_enabled_indices(),
-            LODF=self.LODF,
-            F=self.numerical_circuit.F,
-            T=self.numerical_circuit.T,
-            branch_sensitivity_threshold=self.branch_sensitivity_threshold,
-            flow_f=self.extract(self.s_from),
-            monitor=monitor,
-            logger=self.logger)
-
-        check_hvdc_flow(
-            nhvdc=self.numerical_circuit.nhvdc,
-            names=self.numerical_circuit.hvdc_names,
-            rate=self.numerical_circuit.hvdc_data.rate[:, t],
-            angles=self.extract(self.theta),
-            hvdc_active=self.numerical_circuit.hvdc_data.active[:, t],
-            Pt=self.numerical_circuit.hvdc_data.Pset[:, t],
-            angle_droop=self.numerical_circuit.hvdc_data.get_angle_droop_in_pu_rad(Sbase)[:, t],
-            control_mode=self.numerical_circuit.hvdc_data.control_mode,
-            dispatchable=self.numerical_circuit.hvdc_data.dispatchable,
-            F=self.numerical_circuit.hvdc_data.get_bus_indices_f(),
-            T=self.numerical_circuit.hvdc_data.get_bus_indices_t(),
-            Sbase=self.numerical_circuit.Sbase,
-            flow_f=self.extract(self.hvdc_flow),
-            logger=self.logger)
-
-        Pinj = check_power_injections(
-            load_power=Pl_fix,
-            Cgen=Cgen,
-            generation=self.extract(self.Pg),
-            Cload=self.numerical_circuit.load_data.C_bus_load)
-
-        check_node_balance(
-            Bbus=self.numerical_circuit.Bbus,
-            angles=self.extract(self.theta),
-            Pinj=Pinj,
-            bus_active=self.numerical_circuit.bus_data.active[:, t],
-            bus_names=self.numerical_circuit.bus_data.names,
-            logger=self.logger)
-
     def save_lp(self, file_name="ntc_opf_problem.lp"):
         """
         Save problem in LP format
@@ -2517,7 +2282,7 @@ class OpfNTC(Opf):
         """
         save_lp(self.solver, file_name)
 
-    def solve(self, with_solution_checks=True, time_limit_ms=0):
+    def solve(self, time_limit_ms=0):
         """
         Call ORTools to solve the problem
         """
@@ -2527,15 +2292,10 @@ class OpfNTC(Opf):
         self.status = self.solver.Solve()
 
         solved = self.solved()
-
-        # check the solution
-        self.save_lp('snp_ntc_opf.lp')
-        if not solved and with_solution_checks:
-            self.check()
 
         return solved
 
-    def solve_ts(self, t, with_check=True, time_limit_ms=0):
+    def solve_ts(self, t, time_limit_ms=0):
         """
         Call ORTools to solve the problem
         """
@@ -2545,11 +2305,6 @@ class OpfNTC(Opf):
         self.status = self.solver.Solve()
 
         solved = self.solved()
-
-        # check the solution
-        if not solved and with_check:
-            self.save_lp('h{0}_ntc_opf_ts.lp'.format(t))
-            self.check_ts()
 
         return solved
 

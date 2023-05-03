@@ -118,6 +118,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
         tm0 = time.time()
         nc = compile_opf_time_circuit(self.grid)
         # self.logger.add_info('Circuit compiled in {0:.2f} scs.'.format(time.time()-tm0))
+        print(f'Time circuit compiled in {time.time()-tm0:.2f} scs')
 
         time_indices = self.get_time_indices()
 
@@ -257,8 +258,8 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             # tm0 = time.time()
             solved = problem.solve_ts(
                 t=t,
-                with_check=self.options.with_solution_checks,
-                time_limit_ms=self.options.time_limit_ms)
+                time_limit_ms=self.options.time_limit_ms
+            )
             # print('Problem solved in {0:.2f} scs.'.format(time.time() - tm0))
 
             self.logger += problem.logger
@@ -474,7 +475,6 @@ if __name__ == '__main__':
         perform_previous_checks=False,
         weight_power_shift=1e5,
         weight_generation_cost=1e2,
-        with_solution_checks=False,
         time_limit_ms=1e4,
         loading_threshold_to_report=.98
     )

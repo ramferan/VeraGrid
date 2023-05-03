@@ -4399,7 +4399,6 @@ class MainGUI(QMainWindow):
                     sensitivity_dT=dT,
                     transfer_method=mode,
                     perform_previous_checks=perform_previous_checks,
-                    with_solution_checks=False,
                     weight_power_shift=weight_power_shift,
                     weight_generation_cost=weight_generation_cost,
                     consider_contingencies=consider_contingencies,
@@ -4513,13 +4512,10 @@ class MainGUI(QMainWindow):
 
                 if self.ui.optimalRedispatchRadioButton.isChecked():
                     generation_formulation = dev.GenerationNtcFormulation.Optimal
-                    # perform_previous_checks = False
                 elif self.ui.proportionalRedispatchRadioButton.isChecked():
                     generation_formulation = dev.GenerationNtcFormulation.Proportional
-                    # perform_previous_checks = True
                 else:
                     generation_formulation = dev.GenerationNtcFormulation.Optimal
-                    # perform_previous_checks = False
 
                 monitor_only_sensitive_branches = self.ui.ntcSelectBasedOnExchangeSensitivityCheckBox.isChecked()
                 monitor_only_ntc_rule_branches = self.ui.ntcSelectBasedOnAcerCriteriaCheckBox.isChecked()
@@ -4562,7 +4558,6 @@ class MainGUI(QMainWindow):
                     sensitivity_dT=dT,
                     transfer_method=mode,
                     perform_previous_checks=perform_previous_checks,
-                    with_solution_checks=False,
                     weight_power_shift=weight_power_shift,
                     weight_generation_cost=weight_generation_cost,
                     consider_contingencies=consider_contingencies,
@@ -6322,39 +6317,61 @@ class MainGUI(QMainWindow):
 
         model = self.ui.dataStructureTableView.model()
 
+        elm_type = self.ui.dataStructuresListView.selectedIndexes()[0].data(role=QtCore.Qt.DisplayRole)
+
         if model is not None:
-            sel_idx = self.ui.dataStructureTableView.selectedIndexes()
-            objects = model.objects
 
-            if len(sel_idx) > 0:
+                sel_idx = self.ui.dataStructureTableView.selectedIndexes()
+                objects = model.objects
 
-                ok = yes_no_question('Are you sure that you want to delete the selected elements?', 'Delete')
-                if ok:
+                if len(sel_idx) > 0:
 
-                    # get the unique rows
-                    unique = set()
-                    for idx in sel_idx:
-                        unique.add(idx.row())
+                    ok = yes_no_question('Are you sure that you want to delete the selected elements?', 'Delete')
+                    if ok:
+                        # get the unique rows
+                        unique = set()
+                        for idx in sel_idx:
+                            unique.add(idx.row())
 
-                    unique = list(unique)
-                    unique.sort(reverse=True)
-                    for r in unique:
+                        unique = list(unique)
+                        unique.sort(reverse=True)
 
-                        if objects[r].graphic_obj is not None:
-                            # this is a more complete function than the circuit one because it removes the
-                            # graphical items too, and for loads and generators it deletes them properly
-                            objects[r].graphic_obj.remove(ask=False)
+
+                        if elm_type == DeviceType.ContingencyGroupDevice.value:
+                            for r in unique:
+                                self.circuit.delete_contingency_group(r)
+
+                        elif elm_type == DeviceType.ContingencyDevice.value:
+                            for r in unique:
+                                self.circuit.delete_contingency(r)
+
+                        elif elm_type == DeviceType.InvestmentsGroupDevice.value:
+                            for r in unique:
+                                self.circuit.delete_investment_groups(r)
+
+                        elif elm_type == DeviceType.InvestmentDevice.value:
+                            for r in unique:
+                                self.circuit.delete_investment(r)
+
                         else:
-                            objects.pop(r)
 
-                    # update the view
-                    self.display_filter(objects)
-                    self.update_area_combos()
-                    self.update_date_dependent_combos()
+                            for r in unique:
+
+                                if objects[r].graphic_obj is not None:
+                                    # this is a more complete function than the circuit one because it removes the
+                                    # graphical items too, and for loads and generators it deletes them properly
+                                    objects[r].graphic_obj.remove(ask=False)
+                                else:
+                                    objects.pop(r)
+
+                            # update the view
+                            self.display_filter(objects)
+                            self.update_area_combos()
+                            self.update_date_dependent_combos()
+                    else:
+                        pass
                 else:
-                    pass
-            else:
-                info_msg('Select some cells')
+                    info_msg('Select some cells')
         else:
             pass
 

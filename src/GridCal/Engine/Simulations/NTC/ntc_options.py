@@ -40,7 +40,6 @@ class OptimalNetTransferCapacityOptions:
                  sensitivity_dT=100.0,
                  weight_power_shift=1e0,
                  weight_generation_cost=1e-2,
-                 with_solution_checks=True,
                  time_limit_ms=1e4,
                  consider_contingencies=True,
                  consider_hvdc_contingencies=False,
@@ -72,7 +71,6 @@ class OptimalNetTransferCapacityOptions:
         :param sensitivity_dT:
         :param weight_power_shift:
         :param weight_generation_cost:
-        :param with_solution_checks:
         :param time_limit_ms:
         :param generation_contingency_threshold:
         :param trm:
@@ -120,7 +118,6 @@ class OptimalNetTransferCapacityOptions:
 
         self.generation_contingency_threshold = generation_contingency_threshold
 
-        self.with_solution_checks = with_solution_checks
         self.time_limit_ms = time_limit_ms
         self.loading_threshold_to_report = loading_threshold_to_report
 

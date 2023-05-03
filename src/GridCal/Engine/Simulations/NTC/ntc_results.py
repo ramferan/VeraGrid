@@ -8,12 +8,15 @@ from GridCal.Engine.Simulations.results_template import ResultsTemplate
 from GridCal.Engine.Devices.enumerations import TransformerControlType, HvdcControlType
 
 
-def add_exchange_sensitivities(y, columns, alpha, mc_idx=None, alpha_n1=None, report_contigency_alpha=False):
+def add_exchange_sensitivities(y, columns, alpha, mc_idx=None, alpha_n1=None, report_contigency_alpha=False,
+                               decimals=5, str_separator=' - '):
     """
     :param y: report data matrix
     :param columns: report column names
     :param mc_idx: Idx tuple (monitor, contingency) for contingency flows
     :param alpha_n1: exchange sensitivities
+    :param report_contigency_alpha: boolean to report contingency element alpha
+    :param: decimals: alpha decimals to report
     :return: Extended y, columns with required data
     """
 
@@ -23,7 +26,7 @@ def add_exchange_sensitivities(y, columns, alpha, mc_idx=None, alpha_n1=None, re
 
     if mc_idx:
         # unzip monitor and contingency lists
-        m, c = list(map(list, zip(*np.array(mc_idx))))
+        m, c = list(map(list, zip(*np.array(mc_idx, dtype=object))))
 
     else:
         m = np.arange(len(alpha))
@@ -40,35 +43,41 @@ def add_exchange_sensitivities(y, columns, alpha, mc_idx=None, alpha_n1=None, re
 
     if report_contigency_alpha and mc_idx:
         y_ = np.array([
-            alpha[c],  # Alpha: sensibility to exchange power for contingency elements
+            # Collapse alpha into one column
+            ['; '.join(row) for row in np.round(alpha[c].astype(float), decimals=decimals).astype(str)],
         ], dtype=object).T
 
         y = np.concatenate([y, y_], axis=1)
 
+        if alpha_n1.shape[1] > 1:
+            c_str = str_separator.join(['c'+str(i) for i in range(alpha_n1.shape[1])])
+            c_name = f'Alpha contingency element [{c_str}]'
+        else:
+            c_name = f'Alpha contingency element'
+
         columns.extend([
-            'Alpha [contingency element]',
+            [c_name]
         ])
 
     if alpha_n1 is not None:
 
-        # Worst alpha for monitorized branch
-        # idx_w = np.argmax(np.abs(alpha_n1), axis=1)
-        # alpha_w = np.take_along_axis(alpha_n1, np.expand_dims(idx_w, axis=1), axis=1)
-        #
-        # # Alpha for contingency branch
-        # alpha_mc = np.array([alpha_n1[m, c]]).T
-        #
-        # y = np.concatenate([y, alpha_mc, alpha_w[m]], axis=1)
-        # columns.extend([
-        #     'Alpha n-1',
-        #     '| Worst alpha n-1 |',
-        # ])
-        y_ = np.array([alpha_n1], dtype=object).T
+        y_ = np.array(
+            # Collapse alpha_n1 into one column
+            [['; '.join(row) for row in np.round(alpha_n1.astype(float), decimals=decimals).astype(str)]],
+            dtype=object
+        ).T
 
         y = np.concatenate([y, y_], axis=1)
-        columns.extend([
-            'Alpha n-1',
-        ])
+
+        if alpha_n1.shape[1] > 1:
+            c_str = str_separator.join(['c'+str(i) for i in range(alpha_n1.shape[1])])
+            c_name = f'Alpha n-1 [{c_str}]'
+        else:
+            c_name = f'Alpha n-1'
+
+        columns.extend(
+            [c_name]
+        )
 
     return y, columns
 
@@ -731,7 +740,6 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
                 f'Loading threshold: {str(loading_threshold)}. ' \
                 f'Reverse: {str(reverse)}'
 
-
         labels, columns, y = get_contingency_flow_table(
             mc_idx=self.contingency_generation_indices_list,
             flow=self.Sf,
@@ -988,7 +996,6 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
         self.create_monitoring_logic_report()
         self.create_interarea_exchange_report()
 
-
         if save_memory:
             self.alpha_n1 = None
 
@@ -1196,7 +1203,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
             )
 
         elif result_type == ResultTypes.ContingencyFlowsBranchReport:
-            return self.get_contingency_hvdc_report(
+            return self.get_contingency_branch_report(
                 loading_threshold=self.loading_threshold,
                 reverse=self.reversed_sort_loading,
             )
@@ -1270,7 +1277,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
 
     def get_contingency_generation_report(self, loading_threshold=0.0, reverse=True):
 
-        title = f'{ResultTypes.ContingencyFlowsBranchReport.value[0]}. ' \
+        title = f'{ResultTypes.ContingencyFlowsGenerationReport.value[0]}. ' \
                 f'Loading threshold: {str(loading_threshold)}. ' \
                 f'Reverse: {str(reverse)}'
 
@@ -1364,7 +1371,7 @@ def apply_sort(y, labels, col, reverse=False):
 
 def get_contingency_flow_table(
         mc_idx, flow, contingency_flow, monitor_names, contingency_names,
-        rates, contingency_rates
+        rates, contingency_rates, str_separator='; '
 ):
     """
     Get flow report
@@ -1395,11 +1402,12 @@ def get_contingency_flow_table(
         return labels, columns, y
 
     # unzip monitor and contingency lists
-    m, c = list(map(list, zip(*np.array(mc_idx))))
+    m, c = list(map(list, zip(*np.array(mc_idx, dtype=object))))
 
+    cnt_names = list([str_separator.join(row) for row in contingency_names[c]])
     y = np.array([
         monitor_names[m],
-        contingency_names[c],  # Contingency name
+        cnt_names,  # Contingency name
         flow[m].real,  # Branch flow
         np.round(flow[m] / rates[m] * 100, 2),  # Branch loading
         rates[m],  # Rates

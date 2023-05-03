@@ -1628,9 +1628,15 @@ class MultiCircuit:
 
     def delete_contingency_group(self, i):
         """
-        Delete zone
+        Delete contingency group
         :param i: index
         """
+
+        # Delete all contingencies belongs to the group
+        for j in range(len(self.contingencies)-1, -1, -1):
+            if self.contingencies[j].group.idtag == self.contingency_groups[i].idtag:
+                self.contingencies.pop(j)
+
         self.contingency_groups.pop(i)
 
     def add_contingency(self, obj: Contingency):
@@ -1638,10 +1644,19 @@ class MultiCircuit:
 
     def delete_contingency(self, i):
         """
-        Delete zone
+        Delete contingency
         :param i: index
         """
+        # Get contingecny group.
+        cg_idtag = self.contingencies[i].group.idtag
+        cg_idx = [i for i, cg in enumerate(self.contingency_groups) if cg.idtag == cg_idtag][0]
+
+        # Delete the contingency
         self.contingencies.pop(i)
+
+        # Delete contingency group if was the last contingency in the group
+        if len([c for c in self.contingencies if c.group.idtag == cg_idtag]) == 0:
+            self.delete_contingency_group(i=cg_idx)
 
     def add_investments_group(self, obj: InvestmentsGroup):
         self.investments_groups.append(obj)

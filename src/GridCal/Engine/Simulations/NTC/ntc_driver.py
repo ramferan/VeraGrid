@@ -252,6 +252,7 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 alpha=alpha,
                 alpha_n1=alpha_n1,
                 LODF=linear.LODF,
+                LODF_NX=linear.LODF_NX,
                 PTDF=linear.PTDF,
                 solver_type=self.options.mip_solver,
                 generation_formulation=self.options.generation_formulation,
@@ -276,7 +277,6 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
             self.progress_text.emit('Solving NTC OPF...')
             problem.formulate()
             solved = problem.solve(
-                with_solution_checks=self.options.with_solution_checks,
                 time_limit_ms=self.options.time_limit_ms)
 
             err = problem.error()
@@ -454,7 +454,6 @@ if __name__ == '__main__':
     if len(idx_br) == 0:
         print('There are no inter-area branches!')
 
-
     options = OptimalNetTransferCapacityOptions(
         area_from_bus_idx=idx_from,
         area_to_bus_idx=idx_to,
@@ -476,7 +475,6 @@ if __name__ == '__main__':
         perform_previous_checks=False,
         weight_power_shift=1e5,
         weight_generation_cost=1e2,
-        with_solution_checks=False,
         time_limit_ms=1e4,
         loading_threshold_to_report=98,
     )

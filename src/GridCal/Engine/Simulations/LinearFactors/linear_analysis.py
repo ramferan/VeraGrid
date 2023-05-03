@@ -307,6 +307,7 @@ def make_worst_contingency_transfer_limits(tmc):
 
 # @nb.njit(cache=True)
 def make_lodf_nx(circuit, lodf, force_from_file=False):
+    #todo: delete force_from_file
 
     # if force_from_file:
     #     import pickle
@@ -315,9 +316,8 @@ def make_lodf_nx(circuit, lodf, force_from_file=False):
 
     lodf_nx_list = list()
 
-    # Create dictionaries to speed up access
+    # Create dictionaries to speed up the access
     cg_dict = {cg.idtag: cg for cg in circuit.contingency_groups}
-    c_dict = {c.idtag: c for c in circuit.contingencies}
     idx_dict = {e.idtag: i for i, e in enumerate(circuit.get_branches())}
 
     # Initialize c_idx list for each contingency groups
@@ -328,15 +328,15 @@ def make_lodf_nx(circuit, lodf, force_from_file=False):
     for c in circuit.contingencies:
         cg_dict[c.group.idtag].c_idx.append(idx_dict[c.device_idtag])
 
-    for cg in enumerate(circuit.contingency_groups):
+    for cg in circuit.contingency_groups:
 
         # Sort unique c_idx
         cg.c_idx = list(sorted(set(cg.c_idx), reverse=False))
 
-        # Compute LODF vector and M matrix
+        # Compute LODF vector
         L = lodf[:, cg.c_idx]  # Take the columns of the LODF associated with the contingencies
 
-        # Compute M matrix [n, n] with -lodf values
+        # Compute M matrix [n, n] (lodf relating the outaged lines to each other)
         M = np.ones((len(cg.c_idx), len(cg.c_idx)))
         for i in range(len(cg.c_idx)):
             for j in range(len(cg.c_idx)):
@@ -443,6 +443,7 @@ class LinearAnalysis:
             self.LODF_NX = make_lodf_nx(
                 circuit=self.grid,
                 lodf=self.LODF,
+                #todo: delete force_from_file
                 force_from_file=self.force_from_file,
             )
     @property

@@ -26,8 +26,17 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="GridCal/NTC:&#10; - merged with devel">
+    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="GridCal/linear_analisys:&#10; - working in lodf_nx.">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Core/multi_circuit.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Core/multi_circuit.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/LinearFactors/linear_analysis.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/LinearFactors/linear_analysis.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_driver.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_options.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_options.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_results.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_results.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_ts_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_ts_driver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/Gui/Main/GridCalMain.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Gui/Main/GridCalMain.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/Gui/Session/results_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Gui/Session/results_model.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -191,7 +200,7 @@
       <recent name="$PROJECT_DIR$/src" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.ntc_opf">
+  <component name="RunManager" selected="Python.ExecuteGridCal">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -465,9 +474,9 @@
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.ExecuteGridCal" />
         <item itemvalue="Python.ntc_opf" />
         <item itemvalue="Python.ntc_driver" />
-        <item itemvalue="Python.ExecuteGridCal" />
         <item itemvalue="Python tests.Nosetests in tests" />
         <item itemvalue="Python tests.Nosetests for tests.test_short_circuit.test_short_circuit" />
       </list>
@@ -1065,48 +1074,6 @@
       <workItem from="1674823262666" duration="1341000" />
       <workItem from="1674988874398" duration="514000" />
     </task>
-    <task id="LOCAL-00323" summary="Worked on new expressions">
-      <created>1659198521514</created>
-      <option name="number" value="00323" />
-      <option name="presentableId" value="LOCAL-00323" />
-      <option name="project" value="LOCAL" />
-      <updated>1659198521515</updated>
-    </task>
-    <task id="LOCAL-00324" summary="added negative and zero sequence magnitudes to the branches">
-      <created>1659278447975</created>
-      <option name="number" value="00324" />
-      <option name="presentableId" value="LOCAL-00324" />
-      <option name="project" value="LOCAL" />
-      <updated>1659278447975</updated>
-    </task>
-    <task id="LOCAL-00325" summary="Added DPI support">
-      <created>1659344870126</created>
-      <option name="number" value="00325" />
-      <option name="presentableId" value="LOCAL-00325" />
-      <option name="project" value="LOCAL" />
-      <updated>1659344870126</updated>
-    </task>
-    <task id="LOCAL-00326" summary="Added sequence components to the generator and battery&#10;Modelled the south island of new zealand as per arrillaga's book">
-      <created>1659437894876</created>
-      <option name="number" value="00326" />
-      <option name="presentableId" value="LOCAL-00326" />
-      <option name="project" value="LOCAL" />
-      <updated>1659437894877</updated>
-    </task>
-    <task id="LOCAL-00327" summary="Fixed the matpower expression making the new derivatives exact as matpowers'">
-      <created>1659531463759</created>
-      <option name="number" value="00327" />
-      <option name="presentableId" value="LOCAL-00327" />
-      <option name="project" value="LOCAL" />
-      <updated>1659531463759</updated>
-    </task>
-    <task id="LOCAL-00328" summary="Merged the unbalanced short circuit and removed the sympy import">
-      <created>1660324468177</created>
-      <option name="number" value="00328" />
-      <option name="presentableId" value="LOCAL-00328" />
-      <option name="project" value="LOCAL" />
-      <updated>1660324468178</updated>
-    </task>
     <task id="LOCAL-00329" summary="Integrated the new short circuit logic in the GUI">
       <created>1660327016158</created>
       <option name="number" value="00329" />
@@ -1408,7 +1375,49 @@
       <option name="project" value="LOCAL" />
       <updated>1682523039930</updated>
     </task>
-    <option name="localTasksCounter" value="372" />
+    <task id="LOCAL-00372" summary="GridCal/nx_contingencies:&#10; - starting">
+      <created>1682525365322</created>
+      <option name="number" value="00372" />
+      <option name="presentableId" value="LOCAL-00372" />
+      <option name="project" value="LOCAL" />
+      <updated>1682525365322</updated>
+    </task>
+    <task id="LOCAL-00373" summary="GridCal/ntc_opf:&#10; - delete check functions">
+      <created>1682612909554</created>
+      <option name="number" value="00373" />
+      <option name="presentableId" value="LOCAL-00373" />
+      <option name="project" value="LOCAL" />
+      <updated>1682612909554</updated>
+    </task>
+    <task id="LOCAL-00374" summary="GridCal/ntc_ts_results:&#10; - changed report group name">
+      <created>1682612960629</created>
+      <option name="number" value="00374" />
+      <option name="presentableId" value="LOCAL-00374" />
+      <option name="project" value="LOCAL" />
+      <updated>1682612960629</updated>
+    </task>
+    <task id="LOCAL-00375" summary="GridCal/ntc_ts_results:&#10; - changed report group name">
+      <created>1682612973957</created>
+      <option name="number" value="00375" />
+      <option name="presentableId" value="LOCAL-00375" />
+      <option name="project" value="LOCAL" />
+      <updated>1682612973957</updated>
+    </task>
+    <task id="LOCAL-00376" summary="GridCal/multi_circuit:&#10; - fixed set contingencies when some element is missed.">
+      <created>1682613035244</created>
+      <option name="number" value="00376" />
+      <option name="presentableId" value="LOCAL-00376" />
+      <option name="project" value="LOCAL" />
+      <updated>1682613035244</updated>
+    </task>
+    <task id="LOCAL-00377" summary="GridCal/linear_analisys:&#10; - working in lodf_nx.">
+      <created>1682613073922</created>
+      <option name="number" value="00377" />
+      <option name="presentableId" value="LOCAL-00377" />
+      <option name="project" value="LOCAL" />
+      <updated>1682613073922</updated>
+    </task>
+    <option name="localTasksCounter" value="378" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1442,11 +1451,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Merged devel with devel_REE (successfully)" />
-    <MESSAGE value="updated version" />
-    <MESSAGE value="Updated the version file" />
-    <MESSAGE value="Added losses % to the power flow time series&#10;Minor refactors of the GUI" />
-    <MESSAGE value="csc sparse branch derivatives" />
     <MESSAGE value="Fixed critical issue with short circuits handling islands" />
     <MESSAGE value="4.6.5" />
     <MESSAGE value="Refactoring NTC into new folder module.&#10;- Fixed some bugs due merge with 'devel' (renamed props)" />
@@ -1467,7 +1471,12 @@
     <MESSAGE value="GridCal/contingencies:&#10; - Fix some None type bugs&#10; &#10;GridCal/GUI:&#10; - Fix some filtering bugs&#10; &#10;GridCal/NTC:&#10; - Fix some report bugs" />
     <MESSAGE value="GridCal/NTC:&#10; - New critical elements report." />
     <MESSAGE value="GridCal/NTC:&#10; - merged with devel" />
-    <option name="LAST_COMMIT_MESSAGE" value="GridCal/NTC:&#10; - merged with devel" />
+    <MESSAGE value="GridCal/nx_contingencies:&#10; - starting" />
+    <MESSAGE value="GridCal/ntc_opf:&#10; - delete check functions" />
+    <MESSAGE value="GridCal/ntc_ts_results:&#10; - changed report group name" />
+    <MESSAGE value="GridCal/multi_circuit:&#10; - fixed set contingencies when some element is missed." />
+    <MESSAGE value="GridCal/linear_analisys:&#10; - working in lodf_nx." />
+    <option name="LAST_COMMIT_MESSAGE" value="GridCal/linear_analisys:&#10; - working in lodf_nx." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -1684,24 +1693,9 @@
           <option name="timeStamp" value="690" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/GridCal/Gui/Session/results_model.py</url>
-          <line>162</line>
-          <option name="timeStamp" value="729" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/GridCal/Gui/Session/results_model.py</url>
-          <line>164</line>
-          <option name="timeStamp" value="730" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/GridCal/Engine/Core/DataStructures/generator_data.py</url>
           <line>138</line>
           <option name="timeStamp" value="740" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/GridCal/Gui/Session/session.py</url>
-          <line>108</line>
-          <option name="timeStamp" value="802" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/GridCal/Engine/IO/power_world_parser.py</url>
@@ -1746,11 +1740,6 @@
           <url>file://$PROJECT_DIR$/src/GridCal/ThirdParty/pulp/solver_interfaces/cplex.py</url>
           <line>112</line>
           <option name="timeStamp" value="922" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/results_template.py</url>
-          <line>79</line>
-          <option name="timeStamp" value="924" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/GridCal/Gui/Visualization/visualization.py</url>
@@ -1951,26 +1940,33 @@
           <option name="timeStamp" value="1179" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py</url>
-          <line>709</line>
-          <option name="timeStamp" value="1195" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/GridCal/Gui/Main/GridCalMain.py</url>
           <line>2005</line>
           <option name="timeStamp" value="1210" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py</url>
-          <line>2150</line>
+          <line>1739</line>
           <option name="timeStamp" value="1217" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py</url>
-          <line>1226</line>
-          <option name="timeStamp" value="1259" />
+          <url>file://$PROJECT_DIR$/src/GridCal/Gui/Main/GridCalMain.py</url>
+          <line>6364</line>
+          <option name="timeStamp" value="1298" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_ts_driver.py</url>
+          <line>122</line>
+          <option name="timeStamp" value="1347" />
         </line-breakpoint>
       </breakpoints>
+      <default-breakpoints>
+        <breakpoint type="python-exception">
+          <properties notifyOnTerminate="true" exception="BaseException">
+            <option name="notifyOnTerminate" value="true" />
+          </properties>
+        </breakpoint>
+      </default-breakpoints>
     </breakpoint-manager>
   </component>
 </project>
