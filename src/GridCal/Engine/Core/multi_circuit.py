@@ -2768,7 +2768,10 @@ class MultiCircuit:
             c.code not in devices_code_dict.keys()
         ]
 
-        incomplete_groups, incomplete_groups_idx = zip(*zipped_groups)
+        if len(zipped_groups) != 0:
+            incomplete_groups, incomplete_groups_idx = zip(*zipped_groups)
+        else:
+            incomplete_groups, incomplete_groups_idx = list(), list()
 
         # Report all incompleted groups to be ignored
         for group in incomplete_groups:

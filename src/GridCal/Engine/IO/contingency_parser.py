@@ -56,6 +56,7 @@ def get_contingencies_dict(circuit: MultiCircuit):
         element = {
             "key": contingency.idtag,
             "name": contingency.name,
+            "device_idtag": contingency.device_idtag,
             "code": contingency.code,
             "property": contingency.prop,
             "value": contingency.value,
@@ -81,7 +82,7 @@ def export_contingencies_json_file(circuit: MultiCircuit, file_path):
     contingencies = get_contingencies_dict(circuit=circuit)
 
     data = {
-        'file_type': 'Contingency Exchange Json File',
+        'type': 'Contingency Exchange Json File',
         'version': str(version),
         'contingencies': contingencies,
     }
