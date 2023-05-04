@@ -9,7 +9,7 @@ from GridCal.Engine.Devices.enumerations import TransformerControlType, HvdcCont
 
 
 def add_exchange_sensitivities(y, columns, alpha, mc_idx=None, alpha_n1=None, report_contigency_alpha=False,
-                               decimals=5, str_separator=' - '):
+                               decimals=5, str_separator='; '):
     """
     :param y: report data matrix
     :param columns: report column names
@@ -19,6 +19,34 @@ def add_exchange_sensitivities(y, columns, alpha, mc_idx=None, alpha_n1=None, re
     :param: decimals: alpha decimals to report
     :return: Extended y, columns with required data
     """
+
+
+    columns.extend([
+        'Alpha',
+    ])
+
+    if report_contigency_alpha:
+        if alpha_n1.shape[1] > 1:
+            c_str = str_separator.join(['cnt'+str(i) for i in range(alpha_n1.shape[1])])
+            c_name = f'Alpha [{c_str}]'
+        else:
+            c_name = f'Alpha cnt'
+
+        columns.extend([
+            [c_name]
+        ])
+
+    if alpha_n1 is not None:
+        if np.any([len(a) > 1 for a in alpha_n1]):
+            max_n = np.max([len(a) for a in alpha_n1])
+            c_str = str_separator.join(['c'+str(i) for i in range(max_n)])
+            c_name = f'Alpha n-1 [{c_str}]'
+        else:
+            c_name = f'Alpha n-1'
+
+        columns.extend(
+            [c_name]
+        )
 
     if y.shape[0] == 0:
         # empty data, return
@@ -37,48 +65,23 @@ def add_exchange_sensitivities(y, columns, alpha, mc_idx=None, alpha_n1=None, re
 
     y = np.concatenate([y, y_], axis=1)
 
-    columns.extend([
-        'Alpha',
-    ])
-
     if report_contigency_alpha and mc_idx:
         y_ = np.array([
             # Collapse alpha into one column
-            ['; '.join(row) for row in np.round(alpha[c].astype(float), decimals=decimals).astype(str)],
+            [str_separator.join(row) for row in np.round(alpha[c].astype(float), decimals=decimals).astype(str)],
         ], dtype=object).T
 
         y = np.concatenate([y, y_], axis=1)
 
-        if alpha_n1.shape[1] > 1:
-            c_str = str_separator.join(['c'+str(i) for i in range(alpha_n1.shape[1])])
-            c_name = f'Alpha contingency element [{c_str}]'
-        else:
-            c_name = f'Alpha contingency element'
-
-        columns.extend([
-            [c_name]
-        ])
 
     if alpha_n1 is not None:
-
         y_ = np.array(
             # Collapse alpha_n1 into one column
-            [['; '.join(a.astype(str)) for a in alpha_n1]],
+            [[str_separator.join(a.astype(str)) for a in alpha_n1]],
             dtype=object
         ).T
 
         y = np.concatenate([y, y_], axis=1)
-
-        if np.any([len(a) > 1 for a in alpha_n1]):
-            max_n = np.max([len(a) for a in alpha_n1])
-            c_str = str_separator.join(['c'+str(i) for i in range(max_n)])
-            c_name = f'Alpha n-1 [{c_str}]'
-        else:
-            c_name = f'Alpha n-1'
-
-        columns.extend(
-            [c_name]
-        )
 
     return y, columns
 
@@ -92,6 +95,10 @@ def add_maczt(y, columns, trm, ttc):
     :param trm: Transmission reliability margin
     :return: Extended y, columns with required data
     """
+
+    columns.extend([
+        'MACZT',
+    ])
 
     if y.shape[0] == 0:
         # empty data, return
@@ -108,10 +115,6 @@ def add_maczt(y, columns, trm, ttc):
 
     y = np.concatenate([y, maczt.T], axis=1)
 
-    columns.extend([
-        'MACZT',
-    ])
-
     return y, columns
 
 
@@ -123,6 +126,10 @@ def add_min_ntc(y, columns, ntc_load_rule):
     :param ntc_load_rule: percentage of rate reserved to exchange purposes
     :return: Extended y, columns with required data
     """
+
+    columns.extend([
+        'NTC min'
+    ])
 
     if y.shape[0] == 0:
         # empty data, return
@@ -139,10 +146,6 @@ def add_min_ntc(y, columns, ntc_load_rule):
 
     y = np.concatenate([y, min_ntc.T], axis=1)
 
-    columns.extend([
-        'NTC min'
-    ])
-
     return y, columns
 
 
@@ -156,6 +159,12 @@ def add_ntc_data(y, columns, ttc, trm):
     :return: Extended y, columns with required data
     """
 
+    columns = [
+        'TTC',
+        'NTC',
+        'TRM',
+    ] + columns  # to append to beginning of columns
+
     if y.shape[0] == 0:
         # empty data, return
         return y, columns
@@ -167,15 +176,7 @@ def add_ntc_data(y, columns, ttc, trm):
     y_ = np.array([ttc, ntc, trm]).T
     y = np.concatenate([y_, y], axis=1)
 
-    columns_ = [
-        'TTC',
-        'NTC',
-        'TRM',
-    ]
-
-    columns_.extend(columns)
-
-    return y, columns_
+    return y, columns
 
 class OptimalNetTransferCapacityResults(ResultsTemplate):
     """
@@ -445,6 +446,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
                 y_list.extend(mdl.get_data()[2])
 
         columns = mdl.get_data()[1]
+
         if y_list != list():
             y = np.stack(y_list, axis=0)
         else:
@@ -1015,14 +1017,17 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
         :param phase_shift: branches phase shift
         :return:
         """
+
+        idx, names = controlled_shifters
+
+        columns.extend(names)
+
         if y.shape[0] == 0:
             # empty data, return
             return y, columns
 
-        idx, names = controlled_shifters
         y_ = np.array([phase_shift[idx]] * y.shape[0])
         y = np.concatenate([y, y_], axis=1)
-        columns.extend(names)
         return y, columns
 
     def make_report(self, path_out=None):
@@ -1034,7 +1039,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
 
         print('NTC is', self.get_exchange_power(), 'MW')
 
-        mdl = self.get_contingency_full_report(
+        mdl = self.get_contingency_report(
             loading_threshold=0.98,
             reverse=True,
         )
@@ -1198,7 +1203,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
             return self.get_interarea_exchange_report()
 
         elif result_type == ResultTypes.ContingencyFlowsReport:
-            return self.get_contingency_full_report(
+            return self.get_contingency_report(
                 loading_threshold=self.loading_threshold,
                 reverse=self.reversed_sort_loading,
             )
@@ -1250,7 +1255,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
             )
         return self.reports[title]
 
-    def get_contingency_full_report(self, loading_threshold=0.0, reverse=True):
+    def get_contingency_report(self, loading_threshold=0.0, reverse=True):
 
         title = f'{ResultTypes.ContingencyFlowsReport.value[0]}. ' \
                 f'Loading threshold: {str(loading_threshold)}. ' \
@@ -1321,6 +1326,9 @@ def add_hvdc_data(y, columns, hvdc_Pf, hvdc_names):
     :param hvdc_names: HVDC names
     :return:
     """
+
+    columns.extend(hvdc_names)
+
     if y.shape[0] == 0:
         # empty data, return
         return y, columns
@@ -1328,7 +1336,7 @@ def add_hvdc_data(y, columns, hvdc_Pf, hvdc_names):
     # add hvdc power
     y_ = np.array([hvdc_Pf] * y.shape[0])
     y = np.concatenate((y, y_), axis=1)
-    columns.extend(hvdc_names)
+
     return y, columns
 
 
@@ -1342,15 +1350,18 @@ def add_inter_area_branches_data(y, columns, inter_area_branches, names, Sf):
     :param names: branch names
     :return:
     """
+
+    idx, senses = list(map(list, zip(*inter_area_branches)))
+
+    columns.extend(names[idx])
+
     if y.shape[0] == 0:
         # empty data, return
         return y, columns
 
-    idx, senses = list(map(list, zip(*inter_area_branches)))
-
     y_ = np.array([Sf[idx]] * y.shape[0])
     y = np.concatenate([y, y_], axis=1)
-    columns.extend(names[idx])
+
     return y, columns
 
 
@@ -1372,7 +1383,7 @@ def apply_sort(y, labels, col, reverse=False):
 
 def get_contingency_flow_table(
         mc_idx, flow, contingency_flow, monitor_names, contingency_names,
-        rates, contingency_rates, str_separator='; '
+        rates, contingency_rates, str_separator='; ', decimals=2,
 ):
     """
     Get flow report
@@ -1383,6 +1394,7 @@ def get_contingency_flow_table(
     :param contingency_names: Array with full list of contingency element names
     :param rates: Rates array
     :param contingency_rates: Contingency rates array
+    :param decimals: float decimals to report
 
     """
 
@@ -1410,12 +1422,12 @@ def get_contingency_flow_table(
     y = np.array([
         monitor_names[m],
         cnt_names,  # Contingency name
-        flow[m].real,  # Branch flow
-        np.round(flow[m] / rates[m] * 100, 2),  # Branch loading
-        rates[m],  # Rates
-        contingency_flow.real,  # Contingency flow
-        np.round(contingency_flow / contingency_rates[m] * 100, 2),  # Contingency loading
-        contingency_rates[m],  # Contingency rates
+        np.round(flow[m].real,decimals=decimals),  # Branch flow
+        np.round(flow[m] / rates[m] * 100, decimals=decimals),  # Branch loading
+        np.round(rates[m], decimals=decimals),  # Rates
+        np.round(contingency_flow.real, decimals=decimals),  # Contingency flow
+        np.round(contingency_flow / contingency_rates[m] * 100, decimals=decimals),  # Contingency loading
+        np.round(contingency_rates[m], decimals=decimals),  # Contingency rates
     ], dtype=object).T
 
     labels = monitor_names[m]

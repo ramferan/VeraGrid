@@ -15,6 +15,7 @@
 # along with this program; if not, write to the Free Software Foundation,
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+import time
 import numpy as np
 import pandas as pd
 
@@ -210,26 +211,49 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
         return self.reports[title]
     def create_all_reports(self, loading_threshold, reverse):
 
-        self.create_generation_power_report()
-        self.create_generation_delta_report()
-        self.create_alpha_report()
-        self.create_worst_alpha_n1_report()
-        self.create_branch_monitoring_report()
+        tm0 = time.time()
 
+        tm1 = time.time()
+        self.create_generation_power_report()
+        print(f'Generation power report created in {time.time()-tm1:.2f} scs.')
+
+        tm1 = time.time()
+        self.create_generation_delta_report()
+        print(f'Generation delta report created in {time.time()-tm1:.2f} scs.')
+
+        tm1 = time.time()
+        self.create_alpha_report()
+        print(f'Alpha report created in {time.time()-tm1:.2f} scs.')
+
+        tm1 = time.time()
+        self.create_worst_alpha_n1_report()
+        print(f'Worst alpha n1 report created in {time.time()-tm1:.2f} scs.')
+
+        tm1 = time.time()
+        self.create_branch_monitoring_report()
+        print(f'Branch monitoring report created in {time.time()-tm1:.2f} scs.')
+
+        tm1 = time.time()
         self.create_base_report(
             loading_threshold=loading_threshold,
             reverse=reverse
         )
+        print(f'Base report created in {time.time()-tm1:.2f} scs.')
 
+        tm1 = time.time()
         self.create_contingency_full_report(
             loading_threshold=loading_threshold,
             reverse=reverse
         )
+        print(f'Contingency power report created in {time.time()-tm1:.2f} scs.')
 
+        tm1 = time.time()
         self.create_critical_branches_report(
             loading_threshold=100,
             reverse=reverse
         )
+        print(f'Critical branches report created in {time.time()-tm1:.2f} scs.')
+        print(f'All final reports created in {time.time()-tm0:.2f} scs.')
 
     def mdl(self, result_type) -> "ResultsTable":
         """
@@ -511,7 +535,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
             print("Sin resultados")
             return
 
-        mdl = list(self.results_dict.values())[0].get_contingency_full_report(
+        mdl = list(self.results_dict.values())[0].get_contingency_report(
             loading_threshold=loading_threshold,
             reverse=reverse,
         )
@@ -526,7 +550,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
                 ttc = np.floor(self.results_dict[t].get_exchange_power())
 
                 if ttc != 0:
-                    mdl = self.results_dict[t].get_contingency_full_report(
+                    mdl = self.results_dict[t].get_contingency_report(
                         loading_threshold=loading_threshold,
                         reverse=reverse,
                     )

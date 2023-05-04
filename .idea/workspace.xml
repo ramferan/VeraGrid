@@ -26,11 +26,10 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="GridCal/linear_analisys:&#10; - NTC with multiple contingencies computed by lodf_nx.">
+    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="GridCal/ntc_opf:&#10; - Fixed little bugs in report column labels">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Core/multi_circuit.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Core/multi_circuit.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/ContingencyAnalysis/contingency_plan.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/ContingencyAnalysis/contingency_plan.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/GridCal/Gui/ContingencyPlanner/contingency_planner_dialogue.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Gui/ContingencyPlanner/contingency_planner_dialogue.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_results.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_results.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_ts_results.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_ts_results.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -1068,27 +1067,6 @@
       <workItem from="1674823262666" duration="1341000" />
       <workItem from="1674988874398" duration="514000" />
     </task>
-    <task id="LOCAL-00330" summary="Refactored the short circuit functions">
-      <created>1660327579581</created>
-      <option name="number" value="00330" />
-      <option name="presentableId" value="LOCAL-00330" />
-      <option name="project" value="LOCAL" />
-      <updated>1660327579582</updated>
-    </task>
-    <task id="LOCAL-00331" summary="added docstrings and deleted commented code">
-      <created>1660328109870</created>
-      <option name="number" value="00331" />
-      <option name="presentableId" value="LOCAL-00331" />
-      <option name="project" value="LOCAL" />
-      <updated>1660328109870</updated>
-    </task>
-    <task id="LOCAL-00332" summary="completely refactored the ShortCircuitResults object to properly represent the sequence results">
-      <created>1660568962484</created>
-      <option name="number" value="00332" />
-      <option name="presentableId" value="LOCAL-00332" />
-      <option name="project" value="LOCAL" />
-      <updated>1660568962485</updated>
-    </task>
     <task id="LOCAL-00333" summary="Added icons to the results tree view">
       <created>1660571615657</created>
       <option name="number" value="00333" />
@@ -1411,7 +1389,28 @@
       <option name="project" value="LOCAL" />
       <updated>1683111365894</updated>
     </task>
-    <option name="localTasksCounter" value="379" />
+    <task id="LOCAL-00379" summary="GridCal/contingencies:&#10; - Added injection contingencies in initialize contingencies method.">
+      <created>1683119741885</created>
+      <option name="number" value="00379" />
+      <option name="presentableId" value="LOCAL-00379" />
+      <option name="project" value="LOCAL" />
+      <updated>1683119741885</updated>
+    </task>
+    <task id="LOCAL-00380" summary="GridCal/contingencies:&#10; - Fixed bug export/import json contingency file.">
+      <created>1683122630518</created>
+      <option name="number" value="00380" />
+      <option name="presentableId" value="LOCAL-00380" />
+      <option name="project" value="LOCAL" />
+      <updated>1683122630518</updated>
+    </task>
+    <task id="LOCAL-00381" summary="GridCal/ntc_opf:&#10; - Fixed little bugs in report column labels">
+      <created>1683129891161</created>
+      <option name="number" value="00381" />
+      <option name="presentableId" value="LOCAL-00381" />
+      <option name="project" value="LOCAL" />
+      <updated>1683129891161</updated>
+    </task>
+    <option name="localTasksCounter" value="382" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1445,9 +1444,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="4.6.5" />
-    <MESSAGE value="Refactoring NTC into new folder module.&#10;- Fixed some bugs due merge with 'devel' (renamed props)" />
-    <MESSAGE value="Fixed bug in snapshot NTC computation" />
     <MESSAGE value="Fixed PMode3 implementation. Inequality restriction!!" />
     <MESSAGE value="New objective function:&#10; - Fixed call from ts&#10; - Fixed with scenarios with none hvdc" />
     <MESSAGE value="New objective function:&#10; - Prevent none inter area branches" />
@@ -1470,7 +1466,10 @@
     <MESSAGE value="GridCal/multi_circuit:&#10; - fixed set contingencies when some element is missed." />
     <MESSAGE value="GridCal/linear_analisys:&#10; - working in lodf_nx." />
     <MESSAGE value="GridCal/linear_analisys:&#10; - NTC with multiple contingencies computed by lodf_nx." />
-    <option name="LAST_COMMIT_MESSAGE" value="GridCal/linear_analisys:&#10; - NTC with multiple contingencies computed by lodf_nx." />
+    <MESSAGE value="GridCal/contingencies:&#10; - Added injection contingencies in initialize contingencies method." />
+    <MESSAGE value="GridCal/contingencies:&#10; - Fixed bug export/import json contingency file." />
+    <MESSAGE value="GridCal/ntc_opf:&#10; - Fixed little bugs in report column labels" />
+    <option name="LAST_COMMIT_MESSAGE" value="GridCal/ntc_opf:&#10; - Fixed little bugs in report column labels" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -1947,31 +1946,6 @@
           <url>file://$PROJECT_DIR$/src/GridCal/Gui/Main/GridCalMain.py</url>
           <line>6364</line>
           <option name="timeStamp" value="1298" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_ts_driver.py</url>
-          <line>122</line>
-          <option name="timeStamp" value="1347" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/GridCal/Engine/Core/multi_circuit.py</url>
-          <line>2818</line>
-          <option name="timeStamp" value="1348" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/GridCal/Engine/Core/multi_circuit.py</url>
-          <line>2817</line>
-          <option name="timeStamp" value="1349" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/ContingencyAnalysis/contingency_plan.py</url>
-          <line>152</line>
-          <option name="timeStamp" value="1354" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/ContingencyAnalysis/contingency_plan.py</url>
-          <line>161</line>
-          <option name="timeStamp" value="1355" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
