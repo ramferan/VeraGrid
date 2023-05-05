@@ -84,14 +84,18 @@ class ContingencyPlannerGUI(QDialog):
         branch_types = [self.contingency_branch_types[i] for i in branch_indices]
         injection_types = [self.contingency_injection_types[i] for i in injection_indices]
 
+
+
         # generate the contingency plan
         self.contingencies, self.contingency_groups = generate_automatic_contingency_plan(
             grid=self.circuit,
             k=self.ui.contingencyNspinBox.value(),
+            add_branches_to_contingencies=self.ui.addBranchesToContingencyCheckBox.isChecked(),
             filter_branches_by_voltage=self.ui.filterContingencyBranchesByVoltageCheckBox.isChecked(),
             vmin=self.ui.filterContingencyBranchesByVoltageMinSpinBox.value(),
             vmax=self.ui.filterContingencyBranchesByVoltageMaxSpinBox.value(),
             branch_types=branch_types,
+            add_injections_to_contingencies=self.ui.addInjectionsToContingencyCheckBox.isChecked(),
             filter_injections_by_power=self.ui.contingencyFilterInjectionsByPowerCheckBox.isChecked(),
             contingency_perc=self.ui.contingencyInjectionPowerReductionSpinBox.value(),
             pmin=self.ui.contingencyFilterInjectionsByPowerMinSpinBox.value(),
