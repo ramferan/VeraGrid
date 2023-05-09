@@ -503,6 +503,10 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
                     reverse=reverse,
                 )
                 data = mdl.get_data()[2]
+
+                if data.shape[0] == 0:
+                    data = np.zeros(shape=(1, len(mdl.get_data()[1])))
+
             else:
                 data = np.zeros(shape=(1, len(mdl.get_data()[1])))
 

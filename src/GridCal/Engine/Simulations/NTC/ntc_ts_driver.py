@@ -148,8 +148,10 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             X = X[:, time_indices].real.T
 
             # cluster and re-assign the time indices
+            tm1 = time.time()
             time_indices, sampled_probabilities = kmeans_approximate_sampling(
                 X, n_points=self.cluster_number)
+            print(f'Kmeans sampling computed in {time.time()-tm1:.2f} scs. [{len(time_indices)} points] ')
 
             self.results = OptimalNetTransferCapacityTimeSeriesResults(
                 branch_names=linear.numerical_circuit.branch_names,
