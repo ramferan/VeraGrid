@@ -439,6 +439,147 @@ def formulate_optimal_generation(solver: pywraplp.Solver, generator_active, disp
     return generation, delta, gen_a1_idx, gen_a2_idx, power_shift, dgen1, gen_cost
 
 
+def formulate_proportional_generation_old(solver: pywraplp.Solver, generator_active, generator_dispatchable,
+                                      generator_cost, generator_names, inf, ngen, Cgen, Pgen, Pmax,
+                                      Pmin, a1, a2, logger: Logger, Pref=None):
+    """
+    Formulate the generation increments in a proportional fashion
+    :param solver: Solver instance to which add the equations
+    :param generator_active: Array of generation active values (True / False)
+    :param generator_dispatchable: Array of Generator dispatchable variables (True / False)
+    :param generator_cost: Array of generator costs
+    :param generator_names: Array of Generator names
+    :param inf: Value representing the infinite value (i.e. 1e20)
+    :param ngen: Number of generators
+    :param Cgen: CSC connectivity matrix of generators and buses [ngen, nbus]
+    :param Pgen: Array of generator active power values in p.u.
+    :param Pmax: Array of generator maximum active power values in p.u.
+    :param Pmin: Array of generator minimum active power values in p.u.
+    :param a1: array of bus indices of the area 1
+    :param a2: array of bus indices of the area 2
+    :param logger: Logger instance
+        :return: Many arrays of variables:
+        - generation: Array of generation LP variables
+        - delta: Array of generation delta LP variables
+        - gen_a1_idx: Indices of the generators in the area 1
+        - gen_a2_idx: Indices of the generators in the area 2
+        - power_shift: Power shift LP variable
+        - gen_cost: Array of generation costs
+    """
+    gens_a1, gens_a2, gens_out = get_generators_per_areas(Cgen, a1, a2)
+    gen_cost = np.ones(ngen)
+    generation = np.zeros(ngen, dtype=object)
+    delta = np.zeros(ngen, dtype=object)
+
+    # # Only for debug purpose
+    # Pgen = np.array([-102, 500, 1800, 1500, -300, 100])
+    # gens_a1 = [(0, 0), (1, 1), (2, 2)]
+    # gens_a2 = [(3, 3), (4, 4), (5, 5)]
+    # gens_out = [(6, 6)]
+    # Pmax = np.array([1500, 1500, 1500, 1500, 1500, 1500])
+    # Pmin = np.array([-1500, -1500, -1500, -1500, -100, -1500])
+    # generator_active = np.array([True, True, True, True, True, True])
+    # generator_dispatchable = np.array([True, True, True, True, True, True])
+
+    # get generator idx for each areas. A1 increase. A2 decrease
+    a1_gen_idx = [gen_idx for bus_idx, gen_idx in gens_a1]
+    a2_gen_idx = [gen_idx for bus_idx, gen_idx in gens_a2]
+    out_gen_idx = [gen_idx for bus_idx, gen_idx in gens_out]
+
+    # generator area mask
+    is_gen_in_a1 = np.isin(range(len(Pgen)), a1_gen_idx, assume_unique=True)
+    is_gen_in_a2 = np.isin(range(len(Pgen)), a2_gen_idx, assume_unique=True)
+
+    # mask for valid generators
+    Pgen_a1 = Pgen * is_gen_in_a1 * generator_active * generator_dispatchable * (Pgen < Pmax)
+    Pgen_a2 = Pgen * is_gen_in_a2 * generator_active * generator_dispatchable * (Pgen > Pmin)
+
+    # Filter positive and negative generators. Same vectors lenght, set not matched values to zero.
+    gen_pos_a1 = np.where(Pgen_a1 < 0, 0, Pgen_a1)
+    gen_neg_a1 = np.where(Pgen_a1 > 0, 0, Pgen_a1)
+    gen_pos_a2 = np.where(Pgen_a2 < 0, 0, Pgen_a2)
+    gen_neg_a2 = np.where(Pgen_a2 > 0, 0, Pgen_a2)
+
+    # get proportions of contribution by sense (gen or pump) and area
+    # the idea is both techs contributes to achieve the power shift goal in the same proportion
+    # that in base situation
+    prop_up_a1 = np.sum(gen_pos_a1) / np.sum(np.abs(Pgen_a1))
+    prop_dw_a1 = np.sum(gen_neg_a1) / np.sum(np.abs(Pgen_a1))
+    prop_up_a2 = np.sum(gen_pos_a2) / np.sum(np.abs(Pgen_a2))
+    prop_dw_a2 = np.sum(gen_neg_a2) / np.sum(np.abs(Pgen_a2))
+
+    # get proportion by production (ammount of power contributed by generator to his sensed area).
+    prop_up_gen_a1 = gen_pos_a1 / np.sum(np.abs(gen_pos_a1)) if np.sum(np.abs(gen_pos_a1)) != 0 else np.zeros_like(
+        gen_pos_a1)
+    prop_dw_gen_a1 = gen_neg_a1 / np.sum(np.abs(gen_neg_a1)) if np.sum(np.abs(gen_neg_a1)) != 0 else np.zeros_like(
+        gen_neg_a1)
+    prop_up_gen_a2 = gen_pos_a2 / np.sum(np.abs(gen_pos_a2)) if np.sum(np.abs(gen_pos_a2)) != 0 else np.zeros_like(
+        gen_pos_a2)
+    prop_dw_gen_a2 = gen_neg_a2 / np.sum(np.abs(gen_neg_a2)) if np.sum(np.abs(gen_neg_a2)) != 0 else np.zeros_like(
+        gen_neg_a2)
+
+    # delta proportion by generator (considering both proportions: sense and production)
+    prop_gen_delta_up_a1 = prop_up_gen_a1 * prop_up_a1
+    prop_gen_delta_dw_a1 = prop_dw_gen_a1 * prop_dw_a1
+    prop_gen_delta_up_a2 = prop_up_gen_a2 * prop_up_a2
+    prop_gen_delta_dw_a2 = prop_dw_gen_a2 * prop_dw_a2
+
+    # Join generator proportions into one vector
+    # Notice they will not added: just joining like 'or' logical operation
+    proportions_a1 = prop_gen_delta_up_a1 + prop_gen_delta_dw_a1
+    proportions_a2 = prop_gen_delta_up_a2 + prop_gen_delta_dw_a2
+    proportions = proportions_a1 + proportions_a2
+
+    # some checks
+    if not np.isclose(np.sum(proportions_a1), 1, rtol=1e-6):
+        logger.add_warning('Issue computing proportions to scale delta generation in area 1.')
+
+    if not np.isclose(np.sum(proportions_a2), 1, rtol=1e-6):
+        logger.add_warning('Issue computing proportions to scale delta generation in area 2')
+
+    # apply power shift sense based on area (increase a1, decrease a2)
+    sense = (1 * is_gen_in_a1) + (-1 * is_gen_in_a2)
+
+    # # only for debug purpose
+    # debug_power_shift = 1000
+    # debug_deltas = debug_power_shift * proportions * sense
+    # debug_generation = Pgen + debug_deltas
+
+    # --------------------------------------------
+    # Formulate Solver valiables
+    # --------------------------------------------
+
+    power_shift = solver.NumVar(-inf, inf, 'power_shift')
+
+    for gen_idx, P in enumerate(Pgen):
+        if gen_idx not in out_gen_idx:
+
+            # store solver variables
+            generation[gen_idx] = solver.NumVar(
+                Pmin[gen_idx], Pmax[gen_idx],
+                'gen_{0}'.format(generator_names[gen_idx]))
+
+            delta[gen_idx] = solver.NumVar(
+                -inf, inf,
+                'gen_{0}_delta'.format(generator_names[gen_idx]))
+
+            # solver variables formulation
+            solver.Add(
+                delta[gen_idx] == power_shift * proportions[gen_idx] * sense[gen_idx],
+                'gen_{0}_assignment'.format(generator_names[gen_idx]))
+
+            solver.Add(
+                generation[gen_idx] == Pgen[gen_idx] + delta[gen_idx],
+                'gen_{0}_delta_assignment'.format(generator_names[gen_idx]))
+
+        else:
+            generation[gen_idx] = Pgen[gen_idx]
+
+    return generation, delta, a1_gen_idx, a2_gen_idx, power_shift, gen_cost
+
+
+
+
 def formulate_proportional_generation(solver: pywraplp.Solver, generator_active, generator_dispatchable,
                                       generator_cost, generator_names, inf, ngen, Cgen, Pgen, Pmax,
                                       Pmin, Pref, a1, a2, logger: Logger):
@@ -899,6 +1040,8 @@ def formulate_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase, bran
             c2 = np.abs(LODF[m, c]) > branch_sensitivity_threshold
             c3 = np.abs(alpha_n1[m, c]) > branch_sensitivity_threshold
             c4 = np.abs(alpha[m]) > branch_sensitivity_threshold
+
+            # c2 = LODF[m, c] > branch_sensitivity_threshold
 
             if c1 and c2 and c3 and c4:
 
@@ -1596,7 +1739,7 @@ class OpfNTC(Opf):
         elif self.generation_formulation == GenerationNtcFormulation.Proportional:
 
             generation, generation_delta, gen_a1_idx, gen_a2_idx, power_shift, \
-            gen_cost = formulate_proportional_generation(
+            gen_cost = formulate_proportional_generation_old(
                 solver=self.solver,
                 generator_active=self.numerical_circuit.generator_data.active[:, t],
                 generator_dispatchable=self.numerical_circuit.generator_data.generator_dispatchable,
@@ -1702,31 +1845,13 @@ class OpfNTC(Opf):
 
         if self.consider_contingencies:
             # formulate the contingencies
-            # n1flow_f, con_br_alpha, con_br_idx = formulate_contingency(
-            #     solver=self.solver,
-            #     ContingencyRates=self.numerical_circuit.ContingencyRates,
-            #     Sbase=self.numerical_circuit.Sbase,
-            #     branch_names=self.numerical_circuit.branch_names,
-            #     contingency_enabled_indices=self.numerical_circuit.branch_data.get_contingency_enabled_indices(),
-            #     LODF=self.LODF,
-            #     F=self.numerical_circuit.F,
-            #     T=self.numerical_circuit.T,
-            #     branch_sensitivity_threshold=self.branch_sensitivity_threshold,
-            #     flow_f=flow_f,
-            #     monitor=monitor,
-            #     alpha=self.alpha,
-            #     alpha_n1=self.alpha_n1,
-            #     lodf_replacement_value=0,
-            #     logger=self.logger
-            # )
-
-            n1flow_f, con_br_alpha, con_br_idx = formulate_contingency_nx(
+            n1flow_f, con_br_alpha, con_br_idx = formulate_contingency(
                 solver=self.solver,
                 ContingencyRates=self.numerical_circuit.ContingencyRates,
                 Sbase=self.numerical_circuit.Sbase,
                 branch_names=self.numerical_circuit.branch_names,
                 contingency_enabled_indices=self.numerical_circuit.branch_data.get_contingency_enabled_indices(),
-                LODF_NX=self.LODF_NX,
+                LODF=self.LODF,
                 F=self.numerical_circuit.F,
                 T=self.numerical_circuit.T,
                 branch_sensitivity_threshold=self.branch_sensitivity_threshold,
@@ -1737,6 +1862,24 @@ class OpfNTC(Opf):
                 lodf_replacement_value=0,
                 logger=self.logger
             )
+
+            # n1flow_f, con_br_alpha, con_br_idx = formulate_contingency_nx(
+            #     solver=self.solver,
+            #     ContingencyRates=self.numerical_circuit.ContingencyRates,
+            #     Sbase=self.numerical_circuit.Sbase,
+            #     branch_names=self.numerical_circuit.branch_names,
+            #     contingency_enabled_indices=self.numerical_circuit.branch_data.get_contingency_enabled_indices(),
+            #     LODF_NX=self.LODF_NX,
+            #     F=self.numerical_circuit.F,
+            #     T=self.numerical_circuit.T,
+            #     branch_sensitivity_threshold=self.branch_sensitivity_threshold,
+            #     flow_f=flow_f,
+            #     monitor=monitor,
+            #     alpha=self.alpha,
+            #     alpha_n1=self.alpha_n1,
+            #     lodf_replacement_value=0,
+            #     logger=self.logger
+            # )
 
         else:
             con_br_idx = list()
