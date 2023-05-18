@@ -165,8 +165,6 @@ def make_lodf(Cf, Ct, PTDF, correct_values=True, numerical_zero=1e-10):
 
     return LODF
 
-def make_lodf_nx(lodf, contingency_dict):
-    pass
 
 @nb.njit(cache=True)
 def make_otdf(ptdf, lodf, j):
@@ -307,9 +305,58 @@ def make_worst_contingency_transfer_limits(tmc):
     return wtmc
 
 
+# @nb.njit(cache=True)
+def make_lodf_nx(circuit, lodf, force_from_file=False):
+    #todo: delete force_from_file
+
+    # if force_from_file:
+    #     import pickle
+    #     with open(r'C:\Users\ramferan\Desktop\lodf_nx_dc.txt', 'rb') as f:
+    #         return pickle.load(f)
+
+    lodf_nx_list = list()
+
+    # Create dictionaries to speed up the access
+    cg_dict = {cg.idtag: cg for cg in circuit.contingency_groups}
+    idx_dict = {e.idtag: i for i, e in enumerate(circuit.get_branches())}
+
+    # Initialize c_idx list for each contingency groups
+    for cg in circuit.contingency_groups:
+        cg.c_idx = list()
+
+    # Loop for contingencies to fill group c_idx
+    for c in circuit.contingencies:
+        cg_dict[c.group.idtag].c_idx.append(idx_dict[c.device_idtag])
+
+    for cg in circuit.contingency_groups:
+
+        # Sort unique c_idx
+        cg.c_idx = list(sorted(set(cg.c_idx), reverse=False))
+
+        # Compute LODF vector
+        L = lodf[:, cg.c_idx]  # Take the columns of the LODF associated with the contingencies
+
+        # Compute M matrix [n, n] (lodf relating the outaged lines to each other)
+        M = np.ones((len(cg.c_idx), len(cg.c_idx)))
+        for i in range(len(cg.c_idx)):
+            for j in range(len(cg.c_idx)):
+                if not (i == j):
+                    M[i, j] = -lodf[cg.c_idx[i], cg.c_idx[j]]
+
+        # Compute LODF_NX
+        lodf_nx = np.matmul(L, np.linalg.inv(M))
+
+        # store tuple (c_idx, lodf_nx)
+        lodf_nx_list.append(
+            (cg.c_idx, lodf_nx)
+        )
+
+    return lodf_nx_list
+
+
 class LinearAnalysis:
 
-    def __init__(self, grid: MultiCircuit, distributed_slack=True, correct_values=True):
+    def __init__(self, grid: MultiCircuit, distributed_slack=True, correct_values=True, with_nx=False, force_from_file=False):
         """
 
         :param grid:
@@ -322,6 +369,8 @@ class LinearAnalysis:
 
         self.correct_values = correct_values
 
+        self.with_nx = with_nx
+
         self.numerical_circuit: SnapshotData = None
 
         self.PTDF = None
@@ -329,6 +378,8 @@ class LinearAnalysis:
         self.LODF = None
 
         self.__OTDF = None
+
+        self.force_from_file = force_from_file
 
         self.logger = Logger()
 
@@ -388,6 +439,13 @@ class LinearAnalysis:
                                   PTDF=self.PTDF,
                                   correct_values=self.correct_values)
 
+        if self.with_nx:
+            self.LODF_NX = make_lodf_nx(
+                circuit=self.grid,
+                lodf=self.LODF,
+                #todo: delete force_from_file
+                force_from_file=self.force_from_file,
+            )
     @property
     def OTDF(self):
         """
@@ -439,4 +497,3 @@ class LinearAnalysis:
         Pbr = np.dot(self.PTDF, Sbus.real).T * self.grid.Sbase
 
         return Pbr
-

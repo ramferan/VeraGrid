@@ -16,14 +16,15 @@
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import sys
+import json
 from typing import List, Dict, Tuple
 from uuid import getnode as get_mac, uuid4
 from datetime import timedelta, datetime
 import networkx as nx
 from scipy.sparse import csc_matrix, lil_matrix
-# from GridCal.Gui.GeneralDialogues import *
 from GridCal.Engine.Devices import *
 from GridCal.Engine.Devices.editable_device import DeviceType
+
 
 
 def get_system_user():
@@ -192,6 +193,21 @@ class MultiCircuit:
         # master time profile
         self.time_profile = None
 
+        # contingencies
+        self.contingencies: List[Contingency] = list()
+
+        # contingency group
+        self.contingency_groups: List[ContingencyGroup] = list()
+
+        # investments
+        self.investments: List[Investment] = list()
+
+        # investments group
+        self.investments_groups: List[InvestmentsGroup] = list()
+
+        # technologies
+        self.technologies: List[Technology] = list()
+
         # objects with profiles
         self.objects_with_profiles = [Bus(),
                                       Load(),
@@ -210,7 +226,13 @@ class MultiCircuit:
                                       Substation(),
                                       Zone(),
                                       Area(),
-                                      Country()]
+                                      Country(),
+                                      Technology(),
+                                      ContingencyGroup(),
+                                      Contingency(),
+                                      InvestmentsGroup(),
+                                      Investment()
+                                      ]
 
         # dictionary of profile magnitudes per object
         self.profile_magnitudes = dict()
@@ -228,6 +250,8 @@ class MultiCircuit:
                 profile_types = [dev.editable_headers[attr].tpe for attr in profile_attr]
                 self.profile_magnitudes[dev.device_type.value] = (profile_attr, profile_types)
                 self.device_type_name_dict[dev.device_type.value] = dev.device_type
+
+
 
     def __str__(self):
         return str(self.name)
@@ -387,6 +411,8 @@ class MultiCircuit:
 
         self.time_profile = None
 
+        self.contingencies = list()
+
     def get_buses(self):
         return self.buses
 
@@ -409,6 +435,12 @@ class MultiCircuit:
         :return: lines + transformers 2w + hvdc
         """
         return self.get_branches_wo_hvdc() + self.hvdc_lines
+
+    def get_contingency_devices(self) -> List[EditableDevice]:
+        return self.get_branches() + self.get_generators()
+
+    def get_investment_devices(self) -> List[EditableDevice]:
+        return self.get_branches() + self.get_generators() + self.get_batteries() + self.get_shunts() + self.get_loads()
 
     def get_lines(self) -> List[Line]:
         return self.lines
@@ -453,6 +485,15 @@ class MultiCircuit:
                 elm.bus = bus
             lst = lst + bus.loads
         return lst
+
+    def get_loads_number(self) -> List[Load]:
+        """
+        Returns a list of :ref:`Load<load>` objects in the grid.
+        """
+        val = 0
+        for bus in self.buses:
+            val = val + len(bus.loads)
+        return val
 
     def get_load_names(self):
         """
@@ -538,6 +579,12 @@ class MultiCircuit:
             lst = lst + bus.controlled_generators
         return lst
 
+    def get_generators_number(self):
+        val = 0
+        for bus in self.buses:
+            val = val + len(bus.controlled_generators)
+        return val
+
     def get_controlled_generator_names(self):
         """
         Returns a list of :ref:`Generator<generator>` names.
@@ -558,6 +605,15 @@ class MultiCircuit:
                 elm.bus = bus
             lst = lst + bus.batteries
         return lst
+
+    def get_batteries_number(self) -> List[Battery]:
+        """
+        Returns a list of :ref:`Battery<battery>` objects in the grid.
+        """
+        val = 0
+        for bus in self.buses:
+            val = val + len(bus.batteries)
+        return val
 
     def get_battery_names(self):
         """
@@ -655,6 +711,21 @@ class MultiCircuit:
         elif element_type == DeviceType.CountryDevice:
             return self.countries
 
+        elif element_type == DeviceType.ContingencyDevice:
+            return self.contingencies
+
+        elif element_type == DeviceType.ContingencyGroupDevice:
+            return self.contingency_groups
+
+        elif element_type == DeviceType.Technology:
+            return self.technologies
+
+        elif element_type == DeviceType.InvestmentDevice:
+            return self.investments
+
+        elif element_type == DeviceType.InvestmentsGroupDevice:
+            return self.investments_groups
+
         else:
             raise Exception('Element type not understood ' + str(element_type))
 
@@ -718,6 +789,7 @@ class MultiCircuit:
             gen.P_prof -= results.load_shedding[:, i]
 
         # TODO: implement more devices
+
 
     def copy(self):
         """
@@ -1551,6 +1623,71 @@ class MultiCircuit:
         """
         self.zones.append(obj)
 
+    def add_contingency_group(self, obj: ContingencyGroup):
+        self.contingency_groups.append(obj)
+
+    def delete_contingency_group(self, i):
+        """
+        Delete contingency group
+        :param i: index
+        """
+
+        # Delete all contingencies belongs to the group
+        for j in range(len(self.contingencies)-1, -1, -1):
+            if self.contingencies[j].group.idtag == self.contingency_groups[i].idtag:
+                self.contingencies.pop(j)
+
+        self.contingency_groups.pop(i)
+
+    def add_contingency(self, obj: Contingency):
+        self.contingencies.append(obj)
+
+    def delete_contingency(self, i):
+        """
+        Delete contingency
+        :param i: index
+        """
+        # Get contingecny group.
+        cg_idtag = self.contingencies[i].group.idtag
+        cg_idx = [i for i, cg in enumerate(self.contingency_groups) if cg.idtag == cg_idtag][0]
+
+        # Delete the contingency
+        self.contingencies.pop(i)
+
+        # Delete contingency group if was the last contingency in the group
+        if len([c for c in self.contingencies if c.group.idtag == cg_idtag]) == 0:
+            self.delete_contingency_group(i=cg_idx)
+
+    def add_investments_group(self, obj: InvestmentsGroup):
+        self.investments_groups.append(obj)
+
+    def delete_investment_groups(self, i):
+        """
+        Delete zone
+        :param i: index
+        """
+        self.investments_groups.pop(i)
+
+    def add_investment(self, obj: Investment):
+        self.investments.append(obj)
+
+    def delete_investment(self, i):
+        """
+        Delete zone
+        :param i: index
+        """
+        self.investments.pop(i)
+
+    def add_technology(self, obj: Technology):
+        self.technologies.append(obj)
+
+    def delete_technology(self, i):
+        """
+        Delete zone
+        :param i: index
+        """
+        self.technologies.pop(i)
+
     def delete_zone(self, i):
         """
         Delete zone
@@ -1561,7 +1698,7 @@ class MultiCircuit:
     def add_country(self, obj: Country):
         """
         Add country
-        :param obj: Country object
+        :param obj:  object
         """
         self.countries.append(obj)
 
@@ -1878,7 +2015,6 @@ class MultiCircuit:
                 bus.x = x_m.copy()
                 bus.y = y_m.copy()
                 bus.graphic_obj.set_position(x=bus.x, y=bus.y)
-
 
     def get_center_location(self):
         """
@@ -2591,3 +2727,128 @@ class MultiCircuit:
             bus.y = y[i]
             if bus.graphic_obj is not None:
                 bus.graphic_obj.set_position(x[i], y[i])
+
+    def purge_defaults(self):
+        """
+        Remove all default objects, and its references in other list objects
+        :return:
+        """
+        defaults = list()
+        for key in [k for k in self.__dict__.keys() if 'default' in k]:
+            defaults.append(getattr(self, key))
+
+        for att, val in self.__dict__.items():
+
+            if val in defaults:
+               setattr(self, att, None)
+
+            if isinstance(val, list) and any(x in defaults for x in val):
+                setattr(self, att, [v for v in val if v not in defaults])
+
+    def set_contingencies(self, contingencies: List[Contingency]):
+        """
+        Set contingencies and contingency groups to circuit
+        :param contingencies: List of contingencies
+        :return:
+        """
+
+        devices = self.get_contingency_devices()
+        groups = dict()
+
+        # Get a devices dict by idtag or code keys
+        devices_code_dict = {d.code: d for d in devices}
+        devices_idtag_dict = {d.idtag: d for d in devices}
+
+        logger = Logger()
+
+        # Get all incomplete groups because any element is not in the circuit
+        zipped_groups = [
+            (c.group, c.group.idtag) for c in contingencies if
+            c.device_idtag not in devices_idtag_dict.keys() and
+            c.code not in devices_code_dict.keys()
+        ]
+
+        if len(zipped_groups) != 0:
+            incomplete_groups, incomplete_groups_idx = zip(*zipped_groups)
+        else:
+            incomplete_groups, incomplete_groups_idx = list(), list()
+
+        # Report all incompleted groups to be ignored
+        for group in incomplete_groups:
+            logger.add_info(
+                msg='Contingency group will be ignored because any element not in circuit',
+                device=group.idtag,
+                value=group.code,
+            )
+
+        # loop contingencies
+        for contingency in contingencies:
+
+            # Check if contingency belongs to an incomplete group
+            if contingency.group.idtag in incomplete_groups_idx:
+
+                # Log a message
+                if contingency.device_idtag in devices_idtag_dict.keys() \
+                        or contingency.code in devices_code_dict.keys():
+                    # Element exists, but the group will be ignored
+                    logger.add_info(
+                        msg='Contingency skipped: Belongs to an incomplete group',
+                        device=contingency.idtag,
+                        value=contingency.code,
+                    )
+                else:
+                    # Element is not in the circuit
+                    logger.add_info(
+                        msg='Contingency skipped: element not in circuit',
+                        device=contingency.idtag,
+                        value=contingency.code,
+                    )
+                continue
+
+            # Get the contingency element
+            if contingency.idtag in devices_idtag_dict.keys():
+                # ensure proper device_idtag and code
+                element = devices_idtag_dict[contingency.idtag]
+
+            elif contingency.code in devices_code_dict.keys():
+                # ensure proper device_idtag and code
+                element = devices_code_dict[contingency.code]
+
+            else:
+                continue
+
+            # Ensure proper properties in contingency object by found element
+            contingency.device_idtag = element.idtag
+            contingency.code = element.code
+            if contingency.name == '':
+                contingency.name = element.name
+
+            # add contingency to circuit
+            self.contingencies.append(contingency)
+
+            # add contingency group
+            if contingency.group.idtag not in groups.keys():
+                groups[contingency.group.idtag] = contingency.group
+
+        # Fill contingency groups
+        for group in groups.values():
+            self.contingency_groups.append(group)
+
+        return logger
+
+    def initialize_contingencies(self, min_branch_voltage, max_branch_voltage):
+        for b in self.get_branches():
+            if min_branch_voltage <= b.get_max_bus_nominal_voltage() <= max_branch_voltage:
+                group = ContingencyGroup(name=b.name,
+                                         category='single')
+
+                contingency = Contingency(device_idtag=b.idtag,
+                                          name=b.name,
+                                          code=b.code,
+                                          prop='active',
+                                          value=0,
+                                          group=group)
+
+                self.contingencies.append(contingency)
+                self.contingency_groups.append(group)
+

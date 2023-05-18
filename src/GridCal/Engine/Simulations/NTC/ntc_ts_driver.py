@@ -79,8 +79,10 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             time_array=[],
             time_indices=[],
             trm=self.options.trm,
+            ntc_load_rule=self.options.ntc_load_rule,
             loading_threshold_to_report=self.options.loading_threshold_to_report,
-            ntc_load_rule=self.options.ntc_load_rule)
+            reversed_sort_loading=self.options.reversed_sort_loading,
+        )
 
         self.installed_alpha = None
         self.installed_alpha_n1 = None
@@ -116,6 +118,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
         tm0 = time.time()
         nc = compile_opf_time_circuit(self.grid)
         # self.logger.add_info('Circuit compiled in {0:.2f} scs.'.format(time.time()-tm0))
+        print(f'Time circuit compiled in {time.time()-tm0:.2f} scs')
 
         time_indices = self.get_time_indices()
 
@@ -125,7 +128,9 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
         linear = LinearAnalysis(
             grid=self.grid,
             distributed_slack=False,
-            correct_values=False)
+            correct_values=False,
+            with_nx=self.options.consider_nx_contingencies,
+        )
 
         tm0 = time.time()
         linear.run()
@@ -143,8 +148,10 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             X = X[:, time_indices].real.T
 
             # cluster and re-assign the time indices
+            tm1 = time.time()
             time_indices, sampled_probabilities = kmeans_approximate_sampling(
                 X, n_points=self.cluster_number)
+            print(f'Kmeans sampling computed in {time.time()-tm1:.2f} scs. [{len(time_indices)} points] ')
 
             self.results = OptimalNetTransferCapacityTimeSeriesResults(
                 branch_names=linear.numerical_circuit.branch_names,
@@ -220,6 +227,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                 alpha=alpha,
                 alpha_n1=alpha_n1,
                 LODF=linear.LODF,
+                LODF_NX=linear.LODF_NX,
                 PTDF=linear.PTDF,
                 solver_type=self.options.mip_solver,
                 generation_formulation=self.options.generation_formulation,
@@ -252,8 +260,8 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             # tm0 = time.time()
             solved = problem.solve_ts(
                 t=t,
-                with_check=self.options.with_solution_checks,
-                time_limit_ms=self.options.time_limit_ms)
+                time_limit_ms=self.options.time_limit_ms
+            )
             # print('Problem solved in {0:.2f} scs.'.format(time.time() - tm0))
 
             self.logger += problem.logger
@@ -294,6 +302,9 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                         'NTC OPF')
 
             # pack the results
+            idx_w = np.argmax(np.abs(alpha_n1), axis=1)
+            alpha_w = np.take_along_axis(alpha_n1, np.expand_dims(idx_w, axis=1), axis=1)
+
             result = OptimalNetTransferCapacityResults(
                 bus_names=nc.bus_data.names,
                 branch_names=nc.branch_data.names,
@@ -321,7 +332,8 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                 inter_area_branches=problem.inter_area_branches,
                 inter_area_hvdc=problem.inter_area_hvdc,
                 alpha=alpha,
-                alpha_n1=np.amax(np.abs(alpha_n1), axis=1),
+                alpha_n1=alpha_n1,
+                alpha_w=alpha_w,
                 contingency_branch_flows_list=problem.get_contingency_flows_list(),
                 contingency_branch_indices_list=problem.contingency_indices_list,
                 contingency_generation_flows_list=problem.get_contingency_gen_flows_list(),
@@ -343,12 +355,18 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                 monitor_by_sensitivity=problem.monitor_by_sensitivity,
                 monitor_by_unrealistic_ntc=problem.monitor_by_unrealistic_ntc,
                 monitor_by_zero_exchange=problem.monitor_by_zero_exchange,
+                loading_threshold=self.options.loading_threshold_to_report,
+                reversed_sort_loading=self.options.reversed_sort_loading,
             )
 
             self.progress_text.emit('Creating report...['+time_str+']')
-            result.create_all_reports()
-            self.results.results_dict[t] = result
 
+            result.create_all_reports(
+                loading_threshold=self.options.loading_threshold_to_report,
+                reverse=self.options.reversed_sort_loading,
+                save_memory=True,  # todo: check if needed
+            )
+            self.results.results_dict[t] = result
 
             if self.progress_signal is not None:
                 self.progress_signal.emit((t_idx + 1) / nt * 100)
@@ -357,7 +375,12 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                 break
 
         self.progress_text.emit('Creating final reports...')
-        self.results.create_all_reports()
+
+        self.results.create_all_reports(
+            loading_threshold=self.options.loading_threshold_to_report,
+            reverse=self.options.reversed_sort_loading,
+
+        )
 
         self.progress_text.emit('Done!')
 
@@ -444,18 +467,19 @@ if __name__ == '__main__':
         consider_contingencies=True,
         consider_gen_contingencies=True,
         consider_hvdc_contingencies=True,
+        consider_nx_contingencies=True,
         generation_contingency_threshold=1000,
         dispatch_all_areas=False,
         tolerance=1e-2,
         sensitivity_dT=100.0,
-        transfer_mode=AvailableTransferMode.InstalledPower,
+        transfer_method=AvailableTransferMode.InstalledPower,
         # todo: checkear si queremos el ptdf por potencia generada
         perform_previous_checks=False,
         weight_power_shift=1e5,
         weight_generation_cost=1e2,
-        with_solution_checks=False,
         time_limit_ms=1e4,
-        loading_threshold_to_report=.98)
+        loading_threshold_to_report=.98
+    )
 
     print('Running optimal net transfer capacity...')
 

@@ -110,7 +110,9 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
         linear = LinearAnalysis(
             grid=self.grid,
             distributed_slack=False,
-            correct_values=False)
+            correct_values=False,
+            with_nx=self.options.consider_nx_contingencies,
+        )
 
         linear.run()
 
@@ -193,6 +195,9 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 buses_areas_1=self.options.area_from_bus_idx,
                 buses_areas_2=self.options.area_to_bus_idx)
 
+            idx_w = np.argmax(np.abs(alpha_n1), axis=1)
+            alpha_w = np.take_along_axis(alpha_n1, np.expand_dims(idx_w, axis=1), axis=1)
+
             # pack the results
             self.results = OptimalNetTransferCapacityResults(
                 bus_names=numerical_circuit.bus_data.names,
@@ -219,6 +224,7 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 inter_area_hvdc=inter_area_hvdc,
                 alpha=alpha,
                 alpha_n1=alpha_n1,
+                alpha_w=alpha_w,
                 contingency_branch_flows_list=contingency_flows_list,
                 contingency_branch_indices_list=contingency_indices_list,
                 contingency_branch_alpha_list=contingency_branch_alpha_list,
@@ -232,6 +238,8 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 contingency_rates=numerical_circuit.branch_data.contingency_rates[:, 0],
                 area_from_bus_idx=self.options.area_from_bus_idx,
                 area_to_bus_idx=self.options.area_to_bus_idx,
+                loading_threshold=self.options.loading_threshold_to_report,
+                reversed_sort_loading=self.options.reversed_sort_loading,
             )
         else:
             self.progress_text.emit('Formulating NTC OPF...')
@@ -244,6 +252,7 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 alpha=alpha,
                 alpha_n1=alpha_n1,
                 LODF=linear.LODF,
+                LODF_NX=linear.LODF_NX,
                 PTDF=linear.PTDF,
                 solver_type=self.options.mip_solver,
                 generation_formulation=self.options.generation_formulation,
@@ -268,7 +277,6 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
             self.progress_text.emit('Solving NTC OPF...')
             problem.formulate()
             solved = problem.solve(
-                with_solution_checks=self.options.with_solution_checks,
                 time_limit_ms=self.options.time_limit_ms)
 
             err = problem.error()
@@ -312,6 +320,10 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
 
             self.logger += problem.logger
 
+
+            idx_w = np.argmax(np.abs(alpha_n1), axis=1)
+            alpha_w = np.take_along_axis(alpha_n1, np.expand_dims(idx_w, axis=1), axis=1)
+
             # pack the results
             self.results = OptimalNetTransferCapacityResults(
                 bus_names=numerical_circuit.bus_data.names,
@@ -341,6 +353,7 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 inter_area_hvdc=problem.inter_area_hvdc,
                 alpha=alpha,
                 alpha_n1=alpha_n1,
+                alpha_w=alpha_w,
                 monitor=problem.monitor,
                 monitor_loading=problem.monitor_loading,
                 monitor_by_sensitivity=problem.monitor_by_sensitivity,
@@ -362,10 +375,15 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 area_to_bus_idx=self.options.area_to_bus_idx,
                 structural_ntc=problem.structural_ntc,
                 sbase=numerical_circuit.Sbase,
+                loading_threshold=self.options.loading_threshold_to_report,
+                reversed_sort_loading=self.options.reversed_sort_loading,
             )
 
         self.progress_text.emit('Creating reports...')
-        self.results.create_all_reports()
+        self.results.create_all_reports(
+            loading_threshold=self.options.loading_threshold_to_report,
+            reverse=self.options.reversed_sort_loading,
+        )
 
         self.progress_text.emit('Done!')
 
@@ -436,7 +454,6 @@ if __name__ == '__main__':
     if len(idx_br) == 0:
         print('There are no inter-area branches!')
 
-
     options = OptimalNetTransferCapacityOptions(
         area_from_bus_idx=idx_from,
         area_to_bus_idx=idx_to,
@@ -448,18 +465,19 @@ if __name__ == '__main__':
         consider_contingencies=True,
         consider_gen_contingencies=True,
         consider_hvdc_contingencies=True,
+        consider_nx_contingencies=True,
         dispatch_all_areas=False,
         generation_contingency_threshold=1000,
         tolerance=1e-2,
         sensitivity_dT=100.0,
-        transfer_mode=AvailableTransferMode.InstalledPower,
+        transfer_method=AvailableTransferMode.InstalledPower,
         # todo: checkear si queremos el ptdf por potencia generada
         perform_previous_checks=False,
         weight_power_shift=1e5,
         weight_generation_cost=1e2,
-        with_solution_checks=False,
         time_limit_ms=1e4,
-        max_report_elements=5)
+        loading_threshold_to_report=98,
+    )
 
     print('Running optimal net transfer capacity...')
 
@@ -472,6 +490,8 @@ if __name__ == '__main__':
         pf_options=PowerFlowOptions(solver_type=SolverType.DC))
     driver.run()
 
-    driver.results.make_report(path_out=path_out)
-    # driver.results.make_report()
+    driver.results.create_all_reports(
+        loading_threshold=98,
+        reverse=True,
+    )
 
