@@ -442,6 +442,8 @@ def formulate_optimal_generation(solver: pywraplp.Solver, generator_active, disp
 def formulate_proportional_generation_old(solver: pywraplp.Solver, generator_active, generator_dispatchable,
                                       generator_cost, generator_names, inf, ngen, Cgen, Pgen, Pmax,
                                       Pmin, a1, a2, logger: Logger, Pref=None):
+
+    # todo: delete
     """
     Formulate the generation increments in a proportional fashion
     :param solver: Solver instance to which add the equations
@@ -996,9 +998,12 @@ def formulate_branches_flow(
 
     return flow_f, monitor, Pinj_tau
 
-def formulate_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase, branch_names,
+def formulate_contingency_old(solver: pywraplp.Solver, ContingencyRates, Sbase, branch_names,
                           contingency_enabled_indices, LODF, F, T, branch_sensitivity_threshold,
                           flow_f, monitor, alpha, alpha_n1, logger: Logger, lodf_replacement_value=0):
+
+    # TODO: delete
+
     """
     Formulate the contingency flows
     :param solver: Solver instance to which add the equations
@@ -1078,7 +1083,7 @@ def formulate_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase, bran
     return flow_n1f, np.array([con_alpha]).T, con_idx
 
 
-def formulate_contingency_nx(
+def formulate_contingency(
         solver: pywraplp.Solver, ContingencyRates, Sbase, branch_names, contingency_enabled_indices,
         LODF_NX, F, T, branch_sensitivity_threshold, flow_f, monitor, alpha, alpha_n1, logger: Logger,
         lodf_replacement_value=0
@@ -1122,6 +1127,8 @@ def formulate_contingency_nx(
             c2 = any(np.abs(lodfnx[m]) > branch_sensitivity_threshold)
             c3 = np.abs(alpha[m]) > branch_sensitivity_threshold
             c4 = any(np.abs(alpha_n1[m, c]) > branch_sensitivity_threshold)  # todo: check if any or all
+
+            # c2 = any(lodfnx[m] > branch_sensitivity_threshold)
 
             if c1 and c2 and c3 and c4:
                 # lodf_ = lodf[m]
@@ -1739,7 +1746,7 @@ class OpfNTC(Opf):
         elif self.generation_formulation == GenerationNtcFormulation.Proportional:
 
             generation, generation_delta, gen_a1_idx, gen_a2_idx, power_shift, \
-            gen_cost = formulate_proportional_generation_old(
+            gen_cost = formulate_proportional_generation(
                 solver=self.solver,
                 generator_active=self.numerical_circuit.generator_data.active[:, t],
                 generator_dispatchable=self.numerical_circuit.generator_data.generator_dispatchable,
@@ -1844,14 +1851,14 @@ class OpfNTC(Opf):
             logger=self.logger)
 
         if self.consider_contingencies:
-            # formulate the contingencies
+
             n1flow_f, con_br_alpha, con_br_idx = formulate_contingency(
                 solver=self.solver,
                 ContingencyRates=self.numerical_circuit.ContingencyRates,
                 Sbase=self.numerical_circuit.Sbase,
                 branch_names=self.numerical_circuit.branch_names,
                 contingency_enabled_indices=self.numerical_circuit.branch_data.get_contingency_enabled_indices(),
-                LODF=self.LODF,
+                LODF_NX=self.LODF_NX,
                 F=self.numerical_circuit.F,
                 T=self.numerical_circuit.T,
                 branch_sensitivity_threshold=self.branch_sensitivity_threshold,
@@ -1862,24 +1869,6 @@ class OpfNTC(Opf):
                 lodf_replacement_value=0,
                 logger=self.logger
             )
-
-            # n1flow_f, con_br_alpha, con_br_idx = formulate_contingency_nx(
-            #     solver=self.solver,
-            #     ContingencyRates=self.numerical_circuit.ContingencyRates,
-            #     Sbase=self.numerical_circuit.Sbase,
-            #     branch_names=self.numerical_circuit.branch_names,
-            #     contingency_enabled_indices=self.numerical_circuit.branch_data.get_contingency_enabled_indices(),
-            #     LODF_NX=self.LODF_NX,
-            #     F=self.numerical_circuit.F,
-            #     T=self.numerical_circuit.T,
-            #     branch_sensitivity_threshold=self.branch_sensitivity_threshold,
-            #     flow_f=flow_f,
-            #     monitor=monitor,
-            #     alpha=self.alpha,
-            #     alpha_n1=self.alpha_n1,
-            #     lodf_replacement_value=0,
-            #     logger=self.logger
-            # )
 
         else:
             con_br_idx = list()
@@ -2257,26 +2246,7 @@ class OpfNTC(Opf):
         if self.consider_contingencies:
 
             # formulate the contingencies
-
-            # n1flow_f, con_brn_alpha, con_br_idx = formulate_contingency(
-            #     solver=self.solver,
-            #     ContingencyRates=self.numerical_circuit.ContingencyRates[:, t],
-            #     Sbase=self.numerical_circuit.Sbase,
-            #     branch_names=self.numerical_circuit.branch_names,
-            #     contingency_enabled_indices=self.numerical_circuit.branch_data.get_contingency_enabled_indices(),
-            #     LODF=self.LODF,
-            #     F=self.numerical_circuit.F,
-            #     T=self.numerical_circuit.T,
-            #     branch_sensitivity_threshold=self.branch_sensitivity_threshold,
-            #     flow_f=flow_f,
-            #     monitor=monitor,
-            #     lodf_replacement_value=0,
-            #     alpha=self.alpha,
-            #     alpha_n1=self.alpha_n1,
-            #     logger=self.logger
-            # )
-
-            n1flow_f, con_brn_alpha, con_br_idx = formulate_contingency_nx(
+            n1flow_f, con_brn_alpha, con_br_idx = formulate_contingency(
                 solver=self.solver,
                 ContingencyRates=self.numerical_circuit.ContingencyRates[:, t],
                 Sbase=self.numerical_circuit.Sbase,

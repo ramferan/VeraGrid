@@ -26,10 +26,9 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="GridCal/ntc_opf:&#10; - Reports bugs fixed">
+    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="GridCal/ntc_opf:&#10; - Found out ntc differences with previous versions (abs value in LODF)">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/ContingencyAnalysis/contingency_plan.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/ContingencyAnalysis/contingency_plan.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/GridCal/Gui/ContingencyPlanner/contingency_planner_dialogue.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Gui/ContingencyPlanner/contingency_planner_dialogue.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -1067,13 +1066,6 @@
       <workItem from="1674823262666" duration="1341000" />
       <workItem from="1674988874398" duration="514000" />
     </task>
-    <task id="LOCAL-00334" summary="major refactor in the short circuit study">
-      <created>1660636533200</created>
-      <option name="number" value="00334" />
-      <option name="presentableId" value="LOCAL-00334" />
-      <option name="project" value="LOCAL" />
-      <updated>1660636533201</updated>
-    </task>
     <task id="LOCAL-00335" summary="Set the SC loading values to display in %">
       <created>1660640003161</created>
       <option name="number" value="00335" />
@@ -1410,7 +1402,14 @@
       <option name="project" value="LOCAL" />
       <updated>1683195845883</updated>
     </task>
-    <option name="localTasksCounter" value="383" />
+    <task id="LOCAL-00383" summary="GridCal/ntc_opf:&#10; - Found out ntc differences with previous versions (abs value in LODF)">
+      <created>1684332349959</created>
+      <option name="number" value="00383" />
+      <option name="presentableId" value="LOCAL-00383" />
+      <option name="project" value="LOCAL" />
+      <updated>1684332349959</updated>
+    </task>
+    <option name="localTasksCounter" value="384" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1444,7 +1443,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="New objective function:&#10; - Fixed call from ts&#10; - Fixed with scenarios with none hvdc" />
     <MESSAGE value="New objective function:&#10; - Prevent none inter area branches" />
     <MESSAGE value="ntc_opf:&#10; - Changed how to compute max_alpha_n1, and max_alpha" />
     <MESSAGE value="ntc_opf:&#10; - New function to compute monitorization logic" />
@@ -1469,7 +1467,8 @@
     <MESSAGE value="GridCal/contingencies:&#10; - Fixed bug export/import json contingency file." />
     <MESSAGE value="GridCal/ntc_opf:&#10; - Fixed little bugs in report column labels" />
     <MESSAGE value="GridCal/ntc_opf:&#10; - Reports bugs fixed" />
-    <option name="LAST_COMMIT_MESSAGE" value="GridCal/ntc_opf:&#10; - Reports bugs fixed" />
+    <MESSAGE value="GridCal/ntc_opf:&#10; - Found out ntc differences with previous versions (abs value in LODF)" />
+    <option name="LAST_COMMIT_MESSAGE" value="GridCal/ntc_opf:&#10; - Found out ntc differences with previous versions (abs value in LODF)" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
