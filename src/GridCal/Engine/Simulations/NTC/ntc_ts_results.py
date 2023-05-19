@@ -368,7 +368,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
         prob_dict = dict(zip(self.time_indices, self.sampled_probabilities))
 
         # sort data by ntc and time index, descending to compute probability factor
-        ntc_idx = list(map(str.lower, columns)).index('ntc')
+        ntc_idx = list(map(str.lower, columns)).index('ttc')
         load_col_name = [c for c in columns if any(x in c.lower().split(' ') for x in ['load', 'flow']) and '%' in c][0]
         cload_idx = columns.index(load_col_name)
         time_idx = list(map(str.lower, columns)).index('time')
@@ -376,7 +376,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
             (
                 data[:, time_idx],
                 np.abs(data[:, cload_idx].astype(float)),
-                np.abs(data[:, ntc_idx].astype(float)),
+                data[:, ntc_idx].astype(float),  # not abs value
             )
         )][::-1]
 
