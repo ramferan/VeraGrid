@@ -17,6 +17,8 @@ __pycache__
 /dist
 *.egg-info
 
+/build/*
+
 /src/tests/data/output/*.png
 
 Results.xlsx
