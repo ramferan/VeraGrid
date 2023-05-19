@@ -169,8 +169,9 @@ def add_ntc_data(y, columns, ttc, trm):
         # empty data, return
         return y, columns
 
-    trm = np.ones(y.shape[0]) * trm
     ttc = np.ones(y.shape[0]) * np.floor(ttc)
+    sign = ttc/np.abs(ttc)
+    trm = sign * trm
     ntc = ttc - trm
 
     y_ = np.array([ttc, ntc, trm]).T

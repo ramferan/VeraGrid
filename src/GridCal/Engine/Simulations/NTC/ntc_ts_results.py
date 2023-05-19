@@ -376,7 +376,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
             (
                 data[:, time_idx],
                 np.abs(data[:, cload_idx].astype(float)),
-                np.abs(data[:, ntc_idx].astype(float)),
+                data[:, ntc_idx].astype(float), #not abs value
             )
         )][::-1]
 

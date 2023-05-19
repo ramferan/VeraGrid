@@ -23,9 +23,8 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="4.6.6 Reformulating OF. Updated by Andres. Small changes. It runs">
+    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="Small change on date issue">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/IO/pack_unpack.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/IO/pack_unpack.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -1055,13 +1054,6 @@
       <workItem from="1674823262666" duration="1341000" />
       <workItem from="1674988874398" duration="514000" />
     </task>
-    <task id="LOCAL-00300" summary="Slight modifications to display more data for debugging">
-      <created>1652692334167</created>
-      <option name="number" value="00300" />
-      <option name="presentableId" value="LOCAL-00300" />
-      <option name="project" value="LOCAL" />
-      <updated>1652692334168</updated>
-    </task>
     <task id="LOCAL-00301" summary="Fixed serious bug where the compiler was not considering the load active profiles">
       <created>1653569314433</created>
       <option name="number" value="00301" />
@@ -1398,7 +1390,14 @@
       <option name="project" value="LOCAL" />
       <updated>1684420341740</updated>
     </task>
-    <option name="localTasksCounter" value="349" />
+    <task id="LOCAL-00349" summary="Small change on date issue">
+      <created>1684477657178</created>
+      <option name="number" value="00349" />
+      <option name="presentableId" value="LOCAL-00349" />
+      <option name="project" value="LOCAL" />
+      <updated>1684477657178</updated>
+    </task>
+    <option name="localTasksCounter" value="350" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1432,7 +1431,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added DPI support" />
     <MESSAGE value="Added sequence components to the generator and battery&#10;Modelled the south island of new zealand as per arrillaga's book" />
     <MESSAGE value="Fixed the matpower expression making the new derivatives exact as matpowers'" />
     <MESSAGE value="Merged the unbalanced short circuit and removed the sympy import" />
@@ -1457,7 +1455,8 @@
     <MESSAGE value="Fixed critical issue with short circuits handling islands" />
     <MESSAGE value="4.6.5" />
     <MESSAGE value="4.6.6 Reformulating OF. Updated by Andres. Small changes. It runs" />
-    <option name="LAST_COMMIT_MESSAGE" value="4.6.6 Reformulating OF. Updated by Andres. Small changes. It runs" />
+    <MESSAGE value="Small change on date issue" />
+    <option name="LAST_COMMIT_MESSAGE" value="Small change on date issue" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
