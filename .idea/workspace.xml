@@ -23,7 +23,7 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="Small change on date issue">
+    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="TTC and TRM fixed">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -1054,13 +1054,6 @@
       <workItem from="1674823262666" duration="1341000" />
       <workItem from="1674988874398" duration="514000" />
     </task>
-    <task id="LOCAL-00301" summary="Fixed serious bug where the compiler was not considering the load active profiles">
-      <created>1653569314433</created>
-      <option name="number" value="00301" />
-      <option name="presentableId" value="LOCAL-00301" />
-      <option name="project" value="LOCAL" />
-      <updated>1653569314433</updated>
-    </task>
     <task id="LOCAL-00302" summary="added newton pa compatibility">
       <created>1653913923717</created>
       <option name="number" value="00302" />
@@ -1397,7 +1390,14 @@
       <option name="project" value="LOCAL" />
       <updated>1684477657178</updated>
     </task>
-    <option name="localTasksCounter" value="350" />
+    <task id="LOCAL-00350" summary="TTC and TRM fixed">
+      <created>1684484174418</created>
+      <option name="number" value="00350" />
+      <option name="presentableId" value="LOCAL-00350" />
+      <option name="project" value="LOCAL" />
+      <updated>1684484174418</updated>
+    </task>
+    <option name="localTasksCounter" value="351" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1431,7 +1431,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added sequence components to the generator and battery&#10;Modelled the south island of new zealand as per arrillaga's book" />
     <MESSAGE value="Fixed the matpower expression making the new derivatives exact as matpowers'" />
     <MESSAGE value="Merged the unbalanced short circuit and removed the sympy import" />
     <MESSAGE value="Integrated the new short circuit logic in the GUI" />
@@ -1456,7 +1455,8 @@
     <MESSAGE value="4.6.5" />
     <MESSAGE value="4.6.6 Reformulating OF. Updated by Andres. Small changes. It runs" />
     <MESSAGE value="Small change on date issue" />
-    <option name="LAST_COMMIT_MESSAGE" value="Small change on date issue" />
+    <MESSAGE value="TTC and TRM fixed" />
+    <option name="LAST_COMMIT_MESSAGE" value="TTC and TRM fixed" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
