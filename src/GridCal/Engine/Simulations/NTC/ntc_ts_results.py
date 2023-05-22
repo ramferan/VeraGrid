@@ -369,7 +369,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
 
         # get columns indices to sort
         ttc_idx = list(map(str.lower, columns)).index('ttc')
-        load_col_name = [c for c in columns if any(x in c.lower().split(' ') for x in ['contingency']) and '%' in c][0]
+        load_col_name = [c for c in columns if any(x in c.lower().split(' ') for x in ['contingency','flow','load']) and '%' in c][0]
         cload_idx = columns.index(load_col_name)
         time_idx = list(map(str.lower, columns)).index('time')
 
