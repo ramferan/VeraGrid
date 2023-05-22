@@ -1329,6 +1329,7 @@ def formulate_hvdc_flow(solver: pywraplp.Solver, nhvdc, names, rate, angles, ang
 
                 flow_f[i] = formulate_hvdc_Pmode3_single_flow(
                     solver=solver,
+                    active=hvdc_active[i],
                     P0=P0,
                     rate=rate[i],
                     Sbase=Sbase,
@@ -2053,6 +2054,7 @@ class OpfNTC(Opf):
             names=self.numerical_circuit.hvdc_names,
             rate=self.numerical_circuit.hvdc_data.rate[:, t],
             angles=theta,
+            angles_max=self.numerical_circuit.bus_data.angle_max,
             hvdc_active=self.numerical_circuit.hvdc_data.active[:, t],
             Pt=self.numerical_circuit.hvdc_data.Pset[:, t],
             angle_droop=self.numerical_circuit.hvdc_data.get_angle_droop_in_pu_rad(Sbase)[:, t],
@@ -2445,6 +2447,7 @@ class OpfNTC(Opf):
             names=self.numerical_circuit.hvdc_names,
             rate=self.numerical_circuit.hvdc_data.rate[:, t],
             angles=theta,
+            angles_max=self.numerical_circuit.bus_data.angle_max,
             hvdc_active=self.numerical_circuit.hvdc_data.active[:, t],
             Pt=self.numerical_circuit.hvdc_data.Pset[:, t],
             angle_droop=self.numerical_circuit.hvdc_data.get_angle_droop_in_pu_rad(Sbase)[:, t],
