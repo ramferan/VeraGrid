@@ -370,6 +370,7 @@ def get_line_data(circuit: MultiCircuit, bus_dict,
         t = bus_dict[elm.bus_to]
 
         data.names[i] = elm.name
+        data.codes[i] = elm.code
 
         if time_series:
             data.active[i, :] = elm.active_prof
@@ -411,6 +412,8 @@ def get_transformer_data(circuit: MultiCircuit, bus_dict, time_series=False, nti
         # generic stuff
         f = bus_dict[elm.bus_from]
         t = bus_dict[elm.bus_to]
+        data.names[i] = elm.name
+        data.codes[i] = elm.code
 
         if time_series:
             data.active[i, :] = elm.active_prof
@@ -418,8 +421,6 @@ def get_transformer_data(circuit: MultiCircuit, bus_dict, time_series=False, nti
             data.active[i] = elm.active
 
         # impedance
-        data.names[i] = elm.name
-
         data.R[i] = elm.R
         data.X[i] = elm.X
         data.G[i] = elm.G
@@ -617,6 +618,7 @@ def get_branch_data(circuit: MultiCircuit, bus_dict, Vbus, apply_temperature,
     for i, elm in enumerate(circuit.lines):
         # generic stuff
         data.names[i] = elm.name
+        data.codes[i] = elm.code
 
         if time_series:
             data.active[i, :] = elm.active_prof

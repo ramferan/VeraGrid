@@ -1155,7 +1155,258 @@ def formulate_contingency(
     return flow_n1f, np.array(con_alpha, dtype=object), con_idx
 
 
-def formulate_hvdc_flow(solver: pywraplp.Solver, nhvdc, names, rate, angles, hvdc_active, Pt, angle_droop, control_mode,
+
+def formulate_hvdc_Pmode3_single_flow(
+        solver: pywraplp.Solver, active, P0, rate, Sbase, angle_droop, angle_max_f, angle_max_t, suffix, angles_f,
+        angles_t
+):
+    """
+        Formulate the HVDC flow
+        :param solver: Solver instance to which add the equations
+        :param rate: HVDC rate
+        :param P0: Power offset for HVDC
+        :param angles_f: bus voltage angle node from (LP Variable)
+        :param angles_t: bus voltage angle node to (LP Variable)
+        :param angle_max_f: maximum bus voltage angle node from (LP Variable)
+        :param angle_max_t: maximum bus voltage angle node to (LP Variable)
+        :param active: Boolean. HVDC active status (True / False)
+        :param angle_droop:  Flow multiplier constant (MW/decimal degree).
+        :param Sbase: Base power (i.e. 100 MVA)
+        :param suffix: suffix to add to the constraints names.
+        :return:
+            - flow_f: Array of formulated HVDC flows (mix of values and variables)
+        """
+
+    # |(theta_j - theta_i) * k + P0| >= |Pij|
+    # a = (theta_j - theta_i) * k + P0
+    # b = Pij
+    #
+    # lb_a = -4pi * k + P0
+    # ub_a = 4pi * k + P0
+    #
+    # lb_b = -rate
+    # ub_b = rate
+    #
+    # a_abs = |a|
+    # b_abs = |b|
+    #
+    # b_abs - a_abs <=0
+    #
+    # lb_a_abs = 0
+    # ub_a_abs = 4pi * k + P0
+    #
+    # lb_b = 0
+    # ub_b = rate
+
+
+
+    if active:
+        rate = rate / Sbase
+
+        # formulate the hvdc flow as an AC line equivalent
+        # to pass from MW/deg to p.u./rad -> * 180 / pi / (sbase=100)
+        k = angle_droop * 57.295779513 / Sbase
+
+        a_lb = P0 - (k * (angle_max_t + angle_max_f))
+        a_ub = P0 + k * (angle_max_f + angle_max_t)
+
+        #Variables declaration
+        a = solver.NumVar(
+            a_lb,
+            a_ub,
+            'a_' + suffix
+        )
+
+        b = solver.NumVar(
+            -rate,
+            rate,
+            'b_' + suffix
+        )
+
+        a_abs = solver.NumVar(
+            0,
+            P0 + k * (angle_max_t + angle_max_f),
+            'a_abs_' + suffix
+        )
+
+        b_abs = solver.NumVar(
+            0,
+            rate,
+            'b_abs_' + suffix
+        )
+
+        za = solver.BoolVar(
+            'za_' + suffix
+        )
+
+        zb = solver.BoolVar(
+            'zb_' + suffix
+        )
+
+        #Constraints formulation
+
+        solver.Add(
+            a == P0 + k * (angles_f - angles_t),
+            'theorical_unconstrainded_flow_' + suffix
+        )
+
+        #b is the solution
+
+        solver.Add(
+            b_abs - a_abs <= 0,
+            'hvdc_flow_constraint_' + suffix
+        )
+
+        solver.Add(
+            0 <= a_abs - a,
+            'a_abs_value_constraint_1_' + suffix
+        )
+
+        solver.Add(
+            a_abs - a <= 2 * a_ub * za,
+            'a_abs_value_constraint_2_' + suffix
+        )
+        solver.Add(
+            0 <= a_abs + a,
+            'a_abs_value_constraint_3_' + suffix
+        )
+
+        solver.Add(
+            a_abs + a <= 2 * a_ub * (1 - za),
+            'a_abs_value_constraint_4_' + suffix
+        )
+
+        solver.Add(
+            0 <= b_abs - b,
+            'b_abs_value_constraint_1_' + suffix
+        )
+
+        solver.Add(
+            b_abs - b <= 2 * rate * zb,
+            'b_abs_value_constraint_2_' + suffix
+        )
+        solver.Add(
+            0 <= b_abs + b,
+            'b_abs_value_constraint_3_' + suffix
+        )
+
+        solver.Add(
+            b_abs + b <= 2 * rate * (1 - zb),
+            'b_abs_value_constraint_4_' + suffix
+        )
+
+    else:
+        b=0
+
+    return b
+
+
+
+def formulate_hvdc_flow(solver: pywraplp.Solver, nhvdc, names, rate, angles, angles_max, hvdc_active, Pt, angle_droop, control_mode,
+                        dispatchable, F, T, Pinj, Sbase, inf, inter_area_hvdc,
+                        logger: Logger, force_exchange_sense=False):
+    """
+    Formulate the HVDC flow
+    :param solver: Solver instance to which add the equations
+    :param nhvdc: number of HVDC devices
+    :param names: Array of HVDC names
+    :param rate: Array of HVDC rates
+    :param angles: Array of bus voltage angles (LP Variables)
+    :param hvdc_active: Array of HVDC active status (True / False)
+    :param Pt: Array of HVDC sending power
+    :param angle_droop: Array of HVDC resistance values (this is used as the HVDC power/angle droop)
+    :param control_mode: Array of HVDC control modes
+    :param dispatchable: Array of HVDC dispatchable status (True/False)
+    :param F: Array of branch "from" bus indices
+    :param T: Array of branch "to" bus indices
+    :param Pinj: Array of power injections (Mix of values and LP variables)
+    :param Sbase: Base power (i.e. 100 MVA)
+    :param inf: Value representing the infinite (i.e. 1e20)
+    :param logger: logger instance
+    :param force_exchange_sense: Boolean to force the hvdc flow in the same sense than exchange
+    :return:
+        - flow_f: Array of formulated HVDC flows (mix of values and variables)
+    """
+    rates = rate / Sbase
+
+    flow_f = np.zeros(nhvdc, dtype=object)
+    flow_sensed = np.zeros(nhvdc, dtype=object)
+    hvdc_angle_slack_pos = np.zeros(nhvdc, dtype=object)
+    hvdc_angle_slack_neg = np.zeros(nhvdc, dtype=object)
+
+    for i in range(nhvdc):
+
+        if hvdc_active[i]:
+
+            _f = F[i]
+            _t = T[i]
+
+            suffix = "{0}_{1}".format(names[i], i)
+
+            P0 = Pt[i] / Sbase
+
+            if control_mode[i] == HvdcControlType.type_0_free:
+
+                if rates[i] <= 0:
+                    logger.add_error('Rate = 0', 'HVDC:{0}'.format(i), rates[i])
+
+                flow_f[i] = formulate_hvdc_Pmode3_single_flow(
+                    solver=solver,
+                    active=hvdc_active[i],
+                    P0=P0,
+                    rate=rate[i],
+                    Sbase=Sbase,
+                    angle_droop=angle_droop[i],
+                    angle_max_f=angles_max[_f],
+                    angle_max_t=angles_max[_t],
+                    angles_f=angles[_f],
+                    angles_t=angles[_t],
+                    suffix=suffix,
+                )
+
+            elif control_mode[i] == HvdcControlType.type_1_Pset and not dispatchable[i]:
+                # simple injections model: The power is set by the user
+                flow_f[i] = P0
+
+            elif control_mode[i] == HvdcControlType.type_1_Pset and dispatchable[i]:
+                # simple injections model, the power is a variable and it is optimized
+                P0 = solver.NumVar(
+                    -rates[i],
+                    rates[i],
+                    'hvdc_pset_' + suffix
+                )
+                flow_f[i] = P0
+
+            # add the injections matching the flow
+            Pinj[_f] -= flow_f[i]
+            Pinj[_t] += flow_f[i]
+
+    if force_exchange_sense:
+
+        # hvdc flow must be in the same exchange sense
+        for i, sense in inter_area_hvdc:
+
+            if control_mode[i] == HvdcControlType.type_1_Pset and dispatchable[i]:
+                suffix = "{0}:{1}".format(names[i], i)
+
+                flow_sensed[i] = solver.NumVar(
+                    0,
+                    inf,
+                    'hvdc_sense_flow_' + suffix
+                )
+
+                solver.Add(
+                    flow_sensed[i] == flow_f[i] * sense,
+                    'hvdc_sense_restriction_assignment_' + suffix
+                )
+
+    # todo: ver cómo devolver el peso para el slack de hvdc que sea la diferencia entre el rate-flow (¿puede ser una variable?)
+
+    return flow_f, hvdc_angle_slack_pos, hvdc_angle_slack_neg
+
+
+
+def formulate_hvdc_flow_old(solver: pywraplp.Solver, nhvdc, names, rate, angles, hvdc_active, Pt, angle_droop, control_mode,
                         dispatchable, F, T, Pinj, Sbase, inf, inter_area_hvdc,
                         logger: Logger, force_exchange_sense=False):
     """
@@ -1826,9 +2077,10 @@ class OpfNTC(Opf):
             names=self.numerical_circuit.hvdc_names,
             rate=self.numerical_circuit.hvdc_data.rate[:, t],
             angles=theta,
+            angles_max=self.numerical_circuit.bus_data.angle_max,
             hvdc_active=self.numerical_circuit.hvdc_data.active[:, t],
             Pt=self.numerical_circuit.hvdc_data.Pset[:, t],
-            angle_droop=self.numerical_circuit.hvdc_data.get_angle_droop_in_pu_rad(Sbase)[:, t],
+            angle_droop=self.numerical_circuit.hvdc_data.angle_droop[:, t],
             control_mode=self.numerical_circuit.hvdc_data.control_mode,
             dispatchable=self.numerical_circuit.hvdc_data.dispatchable,
             F=self.numerical_circuit.hvdc_data.get_bus_indices_f(),
@@ -2218,9 +2470,10 @@ class OpfNTC(Opf):
             names=self.numerical_circuit.hvdc_names,
             rate=self.numerical_circuit.hvdc_data.rate[:, t],
             angles=theta,
+            angles_max=self.numerical_circuit.bus_data.angle_max,
             hvdc_active=self.numerical_circuit.hvdc_data.active[:, t],
             Pt=self.numerical_circuit.hvdc_data.Pset[:, t],
-            angle_droop=self.numerical_circuit.hvdc_data.get_angle_droop_in_pu_rad(Sbase)[:, t],
+            angle_droop=self.numerical_circuit.hvdc_data.angle_droop[:, t],
             control_mode=self.numerical_circuit.hvdc_data.control_mode,
             dispatchable=self.numerical_circuit.hvdc_data.dispatchable,
             F=self.numerical_circuit.hvdc_data.get_bus_indices_f(),

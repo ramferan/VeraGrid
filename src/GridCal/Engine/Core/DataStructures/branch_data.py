@@ -44,6 +44,7 @@ class BranchData:
         self.ntime = ntime
 
         self.names = np.empty(self.nbr, dtype=object)
+        self.codes = np.empty(self.nbr, dtype=object)
 
         self.dc = np.zeros(self.nbr, dtype=int)
 
