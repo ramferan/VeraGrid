@@ -1170,12 +1170,35 @@ def formulate_hvdc_Pmode3_single_flow(
         :param angle_max_f: maximum bus voltage angle node from (LP Variable)
         :param angle_max_t: maximum bus voltage angle node to (LP Variable)
         :param active: Boolean. HVDC active status (True / False)
-        :param angle_droop:  HVDC resistance value (this is used as the HVDC power/angle droop)
+        :param angle_droop:  Flow multiplier constant (MW/decimal degree).
         :param Sbase: Base power (i.e. 100 MVA)
         :param suffix: suffix to add to the constraints names.
         :return:
             - flow_f: Array of formulated HVDC flows (mix of values and variables)
         """
+
+    # |(theta_j - theta_i) * k + P0| >= |Pij|
+    # a = (theta_j - theta_i) * k + P0
+    # b = Pij
+    #
+    # lb_a = -4pi * k + P0
+    # ub_a = 4pi * k + P0
+    #
+    # lb_b = -rate
+    # ub_b = rate
+    #
+    # a_abs = |a|
+    # b_abs = |b|
+    #
+    # b_abs - a_abs <=0
+    #
+    # lb_a_abs = 0
+    # ub_a_abs = 4pi * k + P0
+    #
+    # lb_b = 0
+    # ub_b = rate
+
+
 
     if active:
         rate = rate / Sbase
@@ -1184,13 +1207,13 @@ def formulate_hvdc_Pmode3_single_flow(
         # to pass from MW/deg to p.u./rad -> * 180 / pi / (sbase=100)
         k = angle_droop * 57.295779513 / Sbase
 
+        a_lb = P0 - (k * (angle_max_t + angle_max_f))
         a_ub = P0 + k * (angle_max_f + angle_max_t)
-        a_lb = P0 + k * (angle_max_t + angle_max_f)
 
         #Variables declaration
         a = solver.NumVar(
-            a_ub,
             a_lb,
+            a_ub,
             'a_' + suffix
         )
 
@@ -1235,7 +1258,7 @@ def formulate_hvdc_Pmode3_single_flow(
         )
 
         solver.Add(
-            0 <= a_abs-a,
+            0 <= a_abs - a,
             'a_abs_value_constraint_1_' + suffix
         )
 
@@ -1244,7 +1267,7 @@ def formulate_hvdc_Pmode3_single_flow(
             'a_abs_value_constraint_2_' + suffix
         )
         solver.Add(
-            0 <= a_abs+ a,
+            0 <= a_abs + a,
             'a_abs_value_constraint_3_' + suffix
         )
 
@@ -2057,7 +2080,7 @@ class OpfNTC(Opf):
             angles_max=self.numerical_circuit.bus_data.angle_max,
             hvdc_active=self.numerical_circuit.hvdc_data.active[:, t],
             Pt=self.numerical_circuit.hvdc_data.Pset[:, t],
-            angle_droop=self.numerical_circuit.hvdc_data.get_angle_droop_in_pu_rad(Sbase)[:, t],
+            angle_droop=self.numerical_circuit.hvdc_data.angle_droop[:, t],
             control_mode=self.numerical_circuit.hvdc_data.control_mode,
             dispatchable=self.numerical_circuit.hvdc_data.dispatchable,
             F=self.numerical_circuit.hvdc_data.get_bus_indices_f(),
@@ -2450,7 +2473,7 @@ class OpfNTC(Opf):
             angles_max=self.numerical_circuit.bus_data.angle_max,
             hvdc_active=self.numerical_circuit.hvdc_data.active[:, t],
             Pt=self.numerical_circuit.hvdc_data.Pset[:, t],
-            angle_droop=self.numerical_circuit.hvdc_data.get_angle_droop_in_pu_rad(Sbase)[:, t],
+            angle_droop=self.numerical_circuit.hvdc_data.angle_droop[:, t],
             control_mode=self.numerical_circuit.hvdc_data.control_mode,
             dispatchable=self.numerical_circuit.hvdc_data.dispatchable,
             F=self.numerical_circuit.hvdc_data.get_bus_indices_f(),
