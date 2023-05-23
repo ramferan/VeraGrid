@@ -1178,27 +1178,22 @@ def formulate_hvdc_Pmode3_single_flow(
         """
 
     # |(theta_j - theta_i) * k + P0| >= |Pij|
+    # |b| - |a| <= 0
+    #
     # a = (theta_j - theta_i) * k + P0
     # b = Pij
+    # a_abs = |a|
+    # b_abs = |b|
+    # b_abs - a_abs <=0
     #
     # lb_a = -4pi * k + P0
     # ub_a = 4pi * k + P0
-    #
     # lb_b = -rate
     # ub_b = rate
-    #
-    # a_abs = |a|
-    # b_abs = |b|
-    #
-    # b_abs - a_abs <=0
-    #
     # lb_a_abs = 0
     # ub_a_abs = 4pi * k + P0
-    #
-    # lb_b = 0
-    # ub_b = rate
-
-
+    # lb_b_abs = 0
+    # ub_b_abs = rate
 
     if active:
         rate = rate / Sbase
@@ -1207,10 +1202,11 @@ def formulate_hvdc_Pmode3_single_flow(
         # to pass from MW/deg to p.u./rad -> * 180 / pi / (sbase=100)
         k = angle_droop * 57.295779513 / Sbase
 
+        # Variables declaration
+
         a_lb = P0 - (k * (angle_max_t + angle_max_f))
         a_ub = P0 + k * (angle_max_f + angle_max_t)
 
-        #Variables declaration
         a = solver.NumVar(
             a_lb,
             a_ub,
@@ -1296,7 +1292,7 @@ def formulate_hvdc_Pmode3_single_flow(
         )
 
     else:
-        b=0
+        b = 0
 
     return b
 
