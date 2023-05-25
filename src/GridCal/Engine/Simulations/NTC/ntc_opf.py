@@ -1297,7 +1297,6 @@ def formulate_hvdc_Pmode3_single_flow(
     return b
 
 
-
 def formulate_hvdc_flow(solver: pywraplp.Solver, nhvdc, names, rate, angles, angles_max, hvdc_active, Pt, angle_droop, control_mode,
                         dispatchable, F, T, Pinj, Sbase, inf, inter_area_hvdc,
                         logger: Logger, force_exchange_sense=False):

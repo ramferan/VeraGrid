@@ -32,11 +32,18 @@ def kmeans_approximate_sampling(X, n_points=10):
     :return: indices of the closest to the cluster centers, deviation of the closest representatives
     """
 
+    tm0 = time.time()
+    tm1 = time.time()
     # declare the model
     model = KMeans(n_clusters=n_points, random_state=0, n_init=10)
 
+    print(f'kmeans: model loaded in {time.time()-tm1:.2f} scs.')
+    tm1 = time.time()
     # model fitting
     model.fit(X)
+
+    print(f'kmeans: model fitted in {time.time()-tm1:.2f} scs.')
+    tm1 = time.time()
 
     centers = model.cluster_centers_
     labels = model.labels_
@@ -45,6 +52,9 @@ def kmeans_approximate_sampling(X, n_points=10):
     closest_idx = np.zeros(n_points, dtype=int)
     closest_prob = np.zeros(n_points, dtype=float)
     nt = X.shape[0]
+
+    print(f'kmeans: closests in {time.time()-tm1:.2f} scs.')
+    tm1 = time.time()
 
     unique_labels, counts = np.unique(labels, return_counts=True)
     probabilities = counts.astype(float) / float(nt)
@@ -55,6 +65,9 @@ def kmeans_approximate_sampling(X, n_points=10):
         idx = deviations.argmin()
         closest_idx[i] = idx
 
+    print(f'kmeans: first loop in {time.time() - tm1:.2f} scs.')
+    tm1 = time.time()
+
     # sort the indices
     closest_idx = np.sort(closest_idx)
 
@@ -64,6 +77,12 @@ def kmeans_approximate_sampling(X, n_points=10):
         prob = prob_dict[lbl]
         closest_prob[i] = prob
 
+    print(f'kmeans: second loop in {time.time() - tm1:.2f} scs.')
+    tm1 = time.time()
+
+    csv_path = r'\\mornt4.ree.es\DESRED\DPE-Internacional\Interconexiones\FRANCIA\2023 MoU Pmode3\Pmode3_conting\8GW\h_pmode1\kmeans_.csv'
+    pd.DataFrame([closest_idx, closest_prob], index=['idx', 'prob']).T.to_csv(csv_path, index=False)
+    print(f'He tardado {time.time()-tm0:.2f} scs.')
     return closest_idx, closest_prob
 
 

@@ -196,7 +196,7 @@ class MainGUI(QMainWindow):
         self.transfer_modes_dict['Area nodes'] = sim.AvailableTransferMode.GenerationAndLoad
         lst = list(self.transfer_modes_dict.keys())
         self.ui.transferMethodComboBox.setModel(get_list_model(lst))
-        self.ui.transferMethodComboBox.setCurrentIndex(1)
+        self.ui.transferMethodComboBox.setCurrentIndex(0)
 
         self.accepted_extensions = ['.gridcal', '.xlsx', '.xls', '.sqlite', '.gch5',
                                     '.dgs', '.m', '.raw', '.RAW', '.json',
