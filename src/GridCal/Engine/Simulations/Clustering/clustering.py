@@ -24,6 +24,34 @@ from sklearn.cluster import KMeans
 from sklearn.cluster import SpectralClustering
 
 
+def kmeans_sampling(X, n_points=10):
+
+    tm0 = time.time()
+
+    # declare the model
+    model = KMeans(n_clusters=n_points, random_state=0, n_init=10)
+
+    tm1 = time.time()
+    # model fitting
+    model.fit_predict(X)
+    print(f'kmeans: model fitted in {time.time()-tm1:.2f} scs.')
+
+    centroid_idx = model.transform(X).argmin(axis=0)
+    sample_idx = model.transform(X).argmin(axis=1)
+
+    # compute probabilities
+    centroids, counts = np.unique(model.labels_, return_counts=True)
+    prob = counts.astype(float) / len(model.labels_)
+    prob_dict = {u: p for u, p in zip(centroids, prob)}
+
+    # sort results and assign probability
+    centroid_idx = np.sort(centroid_idx)
+    samples = sample_idx[centroid_idx]
+    probabilities = [prob_dict[i] for i in samples]
+
+    return centroid_idx, probabilities
+
+
 def kmeans_approximate_sampling(X, n_points=10):
     """
     K-Means clustering, corrected to the closest points
@@ -52,9 +80,6 @@ def kmeans_approximate_sampling(X, n_points=10):
     closest_idx = np.zeros(n_points, dtype=int)
     closest_prob = np.zeros(n_points, dtype=float)
     nt = X.shape[0]
-
-    print(f'kmeans: closests in {time.time()-tm1:.2f} scs.')
-    tm1 = time.time()
 
     unique_labels, counts = np.unique(labels, return_counts=True)
     probabilities = counts.astype(float) / float(nt)
