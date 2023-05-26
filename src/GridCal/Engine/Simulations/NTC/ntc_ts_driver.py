@@ -182,46 +182,48 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             loading_threshold_to_report=self.options.loading_threshold_to_report,
             ntc_load_rule=self.options.ntc_load_rule)
 
-
-        # Initialize problem object
-        problem = OpfNTC(
-            numerical_circuit=nc,
-            area_from_bus_idx=self.options.area_from_bus_idx,
-            area_to_bus_idx=self.options.area_to_bus_idx,
-            alpha=np.ones(nc.nbr),
-            alpha_n1=np.ones((nc.nbr, nc.nbr)),
-            LODF=linear.LODF,
-            LODF_NX=linear.LODF_NX,
-            PTDF=linear.PTDF,
-            solver_type=self.options.mip_solver,
-            generation_formulation=self.options.generation_formulation,
-            monitor_only_sensitive_branches=self.options.monitor_only_sensitive_branches,
-            monitor_only_ntc_load_rule_branches=self.options.monitor_only_ntc_load_rule_branches,
-            branch_sensitivity_threshold=self.options.branch_sensitivity_threshold,
-            skip_generation_limits=self.options.skip_generation_limits,
-            dispatch_all_areas=self.options.dispatch_all_areas,
-            tolerance=self.options.tolerance,
-            weight_power_shift=self.options.weight_power_shift,
-            weight_generation_cost=self.options.weight_generation_cost,
-            consider_contingencies=self.options.consider_contingencies,
-            consider_hvdc_contingencies=self.options.consider_hvdc_contingencies,
-            consider_gen_contingencies=self.options.consider_gen_contingencies,
-            generation_contingency_threshold=self.options.generation_contingency_threshold,
-            match_gen_load=self.options.match_gen_load,
-            ntc_load_rule=self.options.ntc_load_rule,
-            transfer_method=self.options.transfer_method,
-            logger=self.logger
-        )
-
         if self.options.transfer_method == AvailableTransferMode.InstalledPower:
-            problem.alpha, problem.alpha_n1 = self.compute_exchange_sensitivity(
+            alpha, alpha_n1 = self.compute_exchange_sensitivity(
                 linear=linear,
                 numerical_circuit=nc,
                 t=0,
                 with_n1=self.options.n1_consideration
             )
+        else:
+            alpha = np.ones(nc.nbr),
+            alpha_n1 = np.ones((nc.nbr, nc.nbr)),
 
         for t_idx, t in enumerate(time_indices):
+
+            # Initialize problem object (needed to reset var names)
+            problem = OpfNTC(
+                numerical_circuit=nc,
+                area_from_bus_idx=self.options.area_from_bus_idx,
+                area_to_bus_idx=self.options.area_to_bus_idx,
+                LODF=linear.LODF,
+                LODF_NX=linear.LODF_NX,
+                PTDF=linear.PTDF,
+                alpha=alpha,
+                alpha_n1=alpha_n1,
+                solver_type=self.options.mip_solver,
+                generation_formulation=self.options.generation_formulation,
+                monitor_only_sensitive_branches=self.options.monitor_only_sensitive_branches,
+                monitor_only_ntc_load_rule_branches=self.options.monitor_only_ntc_load_rule_branches,
+                branch_sensitivity_threshold=self.options.branch_sensitivity_threshold,
+                skip_generation_limits=self.options.skip_generation_limits,
+                dispatch_all_areas=self.options.dispatch_all_areas,
+                tolerance=self.options.tolerance,
+                weight_power_shift=self.options.weight_power_shift,
+                weight_generation_cost=self.options.weight_generation_cost,
+                consider_contingencies=self.options.consider_contingencies,
+                consider_hvdc_contingencies=self.options.consider_hvdc_contingencies,
+                consider_gen_contingencies=self.options.consider_gen_contingencies,
+                generation_contingency_threshold=self.options.generation_contingency_threshold,
+                match_gen_load=self.options.match_gen_load,
+                ntc_load_rule=self.options.ntc_load_rule,
+                transfer_method=self.options.transfer_method,
+                logger=self.logger
+            )
 
             # update progress bar
             progress = (t_idx + 1) / len(time_indices) * 100
