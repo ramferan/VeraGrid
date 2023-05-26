@@ -83,7 +83,7 @@ def txt2mat(txt, line_splitter=';', col_splitter='\t', to_float=True):
             if to_float:
                 arr = np.zeros((nrows, ncols))
             else:
-                arr = np.zeros((nrows, ncols), dtype=np.object)
+                arr = np.zeros((nrows, ncols), dtype=object)
 
         # fill-in the data
         for j, val in enumerate(vec):

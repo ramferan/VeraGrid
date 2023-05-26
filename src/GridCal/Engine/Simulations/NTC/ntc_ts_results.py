@@ -406,7 +406,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
 
         result = list(self.results_dict.values())[0]
         columns = ['Time index', 'Time'] + list(result.branch_names)
-        data = np.zeros((len(self.time_indices), len(result.alpha) + 2), np.object)
+        data = np.zeros((len(self.time_indices), len(result.alpha) + 2), object)
 
         for idx, t in enumerate(self.time_indices):
             if t in self.results_dict.keys():
@@ -428,7 +428,7 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
 
         result = list(self.results_dict.values())[0]
         columns = ['Time index', 'Time'] + list(result.branch_names)
-        data = np.zeros((len(self.time_indices), len(result.alpha) + 2), np.object)
+        data = np.zeros((len(self.time_indices), len(result.alpha) + 2), object)
 
         for idx, t in enumerate(self.time_indices):
             if t in self.results_dict.keys():
