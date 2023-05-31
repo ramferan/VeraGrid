@@ -51,54 +51,8 @@ class Circle(LineUpdateMixin, QGraphicsEllipseItem):
     pass
 
 
-class QLine(LineUpdateMixin, QGraphicsLineItem):
+class Line(LineUpdateMixin, QGraphicsLineItem):
     pass
-
-
-class GeneralItem(object):
-
-    def __init__(self):
-        self.color = ACTIVE['color']
-        self.width = 2
-        self.style = ACTIVE['style']
-        self.setBrush(QBrush(Qt.darkGray))
-        self.setPen(QPen(self.color, self.width, self.style))
-
-    def editParameters(self):
-        pd = ParameterDialog(self.window())
-        pd.exec_()
-
-    def contextMenuEvent(self, event):
-        menu = QMenu()
-
-        ra3 = menu.addAction('Delete all the connections')
-        ra3.triggered.connect(self.delete_all_connections)
-
-        da = menu.addAction('Delete')
-        da.triggered.connect(self.remove_)
-
-        menu.exec_(event.screenPos())
-
-    def rotate_clockwise(self):
-        self.rotate(90)
-
-    def rotate_counterclockwise(self):
-        self.rotate(-90)
-
-    def rotate(self, angle):
-
-        pass
-
-    def delete_all_connections(self):
-
-        self.terminal.remove_all_connections()
-
-    def remove_(self):
-        """
-
-        @return:
-        """
-        self.delete_all_connections()
 
 
 class ParameterDialog(QDialog):
@@ -106,8 +60,8 @@ class ParameterDialog(QDialog):
     def __init__(self, parent=None):
         super(ParameterDialog, self).__init__(parent)
         self.button = QPushButton('Ok', self)
-        l = QVBoxLayout(self)
-        l.addWidget(self.button)
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.button)
         self.button.clicked.connect(self.OK)
 
     def OK(self):
