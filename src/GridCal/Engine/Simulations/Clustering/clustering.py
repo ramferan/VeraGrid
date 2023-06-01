@@ -15,16 +15,16 @@
 # along with this program; if not, write to the Free Software Foundation,
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-import json
+import os
 import pandas as pd
 import numpy as np
 import time
-import multiprocessing
 from sklearn.cluster import KMeans
 from sklearn.cluster import SpectralClustering
 
 
 def kmeans_sampling(X, n_points=10):
+    os.environ['OPENBLAS_NUM_THREADS'] = '12'
 
     tm0 = time.time()
 
@@ -32,6 +32,7 @@ def kmeans_sampling(X, n_points=10):
     model = KMeans(n_clusters=n_points, random_state=0, n_init=10)
 
     tm1 = time.time()
+
     # model fitting
     model.fit_predict(X)
     print(f'kmeans: model fitted in {time.time()-tm1:.2f} scs.')
