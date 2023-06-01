@@ -170,7 +170,8 @@ def add_ntc_data(y, columns, ttc, trm):
         return y, columns
 
     ttc = np.ones(y.shape[0]) * np.floor(ttc)
-    sign = ttc / np.abs(ttc)
+    sign = ttc / (np.abs(ttc) + 1e-10)  # add 1e-10 to avoid zero division
+
     trm = sign * trm
     ntc = ttc - trm
 
