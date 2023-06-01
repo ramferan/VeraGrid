@@ -911,7 +911,10 @@ def formulate_node_balance(solver: pywraplp.Solver, Bbus, angles, Pinj, bus_acti
     i = 0
     for p_calc, p_set in zip(calculated_power, Pinj):
         if bus_active[i] and not isinstance(p_calc, int):  # balance is 0 for isolated buses
-            solver.Add(p_calc == p_set, "node_power_balance_assignment_{0}:{1}".format(bus_names[i], i))
+            solver.Add(
+                p_calc == p_set,
+                "node_power_balance_assignment_{0}:{1}".format(bus_names[i], i)
+            )
         i += 1
 
     return calculated_power
@@ -989,6 +992,17 @@ def formulate_branches_flow(
                 flow_f[m] == bk * (angles[_f] - angles[_t] - tau[m]),
                 'branch_power_flow_assignment_{0}:{1}'.format(branch_names[m], m)
             )
+
+            # angle diference constraint
+            # angle_dif = 0.52359  # 30º
+            # solver.Add(
+            #     -angle_dif + tau[m] <= angles[_f] - angles[_t],
+            #     'branch_angle_constraint_min_{0}:{1}'.format(branch_names[m], m)
+            # )
+            # solver.Add(
+            #     angles[_f] - angles[_t] <= angle_dif + tau[m],
+            #     'branch_angle_constraint_max_{0}:{1}'.format(branch_names[m], m)
+            # )
 
             # add the shifter injections matching the flow
             Ptau = bk * tau[m]
@@ -1466,7 +1480,7 @@ def formulate_hvdc_flow(solver: pywraplp.Solver, nhvdc, names, rate, angles, ang
 
 def formulate_hvdc_flow_old(solver: pywraplp.Solver, nhvdc, names, rate, angles, hvdc_active, Pt, angle_droop, control_mode,
                         dispatchable, F, T, Pinj, Sbase, inf, inter_area_hvdc,
-                        logger: Logger, force_exchange_sense=False):
+                        logger: Logger, force_exchange_sense=False, angles_max=None):
     """
     Formulate the HVDC flow
     :param solver: Solver instance to which add the equations
