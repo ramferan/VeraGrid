@@ -16,11 +16,12 @@ class TestCases(TestCase):
 
     # TestLoader.sortTestMethodsUsing = None
 
-    def test_pmode1(self):
+    def test_horita_pmode1(self):
         tm0 = time.time()
 
         folder = r'\\mornt4.ree.es\DESRED\DPE-Internacional\Interconexiones\FRANCIA\2023 MoU Pmode3\Pmode3_conting\5GW\h_pmode1_esc_inst'
         fname = os.path.join(folder, r'unahorita_23_2_pmode1.gridcal')
+        ettc = 5502.0
 
         circuit = FileOpen(fname).open()
 
@@ -72,7 +73,6 @@ class TestCases(TestCase):
         driver.run()
 
         ttc = np.floor(driver.results.get_exchange_power())
-        ettc = 5502.0
         result = np.isclose(ttc, ettc, atol=1)
 
         print(f'The computed TTC is {ttc}, the expected value is {ettc}')
