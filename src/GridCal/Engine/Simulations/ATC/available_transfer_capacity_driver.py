@@ -148,15 +148,21 @@ def compute_alpha(ptdf, P0, Pgen, Pinstalled, Pload, idx1, idx2, dT=1.0, mode=0,
 
     # compute the sensitivity
     alpha = dflow / dT
-    alpha_n1 = np.zeros((len(alpha), len(alpha)))
 
     if lodf is not None:
-        for m in range(len(alpha)):
-            for c in range(len(alpha)):
-                if m != c:
-                    dflow_n1 = dflow[m] + lodf[m, c] * dflow[c]
-                    alpha_c = dflow_n1 / dT
-                    alpha_n1[m, c] = alpha_c
+        alpha_n1 = ((lodf * dflow).T + dflow).T / dT
+        alpha_n1 = np.multiply(alpha_n1, np.logical_not(np.eye(len(alpha))))  # Remove values when i==j
+    else:
+        alpha_n1 = np.zeros((len(alpha), len(alpha)))
+
+
+    # if lodf is not None:
+    #     for m in range(len(alpha)):
+    #         for c in range(len(alpha)):
+    #             if m != c:
+    #                 dflow_n1 = dflow[m] + lodf[m, c] * dflow[c]
+    #                 alpha_c = dflow_n1 / dT
+    #                 alpha_n1[m, c] = alpha_c
 
     return alpha, alpha_n1
 
