@@ -97,8 +97,8 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
         self.trm = trm
         self.ntc_load_rule = ntc_load_rule
 
-        if sampled_probabilities is None and len(self.time_array) > 0:
-            sampled_probabilities = np.full(len(self.time_array)) * 1 / len(self.time_array)
+        if sampled_probabilities is None and len(self.time_indices) > 0:
+            sampled_probabilities = np.full(len(self.time_indices)) * 1 / len(self.time_indices)
 
         self.sampled_probabilities = sampled_probabilities
 
