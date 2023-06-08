@@ -203,15 +203,16 @@ class TestCases(TestCase):
 
         driver.run()
 
-        ttc = [self.results[t].get_exchange_power() for t in range(start, end)]
+
+        ttc = [driver.results[t].get_exchange_power() for t in driver.results.time_indices]
 
         result = np.isclose(ttc, solution, atol=1)
 
-        for t in range(start, end):
+        for t in range(driver.results.time_indices):
             print(f'The computed TTC is {ttc[t]}, the expected value is {solution[t]}')
 
         print(f'Test result is {result}. Computed in {time.time() - tm0:.2f} scs.')
 
-        k = 1
+
 if __name__ == '__main':
     TestCases.run()
