@@ -78,6 +78,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             contingency_rates=[],
             time_array=[],
             time_indices=[],
+            sampled_probabilities=[],
             trm=self.options.trm,
             ntc_load_rule=self.options.ntc_load_rule,
             loading_threshold_to_report=self.options.loading_threshold_to_report,
@@ -125,10 +126,6 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
         self.logger.add_info(f'Time circuit compiled in {time.time()-tm0:.2f} scs')
         print(f'Time circuit compiled in {time.time()-tm0:.2f} scs')
 
-        time_indices = self.get_time_indices()
-
-        nt = len(time_indices)
-
         # declare the linear analysis
         if self.progress_text is not None:
             self.progress_text.emit('Computing linear analysis...')
@@ -148,6 +145,8 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
         self.logger.add_info(f'Linear analysis computed in {time.time()-tm0:.2f} scs.')
         print(f'Linear analysis computed in {time.time()-tm0:.2f} scs.')
 
+        time_indices = self.get_time_indices()
+
         if self.use_clustering:
 
             if self.progress_text is not None:
@@ -165,8 +164,14 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                 X=X,
                 n_points=self.cluster_number,
             )
+
             self.logger.add_info(f'Kmeans sampling computed in {time.time()-tm1:.2f} scs. [{len(time_indices)} points]')
             print(f'Kmeans sampling computed in {time.time()-tm1:.2f} scs. [{len(time_indices)} points]')
+
+        else:
+            sampled_probabilities = np.full(len(self.time_array), 1/len(time_indices))
+
+        nt = len(time_indices)
 
         # Initialize results object
         self.results = OptimalNetTransferCapacityTimeSeriesResults(
@@ -178,6 +183,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             contingency_rates=nc.ContingencyRates,
             time_array=nc.time_array[time_indices],
             time_indices=time_indices,
+            sampled_probabilities=sampled_probabilities,
             trm=self.options.trm,
             loading_threshold_to_report=self.options.loading_threshold_to_report,
             ntc_load_rule=self.options.ntc_load_rule)
@@ -195,7 +201,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
 
         for t_idx, t in enumerate(time_indices):
 
-            # Initialize problem object (needed to reset var names)
+            # Initialize problem object (needed to reset solver variable names)
             problem = OpfNTC(
                 numerical_circuit=nc,
                 area_from_bus_idx=self.options.area_from_bus_idx,
