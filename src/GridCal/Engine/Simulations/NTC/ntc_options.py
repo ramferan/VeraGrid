@@ -53,6 +53,7 @@ class OptimalNetTransferCapacityOptions:
                  loading_threshold_to_report=0.98,
                  transfer_method: AvailableTransferMode = AvailableTransferMode.InstalledPower,
                  reversed_sort_loading=True,
+                 data_from_time_series=True,
                  ):
         """
 
@@ -77,7 +78,8 @@ class OptimalNetTransferCapacityOptions:
         :param ntc_load_rule:
         :param n1_consideration:
         :param transfer_method:
-        :param reverse_sorted_loading:
+        :param reversed_sort_loading:
+        :param data_from_time_series: Boolean to indicate where data comes from (timeseries or snapshot).
         """
         self.verbose = verbose
 
@@ -127,3 +129,5 @@ class OptimalNetTransferCapacityOptions:
         self.ntc_load_rule = ntc_load_rule
         self.n1_consideration = n1_consideration
         self.reversed_sort_loading = reversed_sort_loading
+
+        self.data_from_time_series=data_from_time_series

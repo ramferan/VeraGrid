@@ -21,16 +21,17 @@ import time
 import os
 
 from GridCal.Engine.Core.multi_circuit import MultiCircuit
-from GridCal.Engine.Core.time_series_opf_data import compile_opf_time_circuit, OpfTimeCircuit
+from GridCal.Engine.Core.time_series_opf_data import compile_opf_time_circuit,OpfTimeCircuit
 from GridCal.Engine.Simulations.NTC.ntc_opf import OpfNTC
-from GridCal.Engine.Simulations.NTC.ntc_driver import OptimalNetTransferCapacityOptions, OptimalNetTransferCapacityResults
+from GridCal.Engine.Simulations.NTC.ntc_sn_driver import OptimalNetTransferCapacityOptions, OptimalNetTransferCapacityResults
 from GridCal.Engine.Simulations.NTC.ntc_ts_results import OptimalNetTransferCapacityTimeSeriesResults
 from GridCal.Engine.Simulations.driver_types import SimulationTypes
 from GridCal.Engine.Simulations.driver_template import TimeSeriesDriverTemplate
 from GridCal.Engine.Simulations.Clustering.clustering import kmeans_sampling
 from GridCal.Engine.Simulations.ATC.available_transfer_capacity_driver import compute_alpha
 from GridCal.Engine.Simulations.LinearFactors.linear_analysis import LinearAnalysis
-from GridCal.Engine.Simulations.ATC.available_transfer_capacity_driver import AvailableTransferMode
+from GridCal.Engine.Simulations.ATC.available_transfer_capacity_driver import AvailableTransferMode, get_sensed_scale_factors
+from GridCal.Engine.Core.snapshot_opf_data import compile_opf_snapshot_circuit
 from GridCal.Engine.basic_structures import Logger
 
 try:
@@ -57,7 +58,8 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             self,
             grid=grid,
             start_=start_,
-            end_=end_)
+            end_=end_
+        )
 
         # Options to use
 
@@ -88,6 +90,8 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
         self.installed_alpha = None
         self.installed_alpha_n1 = None
 
+        self.inf = 1e10
+
     name = tpe.value
 
     def compute_exchange_sensitivity(self, linear, numerical_circuit: OpfTimeCircuit, t, with_n1=True):
@@ -109,28 +113,159 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
         # self.logger.add_info('Exchange sensibility computed in {0:.2f} scs.'.format(time.time()-tm0))
         return alpha, alpha_n1
 
-    def opf(self):
+    def emit_message(self, msg):
+        if self.progress_text is not None:
+            self.progress_text.emit(msg)
+        else:
+            print(msg)
+
+    def opf(self, snapshot=False):
         """
         Run thread
         """
 
+        tm0 = time.time()
         self.progress_signal.emit(0)
 
-        if self.progress_text is not None:
-            self.progress_text.emit('Compiling circuit...')
-        else:
-            print('Compiling cicuit...')
+        # --------------------------------------------------------------------------------------------------------------
+        # Compute numerical circuit
+        # --------------------------------------------------------------------------------------------------------------
 
-        tm0 = time.time()
-        nc = compile_opf_time_circuit(self.grid)
-        self.logger.add_info(f'Time circuit compiled in {time.time()-tm0:.2f} scs')
-        print(f'Time circuit compiled in {time.time()-tm0:.2f} scs')
+        tm_ = time.time()
+        self.emit_message('Compiling circuit...')
 
-        # declare the linear analysis
-        if self.progress_text is not None:
-            self.progress_text.emit('Computing linear analysis...')
+        if snapshot:
+            nc = compile_opf_time_circuit(circuit=self.grid)
         else:
-            print('Computing linear analysis...')
+            nc = compile_opf_snapshot_circuit(circuit=self.grid)
+
+        msg = f'Time circuit compiled in {time.time()-tm_:.2f} scs'
+        self.logger.add_info(msg)
+        self.emit_message(msg)
+
+        # --------------------------------------------------------------------------------------------------------------
+        # Matricial computation
+        # --------------------------------------------------------------------------------------------------------------
+        self.emit_message('Matricial computation...')
+
+
+        # --------------------------------------------------------------------------------------------------------------
+        # Formulate branches
+        # --------------------------------------------------------------------------------------------------------------
+
+        # branch
+        branch_ratings = nc.branch_rates / nc.Sbase
+        hvdc_ratings = self.numerical_circuit.hvdc_data.rate / nc.Sbase
+
+        # --------------------------------------------------------------------------------------------------------------
+        # Formulate load
+        # --------------------------------------------------------------------------------------------------------------
+
+        load_active = nc.load_data.active
+        load_bus = nc.load_data.get_bus_indices()
+        load_power = nc.load_data.p / nc.Sbase
+        load_names = nc.load_data.names
+
+        # Mask witch load may participate in opf
+        load_mask_a1 = load_active * np.isin(load_bus, a1)
+        load_mask_a2 = load_active * np.isin(load_bus, a2)
+
+        # --------------------------------------------------------------------------------------------------------------
+        # Formulate generation
+        # --------------------------------------------------------------------------------------------------------------
+
+        generator_active = nc.generator_data.active
+        generator_bus = nc.generator_data.get_bus_indices()
+        generator_dispatchable = nc.generator_data.generator_dispatchable
+        generator_names = nc.generator_data.names
+
+        # Scale generation to load if required
+        if self.match_gen_load:
+            base_generation = nc.generator_data.get_effective_generation()
+            k_lack = get_sensed_scale_factors(base_generation)
+            lack_generation = k_lack * (load_power.sum(axis=1) - base_generation.sum(axis=1))
+            generator_power = self.numerical_circuit.generator_data.p + lack_generation
+        else:
+            generator_power = self.numerical_circuit.generator_data.p
+
+        # Avoid the generation limits if required
+        if self.skip_generation_limits:
+            generator_pmax = self.inf * np.ones(self.numerical_circuit.ngen)
+            generator_pmin = -self.inf * np.ones(self.numerical_circuit.ngen)
+        else:
+            generator_pmax = nc.generator_data.generator_pmax / nc.Sbase
+            generator_pmin = nc.generator_data.generator_pmin / nc.Sbase
+
+        # Mask of generators may participate in opf
+        generator_mask = generator_active * generator_dispatchable
+        generator_mask_a1 = generator_mask * (generator_power < generator_pmax) * np.isin(generator_bus, a1)
+        generator_mask_a2 = generator_mask * (generator_power > generator_pmin) * np.isin(generator_bus, a2)
+
+        # --------------------------------------------------------------------------------------------------------------
+        # Formulate scale weights
+        # --------------------------------------------------------------------------------------------------------------
+
+        if self.transfer_method == AvailableTransferMode.InstalledPower:
+            generator_scale_a1 = get_sensed_scale_factors(reference=generator_pmax * generator_mask_a1)
+            generator_scale_a2 = get_sensed_scale_factors(reference=generator_pmax * generator_mask_a2)
+            generator_weight = generator_scale_a1 - generator_scale_a2
+            load_weight = np.zeros(load_power.shape[0])
+        elif self.transfer_method == AvailableTransferMode.Generation:
+            generator_scale_a1 = get_sensed_scale_factors(reference=generator_power * generator_mask_a1)
+            generator_scale_a2 = get_sensed_scale_factors(reference=generator_power * generator_mask_a2)
+            generator_weight = generator_scale_a1 - generator_scale_a2
+            load_weight = np.zeros(load_power.shape[0])
+        elif self.transfer_method == AvailableTransferMode.GenerationAndLoad:
+            generator_scale_a1 = get_sensed_scale_factors(reference=generator_power * generator_mask_a1)
+            generator_scale_a2 = get_sensed_scale_factors(reference=generator_power * generator_mask_a2)
+            generator_weight = generator_scale_a1 - generator_scale_a2
+            load_weight = np.zeros(load_power.shape[0])
+        elif self.transfer_method == AvailableTransferMode.Load:
+            load_scale_a1 = get_sensed_scale_factors(reference=load_power * load_mask_a1)
+            load_scale_a2 = get_sensed_scale_factors(reference=load_power * load_mask_a2)
+            load_weight = load_scale_a1 - load_scale_a2
+            generator_weight = np.zeros(generator_power.shape[0])
+        elif self.transfer_method == AvailableTransferMode.GenerationAndLoad:
+            generator_scale_a1 = get_sensed_scale_factors(reference=generator_power * generator_mask_a1)
+            generator_scale_a2 = get_sensed_scale_factors(reference=generator_power * generator_mask_a2)
+            load_scale_a1 = get_sensed_scale_factors(reference=load_power * load_mask_a1)
+            load_scale_a2 = get_sensed_scale_factors(reference=load_power * load_mask_a2)
+            generator_weight = generator_scale_a1 - generator_scale_a2
+            load_weight = load_scale_a1 - load_scale_a2
+        else:
+            generator_weight = np.zeros(generator_power.shape[0])
+            load_weight = np.zeros(load_power.shape[0])
+            self.logger.add_error(
+                msg='Error. Unknown transfer method'
+            )
+
+
+        # --------------------------------------------------------------------------------------------------------------
+        # To check
+        # --------------------------------------------------------------------------------------------------------------
+
+        alpha_abs = np.abs(self.alpha)
+        alpha_n1_abs = np.abs(self.alpha_n1)
+
+        # Maximum alpha n-1 value for each branch
+        max_alpha_abs_n1 = np.amax(alpha_n1_abs, axis=1)
+
+        # Maximum alpha or alpha n-1 value for each branch
+        max_alpha = np.amax(np.array([alpha_abs, max_alpha_abs_n1]), axis=0)
+
+        # --------------------------------------------------------------------------------------------------------------
+        # Formulate injections
+        # --------------------------------------------------------------------------------------------------------------
+
+        generation_injections = nc.generator_data.get_injections_per_bus()
+        load_injections = nc.load_data.get_injections_per_bus()
+        bus_injections = generation_injections - load_injections
+
+        # --------------------------------------------------------------------------------------------------------------
+        # Linear analysis
+        # --------------------------------------------------------------------------------------------------------------
+
+        self.emit_message('Computing linear analysis...')
 
         linear = LinearAnalysis(
             grid=self.grid,
@@ -139,11 +274,16 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             with_nx=self.options.consider_nx_contingencies,
         )
 
-        tm0 = time.time()
         linear.run()
 
-        self.logger.add_info(f'Linear analysis computed in {time.time()-tm0:.2f} scs.')
-        print(f'Linear analysis computed in {time.time()-tm0:.2f} scs.')
+        if self.progress_text is not None:
+            self.logger.add_info(f'Linear analysis computed in {time.time()-tm0:.2f} scs.')
+        else:
+            print(f'Linear analysis computed in {time.time()-tm0:.2f} scs.')
+
+        # --------------------------------------------------------------------------------------------------------------
+        # Fit time series
+        # --------------------------------------------------------------------------------------------------------------
 
         time_indices = self.get_time_indices()
 
@@ -169,7 +309,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             print(f'Kmeans sampling computed in {time.time()-tm1:.2f} scs. [{len(time_indices)} points]')
 
         else:
-            sampled_probabilities = np.full(len(self.time_array), 1/len(time_indices))
+            sampled_probabilities = np.full(len(self.time_indices), 1/len(time_indices))
 
         nt = len(time_indices)
 
