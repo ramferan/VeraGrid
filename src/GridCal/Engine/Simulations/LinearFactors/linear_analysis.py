@@ -113,7 +113,7 @@ def make_ptdf(Bbus, Bf, pqpv, distribute_slack=True):
     return H
 
 
-def make_lodf(Cf, Ct, PTDF, correct_values=True, numerical_zero=1e-10):
+def make_lodf(Cf, Ct, PTDF, correct_values=False, numerical_zero=1e-10):
     """
     Compute the LODF matrix
     :param Cf: Branch "from" -bus connectivity matrix
@@ -138,30 +138,14 @@ def make_lodf(Cf, Ct, PTDF, correct_values=True, numerical_zero=1e-10):
             LODF[:, j] = H[:, j] / div[j]
 
     # replace the diagonal elements by -1
-    # old code
-    # LODF = LODF - sp.diags(LODF.diagonal()) - sp.eye(nl, nl), replaced by:
-    for i in range(nl):
-        LODF[i, i] = - 1.0
+    np.fill_diagonal(LODF, -1)
 
-    if correct_values:  # TODO check more efficient way
-
+    if correct_values:
         # correct stupid values
-        i1, j1 = np.where(LODF > 1.2)
-        for i, j in zip(i1, j1):
-            LODF[i, j] = 0
-
-        i2, j2 = np.where(LODF < -1.2)
-        for i, j in zip(i2, j2):
-            LODF[i, j] = 0
-
-        # ensure +-1 values
-        i1, j1 = np.where(LODF > 1)
-        for i, j in zip(i1, j1):
-            LODF[i, j] = 1
-
-        i2, j2 = np.where(LODF < -1)
-        for i, j in zip(i2, j2):
-            LODF[i, j] = -1
+        LODF[LODF > 1.2] = 0
+        LODF[LODF < -1.2] = 0
+        # LODF[LODF > 1] = 1
+        # LODF[LODF < -1] = -1
 
     return LODF
 
@@ -306,13 +290,7 @@ def make_worst_contingency_transfer_limits(tmc):
 
 
 # @nb.njit(cache=True)
-def make_lodf_nx(circuit, lodf, force_from_file=False):
-    #todo: delete force_from_file
-
-    # if force_from_file:
-    #     import pickle
-    #     with open(r'C:\Users\ramferan\Desktop\lodf_nx_dc.txt', 'rb') as f:
-    #         return pickle.load(f)
+def make_lodf_nx(circuit, lodf):
 
     lodf_nx_list = list()
 
@@ -354,9 +332,40 @@ def make_lodf_nx(circuit, lodf, force_from_file=False):
     return lodf_nx_list
 
 
+def get_sensed_scale_factors(reference):
+    """
+    Function to compute sensed factors to scale.
+    :param reference: Reference to compute from.
+    :return: matrix with factors to scale
+    """
+
+    pos = reference * (reference > 0)
+    neg = reference * (reference < 0)
+
+    tot = np.sum(np.abs(reference)) + 1e-20
+
+    k_prop_pos = np.sum(pos) / tot * (reference > 0)
+    k_prop_neg = np.sum(neg) / tot * (reference < 0)
+    k_prop = k_prop_pos + k_prop_neg
+
+    tot_pos = pos.sum(axis=1) + 1e-20
+    tot_neg = neg.sum(axis=1) + 1e-20
+
+    k_dist_pos = pos/np.abs(np.array([tot_pos]).T)
+    k_dist_neg = neg/np.abs(np.array([tot_neg]).T)
+    k_dist = k_dist_pos + k_dist_neg
+
+    return k_prop * k_dist
+
 class LinearAnalysis:
 
-    def __init__(self, grid: MultiCircuit, distributed_slack=True, correct_values=True, with_nx=False, force_from_file=False):
+    def __init__(
+            self,
+            grid: MultiCircuit,
+            distributed_slack=True,
+            correct_values=True,
+            with_nx=False,
+    ):
         """
 
         :param grid:
@@ -379,8 +388,6 @@ class LinearAnalysis:
 
         self.__OTDF = None
 
-        self.force_from_file = force_from_file
-
         self.logger = Logger()
 
     def run(self):
@@ -388,6 +395,7 @@ class LinearAnalysis:
         Run the PTDF and LODF
         """
         self.numerical_circuit = compile_snapshot_circuit(self.grid)
+
         islands = self.numerical_circuit.split_into_islands()
         n_br = self.numerical_circuit.nbr
         n_bus = self.numerical_circuit.nbus
@@ -443,8 +451,6 @@ class LinearAnalysis:
             self.LODF_NX = make_lodf_nx(
                 circuit=self.grid,
                 lodf=self.LODF,
-                #todo: delete force_from_file
-                force_from_file=self.force_from_file,
             )
     @property
     def OTDF(self):
