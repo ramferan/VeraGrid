@@ -29,6 +29,7 @@ from GridCal.Engine.Simulations.results_table import ResultsTable
 from GridCal.Engine.Simulations.results_template import ResultsTemplate
 from GridCal.Engine.Simulations.driver_template import DriverTemplate
 from GridCal.Engine.Simulations.PowerFlow.power_flow_worker import get_hvdc_power
+from GridCal.Engine.Simulations.LinearFactors.linear_analysis import get_sensed_scale_factors
 
 ########################################################################################################################
 # Optimal Power flow classes
@@ -81,23 +82,6 @@ def get_proportional_deltas_sensed(P, idx, dP=1.0):
     return deltaP
 
 
-@nb.njit()
-def scale_proportional_sensed(P, idx1, idx2, dT=1.0):
-    """
-
-    :param P: Power vector
-    :param idx1: indices of sending region
-    :param idx2: indices of receiving region
-    :param dT: Exchange amount
-    :return:
-    """
-
-    dPu = get_proportional_deltas_sensed(P, idx1, dP=dT)
-    dPd = get_proportional_deltas_sensed(P, idx2, dP=-dT)
-
-    dP = dPu + dPd
-
-    return P + dP
 
 @nb.njit()
 def compute_alpha(ptdf, P0, Pgen, Pinstalled, Pload, idx1, idx2, dT=1.0, mode=0, lodf=None):
@@ -138,6 +122,8 @@ def compute_alpha(ptdf, P0, Pgen, Pinstalled, Pload, idx1, idx2, dT=1.0, mode=0,
         P = P0
 
     # compute the bus injection increments due to the exchange
+
+    # k_u = get_sensed_scale_factors(reference=)
     dPu = get_proportional_deltas_sensed(P, idx1, dP=dT)
     dPd = get_proportional_deltas_sensed(P, idx2, dP=-dT)
 

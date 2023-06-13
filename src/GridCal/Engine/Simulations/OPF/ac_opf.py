@@ -334,7 +334,7 @@ class OpfAc(Opf):
 if __name__ == '__main__':
     from GridCal.Engine.basic_structures import BranchImpedanceMode
     from GridCal.Engine.IO.file_handler import FileOpen
-    from GridCal.Engine.Core.snapshot_opf_data import compile_snapshot_opf_circuit
+    from GridCal.Engine.Core.snapshot_opf_data import compile_opf_snapshot_circuit
 
     # fname = '/home/santi/Documentos/GitHub/GridCal/Grids_and_profiles/grids/Lynn 5 Bus pv.gridcal'
     fname = '/home/santi/Documentos/GitHub/GridCal/Grids_and_profiles/grids/IEEE39_1W.gridcal'
@@ -344,7 +344,7 @@ if __name__ == '__main__':
 
     # main_circuit.buses[3].controlled_generators[0].enabled_dispatch = False
 
-    numerical_circuit_ = compile_snapshot_opf_circuit(circuit=main_circuit,
+    numerical_circuit_ = compile_opf_snapshot_circuit(circuit=main_circuit,
                                                       apply_temperature=False,
                                                       branch_tolerance_mode=BranchImpedanceMode.Specified)
 

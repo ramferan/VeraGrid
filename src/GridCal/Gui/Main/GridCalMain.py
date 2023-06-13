@@ -4417,7 +4417,7 @@ class MainGUI(QMainWindow):
                 pf_options = self.get_selected_power_flow_options()
 
                 # set power flow object instance
-                drv = sim.OptimalNetTransferCapacityDriver(
+                drv = sim.OptimalNetTransferCapacitySnapshotDriver(
                     grid=self.circuit,
                     options=options,
                     pf_options=pf_options)
@@ -6379,7 +6379,7 @@ class MainGUI(QMainWindow):
         """
         Delete small islands, disconnected stuff and other garbage
         """
-        numerical_circuit_ = core.compile_snapshot_opf_circuit(circuit=self.circuit, apply_temperature=False,)
+        numerical_circuit_ = core.compile_opf_snapshot_circuit(circuit=self.circuit, apply_temperature=False, )
         islands = numerical_circuit_.split_into_islands()
         logger = Logger()
         buses_to_delete = list()

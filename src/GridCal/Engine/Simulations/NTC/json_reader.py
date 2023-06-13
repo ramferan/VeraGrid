@@ -14,7 +14,7 @@ if __name__ == '__main__':
     import time
     import os
     import numpy as np
-    from GridCal.Engine.Core.snapshot_opf_data import compile_snapshot_opf_circuit
+    from GridCal.Engine.Core.snapshot_opf_data import compile_opf_snapshot_circuit
     from GridCal.Engine.IO.file_handler import FileOpen
     from GridCal.Engine.basic_structures import BranchImpedanceMode
     from GridCal.Engine.Simulations.LinearFactors.linear_analysis import LinearAnalysis
@@ -28,7 +28,7 @@ if __name__ == '__main__':
 
 
     main_circuit = FileOpen(fname).open()
-    numerical_circuit_ = compile_snapshot_opf_circuit(
+    numerical_circuit_ = compile_opf_snapshot_circuit(
         circuit=main_circuit,
         apply_temperature=False,
         branch_tolerance_mode=BranchImpedanceMode.Specified

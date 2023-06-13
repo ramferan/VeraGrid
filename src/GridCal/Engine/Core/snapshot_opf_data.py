@@ -189,7 +189,7 @@ class SnapshotOpfData(SnapshotData):
         return nc
 
 
-def compile_snapshot_opf_circuit(circuit: MultiCircuit, apply_temperature=False,
+def compile_opf_snapshot_circuit(circuit: MultiCircuit, apply_temperature=False,
                                  branch_tolerance_mode=BranchImpedanceMode.Specified,
                                  use_stored_guess=False) -> SnapshotOpfData:
     """

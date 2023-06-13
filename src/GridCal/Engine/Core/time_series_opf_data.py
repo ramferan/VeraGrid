@@ -351,3 +351,4 @@ def compile_opf_time_circuit(circuit: MultiCircuit, apply_temperature=False,
 
     return nc
 
+

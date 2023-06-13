@@ -86,6 +86,9 @@ class LoadData:
     def get_admittance_injections_per_bus(self):
         return - self.C_bus_load * (self.Y * self.active)
 
+    def get_bus_indices(self):
+        return self.C_bus_load.tocsc().indices
+
     def __len__(self):
         return self.nload
 
