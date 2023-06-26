@@ -1639,7 +1639,6 @@ def formulate_hvdc_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase,
 
     return flow_hvdc_n1f, np.array([con_alpha]).T, con_hvdc_idx
 
-
 def formulate_generator_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase, branch_names, generator_names,
                                     Cgen, Pgen, generation_contingency_threshold, PTDF, F, T, flow_f, monitor, alpha,
                                     logger: Logger):
@@ -1691,6 +1690,68 @@ def formulate_generator_contingency(solver: pywraplp.Solver, ContingencyRates, S
                     solver.Add(
                         # flow_n1 == flow_f[m] - PTDF[m, i] * generation_contingency_threshold_pu
                         flow_n1 == flow_f[m] - PTDF[m, i] * Pgen[j]
+                        , "gen_n-1_flow_assignment_" + suffix
+                    )
+
+                    # store vars
+                    con_gen_idx.append((m, [j]))
+                    flow_gen_n1f.append(flow_n1)
+                    # alpha_n1_list.append(PTDF[m, i] - alpha[m])
+                    con_alpha.append(alpha[m] - PTDF[m, i])
+
+    return flow_gen_n1f, np.array([con_alpha]).T, con_gen_idx
+
+def formulate_generator_contingency_old(solver: pywraplp.Solver, ContingencyRates, Sbase, branch_names, generator_names,
+                                    Cgen, Pgen, generation_contingency_threshold, PTDF, F, T, flow_f, monitor, alpha,
+                                    logger: Logger):
+    """
+    Formulate the contingency flows
+    :param solver: Solver instance to which add the equations
+    :param ContingencyRates: array of branch contingency rates
+    :param branch_names: array of branch names
+    :param generator_names: Array of Generator names
+    :param Cgen: CSC connectivity matrix of generators and buses [ngen, nbus]
+    :param Pgen: Array of generator active power values in p.u.
+    :param generation_contingency_threshold: Generation power threshold to consider as contingency (in MW)
+    :param PTDF: PTDF matrix
+    :param F: Array of branch "from" bus indices
+    :param T: Array of branch "to" bus indices
+    :param flow_f: Array of formulated branch flows (LP variblaes)
+    :param monitor: Array of final monitor status per branch after applying the logic
+    :param logger: logger instance
+    :return:
+        - flow_n1f: List of contingency flows LP variables
+        - con_idx: list of accepted contingency monitored and failed indices [(monitored, failed), ...]
+    """
+
+    rates = ContingencyRates / Sbase
+    mon_br_idx = np.where(monitor == True)[0]
+
+    flow_gen_n1f = list()
+    con_gen_idx = list()
+    con_alpha = list()
+
+    generation_contingency_threshold_pu = generation_contingency_threshold / Sbase
+
+    for j in range(Cgen.shape[1]):  # for each generator
+        for ii in range(Cgen.indptr[j], Cgen.indptr[j + 1]):
+            i = Cgen.indices[ii]  # bus index
+
+            if Pgen[j] >= generation_contingency_threshold_pu:
+
+                for m in mon_br_idx:  # for every monitored branch
+                    _f = F[m]
+                    _t = T[m]
+                    suffix = "{0}@{1}_{2}@{3}".format(branch_names[m], generator_names[j], m, j)
+
+                    flow_n1 = solver.NumVar(
+                        -rates[m], rates[m],
+                        'gen_n-1_flow_' + suffix
+                    )
+
+                    solver.Add(
+                        flow_n1 == flow_f[m] - PTDF[m, i] * generation_contingency_threshold_pu
+                        # flow_n1 == flow_f[m] - PTDF[m, i] * Pgen[j]
                         , "gen_n-1_flow_assignment_" + suffix
                     )
 
@@ -2069,7 +2130,7 @@ class OpfNTC(Opf):
         elif self.generation_formulation == GenerationNtcFormulation.Proportional:
 
             generation, generation_delta, gen_a1_idx, gen_a2_idx, power_shift, \
-            gen_cost = formulate_proportional_generation(
+            gen_cost = formulate_proportional_generation_old(
                 solver=self.solver,
                 generator_active=self.numerical_circuit.generator_data.active[:, t],
                 generator_dispatchable=self.numerical_circuit.generator_data.generator_dispatchable,
