@@ -1014,7 +1014,7 @@ def formulate_branches_flow(
 
 def formulate_contingency_old(solver: pywraplp.Solver, ContingencyRates, Sbase, branch_names,
                           contingency_enabled_indices, LODF, F, T, branch_sensitivity_threshold,
-                          flow_f, monitor, alpha, alpha_n1, logger: Logger, lodf_replacement_value=0):
+                          flow_f, monitor, alpha, alpha_n1, logger: Logger, lodf_replacement_value=0, LODF_NX=None):
 
     # TODO: delete
 
@@ -1056,7 +1056,8 @@ def formulate_contingency_old(solver: pywraplp.Solver, ContingencyRates, Sbase, 
         for c in con_br_idx:  # for every contingency
 
             c1 = m != c
-            c2 = np.abs(LODF[m, c]) > branch_sensitivity_threshold
+            # c2 = np.abs(LODF[m, c]) > branch_sensitivity_threshold
+            c2 = LODF[m, c] > branch_sensitivity_threshold
             c3 = np.abs(alpha_n1[m, c]) > branch_sensitivity_threshold
             c4 = np.abs(alpha[m]) > branch_sensitivity_threshold
 
@@ -2130,7 +2131,7 @@ class OpfNTC(Opf):
         elif self.generation_formulation == GenerationNtcFormulation.Proportional:
 
             generation, generation_delta, gen_a1_idx, gen_a2_idx, power_shift, \
-            gen_cost = formulate_proportional_generation_old(
+            gen_cost = formulate_proportional_generation(
                 solver=self.solver,
                 generator_active=self.numerical_circuit.generator_data.active[:, t],
                 generator_dispatchable=self.numerical_circuit.generator_data.generator_dispatchable,
@@ -2244,6 +2245,7 @@ class OpfNTC(Opf):
                 branch_names=self.numerical_circuit.branch_names,
                 contingency_enabled_indices=self.numerical_circuit.branch_data.get_contingency_enabled_indices(),
                 LODF_NX=self.LODF_NX,
+                # LODF=self.LODF,
                 F=self.numerical_circuit.F,
                 T=self.numerical_circuit.T,
                 branch_sensitivity_threshold=self.branch_sensitivity_threshold,
@@ -2639,6 +2641,7 @@ class OpfNTC(Opf):
                 branch_names=self.numerical_circuit.branch_names,
                 contingency_enabled_indices=self.numerical_circuit.branch_data.get_contingency_enabled_indices(),
                 LODF_NX=self.LODF_NX,
+                # LODF=self.LODF,
                 F=self.numerical_circuit.F,
                 T=self.numerical_circuit.T,
                 branch_sensitivity_threshold=self.branch_sensitivity_threshold,
