@@ -2109,6 +2109,7 @@ class OpfNTC(Opf):
         # formulate the generation
         if self.generation_formulation == GenerationNtcFormulation.Optimal:
 
+            # formulate optimal generation
             generation, generation_delta, gen_a1_idx, gen_a2_idx, power_shift, dgen1, \
             gen_cost = formulate_optimal_generation(
                 solver=self.solver,
@@ -2130,6 +2131,7 @@ class OpfNTC(Opf):
 
         elif self.generation_formulation == GenerationNtcFormulation.Proportional:
 
+            # formulate proportional generation
             generation, generation_delta, gen_a1_idx, gen_a2_idx, power_shift, \
             gen_cost = formulate_proportional_generation(
                 solver=self.solver,
@@ -2238,6 +2240,7 @@ class OpfNTC(Opf):
 
         if self.consider_contingencies:
 
+            # formulate the contingencies
             n1flow_f, con_br_alpha, con_br_idx = formulate_contingency(
                 solver=self.solver,
                 ContingencyRates=self.numerical_circuit.ContingencyRates,
@@ -2263,6 +2266,7 @@ class OpfNTC(Opf):
             con_br_alpha = list()
 
         if self.consider_gen_contingencies and self.generation_contingency_threshold != 0:
+
             # formulate the generator contingencies
             n1flow_gen_f, con_gen_alpha, con_gen_idx = formulate_generator_contingency(
                 solver=self.solver,
@@ -2271,8 +2275,8 @@ class OpfNTC(Opf):
                 branch_names=self.numerical_circuit.branch_names,
                 generator_names=self.numerical_circuit.generator_data.names,
                 Cgen=Cgen,
-                Pgen=Pgen,
-                # Pgen=generation,  # includes market generation + delta generation
+                # Pgen=Pgen,
+                Pgen=generation,  # includes market generation + delta generation
                 generation_contingency_threshold=self.generation_contingency_threshold,
                 PTDF=self.PTDF,
                 F=self.numerical_circuit.F,
@@ -2503,6 +2507,7 @@ class OpfNTC(Opf):
         # formulate the generation
         if self.generation_formulation == GenerationNtcFormulation.Optimal:
 
+            # formulate optimal generation
             generation, generation_delta, gen_a1_idx, gen_a2_idx, power_shift, dgen1, \
             gen_cost = formulate_optimal_generation(
                 solver=self.solver,
@@ -2524,6 +2529,7 @@ class OpfNTC(Opf):
 
         elif self.generation_formulation == GenerationNtcFormulation.Proportional:
 
+            # formulate proportional generation
             generation, generation_delta, gen_a1_idx, gen_a2_idx, power_shift, \
             gen_cost = formulate_proportional_generation(
                 solver=self.solver,
@@ -2659,6 +2665,7 @@ class OpfNTC(Opf):
             con_brn_alpha = list()
 
         if self.consider_gen_contingencies and self.generation_contingency_threshold != 0:
+
             # formulate the generator contingencies
             n1flow_gen_f, con_gen_alpha, con_gen_idx = formulate_generator_contingency(
                 solver=self.solver,
@@ -2667,7 +2674,8 @@ class OpfNTC(Opf):
                 branch_names=self.numerical_circuit.branch_names,
                 generator_names=self.numerical_circuit.generator_data.names,
                 Cgen=Cgen,
-                Pgen=Pgen,
+                # Pgen=Pgen,
+                Pgen=generation,  # includes market generation + delta generation
                 generation_contingency_threshold=self.generation_contingency_threshold,
                 PTDF=self.PTDF,
                 F=self.numerical_circuit.F,
