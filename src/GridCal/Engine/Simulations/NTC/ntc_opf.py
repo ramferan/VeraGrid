@@ -1101,7 +1101,7 @@ def formulate_contingency_old(solver: pywraplp.Solver, ContingencyRates, Sbase, 
 def formulate_contingency(
         solver: pywraplp.Solver, ContingencyRates, Sbase, branch_names, contingency_enabled_indices,
         LODF_NX, F, T, branch_sensitivity_threshold, flow_f, monitor, alpha, alpha_n1, logger: Logger,
-        lodf_replacement_value=0
+        lodf_replacement_value=0, LODF=None,
 ):
     """
     Formulate the contingency flows
@@ -1627,6 +1627,64 @@ def formulate_hvdc_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase,
                     'hvdc_n-1_flow_' + suffix
                 )
 
+                lodf = (-PTDF[m, _f_hvdc] + PTDF[m, _t_hvdc])
+                solver.Add(
+                    flow_n1 == flow_f[m] + lodf * hvdc_f,
+                    "hvdc_n-1_flow_assignment_" + suffix
+                )
+
+                # store vars
+                con_hvdc_idx.append((m, [i]))
+                flow_hvdc_n1f.append(flow_n1)
+                con_alpha.append(alpha[m] - lodf)
+
+    return flow_hvdc_n1f, np.array([con_alpha]).T, con_hvdc_idx
+
+
+def formulate_hvdc_contingency_old(solver: pywraplp.Solver, ContingencyRates, Sbase,
+                               hvdc_flow_f, hvdc_active, PTDF, F, T, F_hvdc, T_hvdc, flow_f, monitor, alpha,
+                               logger: Logger):
+    """
+    Formulate the contingency flows
+    :param solver: Solver instance to which add the equations
+    :param ContingencyRates: array of branch contingency rates
+    :param PTDF: PTDF matrix
+    :param F: Array of branch "from" bus indices
+    :param T: Array of branch "to" bus indices
+    :param F_hvdc: Array of hvdc "from" bus indices
+    :param T_hvdc: Array of hvdc "to" bus indices
+    :param flow_f: Array of formulated branch flows (LP variblaes)
+    :param hvdc_active: Array of hvdc active status
+    :param monitor: Array of final monitor status per branch after applying the logic
+    :param logger: logger instance
+    :return:
+        - flow_n1f: List of contingency flows LP variables
+        - con_idx: list of accepted contingency monitored and failed indices [(monitored, failed), ...]
+    """
+
+    rates = ContingencyRates / Sbase
+    mon_br_idx = np.where(monitor == True)[0]
+
+    flow_hvdc_n1f = list()
+    con_hvdc_idx = list()
+    con_alpha = list()
+
+    for i, hvdc_f in enumerate(hvdc_flow_f):
+        _f_hvdc = F_hvdc[i]
+        _t_hvdc = T_hvdc[i]
+
+        if hvdc_active[i]:
+            for m in mon_br_idx:  # for every monitored branch
+                _f = F[m]
+                _t = T[m]
+                suffix = "Branch_{0}@Hvdc_{1}".format(m, i)
+
+                flow_n1 = solver.NumVar(
+                    -rates[m],
+                    rates[m],
+                    'hvdc_n-1_flow_' + suffix
+                )
+
                 solver.Add(
                     flow_n1 == flow_f[m] + (PTDF[m, _f_hvdc] - PTDF[m, _t_hvdc]) * hvdc_f,
                     "hvdc_n-1_flow_assignment_" + suffix
@@ -1639,6 +1697,7 @@ def formulate_hvdc_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase,
                 con_alpha.append(alpha[m] - (PTDF[m, _f_hvdc] - PTDF[m, _t_hvdc]))
 
     return flow_hvdc_n1f, np.array([con_alpha]).T, con_hvdc_idx
+
 
 def formulate_generator_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase, branch_names, generator_names,
                                     Cgen, Pgen, generation_contingency_threshold, PTDF, F, T, flow_f, monitor, alpha,
@@ -2248,7 +2307,7 @@ class OpfNTC(Opf):
                 branch_names=self.numerical_circuit.branch_names,
                 contingency_enabled_indices=self.numerical_circuit.branch_data.get_contingency_enabled_indices(),
                 LODF_NX=self.LODF_NX,
-                # LODF=self.LODF,
+                LODF=self.LODF,
                 F=self.numerical_circuit.F,
                 T=self.numerical_circuit.T,
                 branch_sensitivity_threshold=self.branch_sensitivity_threshold,
@@ -2647,7 +2706,7 @@ class OpfNTC(Opf):
                 branch_names=self.numerical_circuit.branch_names,
                 contingency_enabled_indices=self.numerical_circuit.branch_data.get_contingency_enabled_indices(),
                 LODF_NX=self.LODF_NX,
-                # LODF=self.LODF,
+                LODF=self.LODF,
                 F=self.numerical_circuit.F,
                 T=self.numerical_circuit.T,
                 branch_sensitivity_threshold=self.branch_sensitivity_threshold,
@@ -3023,8 +3082,8 @@ if __name__ == '__main__':
     from GridCal.Engine.Simulations.ATC.available_transfer_capacity_driver import compute_alpha
     from GridCal.Engine.Simulations.LinearFactors.linear_analysis import LinearAnalysis, make_lodf_nx
 
-    folder = r'\\mornt4\DESRED\DPE-Internacional\Interconexiones\FRANCIA\2022 MoU\5GW 8.0\Con N-x\merged\GridCal'
-    fname = os.path.join(folder, 'MOU_2022_5GW_v6f_contingencias_dc.gridcal')
+    folder = r'C:\Users\ramferan\Downloads'
+    fname = os.path.join(folder, 'MOU_2022_5GW_v6h-B_pmode1_with_contingencies.gridcal')
 
     tm0 = time.time()
     main_circuit = FileOpen(fname).open()
