@@ -1641,6 +1641,7 @@ def formulate_hvdc_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase,
     return flow_hvdc_n1f, np.array([con_alpha]).T, con_hvdc_idx
 
 
+
 def formulate_hvdc_contingency_old(solver: pywraplp.Solver, ContingencyRates, Sbase,
                                hvdc_flow_f, hvdc_active, PTDF, F, T, F_hvdc, T_hvdc, flow_f, monitor, alpha,
                                logger: Logger):
@@ -1693,7 +1694,62 @@ def formulate_hvdc_contingency_old(solver: pywraplp.Solver, ContingencyRates, Sb
                 # store vars
                 con_hvdc_idx.append((m, [i]))
                 flow_hvdc_n1f.append(flow_n1)
-                # con_alpha.append(PTDF[m, _f_hvdc] - PTDF[m, _t_hvdc] - alpha[m])
+                con_alpha.append(PTDF[m, _f_hvdc] - PTDF[m, _t_hvdc] - alpha[m])
+
+    return flow_hvdc_n1f, np.array([con_alpha]).T, con_hvdc_idx
+
+def formulate_hvdc_contingency_old2(solver: pywraplp.Solver, ContingencyRates, Sbase,
+                               hvdc_flow_f, hvdc_active, PTDF, F, T, F_hvdc, T_hvdc, flow_f, monitor, alpha,
+                               logger: Logger):
+    """
+    Formulate the contingency flows
+    :param solver: Solver instance to which add the equations
+    :param ContingencyRates: array of branch contingency rates
+    :param PTDF: PTDF matrix
+    :param F: Array of branch "from" bus indices
+    :param T: Array of branch "to" bus indices
+    :param F_hvdc: Array of hvdc "from" bus indices
+    :param T_hvdc: Array of hvdc "to" bus indices
+    :param flow_f: Array of formulated branch flows (LP variblaes)
+    :param hvdc_active: Array of hvdc active status
+    :param monitor: Array of final monitor status per branch after applying the logic
+    :param logger: logger instance
+    :return:
+        - flow_n1f: List of contingency flows LP variables
+        - con_idx: list of accepted contingency monitored and failed indices [(monitored, failed), ...]
+    """
+
+    rates = ContingencyRates / Sbase
+    mon_br_idx = np.where(monitor == True)[0]
+
+    flow_hvdc_n1f = list()
+    con_hvdc_idx = list()
+    con_alpha = list()
+
+    for i, hvdc_f in enumerate(hvdc_flow_f):
+        _f_hvdc = F_hvdc[i]
+        _t_hvdc = T_hvdc[i]
+
+        if hvdc_active[i]:
+            for m in mon_br_idx:  # for every monitored branch
+                _f = F[m]
+                _t = T[m]
+                suffix = "Branch_{0}@Hvdc_{1}".format(m, i)
+
+                flow_n1 = solver.NumVar(
+                    -rates[m],
+                    rates[m],
+                    'hvdc_n-1_flow_' + suffix
+                )
+
+                solver.Add(
+                    flow_n1 == flow_f[m] + (PTDF[m, _f_hvdc] - PTDF[m, _t_hvdc]) * hvdc_f,
+                    "hvdc_n-1_flow_assignment_" + suffix
+                )
+
+                # store vars
+                con_hvdc_idx.append((m, [i]))
+                flow_hvdc_n1f.append(flow_n1)
                 con_alpha.append(alpha[m] - (PTDF[m, _f_hvdc] - PTDF[m, _t_hvdc]))
 
     return flow_hvdc_n1f, np.array([con_alpha]).T, con_hvdc_idx
