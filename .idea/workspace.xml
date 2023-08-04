@@ -26,10 +26,7 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="comments to debug mou">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py" afterDir="false" />
-    </list>
+    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="version 4.6.1b.4 (v4)&#10;&#10;- MOU v0 equivalent&#10;- Fixed generation (scale and contingency)&#10;- New HVDC flow (pmode3 affection)&#10;- New contingencies function (lodfnx)&#10;- Fixed contingencies function (ptdf signs)" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -93,9 +90,23 @@
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/requirements.txt" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Core/Compilers/__init__.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Core/Compilers/circuit_to_alliander_pgm.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Core/Compilers/circuit_to_bentayga.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Core/Compilers/circuit_to_newton_pa.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Core/admittance_matrices.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Core/multi_circuit.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Core/snapshot_pf_data.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Devices/dc_line.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Devices/editable_device.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Devices/enumerations.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Devices/generator.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Devices/groupings.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Devices/hvdc_line.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Devices/line.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Devices/load.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Devices/transformer.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Devices/upfc.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Devices/vsc.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/IO/file_handler.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/IO/json_parser.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/IO/pack_unpack.py" root0="FORCE_HIGHLIGHTING" />
@@ -107,6 +118,7 @@
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_driver.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_ts_driver.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/OPF/opf_templates.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/ac_jacobian.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/acdc_jacobian.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/PowerFlow/NumericalMethods/common_functions.py" root0="FORCE_HIGHLIGHTING" />
@@ -116,6 +128,8 @@
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/PowerFlow/power_flow_driver.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/PowerFlow/power_flow_options.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/PowerFlow/power_flow_worker.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/PowerFlow/time_Series_input.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/PowerFlow/time_series_driver.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/ShortCircuitStudies/short_circuit.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/ShortCircuitStudies/short_circuit_driver.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/ShortCircuitStudies/short_circuit_worker.py" root0="FORCE_HIGHLIGHTING" />
@@ -124,10 +138,12 @@
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/basic_structures.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Gui/ConsoleWidget.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Gui/CoordinatesInput/coordinates_dialogue.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/GridCal/Gui/GIS/gis_dialogue.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Gui/Main/GridCalMain.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Gui/Session/export_results_driver.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Gui/Session/session.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Gui/plot_config.py" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/GridCal/ThirdParty/pulp/solver_interfaces/highs.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/__version__.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/setup.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/tests/test_unbalanced_faults.py" root0="FORCE_HIGHLIGHTING" />
@@ -1138,13 +1154,6 @@
       <workItem from="1686590782319" duration="3299000" />
       <workItem from="1686641662191" duration="8615000" />
     </task>
-    <task id="LOCAL-00342" summary="Fixed short circuit indexing bug in islands">
-      <created>1661863735026</created>
-      <option name="number" value="00342" />
-      <option name="presentableId" value="LOCAL-00342" />
-      <option name="project" value="LOCAL" />
-      <updated>1661863735027</updated>
-    </task>
     <task id="LOCAL-00343" summary="Merged devel with devel_REE (successfully)">
       <created>1662028943800</created>
       <option name="number" value="00343" />
@@ -1481,7 +1490,14 @@
       <option name="project" value="LOCAL" />
       <updated>1691060883057</updated>
     </task>
-    <option name="localTasksCounter" value="391" />
+    <task id="LOCAL-00391" summary="version 4.6.1b.4 (v4)&#10;&#10;- MOU v0 equivalent&#10;- Fixed generation (scale and contingency)&#10;- New HVDC flow (pmode3 affection)&#10;- New contingencies function (lodfnx)&#10;- Fixed contingencies function (ptdf signs)">
+      <created>1691143400480</created>
+      <option name="number" value="00391" />
+      <option name="presentableId" value="LOCAL-00391" />
+      <option name="project" value="LOCAL" />
+      <updated>1691143400480</updated>
+    </task>
+    <option name="localTasksCounter" value="392" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1534,7 +1550,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added newton save" />
     <MESSAGE value="Merged the changes from ramferan" />
     <MESSAGE value="Added contingency planner" />
     <MESSAGE value="Added investment classes" />
@@ -1559,7 +1574,8 @@
     <MESSAGE value="adding linear multi contingency" />
     <MESSAGE value="updated contingency n-1 flows" />
     <MESSAGE value="comments to debug mou" />
-    <option name="LAST_COMMIT_MESSAGE" value="comments to debug mou" />
+    <MESSAGE value="version 4.6.1b.4 (v4)&#10;&#10;- MOU v0 equivalent&#10;- Fixed generation (scale and contingency)&#10;- New HVDC flow (pmode3 affection)&#10;- New contingencies function (lodfnx)&#10;- Fixed contingencies function (ptdf signs)" />
+    <option name="LAST_COMMIT_MESSAGE" value="version 4.6.1b.4 (v4)&#10;&#10;- MOU v0 equivalent&#10;- Fixed generation (scale and contingency)&#10;- New HVDC flow (pmode3 affection)&#10;- New contingencies function (lodfnx)&#10;- Fixed contingencies function (ptdf signs)" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -1975,12 +1991,12 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py</url>
-          <line>2302</line>
+          <line>2358</line>
           <option name="timeStamp" value="1415" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py</url>
-          <line>2115</line>
+          <line>2171</line>
           <option name="timeStamp" value="1416" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -1995,7 +2011,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py</url>
-          <line>3121</line>
+          <line>3177</line>
           <option name="timeStamp" value="1420" />
         </line-breakpoint>
       </breakpoints>
