@@ -1141,9 +1141,10 @@ def formulate_contingency(
             c1 = all(m != c)
             c2 = any(np.abs(lodfnx[m]) > branch_sensitivity_threshold)
             c3 = np.abs(alpha[m]) > branch_sensitivity_threshold
-            c4 = any(np.abs(alpha_n1[m, c]) > branch_sensitivity_threshold)  # todo: check if any or all
+            c4 = any(np.abs(alpha_n1[m, c]) > branch_sensitivity_threshold)
 
-            # c2 = any(lodfnx[m] > branch_sensitivity_threshold)
+            # any: consideramos mejor dejar el criterío más restrictivo de any, porque si una contingencia
+            # ya es sensible por si misma, también queremos vigilar la influencia de los disparos que la incluyan.
 
             if c1 and c2 and c3 and c4:
                 # lodf_ = lodf[m]
@@ -1404,8 +1405,6 @@ def formulate_hvdc_flow(solver: pywraplp.Solver, nhvdc, names, rate, angles, ang
 
     flow_f = np.zeros(nhvdc, dtype=object)
     flow_sensed = np.zeros(nhvdc, dtype=object)
-    hvdc_angle_slack_pos = np.zeros(nhvdc, dtype=object)
-    hvdc_angle_slack_neg = np.zeros(nhvdc, dtype=object)
 
     for i in range(nhvdc):
 
@@ -1473,9 +1472,7 @@ def formulate_hvdc_flow(solver: pywraplp.Solver, nhvdc, names, rate, angles, ang
                     'hvdc_sense_restriction_assignment_' + suffix
                 )
 
-    # todo: ver cómo devolver el peso para el slack de hvdc que sea la diferencia entre el rate-flow (¿puede ser una variable?)
-
-    return flow_f, hvdc_angle_slack_pos, hvdc_angle_slack_neg
+    return flow_f
 
 
 
@@ -1508,8 +1505,6 @@ def formulate_hvdc_flow_old(solver: pywraplp.Solver, nhvdc, names, rate, angles,
 
     flow_f = np.zeros(nhvdc, dtype=object)
     flow_sensed = np.zeros(nhvdc, dtype=object)
-    hvdc_angle_slack_pos = np.zeros(nhvdc, dtype=object)
-    hvdc_angle_slack_neg = np.zeros(nhvdc, dtype=object)
 
     for i in range(nhvdc):
 
@@ -1578,9 +1573,7 @@ def formulate_hvdc_flow_old(solver: pywraplp.Solver, nhvdc, names, rate, angles,
                     'hvdc_sense_restriction_assignment_' + suffix
                 )
 
-    # todo: ver cómo devolver el peso para el slack de hvdc que sea la diferencia entre el rate-flow (¿puede ser una variable?)
-
-    return flow_f, hvdc_angle_slack_pos, hvdc_angle_slack_neg
+    return flow_f
 
 
 def formulate_hvdc_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase,
@@ -1959,7 +1952,7 @@ class OpfNTC(Opf):
                  monitor_only_sensitive_branches=False,
                  monitor_only_ntc_load_rule_branches=False,
                  branch_sensitivity_threshold=0.05,
-                 ntc_load_rule=0,
+                 ntc_load_rule=0.0,
                  skip_generation_limits=True,
                  maximize_exchange_flows=True,
                  dispatch_all_areas=False,
@@ -2322,7 +2315,7 @@ class OpfNTC(Opf):
             logger=self.logger)
 
         # formulate the HVDC flows
-        hvdc_flow_f, hvdc_angle_slack_pos, hvdc_angle_slack_neg = formulate_hvdc_flow(
+        hvdc_flow_f = formulate_hvdc_flow(
             solver=self.solver,
             nhvdc=self.numerical_circuit.nhvdc,
             names=self.numerical_circuit.hvdc_names,
@@ -2481,9 +2474,6 @@ class OpfNTC(Opf):
 
         self.inter_area_branches = inter_area_branches
         self.inter_area_hvdc = inter_area_hvdcs
-
-        self.hvdc_angle_slack_pos = hvdc_angle_slack_pos
-        self.hvdc_angle_slack_neg = hvdc_angle_slack_neg
 
         self.branch_ntc_load_rule = branch_ntc_load_rule
 
@@ -2720,7 +2710,7 @@ class OpfNTC(Opf):
             logger=self.logger)
 
         # formulate the HVDC flows
-        hvdc_flow_f, hvdc_angle_slack_pos, hvdc_angle_slack_neg = formulate_hvdc_flow(
+        hvdc_flow_f = formulate_hvdc_flow(
             solver=self.solver,
             nhvdc=self.numerical_circuit.nhvdc,
             names=self.numerical_circuit.hvdc_names,
@@ -2867,9 +2857,6 @@ class OpfNTC(Opf):
 
         self.inter_area_branches = inter_area_branches
         self.inter_area_hvdc = inter_area_hvdc
-
-        self.hvdc_angle_slack_pos = hvdc_angle_slack_pos
-        self.hvdc_angle_slack_neg = hvdc_angle_slack_neg
 
         self.branch_ntc_load_rule = branch_ntc_load_rule
 
@@ -3138,8 +3125,8 @@ if __name__ == '__main__':
     from GridCal.Engine.Simulations.ATC.available_transfer_capacity_driver import compute_alpha
     from GridCal.Engine.Simulations.LinearFactors.linear_analysis import LinearAnalysis, make_lodf_nx
 
-    folder = r'C:\Users\ramferan\Downloads'
-    fname = os.path.join(folder, 'MOU_2022_5GW_v6h-B_pmode1_with_contingencies.gridcal')
+    folder = r'\\mornt4.ree.es\DESRED\DPE-Internacional\Interconexiones\FRANCIA\2023 Tracking changes\Comparar horitas\EF 2030.09.22_02'
+    fname = os.path.join(folder, 'MOU_2022_5GW_v6h-B_pmode1_with_contingencies_2030.09.22_02.gridcal')
 
     tm0 = time.time()
     main_circuit = FileOpen(fname).open()
@@ -3203,7 +3190,7 @@ if __name__ == '__main__':
         ntc_load_rule=0.7,
         consider_contingencies=True,
         consider_hvdc_contingencies=True,
-        consider_gen_contingencies=True,
+        consider_gen_contingencies=False,
         generation_contingency_threshold=1000,
         match_gen_load=False,
         transfer_method=AvailableTransferMode.InstalledPower,
