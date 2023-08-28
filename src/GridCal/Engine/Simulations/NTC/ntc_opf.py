@@ -2156,7 +2156,7 @@ class OpfNTC(Opf):
 
         # branch
         branch_ratings = self.numerical_circuit.branch_rates / Sbase
-        hvdc_ratings = self.numerical_circuit.hvdc_data.rate[:, t] / Sbase  # TODO: Check dimensions
+        hvdc_ratings = self.numerical_circuit.hvdc_data.rate[:, t] / Sbase
 
         alpha_abs = np.abs(self.alpha)
         alpha_n1_abs = np.abs(self.alpha_n1)
