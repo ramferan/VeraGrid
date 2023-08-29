@@ -3090,12 +3090,12 @@ class OpfNTC(Opf):
             self.hvdc_flow, make_abs=False
         ) * self.numerical_circuit.Sbase / self.numerical_circuit.hvdc_data.rate[:, 0]
 
-    def get_hvdc_angle_slacks(self):
-        """
-        return the hvdc angle slacks (time, device)
-        :return: 2D array
-        """
-        return self.extract(self.hvdc_angle_slack_neg + self.hvdc_angle_slack_pos, make_abs=False)
+    # def get_hvdc_angle_slacks(self):
+    #     """
+    #     return the hvdc angle slacks (time, device)
+    #     :return: 2D array
+    #     """
+    #     return self.extract(self.hvdc_angle_slack_neg + self.hvdc_angle_slack_pos, make_abs=False)
 
     def get_branch_ntc_load_rule(self):
         """

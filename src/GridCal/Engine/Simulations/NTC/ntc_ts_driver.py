@@ -169,7 +169,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             print(f'Kmeans sampling computed in {time.time()-tm1:.2f} scs. [{len(time_indices)} points]')
 
         else:
-            sampled_probabilities = np.full(len(self.time_array), 1/len(time_indices))
+            sampled_probabilities = np.full(len(self.indices), 1/len(time_indices))
 
         nt = len(time_indices)
 
@@ -329,7 +329,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                 hvdc_loading=problem.get_hvdc_loading(),
                 phase_shift=problem.get_phase_angles(),
                 generation_delta=problem.get_generator_delta(),
-                hvdc_angle_slack=problem.get_hvdc_angle_slacks(),
+                # hvdc_angle_slack=problem.get_hvdc_angle_slacks(),
                 inter_area_branches=problem.inter_area_branches,
                 inter_area_hvdc=problem.inter_area_hvdc,
                 alpha=problem.alpha,

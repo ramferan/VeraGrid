@@ -216,7 +216,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
                  bus_types=None,
                  hvdc_flow=None,
                  hvdc_loading=None,
-                 hvdc_angle_slack=None,
+                 # hvdc_angle_slack=None,
                  phase_shift=None,
                  generation_delta=None,
                  inter_area_branches=None,
@@ -330,7 +330,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
 
         self.hvdc_Pf = hvdc_flow
         self.hvdc_loading = hvdc_loading
-        self.hvdc_angle_slack = hvdc_angle_slack
+        # self.hvdc_angle_slack = hvdc_angle_slack
 
         self.phase_shift = phase_shift
 
