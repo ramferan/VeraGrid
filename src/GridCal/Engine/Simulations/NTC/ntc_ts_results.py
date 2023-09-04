@@ -317,20 +317,20 @@ class OptimalNetTransferCapacityTimeSeriesResults(ResultsTemplate):
 
         return all_names, all_idx
 
-    def get_hvdc_angle_slacks(self):
-        all_names = list()
-        all_idx = list()
-
-        # Get all shifters name
-        for idx, t in enumerate(self.time_indices):
-            if t in self.results_dict.keys():
-                angle_idx = np.where(self.results_dict[t].hvdc_angle_slack != 0)[0]
-                if len(angle_idx) > 0:
-                    names = self.results_dict[t].branch_names[angle_idx]
-                    all_names = all_names + [n for n in names if n not in all_names]
-                    all_idx = all_idx + [ix for ix in angle_idx if ix not in all_idx]
-
-        return all_names, all_idx
+    # def get_hvdc_angle_slacks(self):
+    #     all_names = list()
+    #     all_idx = list()
+    #
+    #     # Get all shifters name
+    #     for idx, t in enumerate(self.time_indices):
+    #         if t in self.results_dict.keys():
+    #             angle_idx = np.where(self.results_dict[t].hvdc_angle_slack != 0)[0]
+    #             if len(angle_idx) > 0:
+    #                 names = self.results_dict[t].branch_names[angle_idx]
+    #                 all_names = all_names + [n for n in names if n not in all_names]
+    #                 all_idx = all_idx + [ix for ix in angle_idx if ix not in all_idx]
+    #
+    #     return all_names, all_idx
 
     def save_report(self, path_out=None):
         """
