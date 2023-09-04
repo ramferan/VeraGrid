@@ -348,7 +348,7 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 hvdc_loading=problem.get_hvdc_loading(),
                 phase_shift=problem.get_phase_angles(),
                 generation_delta=problem.get_generator_delta(),
-                hvdc_angle_slack=problem.get_hvdc_angle_slacks(),
+                # hvdc_angle_slack=problem.get_hvdc_angle_slacks(),
                 inter_area_branches=problem.inter_area_branches,
                 inter_area_hvdc=problem.inter_area_hvdc,
                 alpha=alpha,
