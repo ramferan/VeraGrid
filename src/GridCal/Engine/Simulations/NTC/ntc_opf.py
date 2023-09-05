@@ -1140,10 +1140,12 @@ def formulate_contingency(
             c3 = np.abs(alpha[m]) > branch_sensitivity_threshold
             c4 = any(np.abs(alpha_n1[m, c]) > branch_sensitivity_threshold)
 
+            #todo: all or any ??
+
             # any: consideramos mejor dejar el criterío más restrictivo de any, porque si una contingencia
             # ya es sensible por si misma, también queremos vigilar la influencia de los disparos que la incluyan.
 
-            if c1 and c2 and (c3 or c4):
+            if c1 and c2 and (c3 and c4):
                 # lodf_ = lodf[m]
 
                 suffix = "{0}@{1}_{2}@{3}".format(branch_names[m], '; '.join(branch_names[c]), m, c)
