@@ -159,7 +159,8 @@ class Opf:
         :return: 2D array
         """
         angles = self.extract(self.theta)
-        return np.ones_like(angles) * np.exp(-1j * angles)
+        # return np.ones_like(angles) * np.exp(-1j * angles)
+        return np.ones_like(angles) * np.exp(1j * angles)
 
     def get_overloads(self):
         """
