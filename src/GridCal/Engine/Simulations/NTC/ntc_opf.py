@@ -3123,9 +3123,12 @@ if __name__ == '__main__':
     from GridCal.Engine.Core.snapshot_opf_data import compile_snapshot_opf_circuit
     from GridCal.Engine.Simulations.ATC.available_transfer_capacity_driver import compute_alpha
     from GridCal.Engine.Simulations.LinearFactors.linear_analysis import LinearAnalysis, make_lodf_nx
+    import GridCal.Engine.basic_structures as bs
+    from GridCal.Engine.Simulations.NTC.ntc_results import OptimalNetTransferCapacityResults
+    from GridCal.Engine.Simulations.NTC.ntc_options import OptimalNetTransferCapacityOptions
 
-    folder = r'\\mornt4.ree.es\DESRED\DPE-Internacional\Interconexiones\FRANCIA\2023 Tracking changes\Comparar horitas\EF 2030.09.22_02'
-    fname = os.path.join(folder, 'MOU_2022_5GW_v6h-B_pmode1_with_contingencies_2030.09.22_02.gridcal')
+    folder = r'\\mornt4.ree.es\DESRED\DPE-Internacional\Interconexiones\FRANCIA\2023 Tracking changes\v0-v4-comparison\Pmode3-5GW'
+    fname = os.path.join(folder, '23-2-30-9_00_pmode3.gridcal')
 
     tm0 = time.time()
     main_circuit = FileOpen(fname).open()
@@ -3205,6 +3208,91 @@ if __name__ == '__main__':
     tm0 = time.time()
     solved = problem.solve()
     print(f'optimization computed in {time.time() - tm0:.2f} scs.')
+
+    options = OptimalNetTransferCapacityOptions(
+        area_from_bus_idx=a1,
+        area_to_bus_idx=a2,
+        mip_solver=bs.MIPSolvers.CBC,
+        generation_formulation=GenerationNtcFormulation.Proportional,
+        monitor_only_sensitive_branches=True,
+        branch_sensitivity_threshold=0.05,
+        skip_generation_limits=True,
+        consider_contingencies=True,
+        consider_gen_contingencies=True,
+        consider_hvdc_contingencies=True,
+        consider_nx_contingencies=True,
+        dispatch_all_areas=False,
+        generation_contingency_threshold=1000,
+        tolerance=1e-2,
+        sensitivity_dT=100.0,
+        transfer_method=AvailableTransferMode.InstalledPower,
+        # todo: checkear si queremos el ptdf por potencia generada
+        perform_previous_checks=False,
+        weight_power_shift=1e5,
+        weight_generation_cost=1e2,
+        time_limit_ms=1e4,
+        loading_threshold_to_report=98,
+    )
+
+    results = OptimalNetTransferCapacityResults(
+        bus_names=numerical_circuit_.bus_data.names,
+        branch_names=numerical_circuit_.branch_data.names,
+        branch_data_F=numerical_circuit_.branch_data.F,
+        branch_data_T=numerical_circuit_.branch_data.T,
+        branch_x=numerical_circuit_.branch_data.X,
+        load_names=numerical_circuit_.load_data.names,
+        generator_names=numerical_circuit_.generator_data.names,
+        battery_names=numerical_circuit_.battery_data.names,
+        hvdc_names=numerical_circuit_.hvdc_data.names,
+        trm=options.trm,
+        ntc_load_rule=options.ntc_load_rule,
+        branch_control_modes=numerical_circuit_.branch_data.control_mode,
+        hvdc_control_modes=numerical_circuit_.hvdc_data.control_mode,
+        Sbus=problem.get_power_injections(),
+        voltage=problem.get_voltage(),
+        battery_power=np.zeros((numerical_circuit_.nbatt, 1)),
+        controlled_generation_power=problem.get_generator_power(),
+        Sf=problem.get_branch_power_from(),
+        loading=problem.get_loading(),
+        solved=bool(solved),
+        bus_types=numerical_circuit_.bus_types,
+        hvdc_flow=problem.get_hvdc_flow(),
+        hvdc_loading=problem.get_hvdc_loading(),
+        phase_shift=problem.get_phase_angles(),
+        generation_delta=problem.get_generator_delta(),
+        # hvdc_angle_slack=problem.get_hvdc_angle_slacks(),
+        inter_area_branches=problem.inter_area_branches,
+        inter_area_hvdc=problem.inter_area_hvdc,
+        alpha=alpha,
+        alpha_n1=alpha_n1,
+        alpha_w=None,
+        monitor=problem.monitor,
+        monitor_loading=problem.monitor_loading,
+        monitor_by_sensitivity=problem.monitor_by_sensitivity,
+        monitor_by_unrealistic_ntc=problem.monitor_by_unrealistic_ntc,
+        monitor_by_zero_exchange=problem.monitor_by_zero_exchange,
+        contingency_branch_flows_list=problem.get_contingency_flows_list(),
+        contingency_branch_indices_list=problem.contingency_indices_list,
+        contingency_branch_alpha_list=problem.contingency_branch_alpha_list,
+        contingency_generation_flows_list=problem.get_contingency_gen_flows_list(),
+        contingency_generation_indices_list=problem.contingency_gen_indices_list,
+        contingency_generation_alpha_list=problem.contingency_generation_alpha_list,
+        contingency_hvdc_flows_list=problem.get_contingency_hvdc_flows_list(),
+        contingency_hvdc_indices_list=problem.contingency_hvdc_indices_list,
+        contingency_hvdc_alpha_list=problem.contingency_hvdc_alpha_list,
+        branch_ntc_load_rule=problem.get_branch_ntc_load_rule(),
+        rates=numerical_circuit_.branch_data.rates[:, 0],
+        contingency_rates=numerical_circuit_.branch_data.contingency_rates[:, 0],
+        area_from_bus_idx=options.area_from_bus_idx,
+        area_to_bus_idx=options.area_to_bus_idx,
+        structural_ntc=problem.structural_ntc,
+        sbase=numerical_circuit_.Sbase,
+        loading_threshold=options.loading_threshold_to_report,
+        reversed_sort_loading=options.reversed_sort_loading,
+    )
+
+    results.create_base_report()
+    results.create_contingency_branch_report()
 
     print('Angles\n', np.angle(problem.get_voltage()))
     print('Branch loading\n', problem.get_loading())

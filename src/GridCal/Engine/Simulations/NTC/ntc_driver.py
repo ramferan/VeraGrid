@@ -202,6 +202,9 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
             self.results = OptimalNetTransferCapacityResults(
                 bus_names=numerical_circuit.bus_data.names,
                 branch_names=numerical_circuit.branch_data.names,
+                branch_data_F=numerical_circuit.branch_data.F,
+                branch_data_T=numerical_circuit.branch_data.T,
+                branch_x=numerical_circuit.branch_data.X,
                 load_names=numerical_circuit.load_data.names,
                 generator_names=numerical_circuit.generator_data.names,
                 battery_names=numerical_circuit.battery_data.names,
@@ -328,6 +331,9 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
             self.results = OptimalNetTransferCapacityResults(
                 bus_names=numerical_circuit.bus_data.names,
                 branch_names=numerical_circuit.branch_data.names,
+                branch_data_F=numerical_circuit.branch_data.F,
+                branch_data_T=numerical_circuit.branch_data.T,
+                branch_x=numerical_circuit.branch_data.X,
                 load_names=numerical_circuit.load_data.names,
                 generator_names=numerical_circuit.generator_data.names,
                 battery_names=numerical_circuit.battery_data.names,

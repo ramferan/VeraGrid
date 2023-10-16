@@ -8,6 +8,46 @@ from GridCal.Engine.Simulations.results_template import ResultsTemplate
 from GridCal.Engine.Devices.enumerations import TransformerControlType, HvdcControlType
 
 
+def add_branch_angles(y, columns, mc_idx, x, voltage, bus_from, bus_to, deg=False):
+    """
+    :param y: report data matrix
+    :param columns: report column names
+    :param x: impedance
+    :param voltage: bus complex voltage
+    :param bus_from: bus from indices
+    :param bus_to: bus to indices
+    :return:
+    """
+
+    if mc_idx:
+        # unzip monitor and contingency lists
+        m, c = list(map(list, zip(*np.array(mc_idx, dtype=object))))
+
+    else:
+        m = np.arange(len(x))
+
+
+    if y.shape[0] == 0:
+        # empty data, return
+        return y, columns
+
+    columns.extend([
+        'Angle from (rad)',
+        'Angel to (rad)',
+        'X'
+    ])
+
+    y_ = np.array([
+        np.angle(z=voltage[bus_from[m]], deg=deg),
+        np.angle(z=voltage[bus_to[m]], deg=deg),
+        np.array(x[m])
+    ], dtype=object).T
+
+    y = np.concatenate([y, y_], axis=1)
+
+    return y, columns
+
+
 def add_exchange_sensitivities(y, columns, alpha, mc_idx=None, alpha_n1=None, report_contigency_alpha=False,
                                decimals=5, str_separator='; '):
     """
@@ -197,6 +237,9 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
     def __init__(self,
                  bus_names,
                  branch_names,
+                 branch_data_F,
+                 branch_data_T,
+                 branch_x,
                  load_names,
                  generator_names,
                  battery_names,
@@ -286,6 +329,9 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
             data_variables=[
                 'bus_names',
                 'branch_names',
+                'branch_bus_from_idx',
+                'branch_bus_to_idx',
+                'branch_x',
                 'load_names',
                 'generator_names',
                 'battery_names',
@@ -303,6 +349,9 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
 
         self.bus_names = bus_names
         self.branch_names = branch_names
+        self.branch_data_F = branch_data_F
+        self.branch_data_T = branch_data_T
+        self.branch_x = branch_x
         self.load_names = load_names
         self.generator_names = generator_names
         self.battery_names = battery_names
@@ -556,6 +605,16 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
             contingency_names=self.branch_names,
         )
 
+        y, columns = add_branch_angles(
+            y=y,
+            columns=columns,
+            mc_idx=self.contingency_branch_indices_list,
+            voltage=self.voltage,
+            bus_from=self.branch_data_F,
+            bus_to=self.branch_data_T,
+            x=self.branch_x,
+        )
+
         # Add exchange sensitivities
         y, columns = add_exchange_sensitivities(
             y=y,
@@ -643,7 +702,19 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
             monitor_names=self.branch_names,
             contingency_names=self.branch_names,
             rates=self.rates,
-            contingency_rates=self.contingency_rates
+            contingency_rates=self.contingency_rates,
+
+        )
+
+        # Add branch angles
+        y, columns = add_branch_angles(
+            y=y,
+            columns=columns,
+            mc_idx=self.contingency_branch_indices_list,
+            voltage=self.voltage,
+            bus_from=self.branch_data_F,
+            bus_to=self.branch_data_T,
+            x=self.branch_x,
         )
 
         # Add exchange sensitivities
@@ -755,6 +826,17 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
             contingency_rates=self.contingency_rates
         )
 
+        # Add branch angles
+        y, columns = add_branch_angles(
+            y=y,
+            columns=columns,
+            mc_idx=self.contingency_branch_indices_list,
+            voltage=self.voltage,
+            bus_from=self.branch_data_F,
+            bus_to=self.branch_data_T,
+            x=self.branch_x,
+        )
+
         # Add exchange sensitivities
         y, columns = add_exchange_sensitivities(
             y=y,
@@ -862,6 +944,17 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
             contingency_names=self.hvdc_names,
             rates=self.rates,
             contingency_rates=self.contingency_rates
+        )
+
+        # Add branch angles
+        y, columns = add_branch_angles(
+            y=y,
+            columns=columns,
+            mc_idx=self.contingency_branch_indices_list,
+            voltage=self.voltage,
+            bus_from=self.branch_data_F,
+            bus_to=self.branch_data_T,
+            x=self.branch_x,
         )
 
         # Add exchange sensitivities
@@ -1255,6 +1348,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
                 loading_threshold=loading_threshold,
                 reverse=reverse,
             )
+
         return self.reports[title]
 
     def get_contingency_report(self, loading_threshold=0.0, reverse=True):
@@ -1457,7 +1551,7 @@ def get_flow_table(m, flow, rates, monitor_names, contingency_names):
         contingency_names[m],  # Contingency names
         flow[m].real,  # Branch flow
         np.round(flow[m] / rates[m] * 100, 2),  # Branch loading
-        rates[m],  # Rates
+        rates[m],  # Rates,
     ], dtype=object).T
 
     labels = monitor_names[m]

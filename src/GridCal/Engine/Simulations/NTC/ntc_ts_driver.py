@@ -309,6 +309,9 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             result = OptimalNetTransferCapacityResults(
                 bus_names=nc.bus_data.names,
                 branch_names=nc.branch_data.names,
+                branch_data_F=nc.branch_data.F,
+                branch_data_T=nc.branch_data.T,
+                branch_x=nc.branch_data.X,
                 load_names=nc.load_data.names,
                 generator_names=nc.generator_data.names,
                 battery_names=nc.battery_data.names,
@@ -406,10 +409,10 @@ if __name__ == '__main__':
 
     import GridCal.Engine.basic_structures as bs
     import GridCal.Engine.Devices as dev
-    from GridCal.Engine.Simulations import FileOpen
+    from GridCal.Engine import FileOpen
 
-    folder = r'\\mornt4\DESRED\DPE-Planificacion\Plan 2021_2026\_0_TRABAJO\5_Plexos_PSSE\Peninsula\_2026_TRABAJO\Vesiones con alegaciones\Anexo II\TYNDP 2022 V2\5GW\Con N-x\merged\GridCal'
-    fname = os.path.join(folder, 'ES-PTv2--FR v4_fused - ts corta 5k.gridcal')
+    folder = r'\\mornt4.ree.es\DESRED\DPE-Internacional\Interconexiones\FRANCIA\2023 Tracking changes\v0-v4-comparison\Pmode3-5GW'
+    fname = os.path.join(folder, '23-2-30-9_00_pmode3.gridcal')
 
     circuit = FileOpen(fname).open()
 
@@ -485,8 +488,8 @@ if __name__ == '__main__':
     print('Running optimal net transfer capacity...')
 
     # set optimal net transfer capacity driver instance
-    start = 5
-    end = 6  #circuit.get_time_number()-1
+    start = 0
+    end = 1  #circuit.get_time_number()-1
 
     driver = OptimalNetTransferCapacityTimeSeriesDriver(
         grid=circuit,
