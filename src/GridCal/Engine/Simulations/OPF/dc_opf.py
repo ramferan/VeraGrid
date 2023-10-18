@@ -197,9 +197,9 @@ def formulate_branch_loading_restriction(problem: pl.LpProblem, nc: SnapshotOpfD
 
             # compute the branch susceptance
             if nc.branch_data.dc[m]:
-                bk = -1.0 / nc.branch_data.R[m]
+                bk = 1.0 / nc.branch_data.R[m]
             else:
-                bk = -1.0 / nc.branch_data.X[m]
+                bk = 1.0 / nc.branch_data.X[m]
 
             # compute the flow
             if nc.branch_data.control_mode[m] == TransformerControlType.Pt:

@@ -26,13 +26,13 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="fixed bug bus angle sign solution">
+    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="changing reports to include angles">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_driver.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_results.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_results.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_ts_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_ts_driver.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/OPF/dc_opf.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/OPF/dc_opf.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/OPF/dc_opf_ts.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/OPF/dc_opf_ts.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/OPF/opf_templates.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/OPF/opf_templates.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -178,7 +178,7 @@
     &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/ReposGit/github/ramferan/GridCal/src/GridCal/Engine/Simulations/NTC&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/ReposGit/mornt4/HornoPniec&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
@@ -192,7 +192,7 @@
   <component name="PyDebuggerOptionsProvider">
     <option name="mySaveCallSignatures" value="true" />
     <option name="mySupportGeventDebugging" value="true" />
-    <option name="myPyQtBackend" value="pyside6" />
+    <option name="myPyQtBackend" value="pyside2" />
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
@@ -1166,13 +1166,6 @@
       <workItem from="1686590782319" duration="3299000" />
       <workItem from="1686641662191" duration="8615000" />
     </task>
-    <task id="LOCAL-00344" summary="updated version">
-      <created>1662028986050</created>
-      <option name="number" value="00344" />
-      <option name="presentableId" value="LOCAL-00344" />
-      <option name="project" value="LOCAL" />
-      <updated>1662028986050</updated>
-    </task>
     <task id="LOCAL-00345" summary="Updated the version file">
       <created>1662029493419</created>
       <option name="number" value="00345" />
@@ -1509,7 +1502,14 @@
       <option name="project" value="LOCAL" />
       <updated>1697196191938</updated>
     </task>
-    <option name="localTasksCounter" value="393" />
+    <task id="LOCAL-00393" summary="changing reports to include angles">
+      <created>1697444937528</created>
+      <option name="number" value="00393" />
+      <option name="presentableId" value="LOCAL-00393" />
+      <option name="project" value="LOCAL" />
+      <updated>1697444937528</updated>
+    </task>
+    <option name="localTasksCounter" value="394" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1562,7 +1562,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added contingency planner" />
     <MESSAGE value="Added investment classes" />
     <MESSAGE value="Fixed issues with the merge" />
     <MESSAGE value="early colouring the slippy map" />
@@ -1587,7 +1586,8 @@
     <MESSAGE value="comments to debug mou" />
     <MESSAGE value="version 4.6.1b.4 (v4)&#10;&#10;- MOU v0 equivalent&#10;- Fixed generation (scale and contingency)&#10;- New HVDC flow (pmode3 affection)&#10;- New contingencies function (lodfnx)&#10;- Fixed contingencies function (ptdf signs)" />
     <MESSAGE value="fixed bug bus angle sign solution" />
-    <option name="LAST_COMMIT_MESSAGE" value="fixed bug bus angle sign solution" />
+    <MESSAGE value="changing reports to include angles" />
+    <option name="LAST_COMMIT_MESSAGE" value="changing reports to include angles" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -1977,44 +1977,14 @@
           <option name="timeStamp" value="1409" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_driver.py</url>
-          <line>129</line>
-          <option name="timeStamp" value="1417" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_driver.py</url>
-          <line>119</line>
-          <option name="timeStamp" value="1418" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_results.py</url>
-          <line>607</line>
-          <option name="timeStamp" value="1427" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py</url>
-          <line>3296</line>
+          <line>3283</line>
           <option name="timeStamp" value="1431" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py</url>
-          <line>3294</line>
+          <line>3281</line>
           <option name="timeStamp" value="1433" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_driver.py</url>
-          <line>388</line>
-          <option name="timeStamp" value="1434" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_results.py</url>
-          <line>45</line>
-          <option name="timeStamp" value="1437" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_results.py</url>
-          <line>39</line>
-          <option name="timeStamp" value="1438" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
