@@ -158,6 +158,7 @@ class Opf:
         return the complex voltages (time, device)
         :return: 2D array
         """
+
         angles = self.extract(self.theta)
         return np.ones_like(angles) * np.exp(1j * angles)
 

@@ -989,7 +989,7 @@ def formulate_branches_flow(
 
             # branch power from-to eq.15
             solver.Add(
-                flow_f[m] == bk * (angles[_f] - angles[_t] - tau[m]),
+                flow_f[m] == bk * (angles[_f] - angles[_t] + tau[m]),
                 'branch_power_flow_assignment_{0}:{1}'.format(branch_names[m], m)
             )
 
@@ -1096,9 +1096,9 @@ def formulate_contingency_old(solver: pywraplp.Solver, ContingencyRates, Sbase, 
 
 
 def formulate_contingency(
-        solver: pywraplp.Solver, ContingencyRates, Sbase, branch_names, contingency_enabled_indices,
+        solver: pywraplp.Solver, ContingencyRates, Sbase, branch_names,
         LODF_NX, F, T, branch_sensitivity_threshold, flow_f, monitor, alpha, alpha_n1, logger: Logger,
-        lodf_replacement_value=0, LODF=None,
+        lodf_replacement_value=0,
 ):
     """
     Formulate the contingency flows
@@ -1106,7 +1106,6 @@ def formulate_contingency(
     :param ContingencyRates: array of branch contingency rates
     :param Sbase: Base power (i.e. 100 MVA)
     :param branch_names: array of branch names
-    :param contingency_enabled_indices: array of branch indices enables for contingency
     :param LODF: LODF matrix
     :param F: Array of branch "from" bus indices
     :param T: Array of branch "to" bus indices
@@ -1121,8 +1120,6 @@ def formulate_contingency(
     """
     rates = ContingencyRates / Sbase
 
-    # get the indices of the branches marked for contingency
-    con_br_idx = contingency_enabled_indices
     mon_br_idx = np.where(monitor == True)[0]
 
     # formulate contingency flows
@@ -1139,14 +1136,10 @@ def formulate_contingency(
             c2 = any(np.abs(lodfnx[m]) > branch_sensitivity_threshold)
             c3 = np.abs(alpha[m]) > branch_sensitivity_threshold
             c4 = any(np.abs(alpha_n1[m, c]) > branch_sensitivity_threshold)
-
-            #todo: all or any ??
-
             # any: consideramos mejor dejar el criterío más restrictivo de any, porque si una contingencia
             # ya es sensible por si misma, también queremos vigilar la influencia de los disparos que la incluyan.
 
             if c1 and c2 and (c3 and c4):
-                # lodf_ = lodf[m]
 
                 suffix = "{0}@{1}_{2}@{3}".format(branch_names[m], '; '.join(branch_names[c]), m, c)
 
@@ -1162,7 +1155,6 @@ def formulate_contingency(
                 )
 
                 # store vars
-                # con_idx.append(i)
                 con_idx.append((m, c))
                 flow_n1f.append(flow_n1)
                 con_alpha.append(alpha_n1[m, c])
@@ -1257,8 +1249,7 @@ def formulate_hvdc_Pmode3_single_flow(
         # Constraints formulation, b is the solution
 
         solver.Add(
-            # a == P0 + k * (angle_f - angle_t),
-            a == P0 + k * (angle_t - angle_f),
+            a == P0 + k * (angle_f - angle_t),
             'theoretical_unconstrainded_flow_' + suffix
         )  # Pmode3 behavior
 
@@ -2353,9 +2344,7 @@ class OpfNTC(Opf):
                 ContingencyRates=self.numerical_circuit.ContingencyRates,
                 Sbase=self.numerical_circuit.Sbase,
                 branch_names=self.numerical_circuit.branch_names,
-                contingency_enabled_indices=self.numerical_circuit.branch_data.get_contingency_enabled_indices(),
                 LODF_NX=self.LODF_NX,
-                LODF=self.LODF,
                 F=self.numerical_circuit.F,
                 T=self.numerical_circuit.T,
                 branch_sensitivity_threshold=self.branch_sensitivity_threshold,
@@ -2749,9 +2738,7 @@ class OpfNTC(Opf):
                 ContingencyRates=self.numerical_circuit.ContingencyRates[:, t],
                 Sbase=self.numerical_circuit.Sbase,
                 branch_names=self.numerical_circuit.branch_names,
-                contingency_enabled_indices=self.numerical_circuit.branch_data.get_contingency_enabled_indices(),
                 LODF_NX=self.LODF_NX,
-                LODF=self.LODF,
                 F=self.numerical_circuit.F,
                 T=self.numerical_circuit.T,
                 branch_sensitivity_threshold=self.branch_sensitivity_threshold,

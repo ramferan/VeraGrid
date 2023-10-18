@@ -16,6 +16,7 @@ def add_branch_angles(y, columns, mc_idx, x, voltage, bus_from, bus_to, deg=Fals
     :param voltage: bus complex voltage
     :param bus_from: bus from indices
     :param bus_to: bus to indices
+    :param deg: degrees format. Boolean
     :return:
     """
 
@@ -32,14 +33,14 @@ def add_branch_angles(y, columns, mc_idx, x, voltage, bus_from, bus_to, deg=Fals
         return y, columns
 
     columns.extend([
-        'Angle from (rad)',
-        'Angel to (rad)',
-        'X'
+        'Monitored from (rad)' if not deg else 'Monitored from (deg)',
+        'Monitored to (rad)' if not deg else 'Monitored to (deg)',
+        'Monitored X'
     ])
 
     y_ = np.array([
-        np.angle(z=voltage[bus_from[m]], deg=deg),
-        np.angle(z=voltage[bus_to[m]], deg=deg),
+        np.angle(z=voltage[bus_from][m], deg=deg),
+        np.angle(z=voltage[bus_to][m], deg=deg),
         np.array(x[m])
     ], dtype=object).T
 
@@ -613,6 +614,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
             bus_from=self.branch_data_F,
             bus_to=self.branch_data_T,
             x=self.branch_x,
+            deg=True,
         )
 
         # Add exchange sensitivities
@@ -715,6 +717,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
             bus_from=self.branch_data_F,
             bus_to=self.branch_data_T,
             x=self.branch_x,
+            deg=True,
         )
 
         # Add exchange sensitivities
@@ -830,11 +833,12 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
         y, columns = add_branch_angles(
             y=y,
             columns=columns,
-            mc_idx=self.contingency_branch_indices_list,
+            mc_idx=self.contingency_generation_indices_list,
             voltage=self.voltage,
             bus_from=self.branch_data_F,
             bus_to=self.branch_data_T,
             x=self.branch_x,
+            deg=True,
         )
 
         # Add exchange sensitivities
@@ -950,11 +954,12 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
         y, columns = add_branch_angles(
             y=y,
             columns=columns,
-            mc_idx=self.contingency_branch_indices_list,
+            mc_idx=self.contingency_hvdc_indices_list,
             voltage=self.voltage,
             bus_from=self.branch_data_F,
             bus_to=self.branch_data_T,
             x=self.branch_x,
+            deg=True,
         )
 
         # Add exchange sensitivities
@@ -1518,7 +1523,7 @@ def get_contingency_flow_table(
     y = np.array([
         monitor_names[m],
         cnt_names,  # Contingency name
-        np.round(flow[m].real,decimals=decimals),  # Branch flow
+        np.round(flow[m].real, decimals=decimals),  # Branch flow
         np.round(flow[m] / rates[m] * 100, decimals=decimals),  # Branch loading
         np.round(rates[m], decimals=decimals),  # Rates
         np.round(contingency_flow.real, decimals=decimals),  # Contingency flow
