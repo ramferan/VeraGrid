@@ -1684,17 +1684,17 @@ def formulate_hvdc_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase,
 
                 if control_mode[i] == HvdcControlType.type_0_free:
                     # Define contingency flow
-                    triggered_flow = solver.NumVar(
+                    trigger_flow = solver.NumVar(
                         lb=-hvdc_rate/2,
                         ub=hvdc_rate/2,
-                        name='hvdc_triggered_flow_' + suffix
+                        name='hvdc_trigger_flow_' + suffix
                     )
 
                     fn_abs, zn_abs = formulate_lp_abs_value(
                         solver=solver, a=hvdc_f, ub=hvdc_rate, name='hvdc_abs_n_flow' + suffix)
 
-                    fd_abs, zd_abs = formulate_lp_abs_value(
-                        solver=solver, a=triggered_flow, ub=hvdc_rate, name='hvdc_abs_n_flow' + suffix)
+                    trigger_flow_abs, zd_abs = formulate_lp_abs_value(
+                        solver=solver, a=trigger_flow, ub=hvdc_rate, name='hvdc_abs_trigger_flow' + suffix)
 
                     # ensure flows sign equality
                     solver.Add(
@@ -1703,15 +1703,16 @@ def formulate_hvdc_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase,
 
                     formulate_lp_steps(
                         solver=solver,
-                        lp_var=fd_abs,
+                        lp_var=trigger_flow_abs,
                         exp1=0,
-                        exp2=fn_abs - hvdc_rate/2)
+                        exp2=fn_abs - hvdc_rate/2,
+                        name='hvdc_n1_step_ecuation' + suffix)
 
                 else:
-                    triggered_flow = hvdc_f
+                    trigger_flow = hvdc_f
 
                 solver.Add(
-                    flow_n1 == flow_f[m] + lodf * triggered_flow,
+                    flow_n1 == flow_f[m] + lodf * trigger_flow,
                     "hvdc_n-1_flow_assignment_" + suffix
                 )
 
