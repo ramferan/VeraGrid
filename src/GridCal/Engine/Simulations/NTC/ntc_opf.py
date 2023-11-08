@@ -1691,10 +1691,16 @@ def formulate_hvdc_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase,
                     )
 
                     fn_abs, zn_abs = formulate_lp_abs_value(
-                        solver=solver, a=hvdc_f, ub=hvdc_rate, name='hvdc_abs_n_flow' + suffix)
+                        solver=solver,
+                        a=hvdc_f,
+                        ub=hvdc_rate,
+                        name='hvdc_abs_n_flow' + suffix)
 
                     trigger_flow_abs, zd_abs = formulate_lp_abs_value(
-                        solver=solver, a=trigger_flow, ub=hvdc_rate, name='hvdc_abs_trigger_flow' + suffix)
+                        solver=solver,
+                        a=trigger_flow,
+                        ub=hvdc_rate,
+                        name='hvdc_abs_trigger_flow' + suffix)
 
                     # ensure flows sign equality
                     solver.Add(
