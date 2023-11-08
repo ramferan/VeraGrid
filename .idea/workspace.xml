@@ -26,9 +26,9 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="included angles in flow reports">
+    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="- Merged with fernmpos branch">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_results.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_results.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -1163,13 +1163,6 @@
       <workItem from="1686590782319" duration="3299000" />
       <workItem from="1686641662191" duration="8615000" />
     </task>
-    <task id="LOCAL-00347" summary="csc sparse branch derivatives">
-      <created>1662061867029</created>
-      <option name="number" value="00347" />
-      <option name="presentableId" value="LOCAL-00347" />
-      <option name="project" value="LOCAL" />
-      <updated>1662061867029</updated>
-    </task>
     <task id="LOCAL-00348" summary="removed newton1 engine&#10;Fixed issue with PSSe shunts not generating a proper UUID">
       <created>1675240999588</created>
       <option name="number" value="00348" />
@@ -1506,7 +1499,14 @@
       <option name="project" value="LOCAL" />
       <updated>1697640457449</updated>
     </task>
-    <option name="localTasksCounter" value="396" />
+    <task id="LOCAL-00396" summary="- Merged with fernmpos branch">
+      <created>1699440886315</created>
+      <option name="number" value="00396" />
+      <option name="presentableId" value="LOCAL-00396" />
+      <option name="project" value="LOCAL" />
+      <updated>1699440886315</updated>
+    </task>
+    <option name="localTasksCounter" value="397" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1559,7 +1559,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="early colouring the slippy map" />
     <MESSAGE value="early colouring the slippy map (working)" />
     <MESSAGE value="Added map providers options" />
     <MESSAGE value="Improved map colouring" />
@@ -1584,7 +1583,8 @@
     <MESSAGE value="changing reports to include angles" />
     <MESSAGE value="fixing complex exponential representacion" />
     <MESSAGE value="included angles in flow reports" />
-    <option name="LAST_COMMIT_MESSAGE" value="included angles in flow reports" />
+    <MESSAGE value="- Merged with fernmpos branch" />
+    <option name="LAST_COMMIT_MESSAGE" value="- Merged with fernmpos branch" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -1975,12 +1975,12 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py</url>
-          <line>3283</line>
+          <line>3371</line>
           <option name="timeStamp" value="1431" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py</url>
-          <line>3281</line>
+          <line>3369</line>
           <option name="timeStamp" value="1433" />
         </line-breakpoint>
       </breakpoints>
