@@ -8,29 +8,16 @@ from GridCal.Engine.Simulations.results_template import ResultsTemplate
 from GridCal.Engine.Devices.enumerations import TransformerControlType, HvdcControlType
 
 
-def add_branch_angles(y, columns, mc_idx, x, voltage, bus_from, bus_to, deg=False):
+def add_branch_angles(y, columns, x, voltage_from, voltage_to, deg=False):
     """
     :param y: report data matrix
     :param columns: report column names
     :param x: impedance
-    :param voltage: bus complex voltage
-    :param bus_from: bus from indices
-    :param bus_to: bus to indices
+    :param voltage_from: branch from bus angle
+    :param voltage_to: branch to bus angle
     :param deg: degrees format. Boolean
     :return:
     """
-
-    if mc_idx:
-        # unzip monitor and contingency lists
-        m, c = list(map(list, zip(*np.array(mc_idx, dtype=object))))
-
-    else:
-        m = np.arange(len(x))
-
-
-    if y.shape[0] == 0:
-        # empty data, return
-        return y, columns
 
     columns.extend([
         'Monitored from (rad)' if not deg else 'Monitored from (deg)',
@@ -38,10 +25,14 @@ def add_branch_angles(y, columns, mc_idx, x, voltage, bus_from, bus_to, deg=Fals
         'Monitored X'
     ])
 
+    if y.shape[0] == 0:
+        # empty data, return
+        return y, columns
+
     y_ = np.array([
-        np.angle(z=voltage[bus_from][m], deg=deg),
-        np.angle(z=voltage[bus_to][m], deg=deg),
-        np.array(x[m])
+        np.angle(z=voltage_from, deg=deg),
+        np.angle(z=voltage_to, deg=deg),
+        np.array(x)
     ], dtype=object).T
 
     y = np.concatenate([y, y_], axis=1)
@@ -609,12 +600,11 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
         y, columns = add_branch_angles(
             y=y,
             columns=columns,
-            mc_idx=self.contingency_branch_indices_list,
-            voltage=self.voltage,
-            bus_from=self.branch_data_F,
-            bus_to=self.branch_data_T,
+            voltage_from=self.voltage[self.branch_data_F],
+            voltage_to=self.voltage[self.branch_data_T],
             x=self.branch_x,
             deg=True,
+
         )
 
         # Add exchange sensitivities
@@ -697,26 +687,27 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
                 f'Loading threshold: {str(loading_threshold)}. ' \
                 f'Reverse: {str(reverse)}'
 
-        labels, columns, y = get_contingency_flow_table(
+        m, c, monitor_names, contingency_names = unpack_contingency_indices_list(
             mc_idx=self.contingency_branch_indices_list,
-            flow=self.Sf,
-            contingency_flow=self.contingency_branch_flows_list,
             monitor_names=self.branch_names,
             contingency_names=self.branch_names,
-            rates=self.rates,
-            contingency_rates=self.contingency_rates,
-
         )
 
-        # Add branch angles
+        labels, columns, y = get_contingency_flow_table(
+            base_flow=self.Sf[m],
+            contingency_flow=self.contingency_branch_flows_list,
+            monitor_names=monitor_names,
+            contingency_names=contingency_names,
+            rates=self.rates[m],
+            contingency_rates=self.contingency_rates[m],
+        )
+
         y, columns = add_branch_angles(
             y=y,
             columns=columns,
-            mc_idx=self.contingency_branch_indices_list,
-            voltage=self.voltage,
-            bus_from=self.branch_data_F,
-            bus_to=self.branch_data_T,
-            x=self.branch_x,
+            voltage_from=self.voltage[self.branch_data_F][m],
+            voltage_to=self.voltage[self.branch_data_T][m],
+            x=self.branch_x[m],
             deg=True,
         )
 
@@ -819,27 +810,34 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
                 f'Loading threshold: {str(loading_threshold)}. ' \
                 f'Reverse: {str(reverse)}'
 
-        labels, columns, y = get_contingency_flow_table(
+        m, c, monitor_names, contingency_names = unpack_contingency_indices_list(
             mc_idx=self.contingency_generation_indices_list,
-            flow=self.Sf,
-            contingency_flow=self.contingency_generation_flows_list,
             monitor_names=self.branch_names,
             contingency_names=self.generator_names,
-            rates=self.rates,
-            contingency_rates=self.contingency_rates
+        )
+
+        labels, columns, y = get_contingency_flow_table(
+            base_flow=self.Sf[m],
+            contingency_flow=self.contingency_generation_flows_list,
+            monitor_names=monitor_names,
+            contingency_names=contingency_names,
+            rates=self.rates[m],
+            contingency_rates=self.contingency_rates[m]
         )
 
         # Add branch angles
+
         y, columns = add_branch_angles(
             y=y,
             columns=columns,
-            mc_idx=self.contingency_generation_indices_list,
-            voltage=self.voltage,
-            bus_from=self.branch_data_F,
-            bus_to=self.branch_data_T,
-            x=self.branch_x,
+            voltage_from=self.voltage[self.branch_data_F][m],
+            voltage_to=self.voltage[self.branch_data_T][m],
+            x=self.branch_x[m],
             deg=True,
         )
+
+
+
 
         # Add exchange sensitivities
         y, columns = add_exchange_sensitivities(
@@ -940,25 +938,28 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
                 f'Loading threshold: {str(loading_threshold)}. ' \
                 f'Reverse: {str(reverse)}'
 
-        labels, columns, y = get_contingency_flow_table(
+        m, c, monitor_names, contingency_names = unpack_contingency_indices_list(
             mc_idx=self.contingency_hvdc_indices_list,
-            flow=self.Sf,
-            contingency_flow=self.contingency_hvdc_flows_list,
             monitor_names=self.branch_names,
             contingency_names=self.hvdc_names,
-            rates=self.rates,
-            contingency_rates=self.contingency_rates
+        )
+
+        labels, columns, y = get_contingency_flow_table(
+            base_flow=self.Sf[m],
+            contingency_flow=self.contingency_hvdc_flows_list,
+            monitor_names=monitor_names,
+            contingency_names=contingency_names,
+            rates=self.rates[m],
+            contingency_rates=self.contingency_rates[m]
         )
 
         # Add branch angles
         y, columns = add_branch_angles(
             y=y,
             columns=columns,
-            mc_idx=self.contingency_hvdc_indices_list,
-            voltage=self.voltage,
-            bus_from=self.branch_data_F,
-            bus_to=self.branch_data_T,
-            x=self.branch_x,
+            voltage_from=self.voltage[self.branch_data_F][m],
+            voltage_to=self.voltage[self.branch_data_T][m],
+            x=self.branch_x[m],
             deg=True,
         )
 
@@ -1482,14 +1483,27 @@ def apply_sort(y, labels, col, reverse=False):
     return y, labels
 
 
+def unpack_contingency_indices_list(mc_idx, monitor_names, contingency_names, cnt_separator='/'):
+
+    if len(mc_idx)!=0:
+        m, c = list(map(list, zip(*np.array(mc_idx, dtype=object))))
+        m_names = monitor_names[m]
+        c_names = [cnt_separator.join([contingency_names[cn] for cn in cnt]) for cnt in c]
+    else:
+        m, c = [], [[]]
+        m_names = ['']
+        c_names = ['']
+
+    return m, c, m_names, c_names
+
+
 def get_contingency_flow_table(
-        mc_idx, flow, contingency_flow, monitor_names, contingency_names,
-        rates, contingency_rates, str_separator='; ', decimals=2,
+        base_flow, contingency_flow, monitor_names, contingency_names,
+        rates, contingency_rates, decimals=2,
 ):
     """
     Get flow report
-    :param mc_idx: Idx tuple (monitor, contingency) for contingency flows
-    :param flow: Array with flows
+    :param base_flow: Array with flows
     :param contingency_flow: Array with contingency flows
     :param monitor_names: Array with full list of monitor element names
     :param contingency_names: Array with full list of contingency element names
@@ -1510,28 +1524,23 @@ def get_contingency_flow_table(
         'Contingency rate',
     ]
 
-    if len(mc_idx) == 0:
+    if len(base_flow) == 0:
         labels = []
         y = np.array([])
         return labels, columns, y
 
-    # unzip monitor and contingency lists
-    m, c = list(map(list, zip(*np.array(mc_idx, dtype=object))))
-
-    cnt_names = [str_separator.join(contingency_names[cnt]) for cnt in c]
-
     y = np.array([
-        monitor_names[m],
-        cnt_names,  # Contingency name
-        np.round(flow[m].real, decimals=decimals),  # Branch flow
-        np.round(flow[m] / rates[m] * 100, decimals=decimals),  # Branch loading
-        np.round(rates[m], decimals=decimals),  # Rates
+        monitor_names,
+        contingency_names,  # Contingency name
+        np.round(base_flow.real, decimals=decimals),  # Branch flow
+        np.round(base_flow / rates * 100, decimals=decimals),  # Branch loading
+        np.round(rates, decimals=decimals),  # Rates
         np.round(contingency_flow.real, decimals=decimals),  # Contingency flow
-        np.round(contingency_flow / contingency_rates[m] * 100, decimals=decimals),  # Contingency loading
-        np.round(contingency_rates[m], decimals=decimals),  # Contingency rates
+        np.round(contingency_flow / contingency_rates * 100, decimals=decimals),  # Contingency loading
+        np.round(contingency_rates, decimals=decimals),  # Contingency rates
     ], dtype=object).T
 
-    labels = monitor_names[m]
+    labels = monitor_names
 
     return labels, columns, y
 

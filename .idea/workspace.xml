@@ -26,13 +26,9 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="changing reports to include angles">
+    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="included angles in flow reports">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_results.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_results.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/OPF/dc_opf.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/OPF/dc_opf.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/OPF/dc_opf_ts.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/OPF/dc_opf_ts.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/OPF/opf_templates.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/OPF/opf_templates.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -175,6 +171,7 @@
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
     &quot;ASKED_ADD_EXTERNAL_FILES&quot;: &quot;true&quot;,
+    &quot;Git.Branch.Popup.ShowAllRemotes&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
@@ -1166,20 +1163,6 @@
       <workItem from="1686590782319" duration="3299000" />
       <workItem from="1686641662191" duration="8615000" />
     </task>
-    <task id="LOCAL-00345" summary="Updated the version file">
-      <created>1662029493419</created>
-      <option name="number" value="00345" />
-      <option name="presentableId" value="LOCAL-00345" />
-      <option name="project" value="LOCAL" />
-      <updated>1662029493419</updated>
-    </task>
-    <task id="LOCAL-00346" summary="Added losses % to the power flow time series&#10;Minor refactors of the GUI">
-      <created>1662042947521</created>
-      <option name="number" value="00346" />
-      <option name="presentableId" value="LOCAL-00346" />
-      <option name="project" value="LOCAL" />
-      <updated>1662042947521</updated>
-    </task>
     <task id="LOCAL-00347" summary="csc sparse branch derivatives">
       <created>1662061867029</created>
       <option name="number" value="00347" />
@@ -1509,7 +1492,21 @@
       <option name="project" value="LOCAL" />
       <updated>1697444937528</updated>
     </task>
-    <option name="localTasksCounter" value="394" />
+    <task id="LOCAL-00394" summary="fixing complex exponential representacion">
+      <created>1697640207343</created>
+      <option name="number" value="00394" />
+      <option name="presentableId" value="LOCAL-00394" />
+      <option name="project" value="LOCAL" />
+      <updated>1697640207343</updated>
+    </task>
+    <task id="LOCAL-00395" summary="included angles in flow reports">
+      <created>1697640457449</created>
+      <option name="number" value="00395" />
+      <option name="presentableId" value="LOCAL-00395" />
+      <option name="project" value="LOCAL" />
+      <updated>1697640457449</updated>
+    </task>
+    <option name="localTasksCounter" value="396" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1562,8 +1559,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added investment classes" />
-    <MESSAGE value="Fixed issues with the merge" />
     <MESSAGE value="early colouring the slippy map" />
     <MESSAGE value="early colouring the slippy map (working)" />
     <MESSAGE value="Added map providers options" />
@@ -1587,7 +1582,9 @@
     <MESSAGE value="version 4.6.1b.4 (v4)&#10;&#10;- MOU v0 equivalent&#10;- Fixed generation (scale and contingency)&#10;- New HVDC flow (pmode3 affection)&#10;- New contingencies function (lodfnx)&#10;- Fixed contingencies function (ptdf signs)" />
     <MESSAGE value="fixed bug bus angle sign solution" />
     <MESSAGE value="changing reports to include angles" />
-    <option name="LAST_COMMIT_MESSAGE" value="changing reports to include angles" />
+    <MESSAGE value="fixing complex exponential representacion" />
+    <MESSAGE value="included angles in flow reports" />
+    <option name="LAST_COMMIT_MESSAGE" value="included angles in flow reports" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
