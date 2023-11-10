@@ -1192,8 +1192,12 @@ def formulate_lp_abs_value(solver: pywraplp.Solver, a: pywraplp.Variable, ub: fl
     return a_abs, za
 
 
-def formulate_lp_steps(solver: pywraplp.Solver, lp_var: Union[float, pywraplp.Variable],
-                       exp1: Union[float, pywraplp.VariableExpr], exp2: Union[float, pywraplp.VariableExpr], name: str):
+def formulate_lp_steps(solver: pywraplp.Solver,
+                       lp_var: Union[float, pywraplp.Variable],
+                       higher_exp: Union[float, pywraplp.VariableExpr],
+                       lower_exp: Union[float, pywraplp.VariableExpr],
+                       limit: Union[float, pywraplp.VariableExpr],
+                       name: str):
 
     M = 1e6
 
@@ -1201,20 +1205,30 @@ def formulate_lp_steps(solver: pywraplp.Solver, lp_var: Union[float, pywraplp.Va
     zc = solver.BoolVar(name='zc_' + name)
 
     solver.Add(
-        constraint=exp1 - M * (1-zc) <= lp_var,
+        constraint=higher_exp - M * (1 - zc) <= lp_var,
         name='step1a_' + name)
 
     solver.Add(
-        constraint=lp_var <= exp1 + M * (1-zc),
+        constraint=lp_var <= higher_exp + M * (1 - zc),
         name='step1b_' + name)
 
     solver.Add(
-        constraint=exp2 - M * zc <= lp_var,
+        constraint=lower_exp - M * zc <= lp_var,
         name='step2a_' + name)
 
     solver.Add(
-        constraint=lp_var <= exp2 + M * zc,
+        constraint=lp_var <= lower_exp + M * zc,
         name='step2b_' + name)
+
+    # Formulate condictions
+    # Todo: mirar como multiplicar boolean con variable.
+    solver.Add(
+        constraint=limit * (1 - zc) >= 0,
+        name='range_exp1_' + name)
+
+    solver.Add(
+        constraint=limit * zc <= 0,
+        name='range_exp2_' + name)
 
 
 def formulate_hvdc_Pmode3_single_flow(
@@ -1270,12 +1284,22 @@ def formulate_hvdc_Pmode3_single_flow(
             constraint=a == P0 + k * (angle_f - angle_t),
             name='Pmode3_behavior_' + suffix)
 
+        limit = solver.NumVar(
+            lb=0,
+            ub=lim_a+rate,
+            name='limit_'+suffix)
+
+        solver.Add(
+            constraint=limit == a_abs - rate,
+            name='limit_assignment')
+
         # Constraints formulation, b is the solution
         formulate_lp_steps(
             solver=solver,
             lp_var=b_abs,
-            exp1=rate,
-            exp2=a_abs,
+            higher_exp=rate,
+            lower_exp=a_abs,
+            limit=limit,
             name='theoretical_unconstrainded_flow_' + suffix)
 
     else:
@@ -1751,11 +1775,21 @@ def formulate_hvdc_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase,
                     constraint=zn_abs == zd_abs,
                     name="hvdc_sign_eq" + _hvdc_suffix)
 
+                limit = solver.NumVar(
+                    lb=-rate / hvdc_links,
+                    ub=rate / hvdc_links,
+                    name='limit_' + _hvdc_suffix)
+
+                solver.Add(
+                    constraint=limit == hvdc_f_abs - (hvdc_rate / hvdc_links),
+                    name='limit_assignment')
+
                 formulate_lp_steps(
                     solver=solver,
                     lp_var=trigger_flow_abs,
-                    exp1=0,
-                    exp2=hvdc_f_abs - (hvdc_rate / hvdc_links),
+                    higher_exp=hvdc_f_abs - (hvdc_rate / hvdc_links),
+                    lower_exp=0,
+                    limit=limit,
                     name='hvdc_n1_step_ecuation' + _hvdc_suffix)
 
             else:
