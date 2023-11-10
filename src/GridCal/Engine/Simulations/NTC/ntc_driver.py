@@ -327,6 +327,7 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
             idx_w = np.argmax(np.abs(alpha_n1), axis=1)
             alpha_w = np.take_along_axis(alpha_n1, np.expand_dims(idx_w, axis=1), axis=1)
 
+            kk_ = problem.get_hvdc_trigger_flows()
             # pack the results
             self.results = OptimalNetTransferCapacityResults(
                 bus_names=numerical_circuit.bus_data.names,

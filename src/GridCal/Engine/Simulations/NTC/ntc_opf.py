@@ -1164,73 +1164,127 @@ def formulate_contingency(
 
 def formulate_lp_abs_value(solver: pywraplp.Solver, a: pywraplp.Variable, ub: float, name: str):
 
-    a_abs = solver.NumVar(lb=-ub, ub=ub, name=name)
+    # define var
+    a_abs = solver.NumVar(lb=0, ub=ub, name=name)
 
-    za = solver.BoolVar(
-        'z_' + name
-    )  # to force a_abs to be +-a
+    # to force a_abs to be +-a
+    za = solver.BoolVar(name='z_' + name)
 
-    # 0 <= a_abs - a <= 2 * lim_a * za, when za = 0, then a = a_abs.
-    # Otherwise, a value between 0 and lim_a
+    # 0 <= a_abs - a <= 2 * lim_a * za, when za = 0, then a = a_abs. Otherwise, a value between 0 and lim_a
+    # 0 <= a_abs + a <= 2 * lim_a * (1-za), when za = 1, then a = -a_abs. Otherwise, a value between 0 and lim_a
+    # Formulate 4 equations:
     solver.Add(
-        0 <= a_abs - a,
-        'c1_' + name
-    )  # absoloute definition
-
-    solver.Add(
-        a_abs - a <= 2 * ub * za,
-        'c2_' + name
-    )
-
-    # 0 <= a_abs + a <= 2 * lim_a * (1-za), when za = 1, then a = -a_abs.
-    # Otherwise, a value between 0 and lim_a
-    solver.Add(
-        0 <= a_abs + a,
-        'c3_' + name
-    )
+        constraint=0 <= a_abs - a,
+        name='c1_' + name)
 
     solver.Add(
-        a_abs + a <= 2 * ub * (1 - za),
-        'c4_' + name
-    )
+        constraint=a_abs - a <= 2 * ub * za,
+        name='c2_' + name)
+
+    solver.Add(
+        constraint=0 <= a_abs + a,
+        name='c3_' + name)
+
+    solver.Add(
+        constraint=a_abs + a <= 2 * ub * (1 - za),
+        name='c4_' + name)
 
     return a_abs, za
 
-def formulate_lp_steps(solver: pywraplp.Solver, lp_var: pywraplp.Variable,
-                       exp1: pywraplp.VariableExpr, exp2: pywraplp.VariableExpr, name: str):
+
+def formulate_lp_steps(solver: pywraplp.Solver, lp_var: Union[float, pywraplp.Variable],
+                       exp1: Union[float, pywraplp.VariableExpr], exp2: Union[float, pywraplp.VariableExpr], name: str):
 
     M = 1e6
 
-    # Boolean variable to set step
-    zc = solver.BoolVar(
-        'zc_' + name
-    )
+    # Boolean variable to set step. 4 equations:
+    zc = solver.BoolVar(name='zc_' + name)
 
     solver.Add(
-        exp1 - M * (1-zc) <= lp_var,
-        'step1a_' + name,
-    )
+        constraint=exp1 - M * (1-zc) <= lp_var,
+        name='step1a_' + name)
 
     solver.Add(
-        lp_var <= exp1 + M * (1-zc),
-        'step1b_' + name,
-    )
+        constraint=lp_var <= exp1 + M * (1-zc),
+        name='step1b_' + name)
 
     solver.Add(
-        exp2 - M * zc <= lp_var,
-        'step2a_' + name,
-    )
+        constraint=exp2 - M * zc <= lp_var,
+        name='step2a_' + name)
 
     solver.Add(
-        lp_var <= exp2 + M * zc,
-        'step2b_' + name,
-    )
-
-    pass
-
+        constraint=lp_var <= exp2 + M * zc,
+        name='step2b_' + name)
 
 
 def formulate_hvdc_Pmode3_single_flow(
+        solver: pywraplp.Solver, active, P0, rate, Sbase, angle_droop, angle_max_f, angle_max_t, suffix, angle_f,
+        angle_t
+):
+    """
+        Formulate the HVDC flow
+        :param solver: Solver instance to which add the equations
+        :param rate: HVDC rate
+        :param P0: Power offset for HVDC
+        :param angle_f: bus voltage angle node from (LP Variable)
+        :param angle_t: bus voltage angle node to (LP Variable)
+        :param angle_max_f: maximum bus voltage angle node from (LP Variable)
+        :param angle_max_t: maximum bus voltage angle node to (LP Variable)
+        :param active: Boolean. HVDC active status (True / False)
+        :param angle_droop:  Flow multiplier constant (MW/decimal degree).
+        :param Sbase: Base power (i.e. 100 MVA)
+        :param suffix: suffix to add to the constraints names.
+        :return:
+            - flow_f: Array of formulated HVDC flows (mix of values and variables)
+        """
+
+
+    if active:
+        rate = rate / Sbase
+
+        # formulate the hvdc flow as an AC line equivalent
+        # to pass from MW/deg to p.u./rad -> * 180 / pi / (sbase=100)
+        k = angle_droop * 57.295779513 / Sbase
+
+        # Variables declaration
+        lim_a = P0 + k * (angle_max_f + angle_max_t)
+
+        a = solver.NumVar(lb=-lim_a, ub=lim_a, name='a_' + suffix)
+        b = solver.NumVar(lb=-rate, ub=rate, name='b_' + suffix)
+
+        a_abs, za = formulate_lp_abs_value(solver=solver, a=a, ub=lim_a, name='a_abs_' + suffix)
+        b_abs, zb = formulate_lp_abs_value(solver=solver, a=b, ub=rate, name='b_abs_' + suffix)
+
+        # theoretical flow could be greater than real one
+        solver.Add(
+            constraint=b_abs - a_abs <= 0,
+            name='hvdc_flow_constraint_' + suffix)
+
+        # Force same power sign
+        solver.Add(
+            constraint=za - zb == 0,
+            name='same_sign_' + suffix)
+
+        # Constraints formulation, a is Pmode3 behavior
+        solver.Add(
+            constraint=a == P0 + k * (angle_f - angle_t),
+            name='Pmode3_behavior_' + suffix)
+
+        # Constraints formulation, b is the solution
+        formulate_lp_steps(
+            solver=solver,
+            lp_var=b_abs,
+            exp1=rate,
+            exp2=a_abs,
+            name='theoretical_unconstrainded_flow_' + suffix)
+
+    else:
+        b = 0
+
+    return b
+
+
+def formulate_hvdc_Pmode3_single_flow_old(
         solver: pywraplp.Solver, active, P0, rate, Sbase, angle_droop, angle_max_f, angle_max_t, suffix, angle_f,
         angle_t
 ):
@@ -1279,7 +1333,6 @@ def formulate_hvdc_Pmode3_single_flow(
 
         # Variables declaration
         lim_a = P0 + k * (angle_max_f + angle_max_t)
-        # lim_a = 1000 * rate
 
         a = solver.NumVar(
             -lim_a,
@@ -1660,74 +1713,87 @@ def formulate_hvdc_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase,
     flow_hvdc_n1f = list()
     con_hvdc_idx = list()
     con_alpha = list()
+    trigger_flows = list()
 
     for i, hvdc_f in enumerate(hvdc_flow_f):
         _f_hvdc = F_hvdc[i]
         _t_hvdc = T_hvdc[i]
+        _hvdc_suffix = "Hvdc_{0}".format(i)
+
+        # todo: get hvdc links number from model.
+        hvdc_links = 2
+        hvdc_rate = rate[i] / Sbase
 
         if hvdc_active[i]:
+            # Compute flow to trigger out
+            if control_mode[i] == HvdcControlType.type_0_free:
+
+                # Define contingency flow
+                trigger_flow = solver.NumVar(
+                    lb=-hvdc_rate / hvdc_links,
+                    ub=hvdc_rate / hvdc_links,
+                    name='hvdc_trigger_flow_' + _hvdc_suffix)
+
+                hvdc_f_abs, zn_abs = formulate_lp_abs_value(
+                    solver=solver,
+                    a=hvdc_f,
+                    ub=hvdc_rate,
+                    name='hvdc_abs_n_flow' + _hvdc_suffix)
+
+                trigger_flow_abs, zd_abs = formulate_lp_abs_value(
+                    solver=solver,
+                    a=trigger_flow,
+                    ub=hvdc_rate / hvdc_links,
+                    name='hvdc_abs_trigger_flow' + _hvdc_suffix)
+
+                # ensure flows sign equality
+                solver.Add(
+                    constraint=zn_abs == zd_abs,
+                    name="hvdc_sign_eq" + _hvdc_suffix)
+
+                formulate_lp_steps(
+                    solver=solver,
+                    lp_var=trigger_flow_abs,
+                    exp1=0,
+                    exp2=hvdc_f_abs - (hvdc_rate / hvdc_links),
+                    name='hvdc_n1_step_ecuation' + _hvdc_suffix)
+
+            else:
+                # Define contingency flow
+                trigger_flow = solver.NumVar(
+                    lb=-hvdc_rate / hvdc_links,
+                    ub=hvdc_rate / hvdc_links,
+                    name='hvdc_trigger_flow_' + _hvdc_suffix)
+
+                solver.Add(
+                    constraint=trigger_flow == hvdc_f / hvdc_links,
+                    name="hvdc_n-1_flow_assignment_" + _hvdc_suffix)
+
+            trigger_flows.append(trigger_flow)
+
             for m in mon_br_idx:  # for every monitored branch
                 _f = F[m]
                 _t = T[m]
+                mc_suffix = "Branch_{0}@Hvdc_{1}".format(m, i)
 
-                hvdc_rate = rate[i]
-
-                suffix = "Branch_{0}@Hvdc_{1}".format(m, i)
-
+                # Define flow_n1
                 flow_n1 = solver.NumVar(
-                    -rates[m],
-                    rates[m],
-                    'hvdc_n-1_flow_' + suffix
-                )
+                    lb=-rates[m],
+                    ub=rates[m],
+                    name='hvdc_n-1_flow_' + mc_suffix)
 
                 lodf = (-PTDF[m, _f_hvdc] + PTDF[m, _t_hvdc])
 
-                if control_mode[i] == HvdcControlType.type_0_free:
-                    # Define contingency flow
-                    trigger_flow = solver.NumVar(
-                        lb=-hvdc_rate/2,
-                        ub=hvdc_rate/2,
-                        name='hvdc_trigger_flow_' + suffix
-                    )
-
-                    fn_abs, zn_abs = formulate_lp_abs_value(
-                        solver=solver,
-                        a=hvdc_f,
-                        ub=hvdc_rate,
-                        name='hvdc_abs_n_flow' + suffix)
-
-                    trigger_flow_abs, zd_abs = formulate_lp_abs_value(
-                        solver=solver,
-                        a=trigger_flow,
-                        ub=hvdc_rate,
-                        name='hvdc_abs_trigger_flow' + suffix)
-
-                    # ensure flows sign equality
-                    solver.Add(
-                        zn_abs == zd_abs,
-                        "hvdc_sign_eq" + suffix)
-
-                    formulate_lp_steps(
-                        solver=solver,
-                        lp_var=trigger_flow_abs,
-                        exp1=0,
-                        exp2=fn_abs - hvdc_rate/2,
-                        name='hvdc_n1_step_ecuation' + suffix)
-
-                else:
-                    trigger_flow = hvdc_f
-
                 solver.Add(
-                    flow_n1 == flow_f[m] + lodf * trigger_flow,
-                    "hvdc_n-1_flow_assignment_" + suffix
-                )
+                    constraint=flow_n1 == flow_f[m] + lodf * trigger_flow,
+                    name="hvdc_n-1_flow_assignment_" + mc_suffix)
 
                 # store vars
                 con_hvdc_idx.append((m, [i]))
                 flow_hvdc_n1f.append(flow_n1)
                 con_alpha.append(alpha[m] - lodf)
 
-    return flow_hvdc_n1f, np.array([con_alpha]).T, con_hvdc_idx
+    return flow_hvdc_n1f, np.array([con_alpha]).T, con_hvdc_idx, trigger_flows
 
 
 
@@ -2494,7 +2560,7 @@ class OpfNTC(Opf):
 
         if self.consider_hvdc_contingencies:
             # formulate the hvdc contingencies
-            n1flow_hvdc_f, con_hvdc_alpha, con_hvdc_idx = formulate_hvdc_contingency(
+            n1flow_hvdc_f, con_hvdc_alpha, con_hvdc_idx, hvdc_trigger_flows = formulate_hvdc_contingency(
                 solver=self.solver,
                 ContingencyRates=self.numerical_circuit.ContingencyRates,
                 Sbase=self.numerical_circuit.Sbase,
@@ -2580,6 +2646,7 @@ class OpfNTC(Opf):
         self.contingency_gen_indices_list = con_gen_idx  # [(m, c), ...]
         self.contingency_hvdc_flows_list = n1flow_hvdc_f
         self.contingency_hvdc_indices_list = con_hvdc_idx  # [(m, c), ...]
+        self.hvdc_trigger_flows = hvdc_trigger_flows
 
         self.contingency_branch_alpha_list = con_br_alpha
         self.contingency_hvdc_alpha_list = con_hvdc_alpha
@@ -2890,7 +2957,7 @@ class OpfNTC(Opf):
 
         if self.consider_hvdc_contingencies:
             # formulate the hvdc contingencies
-            n1flow_hvdc_f, con_hvdc_alpha, con_hvdc_idx = formulate_hvdc_contingency(
+            n1flow_hvdc_f, con_hvdc_alpha, con_hvdc_idx, hvdc_trigger_flows = formulate_hvdc_contingency(
                 solver=self.solver,
                 ContingencyRates=self.numerical_circuit.ContingencyRates[:, t],
                 Sbase=self.numerical_circuit.Sbase,
@@ -2901,6 +2968,8 @@ class OpfNTC(Opf):
                 T=self.numerical_circuit.T,
                 F_hvdc=self.numerical_circuit.hvdc_data.get_bus_indices_f(),
                 T_hvdc=self.numerical_circuit.hvdc_data.get_bus_indices_t(),
+                rate=self.numerical_circuit.hvdc_data.rate[:, t],
+                control_mode=self.numerical_circuit.hvdc_data.control_mode,
                 flow_f=flow_f,
                 monitor=monitor,
                 alpha=self.alpha,
@@ -2961,6 +3030,7 @@ class OpfNTC(Opf):
         self.contingency_gen_indices_list = con_gen_idx  # [(t, m, c), ...]
         self.contingency_hvdc_flows_list = n1flow_hvdc_f
         self.contingency_hvdc_indices_list = con_hvdc_idx  # [(t, m, c), ...]
+        self.hvdc_trigger_flows = hvdc_trigger_flows
 
         self.contingency_branch_alpha_list = con_brn_alpha
         self.contingency_generation_alpha_list = con_gen_alpha
@@ -3147,6 +3217,13 @@ class OpfNTC(Opf):
         :return: 2D array
         """
         return self.extract(self.Pinj, make_abs=False) * self.numerical_circuit.Sbase
+
+    def get_hvdc_trigger_flows(self):
+        """
+        return hvdc trigger flows (time, device)
+        :return: 2D array
+        """
+        return self.extract(self.hvdc_trigger_flows, make_abs=False) * self.numerical_circuit.Sbase
 
     def get_generator_delta(self):
         """
