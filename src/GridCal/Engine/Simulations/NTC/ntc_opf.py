@@ -1162,73 +1162,147 @@ def formulate_contingency(
     return flow_n1f, np.array(con_alpha, dtype=object), con_idx
 
 
-def formulate_lp_abs_value(solver: pywraplp.Solver, a: pywraplp.Variable, ub: float, name: str):
+def formulate_lp_abs_value(solver: pywraplp.Solver, lp_var: pywraplp.Variable, ub: float, name: str):
 
-    # define var
-    a_abs = solver.NumVar(lb=0, ub=ub, name=name)
+    """
+    Generic function to compute lp abs variable
+    :param solver: lp solver instance
+    :param lp_var: variable to make abs
+    :param ub: variable upper bound
+    :param name: variable name
+    :return: abs variable, boolean to define sense
+    """
 
-    # to force a_abs to be +-a
-    za = solver.BoolVar(name='z_' + name)
+    # define abs variable
+    lp_var_abs = solver.NumVar(lb=0, ub=ub, name=name)
 
-    # 0 <= a_abs - a <= 2 * lim_a * za, when za = 0, then a = a_abs. Otherwise, a value between 0 and lim_a
-    # 0 <= a_abs + a <= 2 * lim_a * (1-za), when za = 1, then a = -a_abs. Otherwise, a value between 0 and lim_a
-    # Formulate 4 equations:
+    '''
+    Z boolean variable to define condition behavior (to force a_abs to be +-a)
+       z = 1: lp_var = -lp_var_abs
+       z = 0: lp_var = lp_var_abs
+    '''
+    z = solver.BoolVar(name='z_' + name)
+
+    '''
+    Implement behavior: force lp_var_abs
+        0 <= lp_var_abs - lp_var <= 2 * ub * z
+        0 <= lp_var_abs + lp_var <= 2 * ub * (1-z)
+    '''
     solver.Add(
-        constraint=0 <= a_abs - a,
-        name='c1_' + name)
+        constraint=0 <= lp_var_abs - lp_var,
+        name='abs_exp1_' + name)
 
     solver.Add(
-        constraint=a_abs - a <= 2 * ub * za,
-        name='c2_' + name)
+        constraint=lp_var_abs - lp_var <= 2 * ub * z,
+        name='abs_exp2_' + name)
 
     solver.Add(
-        constraint=0 <= a_abs + a,
-        name='c3_' + name)
+        constraint=0 <= lp_var_abs + lp_var,
+        name='abs_exp3_' + name)
 
     solver.Add(
-        constraint=a_abs + a <= 2 * ub * (1 - za),
-        name='c4_' + name)
+        constraint=lp_var_abs + lp_var <= 2 * ub * (1 - z),
+        name='abs_exp4_' + name)
 
-    return a_abs, za
+    return lp_var_abs, z
 
 
-def formulate_lp_steps(solver: pywraplp.Solver,
-                       lp_var: Union[float, pywraplp.Variable],
-                       higher_exp: Union[float, pywraplp.VariableExpr],
-                       lower_exp: Union[float, pywraplp.VariableExpr],
-                       limit: Union[float, pywraplp.VariableExpr],
-                       name: str):
+def formulate_lp_piece_wise(solver: pywraplp.Solver,
+                            lp_var: Union[float, pywraplp.Variable],
+                            higher_exp: Union[float, pywraplp.VariableExpr],
+                            lower_exp: Union[float, pywraplp.VariableExpr],
+                            condition: Union[float, pywraplp.VariableExpr],
+                            condition_ub: float,
+                            condition_lb: float,
+                            name: str):
+
+    """
+    Generic function to implement piece wise linear function
+    :param solver: lp solver instance
+    :param lp_var: output variable
+    :param higher_exp: expresion when condition >= 0
+    :param lower_exp: expresion when condition <= 0
+    :param condition: bounding condition
+    :param condition_ub: condition upper bound
+    :param condition_lb:condition lower bound
+    :param name: output variable name
+    :return: lp_var, boolean indicating condition behavior
+    """
 
     M = 1e6
 
     # Boolean variable to set step. 4 equations:
-    zc = solver.BoolVar(name='zc_' + name)
+    '''
+    Z boolean variable to define condition behavior
+       z = 1: cond <= 0
+       z = 0: cond >= 0
+    '''
+    z = solver.BoolVar(name='z_' + name)
+
+    '''
+    Behavior implementation:
+        Exp1 - M * (1-z) <= y <= Exp1 + M (1- z)
+        Exp2 - M * z <= y <= Exp2 + M * z
+    '''
+    solver.Add(
+        constraint=higher_exp - M * z <= lp_var,
+        name='higher_exp1_' + name)
 
     solver.Add(
-        constraint=higher_exp - M * (1 - zc) <= lp_var,
-        name='step1a_' + name)
+        constraint=lp_var <= higher_exp + M * z,
+        name='higher_exp2' + name)
 
     solver.Add(
-        constraint=lp_var <= higher_exp + M * (1 - zc),
-        name='step1b_' + name)
+        constraint=lower_exp - M * (1 - z) <= lp_var,
+        name='lower_exp1' + name)
 
     solver.Add(
-        constraint=lower_exp - M * zc <= lp_var,
-        name='step2a_' + name)
+        constraint=lp_var <= lower_exp + M * (1 - z),
+        name='lower_exp2' + name)
+
+    '''
+    Define w = cond * z:
+        To avoid boolean variable * variable
+    '''
+    # Formulate conditions
+    w = solver.NumVar(
+        lb=condition_lb,
+        ub=condition_ub,
+        name='w_' + name)
+
+    '''
+    Define z=1 if cond <=0 and z=0 if cond >= 0
+       cond * (1-z) >= 0
+       cond * z <= 0
+    '''
+    solver.Add(
+        constraint=condition - w >= 0,
+        name='w_exp1_' + name)
 
     solver.Add(
-        constraint=lp_var <= lower_exp + M * zc,
-        name='step2b_' + name)
+        constraint=w <= 0,
+        name='w_exp2_' + name)
 
-    # Formulate condictions
-    # Todo: mirar como multiplicar boolean con variable.
+    '''
+    w implementation (w = cond * z):
+       lb * z <= w <= ub * z
+       cond - (1-z) * (ub-lb) <= w <= cond + (1-z) * (ub-lb)
+    '''
     solver.Add(
-        constraint=limit * (1 - zc) >= 0,
-        name='range_exp1_' + name)
+        constraint=condition_lb * z <= w,
+        name='w_step1_' + name)
 
     solver.Add(
-        constraint=limit * zc <= 0,
-        name='range_exp2_' + name)
+        constraint=condition_ub * z >= w,
+        name='w_step2_' + name)
+
+    solver.Add(
+        constraint=condition - (1 - z) * (condition_ub - condition_lb) <= w,
+        name='w_step3_' + name)
+
+    solver.Add(
+        constraint=condition + (1 - z) * (condition_ub - condition_lb) >= w,
+        name='w_step4_' + name)
 
 
 def formulate_hvdc_Pmode3_single_flow(
@@ -1261,18 +1335,30 @@ def formulate_hvdc_Pmode3_single_flow(
         k = angle_droop * 57.295779513 / Sbase
 
         # Variables declaration
-        lim_a = P0 + k * (angle_max_f + angle_max_t)
+        if P0 > 0:
+            lim_a = P0 + k * (angle_max_f + angle_max_t)
+        else:
+            lim_a = -P0 + k * (angle_max_f + angle_max_t)
 
         a = solver.NumVar(lb=-lim_a, ub=lim_a, name='a_' + suffix)
         b = solver.NumVar(lb=-rate, ub=rate, name='b_' + suffix)
 
-        a_abs, za = formulate_lp_abs_value(solver=solver, a=a, ub=lim_a, name='a_abs_' + suffix)
-        b_abs, zb = formulate_lp_abs_value(solver=solver, a=b, ub=rate, name='b_abs_' + suffix)
+        a_abs, za = formulate_lp_abs_value(
+            solver=solver,
+            lp_var=a, 
+            ub=lim_a, 
+            name='a_abs_' + suffix)
+        
+        b_abs, zb = formulate_lp_abs_value(
+            solver=solver, 
+            lp_var=b, 
+            ub=rate, 
+            name='b_abs_' + suffix)
 
         # theoretical flow could be greater than real one
-        solver.Add(
-            constraint=b_abs - a_abs <= 0,
-            name='hvdc_flow_constraint_' + suffix)
+        # solver.Add(
+        #     constraint=b_abs - a_abs <= 0,
+        #     name='hvdc_flow_constraint_' + suffix)
 
         # Force same power sign
         solver.Add(
@@ -1284,22 +1370,27 @@ def formulate_hvdc_Pmode3_single_flow(
             constraint=a == P0 + k * (angle_f - angle_t),
             name='Pmode3_behavior_' + suffix)
 
-        limit = solver.NumVar(
-            lb=0,
-            ub=lim_a+rate,
-            name='limit_'+suffix)
+        condition_ub = lim_a - rate
+        condition_lb = -rate
+
+        condition = solver.NumVar(
+            ub=condition_ub,
+            lb=condition_lb,
+            name='cond_' + suffix)
 
         solver.Add(
-            constraint=limit == a_abs - rate,
-            name='limit_assignment')
+            constraint=condition == a_abs - rate,
+            name='cond_cst' + suffix)
 
         # Constraints formulation, b is the solution
-        formulate_lp_steps(
+        formulate_lp_piece_wise(
             solver=solver,
             lp_var=b_abs,
             higher_exp=rate,
             lower_exp=a_abs,
-            limit=limit,
+            condition=condition,
+            condition_ub=condition_ub,
+            condition_lb=condition_lb,
             name='theoretical_unconstrainded_flow_' + suffix)
 
     else:
@@ -1749,59 +1840,66 @@ def formulate_hvdc_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase,
         hvdc_rate = rate[i] / Sbase
 
         if hvdc_active[i]:
-            # Compute flow to trigger out
-            if control_mode[i] == HvdcControlType.type_0_free:
 
-                # Define contingency flow
-                trigger_flow = solver.NumVar(
-                    lb=-hvdc_rate / hvdc_links,
-                    ub=hvdc_rate / hvdc_links,
-                    name='hvdc_trigger_flow_' + _hvdc_suffix)
+            # create hvdc abs flow
+            hvdc_f_abs, zn_abs = formulate_lp_abs_value(
+                solver=solver,
+                lp_var=hvdc_f,
+                ub=hvdc_rate,
+                name='abs_n_flow' + _hvdc_suffix)
 
-                hvdc_f_abs, zn_abs = formulate_lp_abs_value(
-                    solver=solver,
-                    a=hvdc_f,
-                    ub=hvdc_rate,
-                    name='hvdc_abs_n_flow' + _hvdc_suffix)
+            # Define contingency flow
+            trigger_flow = solver.NumVar(
+                lb=-hvdc_rate / hvdc_links,
+                ub=hvdc_rate / hvdc_links,
+                name='trigger_flow_' + _hvdc_suffix)
 
-                trigger_flow_abs, zd_abs = formulate_lp_abs_value(
-                    solver=solver,
-                    a=trigger_flow,
-                    ub=hvdc_rate / hvdc_links,
-                    name='hvdc_abs_trigger_flow' + _hvdc_suffix)
+            # create hvdc abs contingency flow
+            trigger_flow_abs, zd_abs = formulate_lp_abs_value(
+                solver=solver,
+                lp_var=trigger_flow,
+                ub=hvdc_rate / hvdc_links,
+                name='abs_trigger_flow' + _hvdc_suffix)
 
-                # ensure flows sign equality
-                solver.Add(
-                    constraint=zn_abs == zd_abs,
-                    name="hvdc_sign_eq" + _hvdc_suffix)
+            # ensure flows sign equality
+            solver.Add(
+                constraint=zn_abs == zd_abs,
+                name="sign_equality" + _hvdc_suffix)
 
-                limit = solver.NumVar(
-                    lb=-rate / hvdc_links,
-                    ub=rate / hvdc_links,
-                    name='limit_' + _hvdc_suffix)
+            '''
+            Define condition bounds
+                condition = fn_abs - (rate / nlinks)
+                    c_ub = fn_abs_ub - rate/links
+                    c_lb = fn_abs_lb - rate/links
+            '''
 
-                solver.Add(
-                    constraint=limit == hvdc_f_abs - (hvdc_rate / hvdc_links),
-                    name='limit_assignment')
+            condition_ub = hvdc_rate - (hvdc_rate / hvdc_links)
+            condition_lb = 0 - (hvdc_rate / hvdc_links)
 
-                formulate_lp_steps(
-                    solver=solver,
-                    lp_var=trigger_flow_abs,
-                    higher_exp=hvdc_f_abs - (hvdc_rate / hvdc_links),
-                    lower_exp=0,
-                    limit=limit,
-                    name='hvdc_n1_step_ecuation' + _hvdc_suffix)
+            # Define condition var
+            condition = solver.NumVar(
+                lb=condition_lb,
+                ub=condition_ub,
+                name='condition_' + _hvdc_suffix)
 
-            else:
-                # Define contingency flow
-                trigger_flow = solver.NumVar(
-                    lb=-hvdc_rate / hvdc_links,
-                    ub=hvdc_rate / hvdc_links,
-                    name='hvdc_trigger_flow_' + _hvdc_suffix)
+            solver.Add(
+                constraint=condition == hvdc_f_abs - (hvdc_rate / hvdc_links),
+                name='condition_cst' + _hvdc_suffix)
 
-                solver.Add(
-                    constraint=trigger_flow == hvdc_f / hvdc_links,
-                    name="hvdc_n-1_flow_assignment_" + _hvdc_suffix)
+            '''
+            Formulate trigger flow step function
+                hvdc_fd = 0 if hvdc_fn <= rate/nlinks
+                hvdc_fd = hvdc_fn - rate/nlinks if hvdc_fn >= rate/nlinks
+            '''
+            formulate_lp_piece_wise(
+                solver=solver,
+                lp_var=trigger_flow_abs,
+                higher_exp=hvdc_f_abs - (hvdc_rate / hvdc_links),
+                lower_exp=0,
+                condition=condition,
+                condition_ub=condition_ub,
+                condition_lb=condition_lb,
+                name='n1_step_ecuation' + _hvdc_suffix)
 
             trigger_flows.append(trigger_flow)
 
