@@ -2830,7 +2830,7 @@ class OpfNTC(Opf):
             solver=self.solver,
             Bbus=self.numerical_circuit.Bbus,
             angles=theta,
-            Pinj=Pinj - Pinj_tau,
+            Pinj=Pinj + Pinj_tau,
             bus_active=self.numerical_circuit.bus_data.active[:, t],
             bus_names=self.numerical_circuit.bus_data.names,
             logger=self.logger

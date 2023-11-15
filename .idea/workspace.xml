@@ -26,9 +26,8 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="Variable Normalization:&#10; - Calibrating inf value">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py" afterDir="false" />
+    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="NTC:&#10; - Fixed sign injections for shifters tau in Pinjections&#10;&#10;Variable Normalization:&#10; - Calibrated inf value&#10; - Added lp_sbase">
+      <change beforePath="$PROJECT_DIR$/src/GridCal/__version__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/__version__.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -207,7 +206,7 @@
       <recent name="$PROJECT_DIR$/src/research/derivatives_and_jacobian" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.ExecuteGridCal">
+  <component name="RunManager" selected="Python.setup">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -487,8 +486,8 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.ExecuteGridCal" />
         <item itemvalue="Python.setup" />
+        <item itemvalue="Python.ExecuteGridCal" />
         <item itemvalue="Python.ntc_ts_driver" />
         <item itemvalue="Python.ntc_opf" />
         <item itemvalue="Python tests.Nosetests in tests" />
@@ -1163,13 +1162,6 @@
       <workItem from="1686590782319" duration="3299000" />
       <workItem from="1686641662191" duration="8615000" />
     </task>
-    <task id="LOCAL-00356" summary="Improvements coupling Newton (unit commitment checkbox)">
-      <created>1677520363892</created>
-      <option name="number" value="00356" />
-      <option name="presentableId" value="LOCAL-00356" />
-      <option name="project" value="LOCAL" />
-      <updated>1677520363892</updated>
-    </task>
     <task id="LOCAL-00357" summary="Updated to match the Newton interface and naming changes">
       <created>1677757109556</created>
       <option name="number" value="00357" />
@@ -1506,7 +1498,14 @@
       <option name="project" value="LOCAL" />
       <updated>1700058354491</updated>
     </task>
-    <option name="localTasksCounter" value="405" />
+    <task id="LOCAL-00405" summary="NTC:&#10; - Fixed sign injections for shifters tau in Pinjections&#10;&#10;Variable Normalization:&#10; - Calibrated inf value&#10; - Added lp_sbase">
+      <created>1700068813465</created>
+      <option name="number" value="00405" />
+      <option name="presentableId" value="LOCAL-00405" />
+      <option name="project" value="LOCAL" />
+      <updated>1700068813465</updated>
+    </task>
+    <option name="localTasksCounter" value="406" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1559,7 +1558,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Integrated contingencies and investments with Newton" />
     <MESSAGE value="Added new grid examples" />
     <MESSAGE value="4.7.0" />
     <MESSAGE value="updated pkg version in the setup" />
@@ -1584,7 +1582,8 @@
     <MESSAGE value="NTC:&#10; - Pmode3: new contingency implementation" />
     <MESSAGE value="LP:&#10; - New generic lp piece wise functions&#10; - New generic lp abs variables.&#10; &#10; NTC:&#10;  - Modified hvdc pmode3 flow&#10;  - Modified hvdc contingencies (pmode1 and pmode3)" />
     <MESSAGE value="Variable Normalization:&#10; - Calibrating inf value" />
-    <option name="LAST_COMMIT_MESSAGE" value="Variable Normalization:&#10; - Calibrating inf value" />
+    <MESSAGE value="NTC:&#10; - Fixed sign injections for shifters tau in Pinjections&#10;&#10;Variable Normalization:&#10; - Calibrated inf value&#10; - Added lp_sbase" />
+    <option name="LAST_COMMIT_MESSAGE" value="NTC:&#10; - Fixed sign injections for shifters tau in Pinjections&#10;&#10;Variable Normalization:&#10; - Calibrated inf value&#10; - Added lp_sbase" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
