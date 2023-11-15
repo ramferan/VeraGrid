@@ -26,9 +26,10 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="- Merged with fernmpos branch">
+    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="LP:&#10; - New generic lp piece wise functions&#10; - New generic lp abs variables.&#10; &#10; NTC:&#10;  - Modified hvdc pmode3 flow&#10;  - Modified hvdc contingencies (pmode1 and pmode3)">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/__version__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/__version__.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -168,24 +169,24 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ASKED_ADD_EXTERNAL_FILES&quot;: &quot;true&quot;,
-    &quot;Git.Branch.Popup.ShowAllRemotes&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/ReposGit/mornt4/HornoPniec&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;reference.idesettings.debugger.python&quot;,
-    &quot;settings.editor.splitter.proportion&quot;: &quot;0.28680688&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_ADD_EXTERNAL_FILES": "true",
+    "Git.Branch.Popup.ShowAllRemotes": "true",
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "last_opened_file_path": "C:/ReposGit/github/energyexemplarnorthamerica/Python-PLEXOS-API",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "reference.idesettings.debugger.python",
+    "settings.editor.splitter.proportion": "0.28680688",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="PyDebuggerOptionsProvider">
     <option name="mySaveCallSignatures" value="true" />
     <option name="mySupportGeventDebugging" value="true" />
@@ -298,28 +299,6 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="newton_equivalence_utils" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="GridCal" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/tests/newton_equivalence_utils.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
     <configuration name="ntc_opf" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="GridCal" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -357,6 +336,28 @@
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_ts_driver.py" />
       <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="setup" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="GridCal" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/setup.py" />
+      <option name="PARAMETERS" value="bdist_wheel" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -479,8 +480,8 @@
       <method v="2" />
     </configuration>
     <list>
+      <item itemvalue="Python.setup" />
       <item itemvalue="Python.ExecuteGridCal" />
-      <item itemvalue="Python.newton_equivalence_utils" />
       <item itemvalue="Python.ntc_opf" />
       <item itemvalue="Python.ntc_ts_driver" />
       <item itemvalue="Python tests.Nosetests in tests" />
@@ -488,10 +489,10 @@
     <recent_temporary>
       <list>
         <item itemvalue="Python.ExecuteGridCal" />
+        <item itemvalue="Python.setup" />
         <item itemvalue="Python.ntc_ts_driver" />
         <item itemvalue="Python.ntc_opf" />
         <item itemvalue="Python tests.Nosetests in tests" />
-        <item itemvalue="Python.newton_equivalence_utils" />
       </list>
     </recent_temporary>
   </component>
@@ -1163,48 +1164,6 @@
       <workItem from="1686590782319" duration="3299000" />
       <workItem from="1686641662191" duration="8615000" />
     </task>
-    <task id="LOCAL-00348" summary="removed newton1 engine&#10;Fixed issue with PSSe shunts not generating a proper UUID">
-      <created>1675240999588</created>
-      <option name="number" value="00348" />
-      <option name="presentableId" value="LOCAL-00348" />
-      <option name="project" value="LOCAL" />
-      <updated>1675240999588</updated>
-    </task>
-    <task id="LOCAL-00349" summary="Better integration of newton linear OPF">
-      <created>1676298162487</created>
-      <option name="number" value="00349" />
-      <option name="presentableId" value="LOCAL-00349" />
-      <option name="project" value="LOCAL" />
-      <updated>1676298162487</updated>
-    </task>
-    <task id="LOCAL-00350" summary="Added more unit commitment properties to the generator">
-      <created>1676315186353</created>
-      <option name="number" value="00350" />
-      <option name="presentableId" value="LOCAL-00350" />
-      <option name="project" value="LOCAL" />
-      <updated>1676315186353</updated>
-    </task>
-    <task id="LOCAL-00351" summary="Added more properties to the json export">
-      <created>1676370367154</created>
-      <option name="number" value="00351" />
-      <option name="presentableId" value="LOCAL-00351" />
-      <option name="project" value="LOCAL" />
-      <updated>1676370367155</updated>
-    </task>
-    <task id="LOCAL-00352" summary="Better integration of Newton linear and nonlinear OPF modules">
-      <created>1676377982972</created>
-      <option name="number" value="00352" />
-      <option name="presentableId" value="LOCAL-00352" />
-      <option name="project" value="LOCAL" />
-      <updated>1676377982972</updated>
-    </task>
-    <task id="LOCAL-00353" summary="Fixed bugs when creating AcDcConverter from newtonpa">
-      <created>1676493675330</created>
-      <option name="number" value="00353" />
-      <option name="presentableId" value="LOCAL-00353" />
-      <option name="project" value="LOCAL" />
-      <updated>1676493675330</updated>
-    </task>
     <task id="LOCAL-00354" summary="fixed bugs with newtonpa opf integration">
       <created>1676494451464</created>
       <option name="number" value="00354" />
@@ -1506,7 +1465,49 @@
       <option name="project" value="LOCAL" />
       <updated>1699440886315</updated>
     </task>
-    <option name="localTasksCounter" value="397" />
+    <task id="LOCAL-00397" summary="NTC:&#10; - Pmode3: new contingency implementation">
+      <created>1699462160482</created>
+      <option name="number" value="00397" />
+      <option name="presentableId" value="LOCAL-00397" />
+      <option name="project" value="LOCAL" />
+      <updated>1699462160482</updated>
+    </task>
+    <task id="LOCAL-00398" summary="NTC:&#10; - Pmode3: new contingency implementation">
+      <created>1699462341174</created>
+      <option name="number" value="00398" />
+      <option name="presentableId" value="LOCAL-00398" />
+      <option name="project" value="LOCAL" />
+      <updated>1699462341175</updated>
+    </task>
+    <task id="LOCAL-00399" summary="NTC:&#10; - Pmode3: new contingency implementation">
+      <created>1699462361800</created>
+      <option name="number" value="00399" />
+      <option name="presentableId" value="LOCAL-00399" />
+      <option name="project" value="LOCAL" />
+      <updated>1699462361800</updated>
+    </task>
+    <task id="LOCAL-00400" summary="NTC:&#10; - Pmode3: new contingency implementation">
+      <created>1699622261526</created>
+      <option name="number" value="00400" />
+      <option name="presentableId" value="LOCAL-00400" />
+      <option name="project" value="LOCAL" />
+      <updated>1699622261526</updated>
+    </task>
+    <task id="LOCAL-00401" summary="NTC:&#10; - Pmode3: new contingency implementation">
+      <created>1699627077397</created>
+      <option name="number" value="00401" />
+      <option name="presentableId" value="LOCAL-00401" />
+      <option name="project" value="LOCAL" />
+      <updated>1699627077397</updated>
+    </task>
+    <task id="LOCAL-00402" summary="LP:&#10; - New generic lp piece wise functions&#10; - New generic lp abs variables.&#10; &#10; NTC:&#10;  - Modified hvdc pmode3 flow&#10;  - Modified hvdc contingencies (pmode1 and pmode3)">
+      <created>1699877337494</created>
+      <option name="number" value="00402" />
+      <option name="presentableId" value="LOCAL-00402" />
+      <option name="project" value="LOCAL" />
+      <updated>1699877337494</updated>
+    </task>
+    <option name="localTasksCounter" value="403" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1559,8 +1560,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="early colouring the slippy map (working)" />
-    <MESSAGE value="Added map providers options" />
     <MESSAGE value="Improved map colouring" />
     <MESSAGE value="Integrated contingencies and investments with Newton" />
     <MESSAGE value="Added new grid examples" />
@@ -1584,7 +1583,9 @@
     <MESSAGE value="fixing complex exponential representacion" />
     <MESSAGE value="included angles in flow reports" />
     <MESSAGE value="- Merged with fernmpos branch" />
-    <option name="LAST_COMMIT_MESSAGE" value="- Merged with fernmpos branch" />
+    <MESSAGE value="NTC:&#10; - Pmode3: new contingency implementation" />
+    <MESSAGE value="LP:&#10; - New generic lp piece wise functions&#10; - New generic lp abs variables.&#10; &#10; NTC:&#10;  - Modified hvdc pmode3 flow&#10;  - Modified hvdc contingencies (pmode1 and pmode3)" />
+    <option name="LAST_COMMIT_MESSAGE" value="LP:&#10; - New generic lp piece wise functions&#10; - New generic lp abs variables.&#10; &#10; NTC:&#10;  - Modified hvdc pmode3 flow&#10;  - Modified hvdc contingencies (pmode1 and pmode3)" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -1975,12 +1976,12 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py</url>
-          <line>3371</line>
+          <line>3607</line>
           <option name="timeStamp" value="1431" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py</url>
-          <line>3369</line>
+          <line>3605</line>
           <option name="timeStamp" value="1433" />
         </line-breakpoint>
       </breakpoints>

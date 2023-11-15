@@ -1229,7 +1229,7 @@ def formulate_lp_piece_wise(solver: pywraplp.Solver,
     :return: lp_var, boolean indicating condition behavior
     """
 
-    M = 1e6
+    M = 1e4
 
     # Boolean variable to set step. 4 equations:
     '''
@@ -2364,9 +2364,12 @@ class OpfNTC(Opf):
         self.logger = logger
 
         # this builds the formulation right away
-        Opf.__init__(self, numerical_circuit=numerical_circuit,
+        Opf.__init__(self,
+                     numerical_circuit=numerical_circuit,
                      solver_type=solver_type,
                      ortools=True)
+
+
 
     def scale_to_reference(self, reference, scalable):
 
@@ -3194,6 +3197,7 @@ class OpfNTC(Opf):
         """
         Call ORTools to solve the problem
         """
+
         if time_limit_ms != 0:
             self.solver.set_time_limit(int(time_limit_ms))
 
