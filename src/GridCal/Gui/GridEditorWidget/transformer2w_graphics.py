@@ -102,7 +102,7 @@ class TransformerEditor(QDialog):
                         self.catalogue_combo.setCurrentIndex(idx)
 
                         # set the template parameters
-                        Sn = self.current_template.rating  # MVA
+                        Sn = self.current_template.branch_rating  # MVA
                         Pcu = self.current_template.Pcu  # kW
                         Pfe = self.current_template.Pfe  # kW
                         I0 = self.current_template.I0  # %

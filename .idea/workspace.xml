@@ -29,7 +29,9 @@
     <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="LP:&#10; - New generic lp piece wise functions&#10; - New generic lp abs variables.&#10; &#10; NTC:&#10;  - Modified hvdc pmode3 flow&#10;  - Modified hvdc contingencies (pmode1 and pmode3)">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/GridCal/__version__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/__version__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/OPF/opf_templates.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Engine/Simulations/OPF/opf_templates.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/Gui/GridEditorWidget/transformer2w_graphics.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Gui/GridEditorWidget/transformer2w_graphics.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GridCal/Gui/Main/GridCalMain.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/GridCal/Gui/Main/GridCalMain.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -77,7 +79,7 @@
     </favorite-branches>
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="devel_mou_v0" />
+        <entry key="$PROJECT_DIR$" value="mou_devel_consolidated" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -1164,13 +1166,6 @@
       <workItem from="1686590782319" duration="3299000" />
       <workItem from="1686641662191" duration="8615000" />
     </task>
-    <task id="LOCAL-00354" summary="fixed bugs with newtonpa opf integration">
-      <created>1676494451464</created>
-      <option name="number" value="00354" />
-      <option name="presentableId" value="LOCAL-00354" />
-      <option name="project" value="LOCAL" />
-      <updated>1676494451464</updated>
-    </task>
     <task id="LOCAL-00355" summary="Improvements coupling Newton">
       <created>1676922446185</created>
       <option name="number" value="00355" />
@@ -1507,7 +1502,14 @@
       <option name="project" value="LOCAL" />
       <updated>1699877337494</updated>
     </task>
-    <option name="localTasksCounter" value="403" />
+    <task id="LOCAL-00403" summary="LP:&#10; - New generic lp piece wise functions&#10; - New generic lp abs variables.&#10; &#10; NTC:&#10;  - Modified hvdc pmode3 flow&#10;  - Modified hvdc contingencies (pmode1 and pmode3)">
+      <created>1700040119153</created>
+      <option name="number" value="00403" />
+      <option name="presentableId" value="LOCAL-00403" />
+      <option name="project" value="LOCAL" />
+      <updated>1700040119153</updated>
+    </task>
+    <option name="localTasksCounter" value="404" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1976,12 +1978,12 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py</url>
-          <line>3607</line>
+          <line>3405</line>
           <option name="timeStamp" value="1431" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py</url>
-          <line>3605</line>
+          <line>3403</line>
           <option name="timeStamp" value="1433" />
         </line-breakpoint>
       </breakpoints>
