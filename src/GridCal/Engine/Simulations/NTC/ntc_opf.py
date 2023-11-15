@@ -726,10 +726,12 @@ def formulate_node_balance(solver: pywraplp.Solver, Bbus, angles, Pinj, bus_acti
     # equal the balance to the generation: eq.13,14 (equality)
     i = 0
     for p_calc, p_set in zip(calculated_power, Pinj):
-        if bus_active[i] and not isinstance(p_calc, int):  # balance is 0 for isolated buses
+        if bus_active[i] and not isinstance(p_calc, int):
+
+            # balance is 0 for isolated buses
             solver.Add(
-                p_calc == p_set,
-                "node_power_balance_assignment_{0}:{1}".format(bus_names[i], i)
+                constraint=p_calc == p_set,
+                name="node_power_balance_assignment_{0}:{1}".format(bus_names[i], i)
             )
         i += 1
 
@@ -738,8 +740,7 @@ def formulate_node_balance(solver: pywraplp.Solver, Bbus, angles, Pinj, bus_acti
 
 def formulate_branches_flow(
         solver: pywraplp.Solver, nbr, nbus, Rates, Sbase, branch_active, branch_names, branch_dc, R, X, F, T, inf,
-        monitor, angles, tau, logger
-):
+        monitor, angles, tau, logger):
     """
 
     :param solver: Solver instance to which add the equations
@@ -805,17 +806,6 @@ def formulate_branches_flow(
             solver.Add(
                 constraint=flow_f[m] == bk * (angles[_f] - angles[_t] + tau[m]),
                 name='branch_power_flow_assignment_{0}:{1}'.format(branch_names[m], m))
-
-            # angle diference constraint
-            # angle_dif = 0.52359  # 30º
-            # solver.Add(
-            #     -angle_dif + tau[m] <= angles[_f] - angles[_t],
-            #     'branch_angle_constraint_min_{0}:{1}'.format(branch_names[m], m)
-            # )
-            # solver.Add(
-            #     angles[_f] - angles[_t] <= angle_dif + tau[m],
-            #     'branch_angle_constraint_max_{0}:{1}'.format(branch_names[m], m)
-            # )
 
             # add the shifter injections matching the flow
             Ptau = bk * tau[m]
@@ -1025,10 +1015,8 @@ def formulate_lp_piece_wise(solver: pywraplp.Solver,
                             higher_exp: Union[float, pywraplp.VariableExpr],
                             lower_exp: Union[float, pywraplp.VariableExpr],
                             condition: Union[float, pywraplp.VariableExpr],
-                            condition_ub: float,
-                            condition_lb: float,
                             name: str,
-                            inf: float):
+                            M: float):
 
     """
     Generic function to implement piece wise linear function
@@ -1037,14 +1025,10 @@ def formulate_lp_piece_wise(solver: pywraplp.Solver,
     :param higher_exp: expresion when condition >= 0
     :param lower_exp: expresion when condition <= 0
     :param condition: bounding condition
-    :param condition_ub: condition upper bound
-    :param condition_lb:condition lower bound
     :param name: output variable name
-    :param inf: Value representing the infinite (i.e. 1e20)
+    :param M: Value representing the infinite (i.e. 1e20)
     :return: lp_var, boolean indicating condition behavior
     """
-
-    M = inf * 10
 
     # Boolean variable to set step. 4 equations:
     '''
@@ -1081,8 +1065,8 @@ def formulate_lp_piece_wise(solver: pywraplp.Solver,
     '''
     # Formulate conditions
     w = solver.NumVar(
-        lb=condition_lb,
-        ub=condition_ub,
+        lb=-M,
+        ub=M,
         name='w_' + name)
 
     '''
@@ -1101,22 +1085,23 @@ def formulate_lp_piece_wise(solver: pywraplp.Solver,
     '''
     w implementation (w = cond * z):
        lb * z <= w <= ub * z
-       cond - (1-z) * 2(ub-lb) <= w <= cond + (1-z) * 2(ub-lb)
+       cond - (1-z) * M <= w <= cond + (1-z) * M
     '''
+
     solver.Add(
-        constraint=condition_lb * z <= w,
+        constraint=0 - M * z <= w,
         name='w_step1_' + name)
 
     solver.Add(
-        constraint=condition_ub * z >= w,
+        constraint=0 + M * z >= w,
         name='w_step2_' + name)
 
     solver.Add(
-        constraint=condition - (1 - z) * 2 * (condition_ub - condition_lb) <= w,
+        constraint=condition - (1 - z) * M <= w,
         name='w_step3_' + name)
 
     solver.Add(
-        constraint=condition + (1 - z) * 2 * (condition_ub - condition_lb) >= w,
+        constraint=condition + (1 - z) * M >= w,
         name='w_step4_' + name)
 
 
@@ -1204,9 +1189,7 @@ def formulate_hvdc_Pmode3_single_flow(
             higher_exp=rate,
             lower_exp=a_abs,
             condition=condition,
-            condition_ub=condition_ub,
-            condition_lb=condition_lb,
-            inf=inf,
+            M=inf*10,
             name='theoretical_unconstrainded_flow_' + suffix)
 
     else:
@@ -1714,9 +1697,7 @@ def formulate_hvdc_contingency(solver: pywraplp.Solver, ContingencyRates, Sbase,
                 higher_exp=hvdc_f_abs - (hvdc_rate / hvdc_links),
                 lower_exp=0,
                 condition=condition,
-                condition_ub=condition_ub,
-                condition_lb=condition_lb,
-                inf=inf,
+                M=inf*10,
                 name='n1_step_ecuation' + _hvdc_suffix)
 
             trigger_flows.append(trigger_flow)
@@ -2078,8 +2059,7 @@ class OpfNTC(Opf):
                  match_gen_load=False,
                  force_exchange_sense=False,
                  transfer_method=AvailableTransferMode.InstalledPower,
-                 logger: Logger=None,
-                 ):
+                 logger: Logger=None):
         """
         DC time series linear optimal power flow
         :param numerical_circuit:  NumericalCircuit instance
@@ -2146,8 +2126,8 @@ class OpfNTC(Opf):
         self.match_gen_load = match_gen_load
         self.force_exchange_sense = force_exchange_sense
 
-        self.inf = 9.999
-        self.lp_Sbase = numerical_circuit.Sbase * 10
+        self.inf = 99.999
+        self.lp_Sbase = numerical_circuit.Sbase
 
         # results
         self.gen_a1_idx = None
@@ -2455,7 +2435,7 @@ class OpfNTC(Opf):
             solver=self.solver,
             Bbus=self.numerical_circuit.Bbus,
             angles=theta,
-            Pinj=Pinj - Pinj_tau,
+            Pinj=Pinj + Pinj_tau,
             bus_active=self.numerical_circuit.bus_data.active[:, t],
             bus_names=self.numerical_circuit.bus_data.names,
             logger=self.logger)
