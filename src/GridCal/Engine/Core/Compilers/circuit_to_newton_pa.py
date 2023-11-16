@@ -893,7 +893,7 @@ def get_newton_pa_linear_opf_options(opfopt: "OptimalPowerFlowOptions", pfopt: P
     opt.compute_flows = opfopt.zonal_grouping == ZonalGrouping.NoGrouping
     opt.check_with_power_flow = False
     opt.add_contingencies = opfopt.consider_contingencies
-    opt.skip_generation_limits = opfopt.skip_generation_limits
+    opt.skip_generator_limits = opfopt.skip_generation_limits
     opt.maximize_area_exchange = opfopt.maximize_flows
     opt.unit_commitment = opfopt.unit_commitment
     opt.use_ramp_constraints = False
