@@ -4409,8 +4409,7 @@ class MainGUI(QMainWindow):
                     loading_threshold_to_report=loading_threshold_to_report,
                     trm=trm,
                     ntc_load_rule=ntc_load_rule,
-                    n1_consideration=n1_consideration,
-                )
+                    n1_consideration=n1_consideration)
 
                 self.ui.progress_label.setText('Running optimal net transfer capacity...')
                 QtGui.QGuiApplication.processEvents()

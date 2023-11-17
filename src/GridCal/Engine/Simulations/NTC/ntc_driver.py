@@ -77,8 +77,7 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
             idx1=self.options.area_from_bus_idx,
             idx2=self.options.area_to_bus_idx,
             dT=self.options.sensitivity_dT,
-            mode=self.options.transfer_method.value,
-        )
+            mode=self.options.transfer_method.value)
 
     def opf(self):
         """
@@ -111,8 +110,7 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
             grid=self.grid,
             distributed_slack=False,
             correct_values=False,
-            with_nx=self.options.consider_nx_contingencies,
-        )
+            with_nx=self.options.consider_nx_contingencies)
 
         linear.run()
 
@@ -286,37 +284,38 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
 
             if not solved:
 
+                scenario = '[snapshot]'
                 if problem.status == pywraplp.Solver.FEASIBLE:
                     self.logger.add_error(
-                        'Feasible solution, not optimal',
+                        'Feasible solution, not optimal {0}'.format(scenario),
                         'NTC OPF',
                         str(err),
                         self.options.tolerance)
 
                 if problem.status == pywraplp.Solver.INFEASIBLE:
                     self.logger.add_error(
-                        'Unfeasible solution',
+                        'Unfeasible solution {0}'.format(scenario),
                         'NTC OPF',
                         str(err),
                         self.options.tolerance)
 
                 if problem.status == pywraplp.Solver.UNBOUNDED:
                     self.logger.add_error(
-                        'Proved unbounded',
+                        'Proved unbounded {0}'.format(scenario),
                         'NTC OPF',
                         str(err),
                         self.options.tolerance)
 
                 if problem.status == pywraplp.Solver.ABNORMAL:
                     self.logger.add_error(
-                        'Abnormal solution, some error happens',
+                        'Abnormal solution, some error happens {0}'.format(scenario),
                         'NTC OPF',
                         str(err),
                         self.options.tolerance)
 
                 if problem.status == pywraplp.Solver.NOT_SOLVED:
                     self.logger.add_error(
-                        'Not solved, maybe timeout occurs',
+                        'Not solved, maybe timeout occurs {0}'.format(scenario),
                         'NTC OPF',
                         str(err),
                         self.options.tolerance)
@@ -482,7 +481,7 @@ if __name__ == '__main__':
         perform_previous_checks=False,
         weight_power_shift=1e5,
         weight_generation_cost=1e2,
-        time_limit_ms=1e4,
+        time_limit_ms=2e4,
         loading_threshold_to_report=98,
     )
 

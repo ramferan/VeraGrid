@@ -40,7 +40,7 @@ class OptimalNetTransferCapacityOptions:
                  sensitivity_dT=100.0,
                  weight_power_shift=1e0,
                  weight_generation_cost=1e-2,
-                 time_limit_ms=1e4,
+                 time_limit_ms=2e4,
                  consider_contingencies=True,
                  consider_hvdc_contingencies=False,
                  consider_gen_contingencies=False,

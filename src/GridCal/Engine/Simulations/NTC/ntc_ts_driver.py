@@ -258,7 +258,9 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             problem.formulate_ts(t=t)
 
             # Solve
-            self.progress_text.emit('Solving NTC OPF...['+time_str+']')
+
+            scenario = '[' + time_str + ']'
+            self.progress_text.emit('Solving NTC OPF...'+scenario)
             solved = problem.solve_ts(
                 t=t,
                 time_limit_ms=self.options.time_limit_ms
@@ -275,31 +277,31 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                 if problem.status == pywraplp.Solver.FEASIBLE:
                     self.results.feasible_idx.append(t)
                     self.logger.add_error(
-                        'Feasible solution, not optimal or timeout',
+                        'Feasible solution, not optimal or timeout for {0}'.format(scenario),
                         'NTC OPF')
 
                 if problem.status == pywraplp.Solver.INFEASIBLE:
                     self.results.infeasible_idx.append(t)
                     self.logger.add_error(
-                        'Unfeasible solution',
+                        'Unfeasible solution {0}'.format(scenario),
                         'NTC OPF')
 
                 if problem.status == pywraplp.Solver.UNBOUNDED:
                     self.results.unbounded_idx.append(t)
                     self.logger.add_error(
-                        'Proved unbounded',
+                        'Proved unbounded {0}'.format(scenario),
                         'NTC OPF')
 
                 if problem.status == pywraplp.Solver.ABNORMAL:
                     self.results.abnormal_idx.append(t)
                     self.logger.add_error(
-                        'Abnormal solution, some error occurred',
+                        'Abnormal solution, some error occurred {0}'.format(scenario),
                         'NTC OPF')
 
                 if problem.status == pywraplp.Solver.NOT_SOLVED:
                     self.results.not_solved.append(t)
                     self.logger.add_error(
-                        'Not solved',
+                        'Not solved, maybe timeout occurs {0}'.format(scenario),
                         'NTC OPF')
 
             # pack the results
