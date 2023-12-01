@@ -23,7 +23,7 @@ from sklearn.cluster import KMeans
 from sklearn.cluster import SpectralClustering
 
 
-def kmeans_sampling(X, n_points=10):
+def kmeans_sampling(X, n_points=10, with_samples=False):
     os.environ['OPENBLAS_NUM_THREADS'] = '12'
 
     tm0 = time.time()
@@ -31,26 +31,21 @@ def kmeans_sampling(X, n_points=10):
     # declare the model
     model = KMeans(n_clusters=n_points, random_state=0, n_init=10)
 
-    tm1 = time.time()
-
     # model fitting
+    tm1 = time.time()
     model.fit_predict(X)
     print(f'kmeans: model fitted in {time.time()-tm1:.2f} scs.')
 
     centroid_idx = model.transform(X).argmin(axis=0)
-    sample_idx = model.transform(X).argmin(axis=1)
 
     # compute probabilities
     centroids, counts = np.unique(model.labels_, return_counts=True)
     prob = counts.astype(float) / len(model.labels_)
-    prob_dict = {u: p for u, p in zip(centroids, prob)}
 
-    # sort results and assign probability
-    centroid_idx = np.sort(centroid_idx)
-    samples = sample_idx[centroid_idx]
-    probabilities = [prob_dict[i] for i in samples]
+    if with_samples:
+        return centroid_idx, prob, model.labels_
 
-    return centroid_idx, probabilities
+    return centroid_idx, prob
 
 
 def kmeans_approximate_sampling(X, n_points=10):
@@ -104,7 +99,6 @@ def kmeans_approximate_sampling(X, n_points=10):
         closest_prob[i] = prob
 
     print(f'kmeans: second loop in {time.time() - tm1:.2f} scs.')
-    tm1 = time.time()
 
     csv_path = r'\\mornt4.ree.es\DESRED\DPE-Internacional\Interconexiones\FRANCIA\2023 MoU Pmode3\Pmode3_conting\8GW\h_pmode1\kmeans_.csv'
     pd.DataFrame([closest_idx, closest_prob], index=['idx', 'prob']).T.to_csv(csv_path, index=False)
