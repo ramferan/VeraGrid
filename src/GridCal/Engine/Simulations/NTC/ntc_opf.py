@@ -1546,6 +1546,8 @@ def formulate_objective(
     :param logger: logger instance
     """
 
+    # solver.SetSolverSpecificParametersAsString('doScale true')
+
     if len(inter_area_branches):
         # Get power variables and signs from entry
         branch_idx, branch_sign = map(list, zip(*inter_area_branches))
@@ -2521,6 +2523,7 @@ class OpfNTC(Opf):
         """
         Call ORTools to solve the problem
         """
+
 
         if time_limit_ms != 0:
             self.solver.set_time_limit(int(time_limit_ms))

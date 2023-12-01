@@ -277,6 +277,7 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
             # Solve
             self.progress_text.emit('Solving NTC OPF...')
             problem.formulate()
+
             solved = problem.solve(
                 time_limit_ms=self.options.time_limit_ms)
 

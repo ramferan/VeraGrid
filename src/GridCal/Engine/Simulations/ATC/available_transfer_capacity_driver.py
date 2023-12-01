@@ -155,18 +155,9 @@ def compute_alpha(ptdf, P0, Pgen, Pinstalled, Pload, idx1, idx2, dT=1.0, mode=0,
     else:
         alpha_n1 = np.zeros((len(alpha), len(alpha)))
 
-
-    # if lodf is not None:
-    #     for m in range(len(alpha)):
-    #         for c in range(len(alpha)):
-    #             if m != c:
-    #                 dflow_n1 = dflow[m] + lodf[m, c] * dflow[c]
-    #                 alpha_c = dflow_n1 / dT
-    #                 alpha_n1[m, c] = alpha_c
-
     return alpha, alpha_n1
 
-#
+
 # @nb.njit()
 # def compute_atc(br_idx, contingency_br_idx, lodf, alpha, flows, rates, contingency_rates, threshold=0.005):
 #     """
