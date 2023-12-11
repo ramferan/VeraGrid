@@ -12,8 +12,11 @@ from examples.ntc_launcher import ntc_launcher
 
 
 def expand_kmeans():
+
+
+
     tm0 = time.time()
-    folder = r'\\mornt4.ree.es\DESRED\DPE-Internacional\Interconexiones\FRANCIA\2023 Tracking changes\v0-v4-comparison\Pmode3\k_mod'
+    folder = r'\\mornt4.ree.es\DESRED\DPE-Internacional\Interconexiones\FRANCIA\2023 MoU Pmode1-3'
     xlsx_path = os.path.join(folder, 'kmeans_expansion.xlsx')
 
     scenarios = pd.read_excel(xlsx_path, sheet_name='Hoja1')
@@ -51,7 +54,11 @@ def expand_kmeans():
 
         results['NTC'] = results['TTC'] - trm
 
-        results.to_csv(os.path.join(os.path.dirname(row['path']), 'expanded_kmeans.csv'))
+        results.to_csv(os.path.join(os.path.dirname(row['path']), row['sense']+'_expanded_kmeans.csv'),index=False)
+        1+1
+
+
+        """""
 
         lost_cluster = [i for i in samples[['cluster_index']].drop_duplicates().values if
                         i not in results['Cluster Index'].drop_duplicates().values][0]
@@ -82,6 +89,8 @@ def expand_kmeans():
             use_clustering=False,
             cluster_number=200)
         k=1
+        
+        """""
 
 
 def get_kmeans_with_samples(grid):
