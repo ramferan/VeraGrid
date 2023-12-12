@@ -38,59 +38,66 @@ def get_PTDF_LODF_NX(ptdf, lodf, idx_fail):
     return PTDF_LODF_NX
 
 
-def compute_srap(p_available, ov, ptdf, lodf, idx_fail, partial=False):
+def compute_srap(p_available, ov, pmax, ptdf, lodf,  partial=False):
     # Este codigo me permite, partiendo de una ejecución de flujo de cargas, para una hora y unas contingecias determinadas, establecer si el srap seria capaz de eliminar las sobrecargas
 
     # Entradas
-    pmax = 15  # Maxima potencia a recortar con SRAP
-    partial = False
-    ov = np.array(
-        [0, -6, 7, 0])  # Vector que me indica las desviaciones respecto de los rates para cada una de las lineas
-    p_available = np.array([9, 5, 3, 2])  # Este vector indica la potencia disponible de cada grupo para
-    # PTDF_LODF_NX #matriz que me dice sensibilidades ante el fallo, para calcular esta matriz necsitamos:
-    # - PTDF original
-    # - LODF original
-    # - lineas falladas en el caso de estudio
-    PTDF_LODF_NX = get_PTDF_LODF_NX(ptdf, lodf, idx_fail)
+    #pmax = 15  # Maxima potencia a recortar con SRAP
+    #partial = False
+    #ov = np.array([0, -6, 7, 0])  # Vector que me indica las desviaciones respecto de los rates para cada una de las lineas
+    #p_available = np.array([9, 5, 3, 2])  # Este vector indica la potencia disponible de cada grupo para
 
-    # Considero unicamente aquellas lineas con sobrecargas, ya sean positivas o negativas
-    ov_exists = np.where(ov != 0)[0]
+    #Aqui vendría un bucle for para recorrer todas las posibles contingencias
+    num_cont = ov.shape[1] #numero de gruposde contingencias analizados
 
     # Creo un vector para determinar si el srap ha sido capaz de eliminar tal sobrecarga
-    ov_solved = [False] * len(ov_exists)
+    ov_solved = np.full((ov.shape[0],ov.shape[1]),False)
 
-    # Asumimos que analizamos cada sobrecarga por separado
-    for ov_exist in ov_exists:
-        sens = PTDF_LODF_NX[ov_exists,
-               :]  # Vector de sensibilidades nudo rama (Fila de la PTDF o PTDF_LODF_NX en el caso de fallo multiple). Hacer función para obtenerlo
-        # sens = np.array([1, 5, 3, 4])  # Eliminar cuando se tenga la de arriba activa
+    for cont in range(num_cont):
+        ov_c = ov [:,cont]
 
-        # Busco si la sobrecarga es positiva o negativa, el orden de buses que afectan más
-        if ov[ov_exist] > 0:
-            i_sens = np.argsort(-sens[0, :], axis=0)  # Si la sobrecarga es positiva, ordeno de mayor a menor
-        else:
-            i_sens = np.argsort(sens[0, :], axis=0)  # Si la sobrecarga es negativa, ordeno de menor a mayor
+        idx_fail = cont #en este caso si se estuvisen realizando fallos multiples esto no sería solo el indice de la columna, sino que sería algo más
 
-        # Calculo del indice del ultimo generador antes de llegar a la maxima potencia
-        imax = np.max(np.where(np.cumsum(p_available[i_sens]) <= pmax))
+        # PTDF_LODF_NX #matriz que me dice sensibilidades ante el fallo, para calcular esta matriz necsitamos:
+        # - PTDF original
+        # - LODF original
+        # - lineas falladas en el caso de estudio
+        PTDF_LODF_NX = get_PTDF_LODF_NX(ptdf, lodf, idx_fail)
 
-        # Calculo del producto de la potencia disponible con su sensibilidad hasta el imax, ambas ordenadas
-        max_correct = np.sum(p_available[i_sens][0:imax] * sens[i_sens][0:imax])
+        # Considero unicamente aquellas lineas con sobrecargas, ya sean positivas o negativas
+        ov_exists = np.where(ov_c != 0)[0]
 
-        if partial:
-            # calculo de la potencia disparada
-            p_triggered = np.sum(p_available[i_sens][0:imax])
+        # Asumimos que analizamos cada sobrecarga por separado
+        for ov_exist in ov_exists:
+            sens = PTDF_LODF_NX[ov_exists,:]  # Vector de sensibilidades nudo rama (Fila de la PTDF o PTDF_LODF_NX en el caso de fallo multiple). Hacer función para obtenerlo
+            # sens = np.array([1, 5, 3, 4])  # Eliminar cuando se tenga la de arriba activa
 
-            # additional correct
-            add_correct = (pmax - p_triggered) * sens[i_sens][imax + 1]
-            max_correct += add_correct
+            # Busco si la sobrecarga es positiva o negativa, el orden de buses que afectan más
+            if ov_c[ov_exist] > 0:
+                i_sens = np.argsort(-sens[0, :], axis=0)  # Si la sobrecarga es positiva, ordeno de mayor a menor
+            else:
+                i_sens = np.argsort(sens[0, :], axis=0)  # Si la sobrecarga es negativa, ordeno de menor a mayor
 
-        # Calculo si la corrección es suficiente, en ese caso marco como True
-        c1 = (ov[ov_exist] > 0) and (max_correct >= ov[ov_exist])  # positive ov
-        c2 = (ov[ov_exist] < 0) and (max_correct <= ov[ov_exist])  # negative ov
+            # Calculo del indice del ultimo generador antes de llegar a la maxima potencia
+            imax = np.max(np.where(np.cumsum(p_available[i_sens]) <= pmax))
 
-        if c1 or c2:
-            ov_solved[ov_exist] = True
+            # Calculo del producto de la potencia disponible con su sensibilidad hasta el imax, ambas ordenadas
+            max_correct = np.sum(p_available[i_sens][0:imax] * sens[i_sens][0:imax])
+
+            if partial:
+                # calculo de la potencia disparada
+                p_triggered = np.sum(p_available[i_sens][0:imax])
+
+                # additional correct
+                add_correct = (pmax - p_triggered) * sens[i_sens][imax + 1]
+                max_correct += add_correct
+
+            # Calculo si la corrección es suficiente, en ese caso marco como True
+            c1 = (ov_c[ov_exist] > 0) and (max_correct >= ov_c[ov_exist])  # positive ov
+            c2 = (ov_c[ov_exist] < 0) and (max_correct <= ov_c[ov_exist])  # negative ov
+
+            if c1 or c2:
+                ov_solved[ov_exist,cont] = True
 
     return ov_solved
 
@@ -121,27 +128,39 @@ def run_srap(gridcal_path):
     print(f'Contingency analysis computed in {time.time() - tm_:.2f} scs.')
 
     #take rates and monitoring logic, convert them to matrix
-    rates = [branch.rate for branch in grid.get_branches_wo_hvdc()]
-    monitor = [branch.monitor_loading for branch in grid.get_branches_wo_hvdc()]
+
+    Sbase = grid.Sbase
+
+    rates = np.array([branch.rate for branch in grid.get_branches_wo_hvdc()])/Sbase
+    monitor = np.array([branch.monitor_loading for branch in grid.get_branches_wo_hvdc()])
+    srap_rate = rates*1.4
+
 
     rates_matrix = np.tile(rates, (len(rates), 1)).T
     monitor_matrix = np.tile(monitor, (len(monitor), 1)).T
+    srap_rate_matrix = np.tile(srap_rate, (len(srap_rate), 1)).T
 
     #set a condition to review overloads
-    cond = np.multiply(((np.abs(driver.results.loading.real) - 1) > 0), monitor_matrix)
+    cond_overload = np.multiply(((np.abs(driver.results.loading.real) - 1) > 0), monitor_matrix)
+    cond_srap = (np.abs(driver.results.Sf.real)/Sbase <= srap_rate_matrix)
+    cond = np.multiply(cond_overload, cond_srap)
 
     #create an overload matrix for each contingency
     ov = np.zeros((len(rates), len(rates)))
-    ov[cond] = np.multiply(driver.results.loading.real[cond], rates_matrix[cond])
+    ov[cond] = driver.results.Sf.real[cond]/Sbase
+
+    1+1
 
 
+    p_available = /Sbase
+    pmax = /Sbase
+    ptdf =
+    lodf =
 
+    ov_solved = compute_srap(p_available, ov, pmax, ptdf, lodf, partial=False)
 
-
-    #OJO, y el Sbase?
-
-
-    ov_solved = compute_srap(p_available, ov, ptdf, lodf, idx_fail, partial=False)
+    solved_by_srap = len(np.where(ov_solved)[0])/len(np.where(cond)[0])*100
+    print(f'SRAP solved {solved_by_srap:.2f} % of the cases')
 
 
 
@@ -151,6 +170,8 @@ if __name__ == '__main__':
         r'C:\Users\posmarfe\OneDrive - REDEIA\Escritorio\2023 MoU Pmode1-3\srap',
         '1_hour_MOU_2022_5GW_v6h-B_pmode1_withcont_1link.gridcal'
     )
+
+
 
     run_srap(gridcal_path = path)
 

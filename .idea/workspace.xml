@@ -26,7 +26,7 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="included angles in flow reports">
+    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="SRAP steps">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/examples/srap.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/srap.py" afterDir="false" />
     </list>
@@ -1172,13 +1172,6 @@
       <workItem from="1686590782319" duration="3299000" />
       <workItem from="1686641662191" duration="8615000" />
     </task>
-    <task id="LOCAL-00358" summary="integration of area_exchange">
-      <created>1677860074802</created>
-      <option name="number" value="00358" />
-      <option name="presentableId" value="LOCAL-00358" />
-      <option name="project" value="LOCAL" />
-      <updated>1677860074802</updated>
-    </task>
     <task id="LOCAL-00359" summary="Improved illinois200">
       <created>1678211149112</created>
       <option name="number" value="00359" />
@@ -1515,7 +1508,14 @@
       <option name="project" value="LOCAL" />
       <updated>1700069084883</updated>
     </task>
-    <option name="localTasksCounter" value="407" />
+    <task id="LOCAL-00407" summary="SRAP steps">
+      <created>1702370036191</created>
+      <option name="number" value="00407" />
+      <option name="presentableId" value="LOCAL-00407" />
+      <option name="project" value="LOCAL" />
+      <updated>1702370036191</updated>
+    </task>
+    <option name="localTasksCounter" value="408" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1583,7 +1583,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added new grid examples" />
     <MESSAGE value="4.7.0" />
     <MESSAGE value="updated pkg version in the setup" />
     <MESSAGE value="Customized the theme" />
@@ -1608,7 +1607,8 @@
     <MESSAGE value="LP:&#10; - New generic lp piece wise functions&#10; - New generic lp abs variables.&#10; &#10; NTC:&#10;  - Modified hvdc pmode3 flow&#10;  - Modified hvdc contingencies (pmode1 and pmode3)" />
     <MESSAGE value="Variable Normalization:&#10; - Calibrating inf value" />
     <MESSAGE value="NTC:&#10; - Fixed sign injections for shifters tau in Pinjections&#10;&#10;Variable Normalization:&#10; - Calibrated inf value&#10; - Added lp_sbase" />
-    <option name="LAST_COMMIT_MESSAGE" value="NTC:&#10; - Fixed sign injections for shifters tau in Pinjections&#10;&#10;Variable Normalization:&#10; - Calibrated inf value&#10; - Added lp_sbase" />
+    <MESSAGE value="SRAP steps" />
+    <option name="LAST_COMMIT_MESSAGE" value="SRAP steps" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -2019,10 +2019,22 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/examples/srap.py</url>
-          <line>120</line>
-          <option name="timeStamp" value="1442" />
+          <line>159</line>
+          <option name="timeStamp" value="1443" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/examples/srap.py</url>
+          <line>151</line>
+          <option name="timeStamp" value="1445" />
         </line-breakpoint>
       </breakpoints>
+      <default-breakpoints>
+        <breakpoint type="python-exception">
+          <properties notifyOnTerminate="true" exception="BaseException">
+            <option name="notifyOnTerminate" value="true" />
+          </properties>
+        </breakpoint>
+      </default-breakpoints>
     </breakpoint-manager>
     <watches-manager>
       <configuration name="PythonConfigurationType">
