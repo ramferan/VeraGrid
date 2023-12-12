@@ -120,6 +120,27 @@ def run_srap(gridcal_path):
 
     print(f'Contingency analysis computed in {time.time() - tm_:.2f} scs.')
 
+    #take rates and monitoring logic, convert them to matrix
+    rates = [branch.rate for branch in grid.get_branches_wo_hvdc()]
+    monitor = [branch.monitor_loading for branch in grid.get_branches_wo_hvdc()]
+
+    rates_matrix = np.tile(rates, (len(rates), 1)).T
+    monitor_matrix = np.tile(monitor, (len(monitor), 1)).T
+
+    #set a condition to review overloads
+    cond = np.multiply(((np.abs(driver.results.loading.real) - 1) > 0), monitor_matrix)
+
+    #create an overload matrix for each contingency
+    ov = np.zeros((len(rates), len(rates)))
+    ov[cond] = np.multiply(driver.results.loading.real[cond], rates_matrix[cond])
+
+
+
+
+
+    #OJO, y el Sbase?
+
+
     ov_solved = compute_srap(p_available, ov, ptdf, lodf, idx_fail, partial=False)
 
 
