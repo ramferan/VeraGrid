@@ -3,6 +3,9 @@ import numpy as np
 import pandas as pd
 import time
 from numba import jit
+import cProfile
+import math
+import pstats
 
 from GridCal.Engine import FileOpen
 from GridCal.Engine.Core.time_series_opf_data import compile_opf_time_circuit
@@ -16,16 +19,6 @@ from examples.ntc_launcher import ntc_launcher
 @jit(nopython=True)
 def multiply_fast(a,b):
     return np.dot(a,b)
-
-@jit(nopython=True)
-def last_generator_p_available(p_available, sens,i_sens, pmax):
-    # Calculo del indice del ultimo generador antes de llegar a la maxima potencia
-    imax = np.max(np.where(np.cumsum(p_available[i_sens]) <= pmax))
-
-    # Calculo del producto de la potencia disponible con su sensibilidad hasta el imax, ambas ordenadas
-    max_correct = np.sum(p_available[i_sens][0:imax] * sens[i_sens][0:imax])
-
-    return imax, max_correct
 
 
 #@jit(nopython=True)
@@ -72,7 +65,9 @@ def get_PTDF_LODF_NX(ptdf, lodf, failed_lines,ov_exists):
     lodf_nx = lodf_nx[ov_exists, :] + eye_red
 
     #Producto de lodf_nx por ptdf
-    #PTDF_LODF_NX = np.dot(lodf_nx, ptdf)
+    #time_ptdf = time.time()
+    #PTDF_LODF_NX = np.matmul(lodf_nx, ptdf)
+    #print(f'Mult in  {time.time() - time_ptdf:.2f} scs.')
     PTDF_LODF_NX = multiply_fast(lodf_nx, ptdf)
 
     return PTDF_LODF_NX
@@ -201,7 +196,7 @@ def run_srap(gridcal_path):
     p_available = np.ones(num_buses)*100/Sbase
     pmax = 1300 / Sbase
     lodf = driver.results.otdf
-    ptdf = np.random.rand(num_branches,num_buses)/1000
+    ptdf = np.random.rand(num_branches,num_buses)/10
 
 
     #p_available = /Sbase
@@ -210,6 +205,9 @@ def run_srap(gridcal_path):
     #lodf =
 
     tm_srap = time.time()
+
+
+
 
     ov_solved = compute_srap(p_available, ov, pmax, ptdf, lodf, partial=False)
     print(f'SRAP computed in {time.time() - tm_srap:.2f} scs.')
@@ -226,6 +224,10 @@ if __name__ == '__main__':
         '1_hour_MOU_2022_5GW_v6h-B_pmode1_withcont_1link.gridcal'
     )
 
+    #pr = cProfile.Profile()
+    #Profile.run('run_srap(gridcal_path = path)')
+    #ps = pstats.Stats(pr)
+    #ps.strip_dirs().sort_stats('cumtime').print_stats(0.0001)
 
 
     run_srap(gridcal_path = path)
