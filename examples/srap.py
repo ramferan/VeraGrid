@@ -6,6 +6,7 @@ from numba import jit
 import cProfile
 import math
 import pstats
+from scipy import sparse
 
 from GridCal.Engine import FileOpen
 from GridCal.Engine.Core.time_series_opf_data import compile_opf_time_circuit
@@ -16,7 +17,7 @@ from GridCal.Engine.basic_structures import BranchImpedanceMode
 from examples.ntc_launcher import ntc_launcher
 
 
-@jit(nopython=True)
+#@jit(nopython=True)
 def multiply_fast(a,b):
     return np.dot(a,b)
 
@@ -56,19 +57,30 @@ def get_PTDF_LODF_NX(ptdf, lodf, failed_lines,ov_exists):
     #Este modulo simplemente suma un vector unitario a lodf_nx de una forma mas rapida
     num_over = len(ov_exists)
     eye_red = np.zeros((num_over, num_branches))
-
-    #Numba solo soporta que uno de los argumentos de indexacion sea vector, por eso hay que hacer el bucle for. Si se quiere hacer sin bucle for se puede comentar este y usar la linea de abajo
     eye_red[np.arange(num_over), ov_exists] = 1
-    #for n_over in range(num_over):
+    #for n_over in range(num_over): #Numba solo soporta que uno de los argumentos de indexacion sea vector, por eso hay que hacer el bucle for. Si se quiere hacer sin bucle for se puede comentar este y usar la linea de abajo
     #    eye_red[n_over, ov_exists[n_over]] = 1
 
     lodf_nx = lodf_nx[ov_exists, :] + eye_red
 
     #Producto de lodf_nx por ptdf
     #time_ptdf = time.time()
-    #PTDF_LODF_NX = np.matmul(lodf_nx, ptdf)
+    #PTDF_LODF_NX = np.dot(lodf_nx, ptdf)
     #print(f'Mult in  {time.time() - time_ptdf:.2f} scs.')
-    PTDF_LODF_NX = multiply_fast(lodf_nx, ptdf)
+
+    1+1
+
+    lodf_nx1 = sparse.coo_matrix(lodf_nx)
+
+    #time_ptdf = time.time()
+    #PTDF_LODF_NX = np.dot(lodf_nx, ptdf)
+    PTDF_LODF_NX=lodf_nx1.dot(ptdf)
+    PTDF_LODF_NX.toarray()
+    #print(f'Mult in  {time.time() - time_ptdf:.2f} scs.')
+
+
+
+    #PTDF_LODF_NX = multiply_fast(lodf_nx, ptdf)
 
     return PTDF_LODF_NX
 
@@ -81,6 +93,9 @@ def compute_srap(p_available, ov, pmax, ptdf, lodf,  partial=False):
     #partial = False
     #ov = np.array([0, -6, 7, 0])  # Vector que me indica las desviaciones respecto de los rates para cada una de las lineas
     #p_available = np.array([9, 5, 3, 2])  # Este vector indica la potencia disponible de cada grupo para
+
+    #Cambiar porcentaje
+    ptdf = sparse.coo_matrix(np.where(np.abs(ptdf)<0.999,0,ptdf)) #este 99 es tan solo para hacer mas hueca la matriz, representando que solo consideraria el 1% de los generadores para esto, un 0.999 equivale a una sensibilidad del 20% min
 
     #Aqui vendría un bucle for para recorrer todas las posibles contingencias
     num_cont = ov.shape[1] #numero de gruposde contingencias analizados
@@ -196,7 +211,7 @@ def run_srap(gridcal_path):
     p_available = np.ones(num_buses)*100/Sbase
     pmax = 1300 / Sbase
     lodf = driver.results.otdf
-    ptdf = np.random.rand(num_branches,num_buses)/10
+    ptdf = np.random.rand(num_branches,num_buses)
 
 
     #p_available = /Sbase
