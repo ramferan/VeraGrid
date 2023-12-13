@@ -13,6 +13,21 @@ from GridCal.Engine.basic_structures import BranchImpedanceMode
 from examples.ntc_launcher import ntc_launcher
 
 
+@jit(nopython=True)
+def multiply_fast(a,b):
+    return np.dot(a,b)
+
+@jit(nopython=True)
+def last_generator_p_available(p_available, sens,i_sens, pmax):
+    # Calculo del indice del ultimo generador antes de llegar a la maxima potencia
+    imax = np.max(np.where(np.cumsum(p_available[i_sens]) <= pmax))
+
+    # Calculo del producto de la potencia disponible con su sensibilidad hasta el imax, ambas ordenadas
+    max_correct = np.sum(p_available[i_sens][0:imax] * sens[i_sens][0:imax])
+
+    return imax, max_correct
+
+
 #@jit(nopython=True)
 def get_PTDF_LODF_NX(ptdf, lodf, failed_lines,ov_exists):
     num_branches = lodf.shape[0]
@@ -22,7 +37,11 @@ def get_PTDF_LODF_NX(ptdf, lodf, failed_lines,ov_exists):
     lodf_nx = np.zeros((num_branches, num_branches))
 
     # Compute L vector
-    L = lodf[:, list(failed_lines)]  # Take the columns of the LODF associated with the contingencies
+    L = lodf[:, list(failed_lines)] #wo numba
+
+    #L = np.zeros((num_branches,num_failed_lines))
+    #for i_fl ,failed_line in enumerate(failed_lines):
+    #    L[:,i_fl] = lodf[:,failed_line]  # Take the columns of the LODF associated with the contingencies
 
     # Compute M matrix [n, n] (lodf relating the outaged lines to each other)
     M = np.ones((num_failed_lines, num_failed_lines))
@@ -33,6 +52,10 @@ def get_PTDF_LODF_NX(ptdf, lodf, failed_lines,ov_exists):
 
     # Compute LODF_NX
     lodf_nx[:, list(failed_lines)] = np.dot(L, np.linalg.inv(M))
+
+    #lodf_nx_ = np.dot(L, np.linalg.inv(M)) #wo numba
+    #for i_fl ,failed_line in enumerate(failed_lines):
+    #    lodf_nx[:, failed_line] = lodf_nx_[:,i_fl]
 
     # COMPUTE PTDF_LODF_NX
     #lodf_nx = (lodf_nx + np.eye(num_branches))[ov_exists, :] #tarda 0.6 segundos
@@ -49,7 +72,8 @@ def get_PTDF_LODF_NX(ptdf, lodf, failed_lines,ov_exists):
     lodf_nx = lodf_nx[ov_exists, :] + eye_red
 
     #Producto de lodf_nx por ptdf
-    PTDF_LODF_NX = np.dot(lodf_nx, ptdf)
+    #PTDF_LODF_NX = np.dot(lodf_nx, ptdf)
+    PTDF_LODF_NX = multiply_fast(lodf_nx, ptdf)
 
     return PTDF_LODF_NX
 
