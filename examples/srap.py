@@ -208,7 +208,6 @@ def run_srap(gridcal_path):
     lodf = driver.results.otdf
     ptdf = np.random.rand(num_branches,num_buses)
 
-
     #p_available = /Sbase
     #pmax = /Sbase
     #ptdf =
