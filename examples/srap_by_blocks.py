@@ -23,8 +23,7 @@ def multiply_fast(a,b):
     return np.dot(a,b)
 
 
-#@jit(nopython=True)
-def get_PTDF_LODF_NX(ptdf, lodf, failed_lines,ov_exists):
+def block1_PTDF(ptdf, lodf, failed_lines,ov_exists):
     num_branches = lodf.shape[0]
     num_failed_lines = len(failed_lines)
 
@@ -34,48 +33,138 @@ def get_PTDF_LODF_NX(ptdf, lodf, failed_lines,ov_exists):
     # Compute L vector
     L = lodf[:, list(failed_lines)] #wo numba
 
-    #L = np.zeros((num_branches,num_failed_lines))
-    #for i_fl ,failed_line in enumerate(failed_lines):
-    #    L[:,i_fl] = lodf[:,failed_line]  # Take the columns of the LODF associated with the contingencies
+    return num_failed_lines,L,lodf, lodf_nx, failed_lines,num_branches
 
-    # Compute M matrix [n, n] (lodf relating the outaged lines to each other)
+def block2_PTDF (num_failed_lines,L,lodf, lodf_nx, failed_lines):
+
     M = np.ones((num_failed_lines, num_failed_lines))
+
     for i in range(num_failed_lines):
         for j in range(num_failed_lines):
             if not (i == j):
                 M[i, j] = -lodf[failed_lines[i], failed_lines[j]]
 
-    # Compute LODF_NX
-    lodf_nx[:, list(failed_lines)] = np.dot(L, np.linalg.inv(M))
+    L = sparse.coo_matrix(L)
 
-    #lodf_nx_ = np.dot(L, np.linalg.inv(M)) #wo numba
-    #for i_fl ,failed_line in enumerate(failed_lines):
-    #    lodf_nx[:, failed_line] = lodf_nx_[:,i_fl]
+     # Compute LODF_NX
+    #lodf_nx[:, list(failed_lines)] = np.dot(L, np.linalg.inv(M))
+    lodf_nx[:, list(failed_lines)] = L.dot(np.linalg.inv(M))
 
-    # COMPUTE PTDF_LODF_NX
-    #lodf_nx = (lodf_nx + np.eye(num_branches))[ov_exists, :] #tarda 0.6 segundos
+    return lodf_nx
 
-    #Este modulo simplemente suma un vector unitario a lodf_nx de una forma mas rapida
+
+def block3_PTDF(ov_exists,num_branches,lodf_nx):
+    # Este modulo simplemente suma un vector unitario a lodf_nx de una forma mas rapida
     num_over = len(ov_exists)
     eye_red = np.zeros((num_over, num_branches))
     eye_red[np.arange(num_over), ov_exists] = 1
-    #for n_over in range(num_over): #Numba solo soporta que uno de los argumentos de indexacion sea vector, por eso hay que hacer el bucle for. Si se quiere hacer sin bucle for sL puede comentar este y usar la linea de abajo
+    # for n_over in range(num_over): #Numba solo soporta que uno de los argumentos de indexacion sea vector, por eso hay que hacer el bucle for. Si se quiere hacer sin bucle for sL puede comentar este y usar la linea de abajo
     #    eye_red[n_over, ov_exists[n_over]] = 1
 
     lodf_nx = lodf_nx[ov_exists, :] + eye_red
 
-    #Producto de lodf_nx por ptdf
-    #time_ptdf = time.time()
-    #PTDF_LODF_NX = np.dot(lodf_nx, ptdf)
-    #print(f'Mult in  {time.time() - time_ptdf:.2f} scs.')
+    return lodf_nx
+
+
+def block4_PTDF(lodf_nx,ptdf):
+
     lodf_nx1 = sparse.coo_matrix(lodf_nx)
 
-    #time_ptdf = time.time()
-    #PTDF_LODF_NX = np.dot(lodf_nx, ptdf)
-    PTDF_LODF_NX=lodf_nx1.dot(ptdf)
+
+    # PTDF_LODF_NX = np.dot(lodf_nx, ptdf)
+    PTDF_LODF_NX = lodf_nx1.dot(ptdf)
     PTDF_LODF_NX.toarray()
-    #print(f'Mult in  {time.time() - time_ptdf:.2f} scs.')
-    #PTDF_LODF_NX = multiply_fast(lodf_nx, ptdf)
+
+    return PTDF_LODF_NX
+
+
+def block5_gen_function(ov, cont):
+    ov_c = ov[:, cont]
+
+    if cont == 0:
+        failed_lines = np.array([])
+    else:
+        failed_lines = np.array( [cont])  # en este caso si se estuvisen realizando fallos multiples esto no sería solo el indice de la columna, sino que sería algo más
+
+    # Considero unicamente aquellas lineas con sobrecargas, ya sean positivas o negativas
+    ov_exists = np.where(ov_c != 0)[0]
+
+    return ov_exists, failed_lines, ov_c
+
+
+def block6_gen_function(ptdf, lodf, failed_lines, ov_exists):
+    PTDF_LODF_NX = get_PTDF_LODF_NX(ptdf, lodf, failed_lines, ov_exists)
+    return PTDF_LODF_NX
+
+def block7_gen_function(PTDF_LODF_NX,i_ov,ov_c,ov_exist):
+    sens = PTDF_LODF_NX[i_ov,:]  # Vector de sensibilidades nudo rama (Fila de la PTDF o PTDF_LODF_NX en el caso de fallo multiple). Hacer función para obtenerlo
+    # sens = np.array([1, 5, 3, 4])  # Eliminar cuando se tenga la de arriba activa
+
+    # Busco si la sobrecarga es positiva o negativa, el orden de buses que afectan más
+    if ov_c[ov_exist] > 0:
+        i_sens = np.argsort(-sens, axis=0)  # Si la sobrecarga es positiva, ordeno de mayor a menor
+    else:
+        i_sens = np.argsort(sens, axis=0)  # Si la sobrecarga es negativa, ordeno de menor a mayor
+
+    return i_sens, sens
+
+
+def block8_gen_function(p_available,i_sens,pmax,sens):
+    # Calculo del indice del ultimo generador antes de llegar a la maxima potencia
+    imax = np.max(np.where(np.cumsum(p_available[i_sens]) <= pmax))
+
+    # Calculo del producto de la potencia disponible con su sensibilidad hasta el imax, ambas ordenadas
+    max_correct = np.sum(p_available[i_sens][0:imax] * sens[i_sens][0:imax])
+
+
+    return imax, max_correct
+
+def block9_gen_function(partial,p_available,i_sens,sens,imax,pmax,max_correct):
+    if partial:
+        # calculo de la potencia disparada
+        p_triggered = np.sum(p_available[i_sens][0:imax])
+
+        # additional correct
+        add_correct = (pmax - p_triggered) * sens[i_sens][imax + 1]
+        max_correct += add_correct
+    return max_correct
+
+
+def block10_gen_function(ov_c,ov_exist,max_correct,ov_solved,cont):
+    # Calculo si la corrección es suficiente, en ese caso marco como True
+    c1 = (ov_c[ov_exist] > 0) and (max_correct >= ov_c[ov_exist])  # positive ov
+    c2 = (ov_c[ov_exist] < 0) and (max_correct <= ov_c[ov_exist])  # negative ov
+
+    if c1 or c2:
+        ov_solved[ov_exist, cont] = True
+
+    return ov_solved
+
+def block11_gen_function():
+    return
+
+
+def block12_gen_function():
+    return
+
+def block13_gen_function():
+    return
+
+
+def block14_gen_function():
+    return
+
+
+
+#@jit(nopython=True)
+def get_PTDF_LODF_NX(ptdf, lodf, failed_lines,ov_exists):
+    num_failed_lines, L, lodf, lodf_nx, failed_lines, num_branches = block1_PTDF(ptdf, lodf, failed_lines, ov_exists)
+
+    lodf_nx = block2_PTDF(num_failed_lines, L, lodf, lodf_nx, failed_lines)
+
+    lodf_nx = block3_PTDF(ov_exists, num_branches, lodf_nx)
+
+    PTDF_LODF_NX = block4_PTDF(lodf_nx, ptdf)
 
     return PTDF_LODF_NX
 
@@ -91,6 +180,7 @@ def compute_srap(p_available, ov, pmax, ptdf, lodf,  partial=False):
 
     #Cambiar porcentaje
     ptdf = sparse.coo_matrix(np.where(np.abs(ptdf)<0.999,0,ptdf)) #este 99 es tan solo para hacer mas hueca la matriz, representando que solo consideraria el 1% de los generadores para esto, un 0.999 equivale a una sensibilidad del 20% min
+    lodf = np.where(np.abs(lodf) < 0.01, 0, lodf)
 
     #Aqui vendría un bucle for para recorrer todas las posibles contingencias
     num_cont = ov.shape[1] #numero de gruposde contingencias analizados
@@ -99,15 +189,8 @@ def compute_srap(p_available, ov, pmax, ptdf, lodf,  partial=False):
     ov_solved = np.full((ov.shape[0],ov.shape[1]),False)
 
     for cont in range(num_cont):
-        ov_c = ov [:,cont]
 
-        if cont == 0:
-            failed_lines = np.array([])
-        else:
-            failed_lines = np.array([cont]) #en este caso si se estuvisen realizando fallos multiples esto no sería solo el indice de la columna, sino que sería algo más
-
-        # Considero unicamente aquellas lineas con sobrecargas, ya sean positivas o negativas
-        ov_exists = np.where(ov_c != 0)[0]
+        ov_exists, failed_lines , ov_c = block5_gen_function(ov, cont)
 
         if len(ov_exists): #si tenemos alguna sobrecarga
 
@@ -116,39 +199,20 @@ def compute_srap(p_available, ov, pmax, ptdf, lodf,  partial=False):
             # - LODF original
             # - lineas falladas en el caso de estudio
 
-            PTDF_LODF_NX = get_PTDF_LODF_NX(ptdf, lodf, failed_lines, ov_exists)
+            PTDF_LODF_NX = block6_gen_function(ptdf, lodf, failed_lines, ov_exists)
+
 
             # Asumimos que analizamos cada sobrecarga por separado
             for i_ov,ov_exist in enumerate(ov_exists):
-                sens = PTDF_LODF_NX[i_ov,:]  # Vector de sensibilidades nudo rama (Fila de la PTDF o PTDF_LODF_NX en el caso de fallo multiple). Hacer función para obtenerlo
-                # sens = np.array([1, 5, 3, 4])  # Eliminar cuando se tenga la de arriba activa
 
-                # Busco si la sobrecarga es positiva o negativa, el orden de buses que afectan más
-                if ov_c[ov_exist] > 0:
-                    i_sens = np.argsort(-sens, axis=0)  # Si la sobrecarga es positiva, ordeno de mayor a menor
-                else:
-                    i_sens = np.argsort(sens, axis=0)  # Si la sobrecarga es negativa, ordeno de menor a mayor
+                i_sens, sens = block7_gen_function (PTDF_LODF_NX, i_ov,  ov_c, ov_exist)
 
-                # Calculo del indice del ultimo generador antes de llegar a la maxima potencia
-                imax = np.max(np.where(np.cumsum(p_available[i_sens]) <= pmax))
+                imax, max_correct = block8_gen_function(p_available, i_sens, pmax, sens)
 
-                # Calculo del producto de la potencia disponible con su sensibilidad hasta el imax, ambas ordenadas
-                max_correct = np.sum(p_available[i_sens][0:imax] * sens[i_sens][0:imax])
+                max_correct = block9_gen_function(partial, p_available, i_sens, sens, imax, pmax, max_correct)
 
-                if partial:
-                    # calculo de la potencia disparada
-                    p_triggered = np.sum(p_available[i_sens][0:imax])
+                ov_solved = block10_gen_function(ov_c, ov_exist, max_correct, ov_solved, cont)
 
-                    # additional correct
-                    add_correct = (pmax - p_triggered) * sens[i_sens][imax + 1]
-                    max_correct += add_correct
-
-                # Calculo si la corrección es suficiente, en ese caso marco como True
-                c1 = (ov_c[ov_exist] > 0) and (max_correct >= ov_c[ov_exist])  # positive ov
-                c2 = (ov_c[ov_exist] < 0) and (max_correct <= ov_c[ov_exist])  # negative ov
-
-                if c1 or c2:
-                    ov_solved[ov_exist,cont] = True
 
     return ov_solved
 
@@ -235,20 +299,12 @@ if __name__ == '__main__':
     )
 
     pr = cProfile.Profile()
-    cProfile.run('run_srap(gridcal_path = path)', r'C:\Users\posmarfe\OneDrive - REDEIA\Escritorio')
+    cProfile.run('run_srap(gridcal_path = path)')
     ps = pstats.Stats(pr)
-    ps.strip_dirs().sort_stats('cumtime').print_stats(0.0001)
+    #ps.strip_dirs().sort_stats('cumtime').print_stats(1)
+    ps.dump_stats(r'C:\Users\posmarfe\OneDrive - REDEIA\Escritorio')
 
 
-    run_srap(gridcal_path = path)
-
-
-
-
-
-
-
-
-
+    #run_srap(gridcal_path = path)
 
 
