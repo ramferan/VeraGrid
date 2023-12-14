@@ -27,7 +27,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="SRAP steps">
-      <change afterPath="$PROJECT_DIR$/examples/srap_by_blocks.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/examples/srap.py" beforeDir="false" afterPath="$PROJECT_DIR$/examples/srap.py" afterDir="false" />
     </list>
@@ -211,7 +210,7 @@
       <recent name="$PROJECT_DIR$/src/research/derivatives_and_jacobian" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.srap_by_blocks">
+  <component name="RunManager" selected="Python.srap">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -497,8 +496,8 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.srap_by_blocks" />
         <item itemvalue="Python.srap" />
+        <item itemvalue="Python.srap_by_blocks" />
         <item itemvalue="Python.ExecuteGridCal" />
         <item itemvalue="Python.srap_test" />
         <item itemvalue="Python.expand_clustering" />
@@ -1173,20 +1172,6 @@
       <workItem from="1686590782319" duration="3299000" />
       <workItem from="1686641662191" duration="8615000" />
     </task>
-    <task id="LOCAL-00364" summary="added optional newton file saver when converting to Newton">
-      <created>1678555802840</created>
-      <option name="number" value="00364" />
-      <option name="presentableId" value="LOCAL-00364" />
-      <option name="project" value="LOCAL" />
-      <updated>1678555802840</updated>
-    </task>
-    <task id="LOCAL-00365" summary="Improved circuit_to_data2.py compilation">
-      <created>1678744531484</created>
-      <option name="number" value="00365" />
-      <option name="presentableId" value="LOCAL-00365" />
-      <option name="project" value="LOCAL" />
-      <updated>1678744531484</updated>
-    </task>
     <task id="LOCAL-00366" summary="Added override_branch_controls options, removing the storage dispatch options">
       <created>1678782195149</created>
       <option name="number" value="00366" />
@@ -1516,7 +1501,21 @@
       <option name="project" value="LOCAL" />
       <updated>1702486315364</updated>
     </task>
-    <option name="localTasksCounter" value="413" />
+    <task id="LOCAL-00413" summary="SRAP steps">
+      <created>1702554509265</created>
+      <option name="number" value="00413" />
+      <option name="presentableId" value="LOCAL-00413" />
+      <option name="project" value="LOCAL" />
+      <updated>1702554509267</updated>
+    </task>
+    <task id="LOCAL-00414" summary="SRAP steps">
+      <created>1702554562434</created>
+      <option name="number" value="00414" />
+      <option name="presentableId" value="LOCAL-00414" />
+      <option name="project" value="LOCAL" />
+      <updated>1702554562434</updated>
+    </task>
+    <option name="localTasksCounter" value="415" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -2027,6 +2026,16 @@
           <url>file://$PROJECT_DIR$/examples/srap_by_blocks.py</url>
           <line>35</line>
           <option name="timeStamp" value="1470" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/examples/srap.py</url>
+          <line>92</line>
+          <option name="timeStamp" value="1471" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/examples/srap.py</url>
+          <line>205</line>
+          <option name="timeStamp" value="1472" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>

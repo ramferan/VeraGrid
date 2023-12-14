@@ -90,7 +90,7 @@ def compute_srap(p_available, ov, pmax, ptdf, lodf,  partial=False):
     #p_available = np.array([9, 5, 3, 2])  # Este vector indica la potencia disponible de cada grupo para
 
     #Cambiar porcentaje
-    ptdf = sparse.coo_matrix(np.where(np.abs(ptdf)<0.999,0,ptdf)) #este 99 es tan solo para hacer mas hueca la matriz, representando que solo consideraria el 1% de los generadores para esto, un 0.999 equivale a una sensibilidad del 20% min
+    ptdf = sparse.coo_matrix(np.where(np.abs(ptdf)<0.99,0,ptdf)) #este 99 es tan solo para hacer mas hueca la matriz, representando que solo consideraria el 1% de los generadores para esto, un 0.999 equivale a una sensibilidad del 20% min
 
     #Aqui vendría un bucle for para recorrer todas las posibles contingencias
     num_cont = ov.shape[1] #numero de gruposde contingencias analizados
@@ -203,10 +203,11 @@ def run_srap(gridcal_path):
     num_buses = 5482
     num_branches = 7600
 
-    p_available = np.ones(num_buses)*100/Sbase
+    p_available = np.ones(num_buses)*1000/Sbase
     pmax = 1300 / Sbase
     lodf = driver.results.otdf
     ptdf = np.random.rand(num_branches,num_buses)
+
 
     #p_available = /Sbase
     #pmax = /Sbase
@@ -214,9 +215,6 @@ def run_srap(gridcal_path):
     #lodf =
 
     tm_srap = time.time()
-
-
-
 
     ov_solved = compute_srap(p_available, ov, pmax, ptdf, lodf, partial=False)
     print(f'SRAP computed in {time.time() - tm_srap:.2f} scs.')
@@ -233,10 +231,10 @@ if __name__ == '__main__':
         '1_hour_MOU_2022_5GW_v6h-B_pmode1_withcont_1link.gridcal'
     )
 
-    pr = cProfile.Profile()
-    cProfile.run('run_srap(gridcal_path = path)', r'C:\Users\posmarfe\OneDrive - REDEIA\Escritorio')
-    ps = pstats.Stats(pr)
-    ps.strip_dirs().sort_stats('cumtime').print_stats(0.0001)
+    #pr = cProfile.Profile()
+    #cProfile.run('run_srap(gridcal_path = path)', r'C:\Users\posmarfe\OneDrive - REDEIA\Escritorio')
+    #ps = pstats.Stats(pr)
+    #ps.strip_dirs().sort_stats('cumtime').print_stats(0.0001)
 
 
     run_srap(gridcal_path = path)
