@@ -2047,6 +2047,7 @@ class OpfNTC(Opf):
             n1flow_hvdc_f = list()
             con_hvdc_idx = list()
             con_hvdc_alpha = list()
+            hvdc_trigger_flows = list()
 
         # formulate the objective
         # formulate_objective(

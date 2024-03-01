@@ -110,7 +110,8 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
             grid=self.grid,
             distributed_slack=False,
             correct_values=False,
-            with_nx=self.options.consider_nx_contingencies)
+          #  with_nx=self.options.consider_nx_contingencies)
+            with_nx= True)
 
         linear.run()
 
