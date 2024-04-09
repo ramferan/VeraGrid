@@ -1380,52 +1380,62 @@ def formulate_hvdc_contingency(
                 ub=hvdc_rate / hvdc_links,
                 name='triggered_flow_' + _hvdc_suffix)
 
-            # create hvdc abs contingency flow
-            trigger_flow_abs, zd_abs = formulate_lp_abs_value(
-                solver=solver,
-                lp_var=triggered_flow,
-                ub=hvdc_rate / hvdc_links,
-                M=inf,  # inf could be enough, in order to improve solution convergence
-                name='abs_triggered_flow' + _hvdc_suffix)
+            if hvdc_links > 1:
 
-            # ensure flows sign equality
-            solver.Add(
-                constraint=zn_abs == zd_abs,
-                name="sign_equality" + _hvdc_suffix)
+                # create hvdc abs contingency flow
+                trigger_flow_abs, zd_abs = formulate_lp_abs_value(
+                    solver=solver,
+                    lp_var=triggered_flow,
+                    ub=hvdc_rate / hvdc_links,
+                    M=inf,  # inf could be enough, in order to improve solution convergence
+                    name='abs_triggered_flow' + _hvdc_suffix)
 
-            '''
-            Define condition bounds
-                condition = fn_abs - (rate / nlinks)
-                    c_ub = fn_abs_ub - (rate / nlinks)
-                    c_lb = fn_abs_lb - (rate / nlinks)
-            '''
+                # ensure flows sign equality
+                solver.Add(
+                    constraint=zn_abs == zd_abs,
+                    name="sign_equality" + _hvdc_suffix)
 
-            condition_ub = hvdc_rate - (hvdc_rate / hvdc_links)
-            condition_lb = 0 - (hvdc_rate / hvdc_links)
+                '''
+                Define condition bounds
+                    condition = fn_abs - (rate / nlinks)
+                        c_ub = fn_abs_ub - (rate / nlinks)
+                        c_lb = fn_abs_lb - (rate / nlinks)
+                '''
 
-            # Define condition var
-            condition = solver.NumVar(
-                lb=condition_lb,
-                ub=condition_ub,
-                name='condition_' + _hvdc_suffix)
+                condition_ub = hvdc_rate - (hvdc_rate / hvdc_links)
+                condition_lb = 0 - (hvdc_rate / hvdc_links)
 
-            solver.Add(
-                constraint=condition == hvdc_f_abs - (hvdc_rate / hvdc_links),
-                name='condition_cst' + _hvdc_suffix)
+                # Define condition var
+                condition = solver.NumVar(
+                    lb=condition_lb,
+                    ub=condition_ub,
+                    name='condition_' + _hvdc_suffix)
 
-            '''
-            Formulate trigger flow step function
-                hvdc_fd = 0 if hvdc_fn <= rate/nlinks
-                hvdc_fd = hvdc_fn - rate/nlinks if hvdc_fn >= rate/nlinks
-            '''
-            formulate_lp_piece_wise(
-                solver=solver,
-                lp_var=trigger_flow_abs,
-                higher_exp=hvdc_f_abs - (hvdc_rate / hvdc_links),
-                lower_exp=0,
-                condition=condition,
-                M=inf,  # inf could be enough, in order to improve solution convergence
-                name='n1_step_ecuation' + _hvdc_suffix)
+                solver.Add(
+                    constraint=condition == hvdc_f_abs - (hvdc_rate / hvdc_links),
+                    name='condition_cst' + _hvdc_suffix)
+
+                '''
+                Formulate trigger flow step function
+                    hvdc_fd = 0 if hvdc_fn <= rate/nlinks
+                    hvdc_fd = hvdc_fn - rate/nlinks if hvdc_fn >= rate/nlinks
+                '''
+                formulate_lp_piece_wise(
+                    solver=solver,
+                    lp_var=trigger_flow_abs,
+                    higher_exp=hvdc_f_abs - (hvdc_rate / hvdc_links),
+                    lower_exp=0,
+                    condition=condition,
+                    M=inf,  # inf could be enough, in order to improve solution convergence
+                    name='n1_step_ecuation' + _hvdc_suffix)
+
+            else:
+
+                # ensure flows sign equality
+                solver.Add(
+                    constraint=triggered_flow == hvdc_f,
+                    name="triggered_flow_assignment" + _hvdc_suffix)
+
 
             trigger_flows.append(triggered_flow)
 
