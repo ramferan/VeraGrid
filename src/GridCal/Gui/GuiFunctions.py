@@ -26,7 +26,7 @@ from warnings import warn
 from enum import EnumMeta
 from collections import defaultdict
 from matplotlib import pyplot as plt
-from GridCal.Engine.Devices import DeviceType, BranchTemplate, BranchType, Bus, Area, Substation, Zone, Country
+from GridCal.Engine.Devices import DeviceType, BranchTemplate, BranchType, Bus, Area, Substation, Zone, Country, ContingencyGroup
 from GridCal.Engine.Simulations.result_types import ResultTypes
 from GridCal.Engine.basic_structures import CDF
 
@@ -168,9 +168,9 @@ class FloatDelegate(QItemDelegate):
     A delegate that places a fully functioning QDoubleSpinBox in every
     cell of the column to which it's applied
     """
-    def __init__(self, parent, min_=-9999, max_=9999):
+    def __init__(self, parent, min_=-1e200, max_=1e200):
         """
-        Constructoe
+        Constructor
         :param parent: QTableView parent object
         """
         QItemDelegate.__init__(self, parent)
@@ -597,8 +597,14 @@ class ObjectsModel(QtCore.QAbstractTableModel):
                 delegate = ComboDelegate(self.parent, objects, values)
                 F(i, delegate)
 
-            elif tpe in [DeviceType.SubstationDevice, DeviceType.AreaDevice,
-                         DeviceType.ZoneDevice, DeviceType.CountryDevice]:
+            elif tpe in [DeviceType.SubstationDevice,
+                         DeviceType.AreaDevice,
+                         DeviceType.ZoneDevice,
+                         DeviceType.CountryDevice,
+                         DeviceType.Technology,
+                         DeviceType.ContingencyGroupDevice,
+                         DeviceType.InvestmentsGroupDevice]:
+
                 objects = self.dictionary_of_lists[tpe.value]
                 values = [x.name for x in objects]
                 delegate = ComboDelegate(self.parent, objects, values)
@@ -745,6 +751,9 @@ class ObjectsModel(QtCore.QAbstractTableModel):
                 if tpe is BranchType:
                     setattr(self.objects[obj_idx], self.attributes[attr_idx], BranchType(value))
                     self.objects[obj_idx].graphic_obj.update_symbol()
+                elif tpe is ContingencyGroup:
+                    if value != "":
+                        setattr(self.objects[obj_idx], self.attributes[attr_idx], ContingencyGroup(value))
                 else:
                     setattr(self.objects[obj_idx], self.attributes[attr_idx], value)
             else:

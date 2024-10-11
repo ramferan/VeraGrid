@@ -24,7 +24,6 @@ from PySide2 import QtCore
 from GridCal.Engine.Simulations.result_types import ResultTypes
 from GridCal.Engine.Simulations.results_table import ResultsTable
 
-
 def fast_data_to_numpy_text(data):
 
     if len(data.shape) == 1:
@@ -63,6 +62,9 @@ class ResultsModel(QtCore.QAbstractTableModel):
         self.table = table
 
         self.units = table.units
+
+        self.mainColumn = 0
+        self.order = QtCore.Qt.SortOrder.DescendingOrder
 
     def flags(self, index):
         if self.table.editable and index.column() > self.table.editable_min_idx:
@@ -279,7 +281,7 @@ class ResultsModel(QtCore.QAbstractTableModel):
             # there are no elements
             pass
 
-    def plot(self, ax=None, selected_col_idx=None, selected_rows=None):
+    def plot(self, ax=None, selected_col_idx=None, selected_rows=None, stacked=False):
         """
         Plot the data model
         :param ax: Matplotlib axis
@@ -287,4 +289,62 @@ class ResultsModel(QtCore.QAbstractTableModel):
         :param selected_rows: list of rows to plot
         """
 
-        self.table.plot(ax=ax, selected_col_idx=selected_col_idx, selected_rows=selected_rows)
+        self.table.plot(ax=ax, selected_col_idx=selected_col_idx, selected_rows=selected_rows, stacked=stacked)
+
+    # def setFilter(self, comboText=None, searchText=None, mainColumn=None, order=None):
+    #
+    #     if comboText:
+    #         self.filterCategory = comboText
+    #
+    #     if searchText:
+    #         self.searchText = searchText
+    #
+    #     if mainColumn!=None:
+    #         self.mainColumn = mainColumn
+    #
+    #     self.order = order
+    #
+    #     self.currentItems = [item for item in self.items if item.category == self.filterCategory]
+    #
+    #     if searchText:
+    #         self.currentItems = [item for item in self.currentItems if
+    #                              searchText in '%s%s%s' % (item.ID, item.name, item.category)
+    #                              ]
+    #
+    #     values = []
+    #
+    #     if self.mainColumn == 0:
+    #         values = [[item.ID, item, False] for item in self.currentItems]
+    #
+    #     elif self.mainColumn == 1:
+    #         values = [[item.name, item, False] for item in self.currentItems]
+    #
+    #     elif self.mainColumn == 2:
+    #         values = [[item.category, item, False] for item in self.currentItems]
+    #
+    #     elif self.mainColumn == 3 or self.mainColumn == 4:
+    #         values = [[item.area, item, False] for item in self.currentItems]
+    #
+    #     keys = sorted([value[0] for value in values if isinstance(value, list)])
+    #
+    #     if self.order == QtCore.Qt.AscendingOrder:
+    #         keys = list(reversed(keys))
+    #
+    #     filtered = []
+    #     for key in keys:
+    #         for each in values:
+    #             if each[0] != key:
+    #                 continue
+    #
+    #             if each[2] == True:
+    #                 continue
+    #
+    #             item = each[1]
+    #
+    #             filtered.append(item)
+    #             each[2] = True
+    #
+    #     if filtered:
+    #         self.currentItems = filtered
+    #
+    #     self.layoutChanged.emit()

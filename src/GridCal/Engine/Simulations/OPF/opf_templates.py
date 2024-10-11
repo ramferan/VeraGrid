@@ -56,7 +56,7 @@ class Opf:
 
         self.s_to = None
         self.overloads = None
-        self.rating = None
+        self.branch_rating = None
         self.load_shedding = None
         self.nodal_restrictions = None
 
@@ -71,6 +71,8 @@ class Opf:
         self.solver_type = solver_type
 
         self.status = 100000  # a number that is not likely to be an enumeration value so converged returns false
+
+        self.lp_Sbase = numerical_circuit.Sbase
 
         if ortools:
             if platform.system() == 'Darwin':
@@ -158,8 +160,9 @@ class Opf:
         return the complex voltages (time, device)
         :return: 2D array
         """
+
         angles = self.extract(self.theta)
-        return np.ones_like(angles) * np.exp(-1j * angles)
+        return np.ones_like(angles) * np.exp(1j * angles)
 
     def get_overloads(self):
         """
@@ -173,7 +176,7 @@ class Opf:
         return the branch overloads (time, device)
         :return: 2D array
         """
-        return self.extract(self.Pinj) * self.numerical_circuit.Sbase
+        return self.extract(self.Pinj) * self.lp_Sbase
 
     def get_phase_shifts(self):
         """
@@ -182,75 +185,69 @@ class Opf:
         """
         return self.extract(self.phase_shift)
 
-    def get_hvdc_flows(self):
-        """
-        return the branch overloads (time, device)
-        :return: 2D array
-        """
-        return self.extract(self.hvdc_flow) * self.numerical_circuit.Sbase
-
     def get_loading(self):
         """
         return the branch loading (time, device)
         :return: 2D array
         """
-        return self.extract(self.s_from, make_abs=False) / (self.rating + 1e-20)
+        return self.extract(self.s_from, make_abs=False) / (self.branch_rating + 1e-20)
+
 
     def get_branch_power_from(self):
         """
         return the branch loading (time, device)
         :return: 2D array
         """
-        return self.extract(self.s_from, make_abs=False) * self.numerical_circuit.Sbase
+        return self.extract(self.s_from, make_abs=False) * self.lp_Sbase
 
     def get_branch_power_to(self):
         """
         return the branch loading (time, device)
         :return: 2D array
         """
-        return self.extract(self.s_to, make_abs=False) * self.numerical_circuit.Sbase
+        return self.extract(self.s_to, make_abs=False) * self.lp_Sbase
 
     def get_battery_power(self):
         """
         return the battery dispatch (time, device)
         :return: 2D array
         """
-        return self.extract(self.Pb) * self.numerical_circuit.Sbase
+        return self.extract(self.Pb) * self.lp_Sbase
 
     def get_generator_power(self):
         """
         return the generator dispatch (time, device)
         :return: 2D array
         """
-        return self.extract(self.Pg) * self.numerical_circuit.Sbase
+        return self.extract(self.Pg) * self.lp_Sbase
 
     def get_load_shedding(self):
         """
         return the load shedding (time, device)
         :return: 2D array
         """
-        return self.extract(self.load_shedding) * self.numerical_circuit.Sbase
+        return self.extract(self.load_shedding) * self.lp_Sbase
 
     def get_load_power(self):
         """
         return the load shedding (time, device)
         :return: 2D array
         """
-        return self.extract(self.Pl) * self.numerical_circuit.Sbase
+        return self.extract(self.Pl) * self.lp_Sbase
 
     def get_contingency_flows_list(self):
         """
         return the load shedding (time, device)
         :return: 2D array
         """
-        return self.extract_list(self.contingency_flows_list) * self.numerical_circuit.Sbase
+        return self.extract_list(self.contingency_flows_list) * self.lp_Sbase
 
     def get_contingency_flows_slacks_list(self):
         """
         return the load shedding (time, device)
         :return: 2D array
         """
-        return self.extract_list(self.contingency_flows_slacks_list) * self.numerical_circuit.Sbase
+        return self.extract_list(self.contingency_flows_slacks_list) * self.lp_Sbase
 
     def get_shadow_prices(self):
         """
@@ -273,14 +270,14 @@ class Opf:
         return the load shedding (time, device)
         :return: 2D array
         """
-        return self.extract_list(self.contingency_gen_flows_list) * self.numerical_circuit.Sbase
+        return self.extract_list(self.contingency_gen_flows_list) * self.lp_Sbase
 
     def get_contingency_hvdc_flows_list(self):
         """
         return the load shedding (time, device)
         :return: 2D array
         """
-        return self.extract_list(self.contingency_hvdc_flows_list) * self.numerical_circuit.Sbase
+        return self.extract_list(self.contingency_hvdc_flows_list) * self.lp_Sbase
 
 class OpfTimeSeries:
 
@@ -312,8 +309,10 @@ class OpfTimeSeries:
         self.E = None
         self.s_from = None
         self.s_to = None
+
         self.overloads = None
-        self.rating = None
+        self.branch_rating = None
+        self.hvdc_rating= None
         self.load_shedding = None
         self.nodal_restrictions = None
 
@@ -321,6 +320,7 @@ class OpfTimeSeries:
         self.contingency_indices_list = list()  # [(t, m, c), ...]
         self.contingency_flows_slacks_list = list()
 
+        self.lp_Sbase = numerical_circuit.Sbase
         # if ortools:
         #     if platform.system() == 'Darwin':
         #         self.solver = pywraplp.Solver.CreateSolver("GLOP")
@@ -422,14 +422,21 @@ class OpfTimeSeries:
         return the branch loading (time, device)
         :return: 2D array
         """
-        return self.extract2D(self.s_from, make_abs=False) / (self.rating + 1e-20)
+        return self.extract2D(self.s_from, make_abs=False) / (self.branch_rating + 1e-20)
+
+    def get_hvdc_loading(self):
+        """
+        return the branch loading (time, device)
+        :return: 2D array
+        """
+        return self.extract2D(self.s_from, make_abs=False) / (self.hvdc_rating + 1e-20)
 
     def get_power_injections(self):
         """
         return the branch overloads (time, device)
         :return: 2D array
         """
-        return self.extract2D(self.Pinj) * self.numerical_circuit.Sbase
+        return self.extract2D(self.Pinj) * self.lp_Sbase
 
     def get_phase_shifts(self):
         """
@@ -443,70 +450,70 @@ class OpfTimeSeries:
         return the branch overloads (time, device)
         :return: 2D array
         """
-        return self.extract2D(self.hvdc_flow) * self.numerical_circuit.Sbase
+        return self.extract2D(self.hvdc_flow) * self.lp_Sbase
 
     def get_branch_power_from(self):
         """
         return the branch loading (time, device)
         :return: 2D array
         """
-        return self.extract2D(self.s_from, make_abs=False) * self.numerical_circuit.Sbase
+        return self.extract2D(self.s_from, make_abs=False) * self.lp_Sbase
 
     def get_branch_power_to(self):
         """
         return the branch loading (time, device)
         :return: 2D array
         """
-        return self.extract2D(self.s_to, make_abs=False) * self.numerical_circuit.Sbase
+        return self.extract2D(self.s_to, make_abs=False) * self.lp_Sbase
 
     def get_battery_power(self):
         """
         return the battery dispatch (time, device)
         :return: 2D array
         """
-        return self.extract2D(self.Pb) * self.numerical_circuit.Sbase
+        return self.extract2D(self.Pb) * self.lp_Sbase
 
     def get_battery_energy(self):
         """
         return the battery energy (time, device)
         :return: 2D array
         """
-        return self.extract2D(self.E) * self.numerical_circuit.Sbase
+        return self.extract2D(self.E) * self.lp_Sbase
 
     def get_generator_power(self):
         """
         return the generator dispatch (time, device)
         :return: 2D array
         """
-        return self.extract2D(self.Pg) * self.numerical_circuit.Sbase
+        return self.extract2D(self.Pg) * self.lp_Sbase
 
     def get_load_shedding(self):
         """
         return the load shedding (time, device)
         :return: 2D array
         """
-        return self.extract2D(self.load_shedding) * self.numerical_circuit.Sbase
+        return self.extract2D(self.load_shedding) * self.lp_Sbase
 
     def get_load_power(self):
         """
         return the load shedding (time, device)
         :return: 2D array
         """
-        return self.extract2D(self.Pl) * self.numerical_circuit.Sbase
+        return self.extract2D(self.Pl) * self.lp_Sbase
 
     def get_contingency_flows_list(self):
         """
         return the load shedding (time, device)
         :return: 2D array
         """
-        return self.extract_list(self.contingency_flows_list) * self.numerical_circuit.Sbase
+        return self.extract_list(self.contingency_flows_list) * self.lp_Sbase
 
     def get_contingency_flows_slacks_list(self):
         """
         return the load shedding (time, device)
         :return: 2D array
         """
-        return self.extract_list(self.contingency_flows_slacks_list) * self.numerical_circuit.Sbase
+        return self.extract_list(self.contingency_flows_slacks_list) * self.lp_Sbase
 
     def get_shadow_prices(self):
         """

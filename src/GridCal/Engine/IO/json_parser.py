@@ -21,10 +21,11 @@ import numpy as np
 import numba as nb
 from GridCal.Engine.basic_structures import Logger
 from GridCal.Engine.Core.multi_circuit import MultiCircuit
+from GridCal.Engine.IO.contingency_parser import get_contingencies_dict, parse_contingencies
 from GridCal.Engine.Devices import *
 
 
-@nb.jit()
+@nb.jit(cache=True, nopython=True)
 def compress_array_numba(value, base):
     data = list()
     indptr = list()
@@ -33,6 +34,12 @@ def compress_array_numba(value, base):
             data.append(x)
             indptr.append(i)
     return data, indptr
+
+
+def get_most_frequent(arr):
+    values, counts = np.unique(arr, return_counts=True)
+    ind = np.argmax(counts)
+    return values[ind]
 
 
 def compress_array(arr, min_sparsity=0.2):
@@ -51,27 +58,32 @@ def compress_array(arr, min_sparsity=0.2):
                        'data': arr}
     """
     if isinstance(arr, list) or isinstance(arr, np.ndarray):
-        u = np.unique(arr)
-        f = len(u) / len(arr)  # sparsity factor
-        if f < min_sparsity:
-            base = u[0]  # pick the first always as the base
-            if isinstance(base, np.bool_):
-                base = bool(base)
-            data = list()
-            indptr = list()
-            if len(u) > 1:
-                if isinstance(arr, list):
-                    data, indptr = compress_array_numba(nb.typed.List(arr), base)
-                elif isinstance(arr, np.ndarray):
-                    data, indptr = compress_array_numba(arr, base)
-                else:
-                    raise Exception('Unknown profile type' + str(type(arr)))
+        if len(arr) > 0:
+            u, counts = np.unique(arr, return_counts=True)
+            f = len(u) / len(arr)  # sparsity factor
+            if f < min_sparsity:
+                ind = np.argmax(counts)
+                base = u[ind]  # this is the most frequent value
+                if isinstance(base, np.bool_):
+                    base = bool(base)
+                data = list()
+                indptr = list()
+                if len(u) > 1:
+                    if isinstance(arr, list):
+                        data, indptr = compress_array_numba(nb.typed.List(arr), base)
+                    elif isinstance(arr, np.ndarray):
+                        data, indptr = compress_array_numba(arr, base)
+                    else:
+                        raise Exception('Unknown profile type' + str(type(arr)))
 
-            return {'type': 'sparse',
-                    'base': base,
-                    'size': len(arr),
-                    'data': data,
-                    'indptr': indptr}
+                return {'type': 'sparse',
+                        'base': base,
+                        'size': len(arr),
+                        'data': data,
+                        'indptr': indptr}
+            else:
+                return {'type': 'dense',
+                        'data': arr}
         else:
             return {'type': 'dense',
                     'data': arr}
@@ -617,6 +629,36 @@ def parse_json_data_v3(data: dict, logger: Logger):
 
                 circuit.add_line(elm)
 
+        if "DC line" in devices.keys():
+
+            if 'DC line' in profiles.keys():
+                device_profiles_dict = {e['id']: e for e in profiles["DC line"]}
+                has_profiles = True
+            else:
+                device_profiles_dict = dict()
+                has_profiles = False
+
+            for entry in devices["DC line"]:
+                elm = DcLine(bus_from=bus_dict[entry['bus_from']],
+                             bus_to=bus_dict[entry['bus_to']],
+                             name=str(entry['name']),
+                             idtag=str(entry['id']),
+                             code=str(entry['name_code']),
+                             r=float(entry['r']),
+                             rate=float(entry['rate']),
+                             active=entry['active'],
+                             length=float(entry['length']),
+                             temp_base=float(entry['base_temperature']),
+                             temp_oper=float(entry['operational_temperature']),
+                             alpha=float(entry['alpha']))
+
+                if has_profiles:
+                    profile_entry = device_profiles_dict[elm.idtag]
+                    elm.active_prof = decompress_array(profile_entry['active'])
+                    elm.rate_prof = decompress_array(profile_entry['rate'])
+
+                circuit.add_dc_line(elm)
+
         if "Transformer2w" in devices.keys() or "Transformer" in devices.keys():
 
             if "Transformer2w" in devices.keys():
@@ -734,7 +776,7 @@ def parse_json_data_v3(data: dict, logger: Logger):
                     ('contingency_factor1', 'contingency_factor'),
                     ('r', 'R1'),
                     ('x', 'X1'),
-                    ('g', 'G0'),
+                    ('G0sw', 'G0sw'),
                     ('m', 'm'),
                     ('m_min', 'm_min'),
                     ('m_max', 'm_max'),
@@ -837,13 +879,18 @@ def parse_json_data_v3(data: dict, logger: Logger):
 
                 circuit.add_hvdc(elm)
 
-        # fill x, y
-        logger += circuit.fill_xy_from_lat_lon()
-        return circuit
     else:
         logger.add('The Json structure does not have a Circuit inside the devices!')
         return MultiCircuit()
 
+    if 'contingencies' in data.keys():
+        circuit.set_contingencies(
+            contingencies=parse_contingencies(data['contingencies'])
+        )
+
+    # fill x, y
+    logger += circuit.fill_xy_from_lat_lon()
+    return circuit
 
 def parse_json_data_v2(data: dict, logger: Logger):
     """
@@ -1108,6 +1155,15 @@ def parse_json(file_name) -> MultiCircuit:
     return parse_json_data(data)
 
 
+class CustomJSONizer(json.JSONEncoder):
+    def default(self, obj):
+        # this solves the error:
+        # TypeError: Object of type bool_ is not JSON serializable
+        return super().encode(bool(obj)) \
+            if isinstance(obj, np.bool_) \
+            else super().default(obj)
+
+
 def save_json_file_v3(file_path, circuit: MultiCircuit, simulation_drivers=list()):
     """
     Save JSON file
@@ -1136,7 +1192,16 @@ def save_json_file_v3(file_path, circuit: MultiCircuit, simulation_drivers=list(
     element_profiles[DeviceType.CircuitDevice.value] = circuit.get_profiles_dict()
 
     # add the areas
-    for cls in [circuit.substations, circuit.zones, circuit.areas, circuit.countries]:
+    for cls in [circuit.substations,
+                circuit.zones,
+                circuit.areas,
+                circuit.countries,
+                circuit.technologies,
+                # circuit.contingency_groups,
+                # circuit.contingencies,
+                circuit.investments_groups,
+                circuit.investments]:
+
         for elm in cls:
             # pack the bus data into a dictionary
             add_to_dict(d=elements, d2=elm.get_properties_dict(), key=elm.device_type.value)
@@ -1219,9 +1284,11 @@ def save_json_file_v3(file_path, circuit: MultiCircuit, simulation_drivers=list(
             'units': units_dict,
             'devices': elements,
             'profiles': element_profiles,
-            'results': results}
+            'contingencies': get_contingencies_dict(circuit=circuit),
+            'results': results,
+            }
 
-    data_str = json.dumps(data, indent=True)
+    data_str = json.dumps(data, indent=True, cls=CustomJSONizer)
 
     # Save json to a text file
     text_file = open(file_path, "w")
@@ -1230,9 +1297,6 @@ def save_json_file_v3(file_path, circuit: MultiCircuit, simulation_drivers=list(
 
     return logger
 
-
-def save_json_file_v4(file_path, circuit: MultiCircuit, simulation_drivers=list()):
-    pass
 
 
 if __name__ == '__main__':

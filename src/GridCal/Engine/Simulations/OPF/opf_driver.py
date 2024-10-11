@@ -26,85 +26,17 @@ from GridCal.Engine.Core.multi_circuit import MultiCircuit
 from GridCal.Engine.Simulations.OPF.ac_opf import OpfAc
 from GridCal.Engine.Simulations.OPF.dc_opf import OpfDc
 from GridCal.Engine.Simulations.OPF.simple_dispatch import OpfSimple
+from GridCal.Engine.Simulations.OPF.opf_options import OptimalPowerFlowOptions
 from GridCal.Engine.basic_structures import SolverType
 from GridCal.Engine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from GridCal.Engine.Core.snapshot_opf_data import compile_snapshot_opf_circuit
 from GridCal.Engine.Simulations.driver_types import SimulationTypes
 from GridCal.Engine.Simulations.driver_template import DriverTemplate
 
+
 ########################################################################################################################
 # Optimal Power flow classes
 ########################################################################################################################
-
-
-class OptimalPowerFlowOptions:
-
-    def __init__(self, verbose=False,
-                 solver: SolverType = SolverType.DC_OPF,
-                 time_grouping: TimeGrouping = TimeGrouping.NoGrouping,
-                 zonal_grouping: ZonalGrouping = ZonalGrouping.NoGrouping,
-                 mip_solver=MIPSolvers.CBC,
-                 faster_less_accurate=False,
-                 power_flow_options=None,
-                 bus_types=None,
-                 consider_contingencies=False,
-                 skip_generation_limits=False,
-                 tolerance=1.0,
-                 LODF=None,
-                 lodf_tolerance=0.001,
-                 maximize_flows=False,
-                 area_from_bus_idx: List = None,
-                 area_to_bus_idx: List = None):
-        """
-        Optimal power flow options
-        :param verbose:
-        :param solver:
-        :param time_grouping:
-        :param zonal_grouping:
-        :param mip_solver:
-        :param faster_less_accurate:
-        :param power_flow_options:
-        :param bus_types:
-        :param consider_contingencies:
-        :param skip_generation_limits:
-        :param tolerance:
-        :param LODF:
-        :param lodf_tolerance:
-        :param maximize_flows:
-        :param area_from_bus_idx:
-        :param area_to_bus_idx:
-        """
-        self.verbose = verbose
-
-        self.solver = solver
-
-        self.grouping = time_grouping
-
-        self.mip_solver = mip_solver
-
-        self.faster_less_accurate = faster_less_accurate
-
-        self.power_flow_options = power_flow_options
-
-        self.bus_types = bus_types
-
-        self.zonal_grouping = zonal_grouping
-
-        self.skip_generation_limits = skip_generation_limits
-
-        self.consider_contingencies = consider_contingencies
-
-        self.LODF = LODF
-
-        self.tolerance = tolerance
-
-        self.lodf_tolerance = lodf_tolerance
-
-        self.maximize_flows = maximize_flows
-
-        self.area_from_bus_idx = area_from_bus_idx
-
-        self.area_to_bus_idx = area_to_bus_idx
 
 
 class OptimalPowerFlow(DriverTemplate):
@@ -132,6 +64,16 @@ class OptimalPowerFlow(DriverTemplate):
         """
         return list()
 
+    def newton_pa_ac_opf(self):
+        import GridCal.Engine.Core.Compilers.circuit_to_newton_pa as newton_pa
+        # pack the results
+        npa_opf_res = newton_pa.newton_pa_nonlinear_opf(circuit=self.grid,
+                                                        pfopt=self.pf_options,
+                                                        opfopt=self.options,
+                                                        time_series=False,
+                                                        tidx=None)
+        return newton_pa.translate_newton_pa_opf_results(res=npa_opf_res)
+
     def opf(self):
         """
         Run a power flow for every circuit
@@ -158,7 +100,9 @@ class OptimalPowerFlow(DriverTemplate):
 
         elif self.options.solver == SolverType.AC_OPF:
             # AC optimal power flow
-            problem = OpfAc(numerical_circuit=numerical_circuit, solver_type=self.options.mip_solver)
+            # problem = OpfAc(numerical_circuit=numerical_circuit, solver_type=self.options.mip_solver)
+            self.results = self.newton_pa_ac_opf()
+            return self.results
 
         elif self.options.solver == SolverType.Simple_OPF:
             # simplistic dispatch
@@ -183,11 +127,11 @@ class OptimalPowerFlow(DriverTemplate):
         hvdc_loading = hvdc_power / (numerical_circuit.hvdc_data.rate[:, 0] + 1e-20)
 
         # pack the results
-        self.results = OptimalPowerFlowResults(bus_names=numerical_circuit.bus_data.bus_names,
-                                               branch_names=numerical_circuit.branch_data.branch_names,
-                                               load_names=numerical_circuit.load_data.load_names,
-                                               generator_names=numerical_circuit.generator_data.generator_names,
-                                               battery_names=numerical_circuit.battery_data.battery_names,
+        self.results = OptimalPowerFlowResults(bus_names=numerical_circuit.bus_data.names,
+                                               branch_names=numerical_circuit.branch_data.names,
+                                               load_names=numerical_circuit.load_data.names,
+                                               generator_names=numerical_circuit.generator_data.names,
+                                               battery_names=numerical_circuit.battery_data.names,
                                                Sbus=problem.get_power_injections(),
                                                voltage=problem.get_voltage(),
                                                load_shedding=ld,
@@ -206,8 +150,8 @@ class OptimalPowerFlow(DriverTemplate):
                                                contingency_flows_list=problem.get_contingency_flows_list(),
                                                contingency_indices_list=problem.contingency_indices_list,
                                                contingency_flows_slacks_list=problem.get_contingency_flows_slacks_list(),
-                                               rates=numerical_circuit.branch_data.branch_rates[:, 0],
-                                               contingency_rates=numerical_circuit.branch_data.branch_contingency_rates[:, 0],
+                                               rates=numerical_circuit.rates,
+                                               contingency_rates=numerical_circuit.contingency_rates,
                                                converged=bool(problem.converged()),
                                                bus_types=numerical_circuit.bus_types)
 

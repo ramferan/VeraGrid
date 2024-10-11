@@ -19,7 +19,7 @@ import json
 
 from GridCal.Engine.basic_structures import Logger
 
-from GridCal.Engine.IO.json_parser import save_json_file_v3, save_json_file_v4
+from GridCal.Engine.IO.json_parser import save_json_file_v3
 from GridCal.Engine.IO.cim.cim_parser import CIMExport
 from GridCal.Engine.IO.excel_interface import save_excel, load_from_xls, interpret_excel_v3, interprete_excel_v2
 from GridCal.Engine.IO.pack_unpack import create_data_frames, data_frames_to_circuit
@@ -36,6 +36,7 @@ from GridCal.Engine.IO.zip_interface import save_data_frames_to_zip, get_frames_
 from GridCal.Engine.IO.sqlite_interface import save_data_frames_to_sqlite, open_data_frames_from_sqlite
 from GridCal.Engine.IO.h5_interface import save_h5, open_h5
 from GridCal.Engine.IO.rawx_parser import rawx_parse, rawx_writer
+from GridCal.Engine.IO.pypsa_parser import parse_netcdf, parse_hdf5
 from GridCal.Engine.Core.multi_circuit import MultiCircuit
 
 
@@ -83,8 +84,7 @@ class FileOpen:
 
                     # Pass the table-like data dictionary to objects in this circuit
                     if 'version' not in data_dictionary.keys():
-
-                        interpret_data_v1(self.circuit, data_dictionary)
+                        interpret_data_v1(self.circuit, data_dictionary, self.logger)
 
                     elif data_dictionary['version'] == 2.0:
                         interprete_excel_v2(self.circuit, data_dictionary)
@@ -151,17 +151,19 @@ class FileOpen:
                     if isinstance(data, dict):
                         if 'Red' in data.keys():
                             self.circuit = load_iPA(self.file_name)
-                        elif sum([x in data.keys() for x in ['version', 'software', 'units',
-                                                             'devices', 'profiles']]) == 5:
-                            # version 2 of the json parser
+                        elif sum([x in data.keys() for x in ['type', 'version']]) == 2:
                             version = int(float(data['version']))
-                            if version == 2:
-                                self.circuit = parse_json_data_v2(data, self.logger)
-                            elif version == 3:
-                                self.circuit = parse_json_data_v3(data, self.logger)
-                            else:
-                                self.logger.add_error('Recognised as a gridCal compatible Json '
-                                                      'but the version is not supported')
+
+                            if data['type'] == 'Grid Exchange Json File' and 'profiles' in data.keys():
+                                if version == 2:
+                                    self.circuit = parse_json_data_v2(data, self.logger)
+
+                                elif version == 3:
+                                    self.circuit = parse_json_data_v3(data, self.logger)
+                                else:
+                                    self.logger.add_error('Recognised as a gridCal compatible Json '
+                                                          'but the version is not supported')
+
                         else:
                             self.logger.add_error('Unknown json format')
 
@@ -198,6 +200,10 @@ class FileOpen:
                     parser = CIMImport(text_func=text_func,  progress_func=progress_func)
                     self.circuit = parser.load_cim_file(self.file_name)  # file_name might be a list of files
                     self.logger += parser.logger
+                elif file_extension.lower() == '.hdf5':
+                    self.circuit = parse_hdf5(self.file_name, self.logger)
+                elif file_extension.lower() == '.nc':
+                    self.circuit = parse_netcdf(self.file_name, self.logger)
 
             else:
                 # warn('The file does not exist.')
@@ -205,6 +211,22 @@ class FileOpen:
 
         return self.circuit
 
+    def check_json_type(self, file_name):
+
+        if not os.path.exists(file_name):
+            return 'Not json file'
+
+        name, file_extension = os.path.splitext(file_name)
+
+        if file_extension.lower() == '.json':
+
+            data = json.load(open(self.file_name))
+
+            if 'type' in data.keys():
+                return data['type']
+
+            else:
+                return 'Unknown json file'
 
 class FileSave:
 
@@ -258,6 +280,9 @@ class FileSave:
 
         elif self.file_name.endswith('.rawx'):
             logger = self.save_rawx()
+
+        elif self.file_name.endswith('.newton'):
+            logger = self.save_newton()
 
         else:
             logger = Logger()
@@ -319,15 +344,6 @@ class FileSave:
         logger = save_json_file_v3(self.file_name, self.circuit, self.simulation_drivers)
         return logger
 
-    def save_json_v4(self):
-        """
-        Save the circuit information in json format
-        :return:logger with information
-        """
-
-        logger = save_json_file_v4(self.file_name, self.circuit, self.simulation_drivers)
-        return logger
-
     def save_cim(self):
         """
         Save the circuit information in CIM format
@@ -360,3 +376,17 @@ class FileSave:
         logger = rawx_writer(self.file_name, self.circuit)
         return logger
 
+    def save_newton(self):
+        """
+        Save the circuit information in sqlite
+        :return: logger with information
+        """
+        from GridCal.Engine.Core.Compilers.circuit_to_newton_pa import to_newton_pa, npa
+        logger = Logger()
+
+        tidx = list(range(len(self.circuit.time_profile)))
+        newton_grid, dev_dicts = to_newton_pa(self.circuit, time_series=True, tidx=tidx)
+
+        npa.FileHandler().save(newton_grid, self.file_name)
+
+        return logger

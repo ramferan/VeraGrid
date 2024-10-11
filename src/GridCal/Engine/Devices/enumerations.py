@@ -242,6 +242,12 @@ class DeviceType(Enum):
     TechnologyGroup = 'Technology Group'
     TechnologyCategory = 'Technology Category'
 
+    ContingencyDevice = 'Contingency'
+    ContingencyGroupDevice = 'Contingency Group'
+
+    InvestmentDevice = 'Investment'
+    InvestmentsGroupDevice = 'Investments Group'
+
     def __str__(self):
         return self.value
 
@@ -288,3 +294,29 @@ class GeneratorTechnologyType(Enum):
     @classmethod
     def list(cls):
         return list(map(lambda c: c.value, cls))
+
+
+class BuildStatus(Enum):
+    Commissioned = 'Commissioned'  # Already there, not planned for decommissioning
+    Decommissioned = 'Decommissioned'  # Already retired (does not exist)
+    Planned = 'Planned'  # Planned for commissioning some time, does not exist yet)
+    Candidate = 'Candidate'  # Candidate for commissioning, does not exist yet, might be selected for commissioning
+    PlannedDecommission = 'PlannedDecommission'  # Already there, but it has been selected for decommissioning
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        try:
+            return BuildStatus[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        return list(map(lambda c: c.value, cls))
+

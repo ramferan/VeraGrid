@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1194</width>
-    <height>773</height>
+    <width>1267</width>
+    <height>789</height>
    </rect>
   </property>
   <property name="baseSize">
@@ -256,6 +256,43 @@
                      </item>
                      <item>
                       <widget class="QLabel" name="label_27">
+                       <property name="palette">
+                        <palette>
+                         <active>
+                          <colorrole role="WindowText">
+                           <brush brushstyle="SolidPattern">
+                            <color alpha="255">
+                             <red>119</red>
+                             <green>118</green>
+                             <blue>123</blue>
+                            </color>
+                           </brush>
+                          </colorrole>
+                         </active>
+                         <inactive>
+                          <colorrole role="WindowText">
+                           <brush brushstyle="SolidPattern">
+                            <color alpha="255">
+                             <red>119</red>
+                             <green>118</green>
+                             <blue>123</blue>
+                            </color>
+                           </brush>
+                          </colorrole>
+                         </inactive>
+                         <disabled>
+                          <colorrole role="WindowText">
+                           <brush brushstyle="SolidPattern">
+                            <color alpha="255">
+                             <red>190</red>
+                             <green>190</green>
+                             <blue>190</blue>
+                            </color>
+                           </brush>
+                          </colorrole>
+                         </disabled>
+                        </palette>
+                       </property>
                        <property name="text">
                         <string>Cascading steps</string>
                        </property>
@@ -497,6 +534,97 @@
                    </property>
                    <item>
                     <widget class="QLabel" name="label_3">
+                     <property name="palette">
+                      <palette>
+                       <active>
+                        <colorrole role="WindowText">
+                         <brush brushstyle="SolidPattern">
+                          <color alpha="255">
+                           <red>119</red>
+                           <green>118</green>
+                           <blue>123</blue>
+                          </color>
+                         </brush>
+                        </colorrole>
+                        <colorrole role="Text">
+                         <brush brushstyle="SolidPattern">
+                          <color alpha="255">
+                           <red>154</red>
+                           <green>153</green>
+                           <blue>150</blue>
+                          </color>
+                         </brush>
+                        </colorrole>
+                        <colorrole role="ButtonText">
+                         <brush brushstyle="SolidPattern">
+                          <color alpha="255">
+                           <red>154</red>
+                           <green>153</green>
+                           <blue>150</blue>
+                          </color>
+                         </brush>
+                        </colorrole>
+                       </active>
+                       <inactive>
+                        <colorrole role="WindowText">
+                         <brush brushstyle="SolidPattern">
+                          <color alpha="255">
+                           <red>119</red>
+                           <green>118</green>
+                           <blue>123</blue>
+                          </color>
+                         </brush>
+                        </colorrole>
+                        <colorrole role="Text">
+                         <brush brushstyle="SolidPattern">
+                          <color alpha="255">
+                           <red>154</red>
+                           <green>153</green>
+                           <blue>150</blue>
+                          </color>
+                         </brush>
+                        </colorrole>
+                        <colorrole role="ButtonText">
+                         <brush brushstyle="SolidPattern">
+                          <color alpha="255">
+                           <red>154</red>
+                           <green>153</green>
+                           <blue>150</blue>
+                          </color>
+                         </brush>
+                        </colorrole>
+                       </inactive>
+                       <disabled>
+                        <colorrole role="WindowText">
+                         <brush brushstyle="SolidPattern">
+                          <color alpha="255">
+                           <red>190</red>
+                           <green>190</green>
+                           <blue>190</blue>
+                          </color>
+                         </brush>
+                        </colorrole>
+                        <colorrole role="Text">
+                         <brush brushstyle="SolidPattern">
+                          <color alpha="255">
+                           <red>190</red>
+                           <green>190</green>
+                           <blue>190</blue>
+                          </color>
+                         </brush>
+                        </colorrole>
+                        <colorrole role="ButtonText">
+                         <brush brushstyle="SolidPattern">
+                          <color alpha="255">
+                           <red>190</red>
+                           <green>190</green>
+                           <blue>190</blue>
+                          </color>
+                         </brush>
+                        </colorrole>
+                       </disabled>
+                      </palette>
+                     </property>
                      <property name="text">
                       <string>Object types</string>
                      </property>
@@ -530,20 +658,6 @@
                     <number>0</number>
                    </property>
                    <item>
-                    <widget class="QPushButton" name="analyze_objects_pushButton">
-                     <property name="toolTip">
-                      <string>Launch the grid analysis interface</string>
-                     </property>
-                     <property name="text">
-                      <string/>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="icons.qrc">
-                       <normaloff>:/Icons/icons/inputs_analysis 2.svg</normaloff>:/Icons/icons/inputs_analysis 2.svg</iconset>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
                     <spacer name="horizontalSpacer_14">
                      <property name="orientation">
                       <enum>Qt::Horizontal</enum>
@@ -551,7 +665,7 @@
                      <property name="sizeHint" stdset="0">
                       <size>
                        <width>40</width>
-                       <height>20</height>
+                       <height>24</height>
                       </size>
                      </property>
                     </spacer>
@@ -743,16 +857,30 @@ p, li { white-space: pre-wrap; }
                      </widget>
                     </item>
                     <item>
-                     <widget class="QPushButton" name="delete_and_reduce_pushButton">
+                     <widget class="QPushButton" name="structure_analysis_pushButton">
                       <property name="toolTip">
-                       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Delete and reduce.&lt;/p&gt;&lt;p&gt;Applicable to buses, it removes a bus and places its objects (loads, generators, etc.) into the next feasible bus of higher voltage.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Run the histogram analysis of the selected data structure&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                       </property>
                       <property name="text">
                        <string/>
                       </property>
                       <property name="icon">
                        <iconset resource="icons.qrc">
-                        <normaloff>:/Icons/icons/schematic.svg</normaloff>:/Icons/icons/schematic.svg</iconset>
+                        <normaloff>:/Icons/icons/histogram.svg</normaloff>:/Icons/icons/histogram.svg</iconset>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QPushButton" name="analyze_objects_pushButton">
+                      <property name="toolTip">
+                       <string>Launch the grid analysis interface</string>
+                      </property>
+                      <property name="text">
+                       <string/>
+                      </property>
+                      <property name="icon">
+                       <iconset resource="icons.qrc">
+                        <normaloff>:/Icons/icons/inputs_analysis 2.svg</normaloff>:/Icons/icons/inputs_analysis 2.svg</iconset>
                       </property>
                      </widget>
                     </item>
@@ -768,6 +896,20 @@ p, li { white-space: pre-wrap; }
                        </size>
                       </property>
                      </spacer>
+                    </item>
+                    <item>
+                     <widget class="QPushButton" name="delete_and_reduce_pushButton">
+                      <property name="toolTip">
+                       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Delete and reduce.&lt;/p&gt;&lt;p&gt;Applicable to buses, it removes a bus and places its objects (loads, generators, etc.) into the next feasible bus of higher voltage.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      </property>
+                      <property name="text">
+                       <string/>
+                      </property>
+                      <property name="icon">
+                       <iconset resource="icons.qrc">
+                        <normaloff>:/Icons/icons/schematic.svg</normaloff>:/Icons/icons/schematic.svg</iconset>
+                      </property>
+                     </widget>
                     </item>
                    </layout>
                   </widget>
@@ -1024,6 +1166,43 @@ p, li { white-space: pre-wrap; }
                     <height>24</height>
                    </size>
                   </property>
+                  <property name="palette">
+                   <palette>
+                    <active>
+                     <colorrole role="WindowText">
+                      <brush brushstyle="SolidPattern">
+                       <color alpha="255">
+                        <red>119</red>
+                        <green>118</green>
+                        <blue>123</blue>
+                       </color>
+                      </brush>
+                     </colorrole>
+                    </active>
+                    <inactive>
+                     <colorrole role="WindowText">
+                      <brush brushstyle="SolidPattern">
+                       <color alpha="255">
+                        <red>119</red>
+                        <green>118</green>
+                        <blue>123</blue>
+                       </color>
+                      </brush>
+                     </colorrole>
+                    </inactive>
+                    <disabled>
+                     <colorrole role="WindowText">
+                      <brush brushstyle="SolidPattern">
+                       <color alpha="255">
+                        <red>190</red>
+                        <green>190</green>
+                        <blue>190</blue>
+                       </color>
+                      </brush>
+                     </colorrole>
+                    </disabled>
+                   </palette>
+                  </property>
                   <property name="text">
                    <string>Data structures</string>
                   </property>
@@ -1052,6 +1231,43 @@ p, li { white-space: pre-wrap; }
                     <width>0</width>
                     <height>24</height>
                    </size>
+                  </property>
+                  <property name="palette">
+                   <palette>
+                    <active>
+                     <colorrole role="WindowText">
+                      <brush brushstyle="SolidPattern">
+                       <color alpha="255">
+                        <red>119</red>
+                        <green>118</green>
+                        <blue>123</blue>
+                       </color>
+                      </brush>
+                     </colorrole>
+                    </active>
+                    <inactive>
+                     <colorrole role="WindowText">
+                      <brush brushstyle="SolidPattern">
+                       <color alpha="255">
+                        <red>119</red>
+                        <green>118</green>
+                        <blue>123</blue>
+                       </color>
+                      </brush>
+                     </colorrole>
+                    </inactive>
+                    <disabled>
+                     <colorrole role="WindowText">
+                      <brush brushstyle="SolidPattern">
+                       <color alpha="255">
+                        <red>190</red>
+                        <green>190</green>
+                        <blue>190</blue>
+                       </color>
+                      </brush>
+                     </colorrole>
+                    </disabled>
+                   </palette>
                   </property>
                   <property name="text">
                    <string>Elements data (double click to edit)</string>
@@ -1179,20 +1395,6 @@ p, li { white-space: pre-wrap; }
                 </widget>
                </item>
                <item>
-                <widget class="QPushButton" name="delete_profiles_structure_pushButton">
-                 <property name="toolTip">
-                  <string>Delete profiles</string>
-                 </property>
-                 <property name="text">
-                  <string/>
-                 </property>
-                 <property name="icon">
-                  <iconset resource="icons.qrc">
-                   <normaloff>:/Icons/icons/delete.svg</normaloff>:/Icons/icons/delete.svg</iconset>
-                 </property>
-                </widget>
-               </item>
-               <item>
                 <widget class="QPushButton" name="edit_profiles_pushButton">
                  <property name="toolTip">
                   <string>Import profiles</string>
@@ -1206,6 +1408,37 @@ p, li { white-space: pre-wrap; }
                  </property>
                  <property name="flat">
                   <bool>false</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="edit_profiles_from_models_pushButton">
+                 <property name="toolTip">
+                  <string>Import profiles from models. This is, load many individual grids and take the operational data from them</string>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                 <property name="icon">
+                  <iconset resource="icons.qrc">
+                   <normaloff>:/Icons/icons/import_models.svg</normaloff>:/Icons/icons/import_models.svg</iconset>
+                 </property>
+                 <property name="flat">
+                  <bool>false</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="delete_profiles_structure_pushButton">
+                 <property name="toolTip">
+                  <string>Delete profiles</string>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                 <property name="icon">
+                  <iconset resource="icons.qrc">
+                   <normaloff>:/Icons/icons/delete.svg</normaloff>:/Icons/icons/delete.svg</iconset>
                  </property>
                 </widget>
                </item>
@@ -1837,6 +2070,43 @@ p, li { white-space: pre-wrap; }
                        <height>24</height>
                       </size>
                      </property>
+                     <property name="palette">
+                      <palette>
+                       <active>
+                        <colorrole role="WindowText">
+                         <brush brushstyle="SolidPattern">
+                          <color alpha="255">
+                           <red>119</red>
+                           <green>118</green>
+                           <blue>123</blue>
+                          </color>
+                         </brush>
+                        </colorrole>
+                       </active>
+                       <inactive>
+                        <colorrole role="WindowText">
+                         <brush brushstyle="SolidPattern">
+                          <color alpha="255">
+                           <red>119</red>
+                           <green>118</green>
+                           <blue>123</blue>
+                          </color>
+                         </brush>
+                        </colorrole>
+                       </inactive>
+                       <disabled>
+                        <colorrole role="WindowText">
+                         <brush brushstyle="SolidPattern">
+                          <color alpha="255">
+                           <red>190</red>
+                           <green>190</green>
+                           <blue>190</blue>
+                          </color>
+                         </brush>
+                        </colorrole>
+                       </disabled>
+                      </palette>
+                     </property>
                      <property name="text">
                       <string>Session results</string>
                      </property>
@@ -1915,6 +2185,43 @@ p, li { white-space: pre-wrap; }
                    </property>
                    <item>
                     <widget class="QLabel" name="label_37">
+                     <property name="palette">
+                      <palette>
+                       <active>
+                        <colorrole role="WindowText">
+                         <brush brushstyle="SolidPattern">
+                          <color alpha="255">
+                           <red>119</red>
+                           <green>118</green>
+                           <blue>123</blue>
+                          </color>
+                         </brush>
+                        </colorrole>
+                       </active>
+                       <inactive>
+                        <colorrole role="WindowText">
+                         <brush brushstyle="SolidPattern">
+                          <color alpha="255">
+                           <red>119</red>
+                           <green>118</green>
+                           <blue>123</blue>
+                          </color>
+                         </brush>
+                        </colorrole>
+                       </inactive>
+                       <disabled>
+                        <colorrole role="WindowText">
+                         <brush brushstyle="SolidPattern">
+                          <color alpha="255">
+                           <red>190</red>
+                           <green>190</green>
+                           <blue>190</blue>
+                          </color>
+                         </brush>
+                        </colorrole>
+                       </disabled>
+                      </palette>
+                     </property>
                      <property name="text">
                       <string>Disk persistance</string>
                      </property>
@@ -2184,7 +2491,7 @@ p, li { white-space: pre-wrap; }
            <enum>QTabWidget::South</enum>
           </property>
           <property name="currentIndex">
-           <number>0</number>
+           <number>1</number>
           </property>
           <widget class="QWidget" name="tab_7">
            <attribute name="icon">
@@ -2682,10 +2989,16 @@ p, li { white-space: pre-wrap; }
         <string>Settings</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_8">
-        <item row="0" column="3">
+        <item row="0" column="2">
          <widget class="QTabWidget" name="settings_tabWidget">
           <property name="enabled">
            <bool>true</bool>
+          </property>
+          <property name="toolTip">
+           <string>Select the solver in the OPF tab and the areas in the areas tab</string>
+          </property>
+          <property name="autoFillBackground">
+           <bool>false</bool>
           </property>
           <property name="tabPosition">
            <enum>QTabWidget::South</enum>
@@ -2697,6 +3010,9 @@ p, li { white-space: pre-wrap; }
            <enum>Qt::ElideNone</enum>
           </property>
           <property name="documentMode">
+           <bool>false</bool>
+          </property>
+          <property name="movable">
            <bool>false</bool>
           </property>
           <property name="tabBarAutoHide">
@@ -2950,7 +3266,7 @@ p, li { white-space: pre-wrap; }
                    <widget class="QComboBox" name="reactive_power_control_mode_comboBox"/>
                   </item>
                   <item>
-                   <widget class="QLabel" name="label_64">
+                   <widget class="QLabel" name="label_641">
                     <property name="text">
                      <string/>
                     </property>
@@ -2991,12 +3307,9 @@ p, li { white-space: pre-wrap; }
                    </widget>
                   </item>
                   <item>
-                   <widget class="QCheckBox" name="dispatch_storage_checkBox">
-                    <property name="toolTip">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When enabled, the storage devices beheave as actual storage devices taking into account their energy limitations when delivering power.&lt;/p&gt;&lt;p&gt;When disabled, the storage devices beheave exactly as controlled generators&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                    </property>
+                   <widget class="QCheckBox" name="override_branch_controls_checkBox">
                     <property name="text">
-                     <string>dispatch storage</string>
+                     <string>Override branch controls</string>
                     </property>
                    </widget>
                   </item>
@@ -3716,20 +4029,6 @@ p, li { white-space: pre-wrap; }
                   <enum>QFrame::Raised</enum>
                  </property>
                  <layout class="QGridLayout" name="gridLayout_3">
-                  <item row="6" column="0" colspan="2">
-                   <widget class="QCheckBox" name="skipOpfGenerationLimitsCheckBox">
-                    <property name="text">
-                     <string>Skip generation limits</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="1">
-                   <widget class="QComboBox" name="lpf_solver_comboBox">
-                    <property name="toolTip">
-                     <string>Choose the optimal power flow method</string>
-                    </property>
-                   </widget>
-                  </item>
                   <item row="5" column="1">
                    <widget class="QDoubleSpinBox" name="opfContingencyToleranceSpinBox">
                     <property name="toolTip">
@@ -3743,15 +4042,33 @@ p, li { white-space: pre-wrap; }
                     </property>
                    </widget>
                   </item>
-                  <item row="1" column="1">
-                   <widget class="QComboBox" name="opf_time_grouping_comboBox">
-                    <property name="toolTip">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose the time grouping to possibly shorten the solution time.&lt;/p&gt;&lt;p&gt;This splits the time series by week, month, etc. and the subproblems are solved sequentially.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  <item row="3" column="0">
+                   <widget class="QLabel" name="label_10">
+                    <property name="text">
+                     <string>MIP solver</string>
                     </property>
                    </widget>
                   </item>
-                  <item row="2" column="1">
-                   <widget class="QComboBox" name="opfZonalGroupByComboBox"/>
+                  <item row="0" column="1">
+                   <widget class="QComboBox" name="lpf_solver_comboBox">
+                    <property name="toolTip">
+                     <string>Choose the optimal power flow method</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="4" column="0">
+                   <widget class="QLabel" name="label_44">
+                    <property name="text">
+                     <string>Convergence tolerance</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="7" column="0" colspan="2">
+                   <widget class="QCheckBox" name="considerContingenciesOpfCheckBox">
+                    <property name="text">
+                     <string>Consider contingencies</string>
+                    </property>
+                   </widget>
                   </item>
                   <item row="5" column="0">
                    <widget class="QLabel" name="label_104">
@@ -3767,6 +4084,16 @@ p, li { white-space: pre-wrap; }
                     </property>
                    </widget>
                   </item>
+                  <item row="1" column="1">
+                   <widget class="QComboBox" name="opf_time_grouping_comboBox">
+                    <property name="toolTip">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose the time grouping to possibly shorten the solution time.&lt;/p&gt;&lt;p&gt;This splits the time series by week, month, etc. and the subproblems are solved sequentially.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="2" column="1">
+                   <widget class="QComboBox" name="opfZonalGroupByComboBox"/>
+                  </item>
                   <item row="4" column="1">
                    <widget class="QSpinBox" name="opfTolSpinBox">
                     <property name="prefix">
@@ -3777,38 +4104,10 @@ p, li { white-space: pre-wrap; }
                     </property>
                    </widget>
                   </item>
-                  <item row="3" column="0">
-                   <widget class="QLabel" name="label_10">
-                    <property name="text">
-                     <string>MIP solver</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="4" column="0">
-                   <widget class="QLabel" name="label_44">
-                    <property name="text">
-                     <string>Convergence tolerance</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="2" column="0">
-                   <widget class="QLabel" name="label_103">
-                    <property name="text">
-                     <string>Zone grouping</string>
-                    </property>
-                   </widget>
-                  </item>
                   <item row="0" column="0">
                    <widget class="QLabel" name="label_42">
                     <property name="text">
                      <string>Method</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="7" column="0" colspan="2">
-                   <widget class="QCheckBox" name="considerContingenciesOpfCheckBox">
-                    <property name="text">
-                     <string>Consider contingencies</string>
                     </property>
                    </widget>
                   </item>
@@ -3819,10 +4118,31 @@ p, li { white-space: pre-wrap; }
                     </property>
                    </widget>
                   </item>
+                  <item row="6" column="0" colspan="2">
+                   <widget class="QCheckBox" name="skipOpfGenerationLimitsCheckBox">
+                    <property name="text">
+                     <string>Skip generation limits</string>
+                    </property>
+                   </widget>
+                  </item>
                   <item row="8" column="0" colspan="2">
                    <widget class="QCheckBox" name="opfMaximizeExcahngeCheckBox">
                     <property name="text">
                      <string>Maximize area exchange</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="2" column="0">
+                   <widget class="QLabel" name="label_103">
+                    <property name="text">
+                     <string>Zone grouping</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="9" column="0">
+                   <widget class="QCheckBox" name="opfUnitCommitmentCheckBox">
+                    <property name="text">
+                     <string>Unit commitment</string>
                     </property>
                    </widget>
                   </item>
@@ -3845,7 +4165,18 @@ p, li { white-space: pre-wrap; }
               </layout>
              </widget>
             </item>
-            <item row="0" column="1" rowspan="2">
+           </layout>
+          </widget>
+          <widget class="QWidget" name="tab_12">
+           <attribute name="icon">
+            <iconset resource="icons.qrc">
+             <normaloff>:/Icons/icons/ntc_opf.svg</normaloff>:/Icons/icons/ntc_opf.svg</iconset>
+           </attribute>
+           <attribute name="title">
+            <string>NTC</string>
+           </attribute>
+           <layout class="QHBoxLayout" name="horizontalLayout_36">
+            <item>
              <widget class="QFrame" name="frame_65">
               <property name="frameShape">
                <enum>QFrame::NoFrame</enum>
@@ -3857,6 +4188,392 @@ p, li { white-space: pre-wrap; }
                <property name="topMargin">
                 <number>0</number>
                </property>
+               <item row="8" column="1">
+                <spacer name="verticalSpacer_17">
+                 <property name="orientation">
+                  <enum>Qt::Vertical</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>20</width>
+                   <height>365</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item row="2" column="0" rowspan="2" colspan="3">
+                <widget class="QFrame" name="frame_67">
+                 <property name="frameShape">
+                  <enum>QFrame::NoFrame</enum>
+                 </property>
+                 <property name="frameShadow">
+                  <enum>QFrame::Raised</enum>
+                 </property>
+                 <layout class="QGridLayout" name="gridLayout_24">
+                  <item row="5" column="1">
+                   <widget class="QSpinBox" name="ntcOpfTolSpinBox">
+                    <property name="toolTip">
+                     <string>This value determines if the convergence is reached</string>
+                    </property>
+                    <property name="suffix">
+                     <string/>
+                    </property>
+                    <property name="prefix">
+                     <string>1e</string>
+                    </property>
+                    <property name="minimum">
+                     <number>-99</number>
+                    </property>
+                    <property name="value">
+                     <number>-3</number>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="6" column="1">
+                   <widget class="QSpinBox" name="trmSpinBox">
+                    <property name="suffix">
+                     <string> MW</string>
+                    </property>
+                    <property name="maximum">
+                     <number>1500</number>
+                    </property>
+                    <property name="singleStep">
+                     <number>10</number>
+                    </property>
+                    <property name="value">
+                     <number>400</number>
+                    </property>
+                    <property name="displayIntegerBase">
+                     <number>10</number>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="6" column="0">
+                   <widget class="QLabel" name="label_231">
+                    <property name="toolTip">
+                     <string>Transmission reliability margin (TRM)</string>
+                    </property>
+                    <property name="text">
+                     <string>Transmission reliability margin (TRM)</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="4" column="0">
+                   <widget class="QCheckBox" name="ntcFeasibilityCheckCheckBox">
+                    <property name="text">
+                     <string>Check feasibility</string>
+                    </property>
+                    <property name="checked">
+                     <bool>false</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="2" column="0" colspan="2">
+                   <widget class="QCheckBox" name="skipNtcGenerationLimitsCheckBox">
+                    <property name="toolTip">
+                     <string>If activated, the generation limits are not considered</string>
+                    </property>
+                    <property name="text">
+                     <string>Skip generation limits</string>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="3" column="0">
+                   <widget class="QCheckBox" name="ntcDispatchAllAreasCheckBox">
+                    <property name="text">
+                     <string>Dispatch all areas</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="5" column="0">
+                   <widget class="QLabel" name="label_101">
+                    <property name="toolTip">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This tolerance determines the maximum value of a slack variable that produces an error&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                    <property name="text">
+                     <string>Slack variables' tolerance</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="0" colspan="2">
+                   <widget class="QRadioButton" name="proportionalRedispatchRadioButton">
+                    <property name="toolTip">
+                     <string>The generation is modified as a linear combination of it's current dispatch</string>
+                    </property>
+                    <property name="text">
+                     <string>Proportional redispatch</string>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="0" colspan="2">
+                   <widget class="QRadioButton" name="optimalRedispatchRadioButton">
+                    <property name="toolTip">
+                     <string>The generation is modified so that the transference is maximal.</string>
+                    </property>
+                    <property name="text">
+                     <string>Optimal dispatch</string>
+                    </property>
+                    <property name="checked">
+                     <bool>false</bool>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+               <item row="4" column="0" colspan="3">
+                <widget class="QFrame" name="frame_51">
+                 <property name="frameShape">
+                  <enum>QFrame::NoFrame</enum>
+                 </property>
+                 <property name="frameShadow">
+                  <enum>QFrame::Raised</enum>
+                 </property>
+                 <layout class="QGridLayout" name="gridLayout_25">
+                  <item row="3" column="1">
+                   <widget class="QSpinBox" name="ntcLoadRuleSpinBox">
+                    <property name="suffix">
+                     <string>%</string>
+                    </property>
+                    <property name="maximum">
+                     <number>100</number>
+                    </property>
+                    <property name="value">
+                     <number>70</number>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="0">
+                   <widget class="QLabel" name="label_64">
+                    <property name="font">
+                     <font>
+                      <weight>75</weight>
+                      <bold>true</bold>
+                     </font>
+                    </property>
+                    <property name="toolTip">
+                     <string>Determine the branches that enter the optimization</string>
+                    </property>
+                    <property name="text">
+                     <string>Branch monitoring selection criteria</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="0">
+                   <widget class="QCheckBox" name="ntcSelectBasedOnExchangeSensitivityCheckBox">
+                    <property name="toolTip">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A branch is monitored solely based on its contribution to the inter-area excahge sensitivity. Therefore a branch is selected if it's alpha value is greater than the set alpha %&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                    <property name="text">
+                     <string>Branch exchange sensitivity (α)</string>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="1">
+                   <widget class="QSpinBox" name="ntcAlphaSpinBox">
+                    <property name="toolTip">
+                     <string>Minimum exchange contribution (Alpha)</string>
+                    </property>
+                    <property name="suffix">
+                     <string>%</string>
+                    </property>
+                    <property name="maximum">
+                     <number>100</number>
+                    </property>
+                    <property name="value">
+                     <number>5</number>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="3" column="0">
+                   <widget class="QCheckBox" name="ntcSelectBasedOnAcerCriteriaCheckBox">
+                    <property name="toolTip">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This criteria springs from the ACER (Agency for the Cooperation for Energy Regulators).&lt;/p&gt;&lt;p&gt;It determines that a branch is only relevant to be considered in a NTC calculation if the flow due to the exchange is over a percentage (70%) &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;A branch is monitored only if:&lt;/p&gt;&lt;p&gt;(branch_rate * 70%) / branch_alpha &amp;lt;= total exchange rating&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                    <property name="text">
+                     <string>Branch rating contribution (ACER)</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+               <item row="0" column="0">
+                <widget class="QLabel" name="label_97">
+                 <property name="minimumSize">
+                  <size>
+                   <width>24</width>
+                   <height>24</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>24</width>
+                   <height>24</height>
+                  </size>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                 <property name="pixmap">
+                  <pixmap resource="icons.qrc">:/Icons/icons/ntc_opf.svg</pixmap>
+                 </property>
+                 <property name="scaledContents">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1" colspan="2">
+                <widget class="QLabel" name="label_96">
+                 <property name="palette">
+                  <palette>
+                   <active>
+                    <colorrole role="WindowText">
+                     <brush brushstyle="SolidPattern">
+                      <color alpha="255">
+                       <red>85</red>
+                       <green>87</green>
+                       <blue>83</blue>
+                      </color>
+                     </brush>
+                    </colorrole>
+                   </active>
+                   <inactive>
+                    <colorrole role="WindowText">
+                     <brush brushstyle="SolidPattern">
+                      <color alpha="255">
+                       <red>85</red>
+                       <green>87</green>
+                       <blue>83</blue>
+                      </color>
+                     </brush>
+                    </colorrole>
+                   </inactive>
+                   <disabled>
+                    <colorrole role="WindowText">
+                     <brush brushstyle="SolidPattern">
+                      <color alpha="255">
+                       <red>190</red>
+                       <green>190</green>
+                       <blue>190</blue>
+                      </color>
+                     </brush>
+                    </colorrole>
+                   </disabled>
+                  </palette>
+                 </property>
+                 <property name="font">
+                  <font>
+                   <pointsize>16</pointsize>
+                  </font>
+                 </property>
+                 <property name="toolTip">
+                  <string>Select the solver in the OPF tab and the areas in the areas tab</string>
+                 </property>
+                 <property name="text">
+                  <string>NTC optimization</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="5" column="0" rowspan="2" colspan="3">
+                <widget class="QFrame" name="frame_4">
+                 <property name="frameShape">
+                  <enum>QFrame::NoFrame</enum>
+                 </property>
+                 <property name="frameShadow">
+                  <enum>QFrame::Raised</enum>
+                 </property>
+                 <property name="lineWidth">
+                  <number>1</number>
+                 </property>
+                 <layout class="QGridLayout" name="gridLayout_5">
+                  <item row="4" column="1">
+                   <widget class="QDoubleSpinBox" name="contingencyGenerationThresholdDoubleSpinBox">
+                    <property name="toolTip">
+                     <string>Generation power to trip as contingency</string>
+                    </property>
+                    <property name="suffix">
+                     <string> MW</string>
+                    </property>
+                    <property name="decimals">
+                     <number>0</number>
+                    </property>
+                    <property name="maximum">
+                     <double>5000.000000000000000</double>
+                    </property>
+                    <property name="singleStep">
+                     <double>50.000000000000000</double>
+                    </property>
+                    <property name="value">
+                     <double>1000.000000000000000</double>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="3" column="0">
+                   <widget class="QCheckBox" name="considerContingenciesGeneratorOpfCheckBox">
+                    <property name="text">
+                     <string>Consider generator contingencies</string>
+                    </property>
+                    <property name="checked">
+                     <bool>false</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="4" column="0">
+                   <widget class="QLabel" name="contingencyPowerTripLabel">
+                    <property name="text">
+                     <string>Generation power contingency</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="0">
+                   <widget class="QLabel" name="label_105">
+                    <property name="font">
+                     <font>
+                      <weight>75</weight>
+                      <bold>true</bold>
+                     </font>
+                    </property>
+                    <property name="text">
+                     <string>Contingencies</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="0">
+                   <widget class="QCheckBox" name="considerContingenciesNtcOpfCheckBox">
+                    <property name="toolTip">
+                     <string>If activated, the N-1 contingencies are considered</string>
+                    </property>
+                    <property name="text">
+                     <string>Consider branch contingencies</string>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="2" column="0">
+                   <widget class="QCheckBox" name="considerContingenciesHvdcOpfCheckBox">
+                    <property name="text">
+                     <string>Consider hvdc contingencies</string>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
                <item row="2" column="3">
                 <widget class="QFrame" name="frame_68">
                  <property name="frameShape">
@@ -3951,389 +4668,6 @@ p, li { white-space: pre-wrap; }
                  </layout>
                 </widget>
                </item>
-               <item row="6" column="0" rowspan="2" colspan="3">
-                <widget class="QFrame" name="frame_4">
-                 <property name="frameShape">
-                  <enum>QFrame::NoFrame</enum>
-                 </property>
-                 <property name="frameShadow">
-                  <enum>QFrame::Raised</enum>
-                 </property>
-                 <property name="lineWidth">
-                  <number>1</number>
-                 </property>
-                 <layout class="QGridLayout" name="gridLayout_5">
-                  <item row="4" column="1">
-                   <widget class="QDoubleSpinBox" name="contingencyGenerationThresholdDoubleSpinBox">
-                    <property name="toolTip">
-                     <string>Generation power to trip as contingency</string>
-                    </property>
-                    <property name="suffix">
-                     <string> MW</string>
-                    </property>
-                    <property name="decimals">
-                     <number>0</number>
-                    </property>
-                    <property name="maximum">
-                     <double>5000.000000000000000</double>
-                    </property>
-                    <property name="singleStep">
-                     <double>50.000000000000000</double>
-                    </property>
-                    <property name="value">
-                     <double>1000.000000000000000</double>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="3" column="0">
-                   <widget class="QCheckBox" name="considerContingenciesGeneratorOpfCheckBox">
-                    <property name="text">
-                     <string>Consider generator contingencies</string>
-                    </property>
-                    <property name="checked">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="4" column="0">
-                   <widget class="QLabel" name="contingencyPowerTripLabel">
-                    <property name="text">
-                     <string>Generation power contingency</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="label_105">
-                    <property name="font">
-                     <font>
-                      <weight>75</weight>
-                      <bold>true</bold>
-                     </font>
-                    </property>
-                    <property name="text">
-                     <string>Contingencies</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="1" column="0">
-                   <widget class="QCheckBox" name="considerContingenciesNtcOpfCheckBox">
-                    <property name="toolTip">
-                     <string>If activated, the N-1 contingencies are considered</string>
-                    </property>
-                    <property name="text">
-                     <string>Consider branch contingencies</string>
-                    </property>
-                    <property name="checked">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="2" column="0">
-                   <widget class="QCheckBox" name="considerContingenciesHvdcOpfCheckBox">
-                    <property name="text">
-                     <string>Consider hvdc contingencies</string>
-                    </property>
-                    <property name="checked">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </widget>
-               </item>
-               <item row="2" column="0" rowspan="2" colspan="3">
-                <widget class="QFrame" name="frame_67">
-                 <property name="frameShape">
-                  <enum>QFrame::NoFrame</enum>
-                 </property>
-                 <property name="frameShadow">
-                  <enum>QFrame::Raised</enum>
-                 </property>
-                 <layout class="QGridLayout" name="gridLayout_24">
-                  <item row="6" column="0">
-                   <widget class="QLabel" name="label_23">
-                    <property name="toolTip">
-                     <string>Transmission reliability margin (TRM)</string>
-                    </property>
-                    <property name="text">
-                     <string>Transmission reliability margin (TRM)</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="5" column="1">
-                   <widget class="QSpinBox" name="ntcOpfTolSpinBox">
-                    <property name="toolTip">
-                     <string>This value determines if the convergence is reached</string>
-                    </property>
-                    <property name="suffix">
-                     <string/>
-                    </property>
-                    <property name="prefix">
-                     <string>1e</string>
-                    </property>
-                    <property name="minimum">
-                     <number>-99</number>
-                    </property>
-                    <property name="value">
-                     <number>-3</number>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="3" column="0">
-                   <widget class="QCheckBox" name="ntcDispatchAllAreasCheckBox">
-                    <property name="text">
-                     <string>Dispatch all areas</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="0" colspan="2">
-                   <widget class="QRadioButton" name="proportionalRedispatchRadioButton">
-                    <property name="toolTip">
-                     <string>The generation is modified as a linear combination of it's current dispatch</string>
-                    </property>
-                    <property name="text">
-                     <string>Proportional redispatch</string>
-                    </property>
-                    <property name="checked">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="2" column="0" colspan="2">
-                   <widget class="QCheckBox" name="skipNtcGenerationLimitsCheckBox">
-                    <property name="toolTip">
-                     <string>If activated, the generation limits are not considered</string>
-                    </property>
-                    <property name="text">
-                     <string>Skip generation limits</string>
-                    </property>
-                    <property name="checked">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="6" column="1">
-                   <widget class="QSpinBox" name="trmSpinBox">
-                    <property name="suffix">
-                     <string> MW</string>
-                    </property>
-                    <property name="maximum">
-                     <number>1500</number>
-                    </property>
-                    <property name="singleStep">
-                     <number>10</number>
-                    </property>
-                    <property name="value">
-                     <number>400</number>
-                    </property>
-                    <property name="displayIntegerBase">
-                     <number>10</number>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="1" column="0" colspan="2">
-                   <widget class="QRadioButton" name="optimalRedispatchRadioButton">
-                    <property name="toolTip">
-                     <string>The generation is modified so that the transference is maximal.</string>
-                    </property>
-                    <property name="text">
-                     <string>Optimal dispatch</string>
-                    </property>
-                    <property name="checked">
-                     <bool>false</bool>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="5" column="0">
-                   <widget class="QLabel" name="label_101">
-                    <property name="toolTip">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This tolerance determines the maximum value of a slack variable that produces an error&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                    </property>
-                    <property name="text">
-                     <string>Slack variables' tolerance</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="4" column="0">
-                   <widget class="QCheckBox" name="ntcFeasibilityCheckCheckBox">
-                    <property name="text">
-                     <string>Check feasibility </string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </widget>
-               </item>
-               <item row="4" column="0" colspan="3">
-                <widget class="QFrame" name="frame_51">
-                 <property name="frameShape">
-                  <enum>QFrame::NoFrame</enum>
-                 </property>
-                 <property name="frameShadow">
-                  <enum>QFrame::Raised</enum>
-                 </property>
-                 <layout class="QGridLayout" name="gridLayout_25">
-                  <item row="1" column="0">
-                   <widget class="QCheckBox" name="ntcSelectBasedOnExchangeSensitivityCheckBox">
-                    <property name="toolTip">
-                     <string>A branch is monitored solely based on its contribution to the inter-area exchange sensivility. Therefore a branch is selected if ti's alpha value is greater than the set alpha %</string>
-                    </property>
-                    <property name="text">
-                     <string>Branch exchange sensitivity (α)</string>
-                    </property>
-                    <property name="checked">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="2" column="0">
-                   <widget class="QCheckBox" name="ntcSelectBasedOnAcerCriteriaCheckBox">
-                    <property name="toolTip">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This criteria springs from the ACER (Agency for the Cooperation for Energy Regulators).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Id determines that a branch is only relevant to be considered in a NTC calculation if the flow due to the exchange is over a percentage (70%).&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;A branch is monitored only if:&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;(branch_rate * 70%) / branch_alpha &amp;lt;= total_exchange_rating&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                    </property>
-                    <property name="text">
-                     <string>Branch rating contribution (ACER)</string>
-                    </property>
-                    <property name="checked">
-                     <bool>false</bool>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="label_64">
-                    <property name="font">
-                     <font>
-                      <weight>75</weight>
-                      <bold>true</bold>
-                     </font>
-                    </property>
-                    <property name="toolTip">
-                     <string>Determine the branches that enter the optimization</string>
-                    </property>
-                    <property name="text">
-                     <string>Branch monitoring filter criteria</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="1" column="1">
-                   <widget class="QSpinBox" name="ntcAlphaSpinBox">
-                    <property name="toolTip">
-                     <string>Minimum exchange contribution (Alpha)</string>
-                    </property>
-                    <property name="suffix">
-                     <string>%</string>
-                    </property>
-                    <property name="maximum">
-                     <number>100</number>
-                    </property>
-                    <property name="value">
-                     <number>5</number>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="2" column="1">
-                   <widget class="QSpinBox" name="ntcLoadRuleSpinBox">
-                    <property name="suffix">
-                     <string>%</string>
-                    </property>
-                    <property name="maximum">
-                     <number>100</number>
-                    </property>
-                    <property name="value">
-                     <number>70</number>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </widget>
-               </item>
-               <item row="9" column="1">
-                <spacer name="verticalSpacer_17">
-                 <property name="orientation">
-                  <enum>Qt::Vertical</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>20</width>
-                   <height>365</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-               <item row="0" column="1" colspan="2">
-                <widget class="QLabel" name="label_96">
-                 <property name="palette">
-                  <palette>
-                   <active>
-                    <colorrole role="WindowText">
-                     <brush brushstyle="SolidPattern">
-                      <color alpha="255">
-                       <red>85</red>
-                       <green>87</green>
-                       <blue>83</blue>
-                      </color>
-                     </brush>
-                    </colorrole>
-                   </active>
-                   <inactive>
-                    <colorrole role="WindowText">
-                     <brush brushstyle="SolidPattern">
-                      <color alpha="255">
-                       <red>85</red>
-                       <green>87</green>
-                       <blue>83</blue>
-                      </color>
-                     </brush>
-                    </colorrole>
-                   </inactive>
-                   <disabled>
-                    <colorrole role="WindowText">
-                     <brush brushstyle="SolidPattern">
-                      <color alpha="255">
-                       <red>190</red>
-                       <green>190</green>
-                       <blue>190</blue>
-                      </color>
-                     </brush>
-                    </colorrole>
-                   </disabled>
-                  </palette>
-                 </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>16</pointsize>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>NTC optimization</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="0">
-                <widget class="QLabel" name="label_97">
-                 <property name="minimumSize">
-                  <size>
-                   <width>24</width>
-                   <height>24</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>24</width>
-                   <height>24</height>
-                  </size>
-                 </property>
-                 <property name="text">
-                  <string/>
-                 </property>
-                 <property name="pixmap">
-                  <pixmap resource="icons.qrc">:/Icons/icons/ntc_opf.svg</pixmap>
-                 </property>
-                 <property name="scaledContents">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
                <item row="1" column="0" colspan="4">
                 <widget class="Line" name="line_27">
                  <property name="palette">
@@ -4386,6 +4720,19 @@ p, li { white-space: pre-wrap; }
                </item>
               </layout>
              </widget>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer_26">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
             </item>
            </layout>
           </widget>
@@ -4534,7 +4881,7 @@ p, li { white-space: pre-wrap; }
                   <item row="3" column="0">
                    <widget class="QLabel" name="label_30">
                     <property name="text">
-                     <string>Number of elements to report</string>
+                     <string>Loading threshold to report</string>
                     </property>
                    </widget>
                   </item>
@@ -4558,22 +4905,6 @@ p, li { white-space: pre-wrap; }
                    <widget class="QLabel" name="label_62">
                     <property name="text">
                      <string>Transfer sensitivity threshold</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="3" column="1">
-                   <widget class="QSpinBox" name="ntcReportLimitingElementsSpinBox">
-                    <property name="toolTip">
-                     <string>Top NTC limiting elements. Set to -1 to display all.</string>
-                    </property>
-                    <property name="minimum">
-                     <number>0</number>
-                    </property>
-                    <property name="maximum">
-                     <number>999999999</number>
-                    </property>
-                    <property name="value">
-                     <number>5</number>
                     </property>
                    </widget>
                   </item>
@@ -4608,7 +4939,14 @@ p, li { white-space: pre-wrap; }
                    </widget>
                   </item>
                   <item row="2" column="1">
-                   <widget class="QComboBox" name="transferMethodComboBox"/>
+                   <widget class="QComboBox" name="transferMethodComboBox">
+                    <property name="currentIndex">
+                     <number>-1</number>
+                    </property>
+                    <property name="maxVisibleItems">
+                     <number>11</number>
+                    </property>
+                   </widget>
                   </item>
                   <item row="4" column="0">
                    <widget class="QCheckBox" name="n1ConsiderationCheckBox">
@@ -4617,6 +4955,19 @@ p, li { white-space: pre-wrap; }
                     </property>
                     <property name="checked">
                      <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="3" column="1">
+                   <widget class="QSpinBox" name="ntcReportLoadingThresholdSpinBox">
+                    <property name="suffix">
+                     <string>%</string>
+                    </property>
+                    <property name="maximum">
+                     <number>9999</number>
+                    </property>
+                    <property name="value">
+                     <number>98</number>
                     </property>
                    </widget>
                   </item>
@@ -4663,16 +5014,6 @@ p, li { white-space: pre-wrap; }
                <property name="topMargin">
                 <number>0</number>
                </property>
-               <item row="2" column="0" colspan="2">
-                <widget class="QCheckBox" name="ptdf_distributed_slack_checkBox">
-                 <property name="text">
-                  <string>Distributed slack</string>
-                 </property>
-                 <property name="checked">
-                  <bool>false</bool>
-                 </property>
-                </widget>
-               </item>
                <item row="3" column="0" colspan="2">
                 <widget class="QCheckBox" name="ptdf_correct_nonsense_values_checkBox">
                  <property name="text">
@@ -4894,7 +5235,7 @@ p, li { white-space: pre-wrap; }
              <normaloff>:/Icons/icons/stochastic_power_flow.svg</normaloff>:/Icons/icons/stochastic_power_flow.svg</iconset>
            </attribute>
            <attribute name="title">
-            <string>Stochastic</string>
+            <string>Sto</string>
            </attribute>
            <attribute name="toolTip">
             <string>Stochastic power flow settings</string>
@@ -5991,7 +6332,7 @@ p, li { white-space: pre-wrap; }
              <normaloff>:/Icons/icons/automatic_layout.svg</normaloff>:/Icons/icons/automatic_layout.svg</iconset>
            </attribute>
            <attribute name="title">
-            <string>Topology</string>
+            <string>Tplgy</string>
            </attribute>
            <attribute name="toolTip">
             <string>Topology related settings</string>
@@ -6760,7 +7101,7 @@ p, li { white-space: pre-wrap; }
              <normaloff>:/Icons/icons/color_grid.svg</normaloff>:/Icons/icons/color_grid.svg</iconset>
            </attribute>
            <attribute name="title">
-            <string>Visualization</string>
+            <string>Viz</string>
            </attribute>
            <attribute name="toolTip">
             <string>Visualization related settings</string>
@@ -7431,7 +7772,7 @@ p, li { white-space: pre-wrap; }
         <item row="0" column="0">
          <widget class="QFrame" name="frame_7">
           <property name="frameShape">
-           <enum>QFrame::StyledPanel</enum>
+           <enum>QFrame::NoFrame</enum>
           </property>
           <property name="frameShadow">
            <enum>QFrame::Raised</enum>
@@ -7929,8 +8270,8 @@ QProgressBar::chunk{
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1194</width>
-     <height>21</height>
+     <width>1267</width>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuProject">
@@ -7944,10 +8285,12 @@ QProgressBar::chunk{
     <addaction name="separator"/>
     <addaction name="actionAdd_circuit"/>
     <addaction name="actionImport_bus_coordinates"/>
+    <addaction name="actionImport_contingencies"/>
     <addaction name="actiongrid_Generator"/>
     <addaction name="separator"/>
     <addaction name="actionExport"/>
     <addaction name="actionExport_all_the_device_s_profiles"/>
+    <addaction name="actionExport_contingencies"/>
     <addaction name="actionExport_all_results"/>
    </widget>
    <widget class="QMenu" name="menuAbout">
@@ -7981,6 +8324,10 @@ QProgressBar::chunk{
     <addaction name="actionReset_console"/>
     <addaction name="separator"/>
     <addaction name="menuSet_selected_buses"/>
+    <addaction name="separator"/>
+    <addaction name="actionInitialize_contingencies"/>
+    <addaction name="actionAdd_selected_to_contingency"/>
+    <addaction name="actionAdd_selected_as_new_investment"/>
    </widget>
    <widget class="QMenu" name="menuSimulations">
     <property name="title">
@@ -8096,6 +8443,8 @@ QProgressBar::chunk{
    <addaction name="separator"/>
    <addaction name="actionLinearAnalysis"/>
    <addaction name="actionPTDF_time_series"/>
+   <addaction name="actionAdd_selected_to_contingency"/>
+   <addaction name="actionInitialize_contingencies"/>
    <addaction name="actionContingency_analysis"/>
    <addaction name="actionOTDF_time_series"/>
    <addaction name="actionATC"/>
@@ -8108,7 +8457,6 @@ QProgressBar::chunk{
    <addaction name="actionTry_to_fix_buses_location"/>
    <addaction name="actionDelete_selected"/>
    <addaction name="separator"/>
-   <addaction name="actionLaunch_data_analysis_tool"/>
    <addaction name="actionShow_color_controls"/>
   </widget>
   <action name="actionOpen_file">
@@ -8883,6 +9231,60 @@ QProgressBar::chunk{
    </property>
    <property name="toolTip">
     <string>Fix loads active based on the power</string>
+   </property>
+  </action>
+  <action name="actionImport_contingencies">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/icons/load_add.svg</normaloff>:/Icons/icons/load_add.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Import contingencies</string>
+   </property>
+  </action>
+  <action name="actionInitialize_contingencies">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/icons/contingency_wizzard.svg</normaloff>:/Icons/icons/contingency_wizzard.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Initialize contingencies</string>
+   </property>
+  </action>
+  <action name="actionExport_contingencies">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/icons/save.svg</normaloff>:/Icons/icons/save.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Export contingencies</string>
+   </property>
+  </action>
+  <action name="actionAdd_selected_to_contingency">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/icons/add_contingency.svg</normaloff>:/Icons/icons/add_contingency.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Add selected as new contingency</string>
+   </property>
+   <property name="toolTip">
+    <string>Add schematic selection as new contingency</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+A, Ctrl+C</string>
+   </property>
+  </action>
+  <action name="actionAdd_selected_as_new_investment">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/icons/add_investment.svg</normaloff>:/Icons/icons/add_investment.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Add selected as new investment</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+A, Ctrl+I</string>
    </property>
   </action>
  </widget>

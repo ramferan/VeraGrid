@@ -15,13 +15,37 @@
 # along with this program; if not, write to the Free Software Foundation,
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-import json
+import os
 import pandas as pd
 import numpy as np
 import time
-import multiprocessing
 from sklearn.cluster import KMeans
 from sklearn.cluster import SpectralClustering
+
+
+def kmeans_sampling(X, n_points=10, with_samples=False):
+    os.environ['OPENBLAS_NUM_THREADS'] = '12'
+
+    tm0 = time.time()
+
+    # declare the model
+    model = KMeans(n_clusters=n_points, random_state=0, n_init=10)
+
+    # model fitting
+    tm1 = time.time()
+    model.fit_predict(X)
+    print(f'kmeans: model fitted in {time.time()-tm1:.2f} scs.')
+
+    centroid_idx = model.transform(X).argmin(axis=0)
+
+    # compute probabilities
+    centroids, counts = np.unique(model.labels_, return_counts=True)
+    prob = counts.astype(float) / len(model.labels_)
+
+    if with_samples:
+        return centroid_idx, prob, model.labels_
+
+    return centroid_idx, prob
 
 
 def kmeans_approximate_sampling(X, n_points=10):
@@ -32,11 +56,18 @@ def kmeans_approximate_sampling(X, n_points=10):
     :return: indices of the closest to the cluster centers, deviation of the closest representatives
     """
 
+    tm0 = time.time()
+    tm1 = time.time()
     # declare the model
-    model = KMeans(n_clusters=n_points, random_state=0)
+    model = KMeans(n_clusters=n_points, random_state=0, n_init=10)
 
+    print(f'kmeans: model loaded in {time.time()-tm1:.2f} scs.')
+    tm1 = time.time()
     # model fitting
     model.fit(X)
+
+    print(f'kmeans: model fitted in {time.time()-tm1:.2f} scs.')
+    tm1 = time.time()
 
     centers = model.cluster_centers_
     labels = model.labels_
@@ -55,6 +86,9 @@ def kmeans_approximate_sampling(X, n_points=10):
         idx = deviations.argmin()
         closest_idx[i] = idx
 
+    print(f'kmeans: first loop in {time.time() - tm1:.2f} scs.')
+    tm1 = time.time()
+
     # sort the indices
     closest_idx = np.sort(closest_idx)
 
@@ -64,6 +98,11 @@ def kmeans_approximate_sampling(X, n_points=10):
         prob = prob_dict[lbl]
         closest_prob[i] = prob
 
+    print(f'kmeans: second loop in {time.time() - tm1:.2f} scs.')
+
+    csv_path = r'\\mornt4.ree.es\DESRED\DPE-Internacional\Interconexiones\FRANCIA\2023 MoU Pmode3\Pmode3_conting\8GW\h_pmode1\kmeans_.csv'
+    pd.DataFrame([closest_idx, closest_prob], index=['idx', 'prob']).T.to_csv(csv_path, index=False)
+    print(f'He tardado {time.time()-tm0:.2f} scs.')
     return closest_idx, closest_prob
 
 

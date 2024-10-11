@@ -24,16 +24,16 @@ from GridCal.Engine.basic_structures import Logger
 from GridCal.Engine.Core.multi_circuit import MultiCircuit
 from GridCal.Engine.Core.snapshot_pf_data import compile_snapshot_circuit, SnapshotData
 from GridCal.Engine.Simulations.PowerFlow.NumericalMethods.ac_jacobian import AC_jacobian
-from GridCal.Engine.Simulations.PowerFlow.NumericalMethods.derivatives import dSf_dV_fast
+from GridCal.Engine.Simulations.PowerFlow.NumericalMethods.derivatives import dSf_dV_csc
 
 
-def compute_acptdf(Ybus, Yf, Cf, F, V, pq, pv, distribute_slack: bool = False):
+def compute_acptdf(Ybus, Yf, F, T, V, pq, pv, distribute_slack: bool = False):
     """
     Compute the AC-PTDF
     :param Ybus: admittance matrix
     :param Yf: Admittance matrix of the buses "from"
-    :param Cf: Connectivity branch - bus "from"
     :param F: array if branches "from" bus indices
+    :param T: array if branches "to" bus indices
     :param V: voltages array
     :param pq: array of pq node indices
     :param pv: array of pv node indices
@@ -46,7 +46,7 @@ def compute_acptdf(Ybus, Yf, Cf, F, V, pq, pv, distribute_slack: bool = False):
     npv = len(pv)
 
     # compute the Jacobian
-    J = AC_jacobian(Ybus, V, pvpq, pq, npv, npq)
+    J = AC_jacobian(Ybus, V, pvpq, pq)
 
     if distribute_slack:
         dP = np.ones((n, n)) * (-1 / (n - 1))
@@ -63,9 +63,7 @@ def compute_acptdf(Ybus, Yf, Cf, F, V, pq, pv, distribute_slack: bool = False):
     dx = spsolve(J, dS)
 
     # compute branch derivatives
-    Vc = np.conj(V)
-    E = V / np.abs(V)
-    dSf_dVa, dSf_dVm = dSf_dV_fast(Yf.tocsc(), V, Vc, E, F, Cf)
+    dSf_dVm, dSf_dVa = dSf_dV_csc(Yf.tocsc(), V, F, T)
 
     # compose the final AC-PTDF
     dPf_dVa = dSf_dVa.real[:, pvpq]
@@ -73,6 +71,7 @@ def compute_acptdf(Ybus, Yf, Cf, F, V, pq, pv, distribute_slack: bool = False):
     PTDF = sp.hstack((dPf_dVa, dPf_dVm)) * dx
 
     return PTDF
+
 
 def make_ptdf(Bbus, Bf, pqpv, distribute_slack=True):
     """
@@ -306,9 +305,58 @@ def make_worst_contingency_transfer_limits(tmc):
     return wtmc
 
 
+# @nb.njit(cache=True)
+def make_lodf_nx(circuit, lodf, force_from_file=False):
+    #todo: delete force_from_file
+
+    # if force_from_file:
+    #     import pickle
+    #     with open(r'C:\Users\ramferan\Desktop\lodf_nx_dc.txt', 'rb') as f:
+    #         return pickle.load(f)
+
+    lodf_nx_list = list()
+
+    # Create dictionaries to speed up the access
+    cg_dict = {cg.idtag: cg for cg in circuit.contingency_groups}
+    idx_dict = {e.idtag: i for i, e in enumerate(circuit.get_branches())}
+
+    # Initialize c_idx list for each contingency groups
+    for cg in circuit.contingency_groups:
+        cg.c_idx = list()
+
+    # Loop for contingencies to fill group c_idx
+    for c in circuit.contingencies:
+        cg_dict[c.group.idtag].c_idx.append(idx_dict[c.device_idtag])
+
+    for cg in circuit.contingency_groups:
+
+        # Sort unique c_idx
+        cg.c_idx = list(sorted(set(cg.c_idx), reverse=False))
+
+        # Compute LODF vector
+        L = lodf[:, cg.c_idx]  # Take the columns of the LODF associated with the contingencies
+
+        # Compute M matrix [n, n] (lodf relating the outaged lines to each other)
+        M = np.ones((len(cg.c_idx), len(cg.c_idx)))
+        for i in range(len(cg.c_idx)):
+            for j in range(len(cg.c_idx)):
+                if not (i == j):
+                    M[i, j] = -lodf[cg.c_idx[i], cg.c_idx[j]]
+
+        # Compute LODF_NX
+        lodf_nx = np.matmul(L, np.linalg.inv(M))
+
+        # store tuple (c_idx, lodf_nx)
+        lodf_nx_list.append(
+            (cg.c_idx, lodf_nx)
+        )
+
+    return lodf_nx_list
+
+
 class LinearAnalysis:
 
-    def __init__(self, grid: MultiCircuit, distributed_slack=True, correct_values=True):
+    def __init__(self, grid: MultiCircuit, distributed_slack=True, correct_values=True, with_nx=False, force_from_file=False):
         """
 
         :param grid:
@@ -321,6 +369,8 @@ class LinearAnalysis:
 
         self.correct_values = correct_values
 
+        self.with_nx = with_nx
+
         self.numerical_circuit: SnapshotData = None
 
         self.PTDF = None
@@ -328,6 +378,8 @@ class LinearAnalysis:
         self.LODF = None
 
         self.__OTDF = None
+
+        self.force_from_file = force_from_file
 
         self.logger = Logger()
 
@@ -387,6 +439,13 @@ class LinearAnalysis:
                                   PTDF=self.PTDF,
                                   correct_values=self.correct_values)
 
+        if self.with_nx:
+            self.LODF_NX = make_lodf_nx(
+                circuit=self.grid,
+                lodf=self.LODF,
+                #todo: delete force_from_file
+                force_from_file=self.force_from_file,
+            )
     @property
     def OTDF(self):
         """

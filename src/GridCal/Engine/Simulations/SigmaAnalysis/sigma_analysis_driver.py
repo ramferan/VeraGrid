@@ -207,7 +207,7 @@ def multi_island_sigma(multi_circuit: MultiCircuit, options: PowerFlowOptions, l
                                   apply_temperature=options.apply_temperature_correction,
                                   branch_tolerance_mode=options.branch_impedance_tolerance_mode,
                                   opf_results=None)
-    results.bus_names = nc.bus_data.bus_names
+    results.bus_names = nc.bus_data.names
 
     calculation_inputs = nc.split_into_islands(ignore_single_node_islands=options.ignore_single_node_islands)
 
@@ -236,9 +236,17 @@ def multi_island_sigma(multi_circuit: MultiCircuit, options: PowerFlowOptions, l
                 n = calculation_input.nbus
                 Sig_re = np.zeros(n, dtype=float)
                 Sig_im = np.zeros(n, dtype=float)
-                Sigma = sigma_function(U, X, iter_ - 1, calculation_input.Vbus[calculation_input.vd])
-                Sig_re[calculation_input.pqpv] = np.real(Sigma)
-                Sig_im[calculation_input.pqpv] = np.imag(Sigma)
+
+                try:
+                    Sigma = sigma_function(U, X, iter_ - 1, calculation_input.Vbus[calculation_input.vd])
+                    Sig_re[calculation_input.pqpv] = np.real(Sigma)
+                    Sig_im[calculation_input.pqpv] = np.imag(Sigma)
+                except np.linalg.LinAlgError:
+                    print('numpy.linalg.LinAlgError: Matrix is singular to machine precision.')
+                    Sigma = np.zeros(n, dtype=complex)
+                    Sig_re = np.zeros(n, dtype=float)
+                    Sig_im = np.zeros(n, dtype=float)
+
                 sigma_distances = sigma_distance(Sig_re, Sig_im)
 
                 # store the results
@@ -280,9 +288,17 @@ def multi_island_sigma(multi_circuit: MultiCircuit, options: PowerFlowOptions, l
             n = calculation_input.nbus
             Sig_re = np.zeros(n, dtype=float)
             Sig_im = np.zeros(n, dtype=float)
-            Sigma = sigma_function(U, X, iter_ - 1, calculation_input.Vbus[calculation_input.vd])
-            Sig_re[calculation_input.pqpv] = np.real(Sigma)
-            Sig_im[calculation_input.pqpv] = np.imag(Sigma)
+
+            try:
+                Sigma = sigma_function(U, X, iter_ - 1, calculation_input.Vbus[calculation_input.vd])
+                Sig_re[calculation_input.pqpv] = np.real(Sigma)
+                Sig_im[calculation_input.pqpv] = np.imag(Sigma)
+            except np.linalg.LinAlgError:
+                print('numpy.linalg.LinAlgError: Matrix is singular to machine precision.')
+                Sigma = np.zeros(n, dtype=complex)
+                Sig_re = np.zeros(n, dtype=float)
+                Sig_im = np.zeros(n, dtype=float)
+
             sigma_distances = sigma_distance(Sig_re, Sig_im)
 
             # store the results
@@ -300,7 +316,7 @@ def multi_island_sigma(multi_circuit: MultiCircuit, options: PowerFlowOptions, l
     return results
 
 
-@nb.jit(cache=True)
+@nb.jit(cache=True, nopython=True)
 def sigma_distance(sigma_real, sigma_imag):
     """
     Distance to the collapse in the sigma space

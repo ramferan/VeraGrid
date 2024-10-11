@@ -43,13 +43,14 @@ class BranchData:
         self.nbr = nbr
         self.ntime = ntime
 
-        self.branch_names = np.empty(self.nbr, dtype=object)
+        self.names = np.empty(self.nbr, dtype=object)
+        self.codes = np.empty(self.nbr, dtype=object)
 
-        self.branch_dc = np.zeros(self.nbr, dtype=int)
+        self.dc = np.zeros(self.nbr, dtype=int)
 
-        self.branch_active = np.zeros((nbr, ntime), dtype=int)
-        self.branch_rates = np.zeros((nbr, ntime), dtype=float)
-        self.branch_contingency_rates = np.zeros((nbr, ntime), dtype=float)
+        self.active = np.zeros((nbr, ntime), dtype=int)
+        self.rates = np.zeros((nbr, ntime), dtype=float)
+        self.contingency_rates = np.zeros((nbr, ntime), dtype=float)
 
         self.F = np.zeros(self.nbr, dtype=int)  # indices of the "from" buses
         self.T = np.zeros(self.nbr, dtype=int)  # indices of the "to" buses
@@ -66,7 +67,7 @@ class BranchData:
 
         self.R0 = np.zeros(self.nbr, dtype=float)
         self.X0 = np.zeros(self.nbr, dtype=float)
-        self.G0_ = np.zeros(self.nbr, dtype=float)
+        self.G0 = np.zeros(self.nbr, dtype=float)
         self.B0 = np.zeros(self.nbr, dtype=float)
 
         self.R2 = np.zeros(self.nbr, dtype=float)
@@ -126,7 +127,7 @@ class BranchData:
 
         data = BranchData(nbr=len(elm_idx), nbus=len(bus_idx))
 
-        data.branch_names = self.branch_names[elm_idx]
+        data.names = self.names[elm_idx]
 
         data.R = self.R[elm_idx]
         data.X = self.X[elm_idx]
@@ -135,7 +136,7 @@ class BranchData:
 
         data.R0 = self.R[elm_idx]
         data.X0 = self.X[elm_idx]
-        data.G0_ = self.G[elm_idx]
+        data.G0 = self.G[elm_idx]
         data.B0 = self.B[elm_idx]
 
         data.R2 = self.R[elm_idx]
@@ -148,7 +149,7 @@ class BranchData:
         data.tap_f = self.tap_t[elm_idx]
         data.Kdp = self.Kdp[elm_idx]
         data.Kdp_va = self.Kdp_va[elm_idx]
-        data.branch_dc = self.branch_dc[elm_idx]
+        data.dc = self.dc[elm_idx]
         data.alpha1 = self.alpha1[elm_idx]
         data.alpha2 = self.alpha2[elm_idx]
         data.alpha3 = self.alpha3[elm_idx]
@@ -159,9 +160,9 @@ class BranchData:
         data.contingency_enabled = self.contingency_enabled[elm_idx]
         data.monitor_loading = self.monitor_loading[elm_idx]
 
-        data.branch_active = self.branch_active[tidx]
-        data.branch_rates = self.branch_rates[tidx]
-        data.branch_contingency_rates = self.branch_contingency_rates[tidx]
+        data.active = self.active[tidx]
+        data.rates = self.rates[tidx]
+        data.contingency_rates = self.contingency_rates[tidx]
         data.m = self.m[tidx]
 
         data.m_min = self.m_min[elm_idx]
@@ -194,7 +195,7 @@ class BranchData:
         if self.nbr:
             return tp.get_elements_of_the_island(self.C_branch_bus_f + self.C_branch_bus_t,
                                                  island=bus_idx,
-                                                 active=self.branch_active[:, t_idx])
+                                                 active=self.active[:, t_idx])
         else:
             return np.zeros(0, dtype=int)
 
@@ -203,14 +204,14 @@ class BranchData:
 
         :return:
         """
-        return np.where(self.branch_dc == 0)[0]
+        return np.where(self.dc == 0)[0]
 
     def get_dc_indices(self):
         """
 
         :return:
         """
-        return np.where(self.branch_dc != 0)[0]
+        return np.where(self.dc != 0)[0]
 
     def get_linear_series_admittance(self, t=0):
         """
@@ -225,11 +226,11 @@ class BranchData:
             # compose the vector for AC-DC grids where the R is needed for this matrix
             # even if conceptually we only want the susceptance
             b = np.zeros(self.nbr)
-            active = self.branch_active[:, t]
+            active = self.active[:, t]
             b[ac] = 1.0 / (m_abs[ac] * self.X[ac] * active[ac] + 1e-20)  # for ac branches
             b[dc] = 1.0 / (m_abs[dc] * self.R[dc] * active[dc] + 1e-20)  # for dc branches
         else:
-            b = 1.0 / (m_abs * self.X * self.branch_active[:, t] + 1e-20)  # for ac branches
+            b = 1.0 / (m_abs * self.X * self.active[:, t] + 1e-20)  # for ac branches
 
         return b
 
@@ -253,12 +254,12 @@ class BranchData:
         :param t: time index, relevant for those magnitudes that change with time
         :return: Pandas DataFrame
         """
-        data = {'names': self.branch_names,
-                'active': self.branch_active[:, t],
+        data = {'names': self.names,
+                'active': self.active[:, t],
                 'F': self.F,
                 'T': self.T,
-                'Rates': self.branch_rates[:, t],
-                'Contingency rates': self.branch_contingency_rates[:, t],
+                'Rates': self.rates[:, t],
+                'Contingency rates': self.contingency_rates[:, t],
                 'R': self.R,
                 'X': self.X,
                 'G': self.G,

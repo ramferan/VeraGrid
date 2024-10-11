@@ -195,7 +195,7 @@ def read_DGS(filename):
     for key in data.keys():
         # print("Converting " + str(key))
         table = array([tuple(x) for x in data[key]],dtype=types_dict2[key])
-        table = array([list(x) for x in table],dtype=np.object)
+        table = array([list(x) for x in table],dtype=object)
         header = Headers[key]
         data[key] = df(data=table, columns=header)
 
@@ -238,10 +238,7 @@ def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
     *  outserv: Out of Service
     *  pStoch: Failures: Element model in StoTyplne
     '''
-    if "ElmLne" in data.keys():
-        lines = data["ElmLne"]
-    else:
-        lines = np.zeros((0, 20))
+    lines = data.get("ElmLne", np.zeros((0, 20)))
 
     '''
     ###############################################################################

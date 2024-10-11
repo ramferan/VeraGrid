@@ -23,9 +23,12 @@ from GridCal.Engine.Simulations.ShortCircuitStudies import *
 from GridCal.Engine.Simulations.StateEstimation import *
 from GridCal.Engine.Simulations.OPF import *
 from GridCal.Engine.Simulations.LinearFactors import *
+from GridCal.Engine.Simulations.NonLinearFactors import *
 from GridCal.Engine.Simulations.sparse_solve import *
 from GridCal.Engine.Simulations.ContingencyAnalysis import *
 from GridCal.Engine.Simulations.ATC import *
 from GridCal.Engine.Simulations.Topology import *
 from GridCal.Engine.Simulations.SigmaAnalysis import *
 from GridCal.Engine.Simulations.InputsAnalysis import *
+from GridCal.Engine.Simulations.NTC import *
+

@@ -50,7 +50,8 @@ class OptimalPowerFlowResults(ResultsTemplate):
                  Sf=None, St=None, overloads=None, loading=None, losses=None,
                  hvdc_names=None, hvdc_power=None, hvdc_loading=None,
                  phase_shift=None, bus_shadow_prices=None,
-                 contingency_flows_list=None, contingency_indices_list=None, contingency_flows_slacks_list=None,
+                 contingency_flows_list=None, contingency_indices_list=None,
+                 contingency_flows_slacks_list=None,
                  rates=None, contingency_rates=None,
                  converged=None, bus_types=None):
 
@@ -59,10 +60,13 @@ class OptimalPowerFlowResults(ResultsTemplate):
                                  available_results={ResultTypes.BusResults: [ResultTypes.BusVoltageModule,
                                                                              ResultTypes.BusVoltageAngle,
                                                                              ResultTypes.BusShadowPrices,
-                                                                             ResultTypes.BusPower],
+                                                                             ResultTypes.BusActivePower,
+                                                                             ResultTypes.BusReactivePower],
 
                                                     ResultTypes.BranchResults: [ResultTypes.BranchActivePowerFrom,
+                                                                                ResultTypes.BranchActivePowerTo,
                                                                                 ResultTypes.BranchLoading,
+                                                                                ResultTypes.BranchLosses,
                                                                                 ResultTypes.BranchOverloads,
                                                                                 ResultTypes.BranchTapAngle],
 
@@ -180,13 +184,25 @@ class OptimalPowerFlowResults(ResultsTemplate):
             labels = self.branch_names
             y = self.Sf.real
             y_label = '(MW)'
-            title = 'Branch power'
+            title = 'Branch power from'
 
-        elif result_type == ResultTypes.BusPower:
+        elif result_type == ResultTypes.BranchActivePowerTo:
+            labels = self.branch_names
+            y = self.St.real
+            y_label = '(MW)'
+            title = 'Branch power to'
+
+        elif result_type == ResultTypes.BusActivePower:
             labels = self.bus_names
             y = self.Sbus.real
             y_label = '(MW)'
-            title = 'Bus power'
+            title = 'Bus active power'
+
+        elif result_type == ResultTypes.BusReactivePower:
+            labels = self.bus_names
+            y = self.Sbus.imag
+            y_label = '(MVAr)'
+            title = 'Bus reactive power'
 
         elif result_type == ResultTypes.BranchLoading:
             labels = self.branch_names

@@ -41,7 +41,7 @@ class ResultTypes(Enum):
     BranchTapAngle = '𝜏: Tap angle', DeviceType.BranchDevice
     BranchBeq = 'Beq: Equivalent susceptance', DeviceType.BranchDevice
 
-    BranchLoading = 'Loading', DeviceType.BranchDevice
+    BranchLoading = 'Branch Loading', DeviceType.BranchDevice
     Transformer2WTapModule = 'Transformer tap module', DeviceType.Transformer2WDevice
     BranchVoltage = 'ΔV: Voltage modules drop', DeviceType.BranchDevice
     BranchAngles = 'Δθ: Voltage angles drop', DeviceType.BranchDevice
@@ -77,7 +77,7 @@ class ResultTypes(Enum):
     BusVoltageAngle = 'θ: Voltage angle', DeviceType.BusDevice
     BusPower = 'Bus power', DeviceType.BusDevice
     BusShadowPrices = 'Nodal shadow prices', DeviceType.BusDevice
-    BranchOverloads = 'Overloads', DeviceType.BranchDevice
+    BranchOverloads = 'Branch overloads', DeviceType.BranchDevice
     LoadShedding = 'Load shedding', DeviceType.LoadDevice
     GeneratorShedding = 'Generator shedding', DeviceType.GeneratorDevice
     GeneratorPower = 'Generator power', DeviceType.GeneratorDevice
@@ -92,11 +92,9 @@ class ResultTypes(Enum):
     LossesPerArea = 'Losses per area', DeviceType.NoDevice
     ActivePowerFlowPerArea = 'Active power flow per area', DeviceType.NoDevice
 
-    OpfNtcTsContingencyReport = 'Contingency flow report', DeviceType.NoDevice
-    OpfNtcTsBaseReport = 'Base flow report', DeviceType.NoDevice
-
     # Short-circuit
-    BusShortCircuitPower = 'Bus short circuit power', DeviceType.BusDevice
+    BusShortCircuitActivePower = 'Short circuit active power', DeviceType.BusDevice
+    BusShortCircuitReactivePower = 'Short circuit reactive power', DeviceType.BusDevice
 
     # PTDF
     PTDFBranchesSensitivity = 'Branch Flow sensitivity', DeviceType.BranchDevice
@@ -131,10 +129,26 @@ class ResultTypes(Enum):
     NetTransferCapacity = 'Net transfer capacity', DeviceType.BranchDevice
     AvailableTransferCapacityReport = 'ATC Report', DeviceType.NoDevice
 
-    ContingencyFlowsReport = 'Contingency Report', DeviceType.NoDevice
-    ContingencyFlowsBranchReport = 'Contingency Branch Report', DeviceType.NoDevice
-    ContingencyFlowsGenerationReport = 'Contingency Generation Report', DeviceType.NoDevice
-    ContingencyFlowsHvdcReport = 'Contingency Hvdc Report', DeviceType.NoDevice
+    # NTC
+    BaseFlowReport = 'Ntc: Base flow report', DeviceType.NoDevice
+    ContingencyFlowsReport = 'Ntc: Contingency flow report', DeviceType.NoDevice
+    ContingencyFlowsBranchReport = 'Ntc: Contingency flow report. (Branch)', DeviceType.NoDevice
+    ContingencyFlowsGenerationReport = 'Ntc: Contingency flow report. (Generation)', DeviceType.NoDevice
+    ContingencyFlowsHvdcReport = 'Ntc: Contingency flow report. (Hvdc)', DeviceType.NoDevice
+
+    # Time series
+    TsBaseFlowReport = 'Time series base flow report', DeviceType.NoDevice
+    TsContingencyFlowReport = 'Time series contingency flow report', DeviceType.NoDevice
+    TsContingencyFlowBranchReport = 'Time series Contingency flow report (Branches)', DeviceType.NoDevice
+    TsContingencyFlowGenerationReport = 'Time series contingency flow report. (Generation)', DeviceType.NoDevice
+    TsContingencyFlowHvdcReport = 'Time series contingency flow report. (Hvdc)', DeviceType.NoDevice
+    TsGenerationPowerReport = 'Time series generation power report', DeviceType.NoDevice
+    TsGenerationDeltaReport = 'Time series generation delta power report', DeviceType.NoDevice
+    TsAlphaReport = 'Time series sensitivity to the exchange report', DeviceType.NoDevice
+    TsWorstAlphaN1Report = 'Time series worst sensitivity to the exchange report (N-1)', DeviceType.NoDevice
+    TsBranchMonitoring = 'Time series branch monitoring logic report', DeviceType.BranchDevice
+    TsCriticalBranches = 'Time series critical branches report', DeviceType.BranchDevice
+    TsContingencyBranches = 'Time series contingency branches report', DeviceType.BranchDevice
 
     # inputs analysis
     ZoneAnalysis = 'Zone analysis', DeviceType.NoDevice
@@ -183,7 +197,7 @@ class ResultTypes(Enum):
     BranchLoading2 = 'Branch loading (2)', DeviceType.BranchDevice
     BranchActiveLosses2 = 'Branch active losses (2)', DeviceType.BranchDevice
     BranchReactiveLosses2 = 'Branch reactive losses (2)', DeviceType.BranchDevice
-
+    BranchMonitoring = 'Branch monitoring logic', DeviceType.BranchDevice
     ShortCircuitInfo = 'Short-circuit information', DeviceType.NoDevice
 
     # classifiers
@@ -195,9 +209,11 @@ class ResultTypes(Enum):
     ReportsResults = 'Reports', DeviceType.NoDevice
     SlacksResults = 'Slacks', DeviceType.NoDevice
     DispatchResults = 'Dispatch', DeviceType.NoDevice
-    NTCResults = 'NTC', DeviceType.NoDevice
+    FlowReports = 'Flow Reports', DeviceType.NoDevice
+    Sensibilities = 'Sensibilities', DeviceType.NoDevice
     SeriesResults = 'Series', DeviceType.NoDevice
     SnapshotResults = 'Snapshot', DeviceType.NoDevice
+    NTCResults = 'NTC', DeviceType.NoDevice
 
     def __str__(self):
         return self.value[0]

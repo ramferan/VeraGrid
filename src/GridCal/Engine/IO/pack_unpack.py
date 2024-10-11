@@ -37,6 +37,8 @@ def get_objects_dictionary():
 
                     'country': dev.Country(),
 
+                    'technology': dev.Technology(),
+
                     'bus': dev.Bus(),
 
                     'load': dev.Load(),
@@ -72,6 +74,14 @@ def get_objects_dictionary():
                     'vsc': dev.VSC(None, None),
 
                     'upfc': dev.UPFC(None, None),
+
+                    'contingency_group': dev.ContingencyGroup(),
+
+                    'contingency': dev.Contingency(),
+
+                    'investments_group': dev.InvestmentsGroup(),
+
+                    'investment': dev.Investment(),
                     }
 
     return object_types
@@ -110,14 +120,6 @@ def create_data_frames(circuit: MultiCircuit):
     # names_count = dict()
     if len(circuit.buses) > 0:
         for elm in circuit.buses:
-
-            # check name: if the name is repeated, change it so that it is not
-            # if elm.name in names_count.keys():
-            #     names_count[elm.name] += 1
-            #     elm.name = elm.name + '_' + str(names_count[elm.name])
-            # else:
-            #     names_count[elm.name] = 1
-
             elm.ensure_area_objects(circuit)
             elm.ensure_profiles_exist(T)
             elm.retrieve_graphic_position()
@@ -133,9 +135,7 @@ def create_data_frames(circuit: MultiCircuit):
     ########################################################################################################
     # generic object iteration
     ########################################################################################################
-    for object_type_name in object_types.keys():
-
-        object_sample = object_types[object_type_name]
+    for object_type_name, object_sample in object_types.items():
 
         headers = object_sample.editable_headers.keys()
 
@@ -242,7 +242,11 @@ def data_frames_to_circuit(data: Dict):
     # time profile -----------------------------------------------------------------------------------------------------
     if 'time' in data.keys():
         time_df = data['time']
-        circuit.time_profile = pd.to_datetime(time_df.values[:, 0], dayfirst=True)
+        circuit.time_profile = pd.to_datetime(
+            time_df.values[:, 0],
+            format="%Y-%m-%d %H:%M:%S",
+            # dayfirst=True
+        )
     else:
         circuit.time_profile = None
 
@@ -311,7 +315,11 @@ def data_frames_to_circuit(data: Dict):
                             elif dtype in [DeviceType.SubstationDevice,
                                            DeviceType.AreaDevice,
                                            DeviceType.ZoneDevice,
-                                           DeviceType.CountryDevice]:
+                                           DeviceType.CountryDevice,
+                                           DeviceType.Technology,
+                                           DeviceType.ContingencyGroupDevice,
+                                           DeviceType.InvestmentsGroupDevice,
+                                           ]:
 
                                 """
                                 This piece is to assign the objects matching the Area, Substation, Zone and Country
@@ -395,6 +403,10 @@ def data_frames_to_circuit(data: Dict):
                                     setattr(devices[i], object_property_name, True)
                                 else:
                                     setattr(devices[i], object_property_name, bool(val))
+
+                            elif dtype == str:
+                                val = dtype(df[object_property_name].values[i]).replace('nan', '')
+                                setattr(devices[i], object_property_name, val)
 
                             else:
                                 # regular types (int, str, float, etc...)
@@ -493,6 +505,21 @@ def data_frames_to_circuit(data: Dict):
             elif template_elm.device_type == DeviceType.WireDevice:
                 circuit.wire_types = devices
 
+            elif template_elm.device_type == DeviceType.Technology:
+                circuit.technologies = devices
+
+            if template_elm.device_type == DeviceType.ContingencyGroupDevice:
+                circuit.contingency_groups = devices
+
+            if template_elm.device_type == DeviceType.ContingencyDevice:
+                circuit.contingencies = devices
+
+            if template_elm.device_type == DeviceType.InvestmentsGroupDevice:
+                circuit.investments_groups = devices
+
+            if template_elm.device_type == DeviceType.InvestmentDevice:
+                circuit.investments = devices
+
         else:
             circuit.logger.add_error('The data does not contain information about the type', str(key))
 
@@ -531,6 +558,15 @@ def data_frames_to_circuit(data: Dict):
 
     if DeviceType.CountryDevice in elements_dict.keys():
         circuit.countries = list(elements_dict[DeviceType.CountryDevice].values())
+
+    # if DeviceType.Technology in elements_dict.keys():
+    #     circuit.technologies = list(elements_dict[DeviceType.Technology].values())
+    #
+    # if DeviceType.ContingencyGroupDevice in elements_dict.keys():
+    #     circuit.contingency_groups = list(elements_dict[DeviceType.ContingencyGroupDevice].values())
+    #
+    # if DeviceType.ContingencyDevice in elements_dict.keys():
+    #     circuit.contingencies = list(elements_dict[DeviceType.ContingencyDevice].values())
 
     return circuit
 
