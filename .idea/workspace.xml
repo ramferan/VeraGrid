@@ -26,7 +26,9 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="SRAP steps" />
+    <list default="true" id="903393a6-e011-4cf7-964c-90325cdcb845" name="Default Changelist" comment="NTC:&#10; - Working lp piece wise&#10; - Working lp abs value&#10; - Working HVDC contingencies&#10; - Working Pmode3">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -73,7 +75,7 @@
     </favorite-branches>
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="mou_variable_normalization" />
+        <entry key="$PROJECT_DIR$" value="devel_REE" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -111,7 +113,6 @@
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/IO/json_parser.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/IO/pack_unpack.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/IO/zip_interface.py" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/ATC/available_transfer_capacity_driver.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/ATC/available_transfer_capacity_ts_driver.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/ContingencyAnalysis/contingency_analysis_driver.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/ContinuationPowerFlow/continuation_power_flow_driver.py" root0="FORCE_HIGHLIGHTING" />
@@ -148,8 +149,6 @@
     <setting file="file://$PROJECT_DIR$/src/GridCal/__version__.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/setup.py" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/src/tests/test_unbalanced_faults.py" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/venv/Lib/site-packages/pandas/core/tools/datetimes.py" root0="SKIP_INSPECTION" />
-    <setting file="file://$USER_HOME$/OneDrive - REDEIA/Escritorio/Test_local_Python/main.py" root0="FORCE_HIGHLIGHTING" />
   </component>
   <component name="JupyterTrust" id="3f3378b4-0928-4af1-9795-ba1c77415c18" />
   <component name="MarkdownSettingsMigration">
@@ -168,25 +167,26 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_ADD_EXTERNAL_FILES": "true",
-    "Git.Branch.Popup.ShowAllRemotes": "true",
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "git-widget-placeholder": "Rebasing mou__variable__normalization",
-    "last_opened_file_path": "C:/ReposGit/github/energyexemplarnorthamerica/Python-PLEXOS-API",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
-    "settings.editor.splitter.proportion": "0.28680688",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_ADD_EXTERNAL_FILES&quot;: &quot;true&quot;,
+    &quot;Git.Branch.Popup.ShowAllRemotes&quot;: &quot;true&quot;,
+    &quot;Python.ExecuteGridCal.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;8460ad7e&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/ReposGit/github/ramferan/jw-vmc&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;reference.idesettings.debugger.python&quot;,
+    &quot;settings.editor.splitter.proportion&quot;: &quot;0.28680688&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="PyDebuggerOptionsProvider">
     <option name="mySaveCallSignatures" value="true" />
     <option name="mySupportGeventDebugging" value="true" />
@@ -208,7 +208,7 @@
       <recent name="$PROJECT_DIR$/src/research/derivatives_and_jacobian" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.srap">
+  <component name="RunManager" selected="Python.ExecuteGridCal">
     <configuration default="true" type="DjangoTestsConfigurationType">
       <module name="GridCalEngine" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -301,76 +301,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="expand_clustering" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="GridCal" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/examples" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/examples/expand_clustering.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="srap" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="GridCal" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/examples" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/examples/srap.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="srap_by_blocks" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="GridCal" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/examples" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/examples/srap_by_blocks.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="srap_test" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="ntc_opf" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="GridCal" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -384,8 +315,54 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/srap_test.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py" />
       <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="ntc_ts_driver" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="GridCal" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_ts_driver.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="setup" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="GridCal" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/setup.py" />
+      <option name="PARAMETERS" value="bdist_wheel" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -440,6 +417,23 @@
       <option name="docutils_params" value="" />
       <option name="docutils_task" value="" />
       <option name="docutils_open_in_browser" value="false" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Nosetests in tests" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
+      <module name="GridCal" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/tests" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="_new_regexPattern" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;$PROJECT_DIR$/src/tests&quot;" />
+      <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
     <configuration default="true" type="tests" factoryName="Doctests">
@@ -498,19 +492,19 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Python.srap_by_blocks" />
-      <item itemvalue="Python.srap" />
-      <item itemvalue="Python.srap_test" />
-      <item itemvalue="Python.expand_clustering" />
       <item itemvalue="Python.ExecuteGridCal" />
+      <item itemvalue="Python.ntc_opf" />
+      <item itemvalue="Python.ntc_ts_driver" />
+      <item itemvalue="Python.setup" />
+      <item itemvalue="Python tests.Nosetests in tests" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.srap" />
-        <item itemvalue="Python.srap_by_blocks" />
+        <item itemvalue="Python tests.Nosetests in tests" />
+        <item itemvalue="Python.setup" />
+        <item itemvalue="Python.ntc_ts_driver" />
+        <item itemvalue="Python.ntc_opf" />
         <item itemvalue="Python.ExecuteGridCal" />
-        <item itemvalue="Python.srap_test" />
-        <item itemvalue="Python.expand_clustering" />
       </list>
     </recent_temporary>
   </component>
@@ -1182,6 +1176,55 @@
       <workItem from="1686590782319" duration="3299000" />
       <workItem from="1686641662191" duration="8615000" />
     </task>
+    <task id="LOCAL-00359" summary="Improved illinois200">
+      <created>1678211149112</created>
+      <option name="number" value="00359" />
+      <option name="presentableId" value="LOCAL-00359" />
+      <option name="project" value="LOCAL" />
+      <updated>1678211149112</updated>
+    </task>
+    <task id="LOCAL-00360" summary="Improved newton pf options integration">
+      <created>1678265978424</created>
+      <option name="number" value="00360" />
+      <option name="presentableId" value="LOCAL-00360" />
+      <option name="project" value="LOCAL" />
+      <updated>1678265978424</updated>
+    </task>
+    <task id="LOCAL-00361" summary="Added tap module check to the analysis">
+      <created>1678268161416</created>
+      <option name="number" value="00361" />
+      <option name="presentableId" value="LOCAL-00361" />
+      <option name="project" value="LOCAL" />
+      <updated>1678268161416</updated>
+    </task>
+    <task id="LOCAL-00362" summary="Added voltage limits passing to newton">
+      <created>1678370722175</created>
+      <option name="number" value="00362" />
+      <option name="presentableId" value="LOCAL-00362" />
+      <option name="project" value="LOCAL" />
+      <updated>1678370722175</updated>
+    </task>
+    <task id="LOCAL-00363" summary="Added nonlinear opf shadow prices">
+      <created>1678376859776</created>
+      <option name="number" value="00363" />
+      <option name="presentableId" value="LOCAL-00363" />
+      <option name="project" value="LOCAL" />
+      <updated>1678376859776</updated>
+    </task>
+    <task id="LOCAL-00364" summary="added optional newton file saver when converting to Newton">
+      <created>1678555802840</created>
+      <option name="number" value="00364" />
+      <option name="presentableId" value="LOCAL-00364" />
+      <option name="project" value="LOCAL" />
+      <updated>1678555802840</updated>
+    </task>
+    <task id="LOCAL-00365" summary="Improved circuit_to_data2.py compilation">
+      <created>1678744531484</created>
+      <option name="number" value="00365" />
+      <option name="presentableId" value="LOCAL-00365" />
+      <option name="project" value="LOCAL" />
+      <updated>1678744531484</updated>
+    </task>
     <task id="LOCAL-00366" summary="Added override_branch_controls options, removing the storage dispatch options">
       <created>1678782195149</created>
       <option name="number" value="00366" />
@@ -1469,63 +1512,14 @@
       <option name="project" value="LOCAL" />
       <updated>1700069084883</updated>
     </task>
-    <task id="LOCAL-00407" summary="SRAP steps">
-      <created>1702370036191</created>
+    <task id="LOCAL-00407" summary="NTC:&#10; - Working lp piece wise&#10; - Working lp abs value&#10; - Working HVDC contingencies&#10; - Working Pmode3">
+      <created>1700138200753</created>
       <option name="number" value="00407" />
       <option name="presentableId" value="LOCAL-00407" />
       <option name="project" value="LOCAL" />
-      <updated>1702370036191</updated>
+      <updated>1700138200754</updated>
     </task>
-    <task id="LOCAL-00408" summary="SRAP steps">
-      <created>1702382245070</created>
-      <option name="number" value="00408" />
-      <option name="presentableId" value="LOCAL-00408" />
-      <option name="project" value="LOCAL" />
-      <updated>1702382245070</updated>
-    </task>
-    <task id="LOCAL-00409" summary="SRAP steps">
-      <created>1702468009587</created>
-      <option name="number" value="00409" />
-      <option name="presentableId" value="LOCAL-00409" />
-      <option name="project" value="LOCAL" />
-      <updated>1702468009587</updated>
-    </task>
-    <task id="LOCAL-00410" summary="SRAP steps">
-      <created>1702470673436</created>
-      <option name="number" value="00410" />
-      <option name="presentableId" value="LOCAL-00410" />
-      <option name="project" value="LOCAL" />
-      <updated>1702470673436</updated>
-    </task>
-    <task id="LOCAL-00411" summary="SRAP steps">
-      <created>1702479181680</created>
-      <option name="number" value="00411" />
-      <option name="presentableId" value="LOCAL-00411" />
-      <option name="project" value="LOCAL" />
-      <updated>1702479181680</updated>
-    </task>
-    <task id="LOCAL-00412" summary="SRAP steps">
-      <created>1702486315364</created>
-      <option name="number" value="00412" />
-      <option name="presentableId" value="LOCAL-00412" />
-      <option name="project" value="LOCAL" />
-      <updated>1702486315364</updated>
-    </task>
-    <task id="LOCAL-00413" summary="SRAP steps">
-      <created>1702554509265</created>
-      <option name="number" value="00413" />
-      <option name="presentableId" value="LOCAL-00413" />
-      <option name="project" value="LOCAL" />
-      <updated>1702554509267</updated>
-    </task>
-    <task id="LOCAL-00414" summary="SRAP steps">
-      <created>1702554562434</created>
-      <option name="number" value="00414" />
-      <option name="presentableId" value="LOCAL-00414" />
-      <option name="project" value="LOCAL" />
-      <updated>1702554562434</updated>
-    </task>
-    <option name="localTasksCounter" value="415" />
+    <option name="localTasksCounter" value="408" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1543,26 +1537,6 @@
     </option>
   </component>
   <component name="Vcs.Log.Tabs.Properties">
-    <option name="RECENT_FILTERS">
-      <map>
-        <entry key="Branch">
-          <value>
-            <list>
-              <RecentGroup>
-                <option name="FILTER_VALUES">
-                  <option value="fernpos/srap_implmentation" />
-                </option>
-              </RecentGroup>
-              <RecentGroup>
-                <option name="FILTER_VALUES">
-                  <option value="ramferan/mou_variable_normalization" />
-                </option>
-              </RecentGroup>
-            </list>
-          </value>
-        </entry>
-      </map>
-    </option>
     <option name="TAB_STATES">
       <map>
         <entry key="1">
@@ -1585,7 +1559,7 @@
                   <entry key="branch">
                     <value>
                       <list>
-                        <option value="fernpos/srap_implmentation" />
+                        <option value="sanpen/devel" />
                       </list>
                     </value>
                   </entry>
@@ -1622,8 +1596,8 @@
     <MESSAGE value="LP:&#10; - New generic lp piece wise functions&#10; - New generic lp abs variables.&#10; &#10; NTC:&#10;  - Modified hvdc pmode3 flow&#10;  - Modified hvdc contingencies (pmode1 and pmode3)" />
     <MESSAGE value="Variable Normalization:&#10; - Calibrating inf value" />
     <MESSAGE value="NTC:&#10; - Fixed sign injections for shifters tau in Pinjections&#10;&#10;Variable Normalization:&#10; - Calibrated inf value&#10; - Added lp_sbase" />
-    <MESSAGE value="SRAP steps" />
-    <option name="LAST_COMMIT_MESSAGE" value="SRAP steps" />
+    <MESSAGE value="NTC:&#10; - Working lp piece wise&#10; - Working lp abs value&#10; - Working HVDC contingencies&#10; - Working Pmode3" />
+    <option name="LAST_COMMIT_MESSAGE" value="NTC:&#10; - Working lp piece wise&#10; - Working lp abs value&#10; - Working HVDC contingencies&#10; - Working Pmode3" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -1993,19 +1967,9 @@
           <option name="timeStamp" value="1182" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/GridCal/Gui/Main/GridCalMain.py</url>
-          <line>7392</line>
-          <option name="timeStamp" value="1183" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/GridCal/Engine/IO/zip_interface.py</url>
           <line>46</line>
           <option name="timeStamp" value="1184" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/GridCal/Gui/Main/GridCalMain.py</url>
-          <line>1426</line>
-          <option name="timeStamp" value="1185" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/GridCal/Gui/ContingencyPlanner/contingency_planner_dialogue.py</url>
@@ -2014,53 +1978,15 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py</url>
-          <line>2915</line>
+          <line>2900</line>
           <option name="timeStamp" value="1431" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/GridCal/Engine/Simulations/NTC/ntc_opf.py</url>
-          <line>2913</line>
+          <line>2898</line>
           <option name="timeStamp" value="1433" />
         </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/examples/expand_clustering.py</url>
-          <line>57</line>
-          <option name="timeStamp" value="1439" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/examples/expand_clustering.py</url>
-          <line>32</line>
-          <option name="timeStamp" value="1440" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/examples/srap_by_blocks.py</url>
-          <line>35</line>
-          <option name="timeStamp" value="1470" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/examples/srap.py</url>
-          <line>92</line>
-          <option name="timeStamp" value="1471" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/examples/srap.py</url>
-          <line>205</line>
-          <option name="timeStamp" value="1472" />
-        </line-breakpoint>
       </breakpoints>
-      <default-breakpoints>
-        <breakpoint type="python-exception">
-          <properties notifyOnTerminate="true" exception="BaseException">
-            <option name="notifyOnTerminate" value="true" />
-          </properties>
-        </breakpoint>
-      </default-breakpoints>
     </breakpoint-manager>
-    <watches-manager>
-      <configuration name="PythonConfigurationType">
-        <watch expression="driver" />
-        <watch expression="driver" />
-      </configuration>
-    </watches-manager>
   </component>
 </project>
