@@ -31,6 +31,7 @@ from GridCal.Engine.Simulations.ContingencyAnalysis.contingency_analysis_driver 
 from GridCal.Engine.Simulations.LinearFactors.linear_analysis import LinearAnalysis
 from GridCal.Engine.basic_structures import SolverType
 from GridCal.Engine.basic_structures import Logger
+from GridCal.Engine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver, PowerFlowOptions
 
 try:
     from ortools.linear_solver import pywraplp
@@ -131,7 +132,6 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
 
             # run dc power flow ----------------------------------------------------------------------------------------
             self.progress_text.emit('Pre-solving base state (DC power flow)...')
-            from GridCal.Engine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver, PowerFlowOptions
             pf_options = PowerFlowOptions(solver_type=SolverType.DC)
             pf_drv = PowerFlowDriver(grid=self.grid, options=pf_options)
             pf_drv.run()
