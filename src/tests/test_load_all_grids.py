@@ -1,22 +1,9 @@
-# GridCal
-# Copyright (C) 2022 Santiago Peñate Vera
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation; either
-# version 3 of the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# Lesser General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
 import os
-
-from GridCal.Engine.IO.file_handler import FileOpen
+from VeraGridEngine.IO.file_handler import FileOpen
 
 
 def test_all_grids():
@@ -54,3 +41,35 @@ def test_all_grids():
         circuit = file_handler.open()
 
     assert len(failed) == 0
+
+
+def test_line_templates_finding():
+    """
+    Test that checks that a line assigned a line template that is not a Sequence line can open it
+    :return:
+    """
+    # get the directory of this file
+    current_path = os.path.dirname(__file__)
+
+    # navigate to the grids folder
+    fname = os.path.join(current_path, 'data', 'grids', 'test_line_templates.gridcal')
+
+    opener = FileOpen(fname)
+    grid = opener.open()
+
+    if opener.logger.has_logs():
+        opener.logger.print()
+
+    assert not opener.logger.has_logs()
+
+
+def test_issue_337():
+    # get the directory of this file
+    current_path = os.path.dirname(__file__)
+
+    # navigate to the grids folder
+    fname = os.path.join(current_path, 'data', 'grids', 'RAW', 'issue_337.raw')
+
+    grid = FileOpen(fname).open()
+
+    print()

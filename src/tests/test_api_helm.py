@@ -1,31 +1,22 @@
-# GridCal
-# Copyright (C) 2022 Santiago Peñate Vera
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation; either
-# version 3 of the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# Lesser General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
 import os
 import numpy as np
 
-from GridCal.Engine.IO.file_handler import FileOpen
-from GridCal.Engine.Simulations.PowerFlow.power_flow_options import SolverType
-from GridCal.Engine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions, PowerFlowDriver
-from tests.print_power_flow_results import print_power_flow_results
+from VeraGridEngine.IO.file_handler import FileOpen
+from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions, PowerFlowDriver
 
 
 def test_api_helm():
+    """
+
+    :return:
+    """
     np.set_printoptions(precision=4)
-    fname = os.path.join('..', '..', 'Grids_and_profiles', 'grids', 'IEEE 30 Bus with storage.xlsx')
+    fname = os.path.join('data', 'grids', 'IEEE 30 Bus with storage.xlsx')
     grid = FileOpen(fname).open()
 
     print('\n\n', grid.name)
@@ -34,8 +25,6 @@ def test_api_helm():
     options = PowerFlowOptions(SolverType.HELM, verbose=False, tolerance=1e-9)
     power_flow = PowerFlowDriver(grid, options)
     power_flow.run()
-
-    print_power_flow_results(power_flow)
 
 
 if __name__ == '__main__':

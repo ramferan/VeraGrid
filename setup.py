@@ -1,3 +1,7 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
 """
 A setuptools based setup module.
 See:
@@ -19,7 +23,7 @@ import os
 # Python 3 only projects can skip this import
 from io import open
 
-from src.GridCal.__version__ import __GridCal_VERSION__
+from src.VeraGrid.__version__ import __VeraGrid_VERSION__
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -27,8 +31,8 @@ here = os.path.abspath(os.path.dirname(__file__))
 with open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
-with open(os.path.join(here, 'doc', 'about.rst'), encoding='utf-8') as f:
-    description = f.read()
+#with open(os.path.join(here, 'doc', 'about.rst'), encoding='utf-8') as f:
+   # description = f.read()
 
 # create the file MANIFEST.in
 # f = open("MANIFEST.in", "w")
@@ -47,7 +51,7 @@ packages = find_packages(where=base_path, exclude=['docs', 'test'])
 packages = [os.path.join(base_path, p) for p in packages]
 
 
-dependencies = ["PySide2>=5.15",  # for now, 5.14 breaks the UI generation for development
+dependencies = ["PySide6>=6.5.0",  # for now, 5.14 breaks the UI generation for development
                 "numpy>=1.14.0",
                 "scipy>=1.0.0",
                 "networkx>=2.1",
@@ -56,8 +60,6 @@ dependencies = ["PySide2>=5.15",  # for now, 5.14 breaks the UI generation for d
                 "xlrd>=1.1.0",
                 "matplotlib>=2.1.1",
                 "qtconsole>=4.5.4",
-                "pyDOE>=0.3.8",
-                "pySOT>=0.2.1",
                 "openpyxl>=2.4.9",
                 "smopy>=0.0.6",
                 "chardet>=3.0.4",
@@ -66,10 +68,13 @@ dependencies = ["PySide2>=5.15",  # for now, 5.14 breaks the UI generation for d
                 "pytest>=3.8",
                 "h5py>=2.9.0",
                 "numba>=0.54",
-                "folium",
-                "pyarrow",
+                "pyarrow>=15",
                 "fastparquet",
-                "pytest>=3.8"]
+                "pyqtdarktheme",
+                "ortools",
+                "pytest>=3.8",
+                "nptyping",
+                ]
 
 # Arguments marked as "Required" below must be included for upload to PyPI.
 # Fields marked as "Optional" may be commented out.
@@ -94,12 +99,12 @@ setup(
     # For a discussion on single-sourcing the version across setup.py and the
     # project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version=__GridCal_VERSION__,  # Required
+    version=__VeraGrid_VERSION__,  # Required
 
     # This is a one-line description or tag-line of what your project does. This
     # corresponds to the "Summary" metadata field:
     # https://packaging.python.org/specifications/core-metadata/#summary
-    description=description,  # Optional
+    #description=description,  # Optional
 
     # This is an optional longer description of your project that represents
     # the body of text which users will see when they visit PyPI.

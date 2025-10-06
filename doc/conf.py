@@ -14,23 +14,26 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../src'))
 
-from GridCal.__version__ import __GridCal_VERSION__
+sys.path.insert(0, os.path.abspath('../src'))
+sys.path.append("..")
+sys.setrecursionlimit(5000)
+from doc.auto_document_models import write_models_to_md
+from VeraGridEngine.__version__ import __VeraGridEngine_VERSION__
 
 # -- Project information -----------------------------------------------------
 
-project = 'GridCal'
-copyright = '2019, Santiago Peñate Vera'
-author = 'Santiago Peñate Vera'
+project = 'VeraGrid'
+copyright = '2025, Santiago Peñate Vera et. al.'
+author = 'Santiago Peñate Vera et. al.'
 
-# The short X.Y version
-version = __GridCal_VERSION__
 # The full version, including alpha/beta/rc tags
-release = __GridCal_VERSION__
+release = __VeraGridEngine_VERSION__
+
 
 def setup(app):
     app.add_css_file('style.css')
+
 
 # -- General configuration ---------------------------------------------------
 
@@ -41,10 +44,28 @@ def setup(app):
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.imgmath',
-]
+exclude_patterns = ['zzz']
+
+numfig = True
+
+extensions = list()
+extensions.append('sphinx.ext.todo')
+extensions.append('sphinx.ext.autodoc')
+extensions.append('sphinx.ext.intersphinx')
+extensions.append('sphinx.ext.imgmath')
+extensions.append('sphinx.ext.mathjax')
+extensions.append('sphinx.ext.viewcode')
+extensions.append('sphinx.ext.graphviz')
+extensions.append('sphinx_rtd_theme')
+#extensions.append("sphinxawesome_theme")
+# extensions.append('sphinx_build_compatibility.extension')
+extensions.append('myst_parser')  # markdown
+
+autosummary_generate = True
+myst_dmath_allow_labels = True
+
+# generate CGMES, PSSe and VeraGrid data models' rst files
+write_models_to_md(os.path.join('md_source', 'data_models.md'))
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -52,8 +73,24 @@ templates_path = ['_templates']
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
-# source_suffix = ['.rst', '.md']
-source_suffix = '.rst'
+source_suffix = ['.rst', '.md']
+
+myst_enable_extensions = [
+    "amsmath",
+    "attrs_inline",
+    "colon_fence",
+    "deflist",
+    "dollarmath",
+    "fieldlist",
+    "html_admonition",
+    "html_image",
+    "linkify",
+    "replacements",
+    "smartquotes",
+    "strikethrough",
+    "substitution",
+    "tasklist",
+]
 
 # The master toctree document.
 master_doc = 'index'
@@ -63,7 +100,7 @@ master_doc = 'index'
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "en"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -73,7 +110,6 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = None
 
-
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -81,8 +117,24 @@ pygments_style = None
 #
 # html_theme = 'nature'
 html_theme = 'sphinx_rtd_theme'
+# html_theme = 'sphinxawesome_theme'
 
-html_static_path = ['_static']
+html_theme_options = {
+    "show_prev_next": False,
+    "show_breadcrumbs": False,
+    "breadcrumbs_separator": "·",
+    "awesome_headerlinks": False,
+    "show_scrolltop": True,
+    "show_permalinks": False,
+    "awesome_external_links": True,
+    "main_nav_links": { "GitHub": "https://github.com/SanPen/VeraGrid"},
+    "extra_header_link_icons": {
+        "Discord": {"link": "https://discord.gg/xxx", "icon": "<svg>...</svg>"}
+    },
+    "logo_light": "img/VeraGrid3_icon.svg",
+    "logo_dark": "img/VeraGrid3_icon.svg",
+    "globaltoc_includehidden": False,
+}
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -109,26 +161,22 @@ html_static_path = ['_static']
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'GridCaldoc'
-
+htmlhelp_basename = 'VeraGriddoc'
 
 # -- Options for LaTeX output ------------------------------------------------
 
 fh = open('latex_preamble.tex', 'r+')
 PREAMBLE = fh.read()
 fh.close()
+latex_engine = 'xelatex'
 latex_elements = {
     # The paper size ('letterpaper' or 'a4paper').
     #
-    # 'papersize': 'letterpaper',
+    'papersize': 'a4paper',
 
     # The font size ('10pt', '11pt' or '12pt').
     #
-    # 'pointsize': '10pt',
-
-    # Additional stuff for the LaTeX preamble.
-    #
-    # 'preamble': '',
+    'pointsize': '10pt',
 
     # Latex figure (float) alignment
     #
@@ -138,25 +186,21 @@ latex_elements = {
     'preamble': PREAMBLE,
 }
 
-
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'GridCal.tex', 'GridCal Documentation',
-     'Santiago Pe\~nate Vera', 'manual'),
+    (master_doc, 'VeraGrid.tex', 'VeraGrid Documentation', 'Santiago Peñate Vera', 'manual'),
 ]
-
 
 # -- Options for manual page output ------------------------------------------
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'gridcal', 'GridCal Documentation',
+    (master_doc, 'veragrid', 'VeraGrid Documentation',
      [author], 1)
 ]
-
 
 # -- Options for Texinfo output ----------------------------------------------
 
@@ -164,11 +208,10 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'GridCal', 'GridCal Documentation',
-     author, 'GridCal', 'One line description of project.',
+    (master_doc, 'VeraGrid', 'VeraGrid Documentation',
+     author, 'VeraGrid', 'One line description of project.',
      'Miscellaneous'),
 ]
-
 
 # -- Options for Epub output -------------------------------------------------
 
@@ -186,6 +229,5 @@ epub_title = project
 
 # A list of files that should not be packed into the epub file.
 epub_exclude_files = ['search.html']
-
 
 # -- Extension configuration -------------------------------------------------

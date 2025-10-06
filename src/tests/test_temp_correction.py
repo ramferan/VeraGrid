@@ -1,36 +1,23 @@
-# GridCal
-# Copyright (C) 2022 Santiago Peñate Vera
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation; either
-# version 3 of the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# Lesser General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
 from pytest import approx
 
-from GridCal.Engine.basic_structures import Logger
-from GridCal.Engine.Core.multi_circuit import MultiCircuit
-from GridCal.Engine.Devices import *
-from GridCal.Engine.Simulations.PowerFlow.power_flow_driver import \
-    PowerFlowOptions, PowerFlowDriver
+from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices import *
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions, PowerFlowDriver
 
 Sbase = 100  # MVA
 
 
 def test_cable_temp():
     B_C3 = Bus(name="B_C3",
-               vnom=10)  # kV
+               Vnom=10)  # kV
 
     B_MV_M32 = Bus(name="B_MV_M32",
-                   vnom=10)  # kV
+                   Vnom=10)  # kV
 
     cable = Branch(bus_from=B_C3,
                    bus_to=B_MV_M32,
@@ -46,10 +33,10 @@ def test_cable_temp():
 
 def test_same_temp():
     B_C3 = Bus(name="B_C3",
-               vnom=10)  # kV
+               Vnom=10)  # kV
 
     B_MV_M32 = Bus(name="B_MV_M32",
-                   vnom=10)  # kV
+                   Vnom=10)  # kV
 
     cable = Line(bus_from=B_C3,
                  bus_to=B_MV_M32,
@@ -72,8 +59,8 @@ def test_corr_line_losses():
     grid.logger = Logger()
 
     # Create buses
-    Bus0 = Bus(name="Bus0", vnom=10, is_slack=True)
-    Bus1 = Bus(name="Bus1", vnom=10)
+    Bus0 = Bus(name="Bus0", Vnom=10, is_slack=True)
+    Bus1 = Bus(name="Bus1", Vnom=10)
 
     grid.add_bus(Bus0)
     grid.add_bus(Bus1)
@@ -104,7 +91,7 @@ def test_corr_line_losses():
 
     # Check solution
     approx_losses = round(power_flow.results.losses[0], 3)
-    solution = complex(0.011, 0.002)  # Expected solution from GridCal
+    solution = complex(0.011, 0.002)  # Expected solution from VeraGrid
                                       # Tested on ETAP 16.1.0
 
     print("\n=================================================================")

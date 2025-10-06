@@ -1,36 +1,17 @@
-# GridCal
-# Copyright (C) 2022 Santiago Peñate Vera
-# 
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation; either
-# version 3 of the License, or (at your option) any later version.
-# 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# Lesser General Public License for more details.
-# 
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.  
+# SPDX-License-Identifier: MPL-2.0
+
 import os
-
-import numpy as np
-
-from GridCal.Engine import *
-from tests.zip_file_mgmt import open_data_frame_from_zip
+from VeraGridEngine.api import *
+from VeraGridEngine.Utils.zip_file_mgmt import open_data_frame_from_zip
 
 
 def test_cpf():
     fname = os.path.join('data', 'grids', 'IEEE39_1W.gridcal')
     main_circuit = FileOpen(fname).open()
-    pf_options = PowerFlowOptions(SolverType.NR,
-                                  verbose=False,
-                                  initialize_with_existing_solution=False,
-                                  dispatch_storage=True,
-                                  control_q=ReactivePowerControlMode.NoControl,
-                                  control_p=False)
+    pf_options = PowerFlowOptions(SolverType.NR, verbose=0, control_q=False)
 
     Vmbase = open_data_frame_from_zip(file_name_zip=os.path.join('data', 'results', 'Results_IEEE39_1W.zip'),
                                       file_name='Power flow Bus voltage module.csv').values[:, 0]
@@ -53,7 +34,7 @@ def test_cpf():
                                            Vbase=Vbase,
                                            Starget=Sbase * 2)
 
-    vc = ContinuationPowerFlowDriver(circuit=main_circuit,
+    vc = ContinuationPowerFlowDriver(grid=main_circuit,
                                      options=vc_options,
                                      inputs=vc_inputs,
                                      pf_options=pf_options)

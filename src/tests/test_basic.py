@@ -1,28 +1,17 @@
-# GridCal
-# Copyright (C) 2022 Santiago Peñate Vera
-# 
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation; either
-# version 3 of the License, or (at your option) any later version.
-# 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# Lesser General Public License for more details.
-# 
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-from GridCal.Engine.basic_structures import Logger
-from GridCal.Engine.Core.multi_circuit import MultiCircuit
-from GridCal.Engine.Devices.bus import Bus
-from GridCal.Engine.Devices.generator import Generator
-from GridCal.Engine.Devices.static_generator import StaticGenerator
-from GridCal.Engine.Devices.transformer import TransformerType, Transformer2W
-from GridCal.Engine.Simulations.PowerFlow.power_flow_worker import PowerFlowOptions
-from GridCal.Engine.Simulations.PowerFlow.power_flow_options import ReactivePowerControlMode, SolverType
-from GridCal.Engine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.  
+# SPDX-License-Identifier: MPL-2.0
+
+from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.Substation import Bus
+from VeraGridEngine.Devices.Injections.generator import Generator
+from VeraGridEngine.Devices.Injections.static_generator import StaticGenerator
+from VeraGridEngine.Devices.Branches.transformer import TransformerType, Transformer2W
+from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import PowerFlowOptions
+from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 
 
 def complex_impedance(z, XR):
@@ -31,9 +20,9 @@ def complex_impedance(z, XR):
     """
     z = float(abs(z))
     XR = float(abs(XR))
-    real = (z**2/(1+XR**2))**0.5
+    real = (z ** 2 / (1 + XR ** 2)) ** 0.5
     try:
-        imag = (z**2/(1+1/XR**2))**0.5
+        imag = (z ** 2 / (1 + 1 / XR ** 2)) ** 0.5
     except ZeroDivisionError:
         imag = 0.0
     return complex(real, imag)
@@ -41,7 +30,7 @@ def complex_impedance(z, XR):
 
 def test_basic():
     """
-    Basic GridCal test, also useful for a basic tutorial. In this case the
+    Basic VeraGrid test, also useful for a basic tutorial. In this case the
     magnetizing branch of the transformers is neglected by inputting 1e-20
     excitation current and iron core losses.
     The results are identical to ETAP's, which always uses this assumption in
@@ -49,27 +38,27 @@ def test_basic():
     """
     test_name = "test_basic"
     grid = MultiCircuit(name=test_name)
-    S_base = 100  # MVA
+    S_base = 100.0  # MVA
     grid.Sbase = S_base
     grid.time_profile = None
     grid.logger = Logger()
 
     # Create buses
     POI = Bus(name="POI",
-              vnom=100,  # kV
+              Vnom=100.0,  # kV
               is_slack=True)
     grid.add_bus(POI)
 
     B_C3 = Bus(name="B_C3",
-               vnom=10)  # kV
+               Vnom=10.0)  # kV
     grid.add_bus(B_C3)
 
     B_MV_M32 = Bus(name="B_MV_M32",
-                   vnom=10)  # kV
+                   Vnom=10)  # kV
     grid.add_bus(B_MV_M32)
 
     B_LV_M32 = Bus(name="B_LV_M32",
-                   vnom=0.6)  # kV
+                   Vnom=0.6)  # kV
     grid.add_bus(B_LV_M32)
 
     # Create voltage controlled generators (or slack, a.k.a. swing)
@@ -80,38 +69,38 @@ def test_basic():
     # Create static generators (with fixed power factor)
     M32 = StaticGenerator(name="M32",
                           P=4.2,  # MW
-                          Q=0.0j)  # MVAr
+                          Q=0.0)  # MVAr
     M32.bus = B_LV_M32
     grid.add_static_generator(B_LV_M32, M32)
 
     # Create transformer types
-    s = 5  # MVA
-    z = 8  # %
-    xr = 40
+    s = 5.0  # MVA
+    z = 8.0  # %
+    xr = 40.0
     SS = TransformerType(name="SS",
-                         hv_nominal_voltage=100,  # kV
-                         lv_nominal_voltage=10,  # kV
+                         hv_nominal_voltage=100.0,  # kV
+                         lv_nominal_voltage=10.0,  # kV
                          nominal_power=s,
-                         copper_losses=complex_impedance(z, xr).real * s * 1000 / S_base,
+                         copper_losses=complex_impedance(z, xr).real * s * 1000.0 / S_base,
                          iron_losses=1e-20,
                          no_load_current=1e-20,
                          short_circuit_voltage=z)
     grid.add_transformer_type(SS)
 
-    s = 5  # MVA
-    z = 6  # %
-    xr = 20
+    s = 5.0  # MVA
+    z = 6.0  # %
+    xr = 20.0
     PM = TransformerType(name="PM",
-                         hv_nominal_voltage=10,  # kV
+                         hv_nominal_voltage=10.0,  # kV
                          lv_nominal_voltage=0.6,  # kV
                          nominal_power=s,
-                         copper_losses=complex_impedance(z, xr).real * s * 1000 / S_base,
+                         copper_losses=complex_impedance(z, xr).real * s * 1000.0 / S_base,
                          iron_losses=1e-20,
                          no_load_current=1e-20,
                          short_circuit_voltage=z)
     grid.add_transformer_type(PM)
 
-    # Create branches
+    # Create Branches
     X_C3 = Transformer2W(bus_from=POI,
                          bus_to=B_C3,
                          name="X_C3",
@@ -141,9 +130,8 @@ def test_basic():
 
     options = PowerFlowOptions(SolverType.NR,
                                verbose=True,
-                               initialize_with_existing_solution=True,
-                               multi_core=True,
-                               control_q=ReactivePowerControlMode.Direct,
+                               use_stored_guess=True,
+                               control_q=True,
                                tolerance=1e-6,
                                max_iter=99)
 
@@ -151,7 +139,7 @@ def test_basic():
     power_flow.run()
 
     approx_volt = [round(100 * abs(v), 1) for v in power_flow.results.voltage]
-    solution = [100.0, 99.6, 102.7, 102.9]  # Expected solution from GridCal and ETAP 16.1.0, for reference
+    solution = [100.0, 99.6, 102.7, 102.9]  # Expected solution from VeraGrid and ETAP 16.1.0, for reference
 
     print()
     print(f"Test: {test_name}")
@@ -170,7 +158,7 @@ def test_basic():
         print(f" - {b}:")
         print(f"   R = {round(b.R, 4)} pu")
         print(f"   X = {round(b.X, 4)} pu")
-        print(f"   X/R = {round(b.X/b.R, 1)}")
+        print(f"   X/R = {round(b.X / b.R, 1)}")
         print(f"   G = {round(b.G, 4)} pu")
         print(f"   B = {round(b.B, 4)} pu")
     print()
@@ -182,7 +170,7 @@ def test_basic():
 
     print("Losses:")
     for i in range(len(branches)):
-        print(f" - {branches[i]}: losses={1000*round(power_flow.results.losses[i], 3)} kVA")
+        print(f" - {branches[i]}: losses={1000 * round(power_flow.results.losses[i], 3)} kVA")
     print()
 
     equal = True
@@ -195,7 +183,7 @@ def test_basic():
 
 def test_gridcal_basic_pi():
     """
-    Basic GridCal test, also useful for a basic tutorial. In this case the
+    Basic VeraGrid test, also useful for a basic tutorial. In this case the
     magnetizing branch of the transformers is considered.
     """
     Sbase = 100  # MVA
@@ -207,20 +195,20 @@ def test_gridcal_basic_pi():
 
     # Create buses
     POI = Bus(name="POI",
-              vnom=100,  # kV
+              Vnom=100,  # kV
               is_slack=True)
     grid.add_bus(POI)
 
     B_C3 = Bus(name="B_C3",
-               vnom=10)  # kV
+               Vnom=10)  # kV
     grid.add_bus(B_C3)
 
     B_MV_M32 = Bus(name="B_MV_M32",
-                   vnom=10)  # kV
+                   Vnom=10)  # kV
     grid.add_bus(B_MV_M32)
 
     B_LV_M32 = Bus(name="B_LV_M32",
-                   vnom=0.6)  # kV
+                   Vnom=0.6)  # kV
     grid.add_bus(B_LV_M32)
 
     # Create voltage controlled generators (or slack, a.k.a. swing)
@@ -231,38 +219,38 @@ def test_gridcal_basic_pi():
     # Create static generators (with fixed power factor)
     M32 = StaticGenerator(name="M32",
                           P=4.2,  # MW
-                          Q=0.0j)  # MVAR
+                          Q=0.0)  # MVAR
     M32.bus = B_LV_M32
     grid.add_static_generator(B_LV_M32, M32)
 
     # Create transformer types
-    s = 5 # MVA
-    z = 8 # %
-    xr = 40
+    s = 5.0  # MVA
+    z = 8.0  # %
+    xr = 40.0
     SS = TransformerType(name="SS",
                          hv_nominal_voltage=100,  # kV
                          lv_nominal_voltage=10,  # kV
                          nominal_power=s,
-                         copper_losses=complex_impedance(z, xr).real*s*1000/Sbase,
+                         copper_losses=complex_impedance(z, xr).real * s * 1000 / Sbase,
                          iron_losses=6.25,  # kW
                          no_load_current=0.5,  # %
                          short_circuit_voltage=z)
     grid.add_transformer_type(SS)
 
-    s = 5 # MVA
-    z = 6 # %
-    xr = 20
+    s = 5.0  # MVA
+    z = 6.0  # %
+    xr = 20.0
     PM = TransformerType(name="PM",
                          hv_nominal_voltage=10,  # kV
                          lv_nominal_voltage=0.6,  # kV
                          nominal_power=s,
-                         copper_losses=complex_impedance(z, xr).real*s*1000/Sbase,
+                         copper_losses=complex_impedance(z, xr).real * s * 1000 / Sbase,
                          iron_losses=6.25,  # kW
                          no_load_current=0.5,  # %
                          short_circuit_voltage=z)
     grid.add_transformer_type(PM)
 
-    # Create branches
+    # Create Branches
     X_C3 = Transformer2W(bus_from=POI,
                          bus_to=B_C3,
                          name="X_C3",
@@ -292,17 +280,16 @@ def test_gridcal_basic_pi():
 
     options = PowerFlowOptions(SolverType.NR,
                                verbose=True,
-                               initialize_with_existing_solution=True,
-                               multi_core=True,
-                               control_q=ReactivePowerControlMode.Direct,
+                               use_stored_guess=True,
+                               control_q=True,
                                tolerance=1e-6,
                                max_iter=99)
 
     power_flow = PowerFlowDriver(grid, options)
     power_flow.run()
 
-    approx_volt = [round(100*abs(v), 1) for v in power_flow.results.voltage]
-    solution = [100.0, 99.5, 102.7, 102.8]  # Expected solution from GridCal
+    approx_volt = [round(100 * abs(v), 1) for v in power_flow.results.voltage]
+    solution = [100.0, 99.5, 102.7, 102.8]  # Expected solution from VeraGrid
     etap_sol = [100.0, 99.6, 102.7, 102.9]  # ETAP 16.1.0, for reference (ignores magnetizing branch)
 
     print()
@@ -322,7 +309,7 @@ def test_gridcal_basic_pi():
         print(f" - {b}:")
         print(f"   R = {round(b.R, 4)} pu")
         print(f"   X = {round(b.X, 4)} pu")
-        print(f"   X/R = {round(b.X/b.R, 1)}")
+        print(f"   X/R = {round(b.X / b.R, 1)}")
         print(f"   G = {round(b.G, 4)} pu")
         print(f"   B = {round(b.B, 4)} pu")
     print()
@@ -334,7 +321,7 @@ def test_gridcal_basic_pi():
 
     print("Losses:")
     for i in range(len(branches)):
-        print(f" - {branches[i]}: losses={1000*round(power_flow.results.losses[i], 3)} kVA")
+        print(f" - {branches[i]}: losses={1000 * round(power_flow.results.losses[i], 3)} kVA")
     print()
 
     equal = True
@@ -346,7 +333,6 @@ def test_gridcal_basic_pi():
 
 
 if __name__ == '__main__':
-
     test_basic()
 
     test_gridcal_basic_pi()

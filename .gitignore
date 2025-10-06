@@ -20,6 +20,7 @@ __pycache__
 /build/*
 
 /src/tests/data/output/*.png
+/src/VeraGrid/Gui/Main/icons/.DS_Store
 
 Results.xlsx
 lynn5node.gridcal
@@ -30,3 +31,5 @@ demo_5_node.json
 .idea/*.iml
 .idea/*.xml
 .idea/dictionaries/*.xml
+.DS_Store
+/src/tests/data/output/raw_to_cgmes_export_results/

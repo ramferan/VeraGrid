@@ -1,0 +1,7 @@
+sphinx
+pandas
+pytablewriter
+myst-parser
+sphinx-rtd-theme
+linkify-it-py
+VeraGridEngine >= 5.3.41

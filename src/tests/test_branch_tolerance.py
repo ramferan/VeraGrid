@@ -1,28 +1,15 @@
-# GridCal
-# Copyright (C) 2022 Santiago Peñate Vera
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation; either
-# version 3 of the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# Lesser General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-from GridCal.Engine.basic_structures import Logger
-from GridCal.Engine.Core.multi_circuit import MultiCircuit
-from GridCal.Engine.Devices.line import Line
-from GridCal.Engine.Devices.bus import Bus
-from GridCal.Engine.Devices.generator import Generator
-from GridCal.Engine.Devices.load import Load
-from GridCal.Engine.Simulations.PowerFlow.power_flow_driver import \
-    PowerFlowOptions, PowerFlowDriver
-from GridCal.Engine.basic_structures import BranchImpedanceMode
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices import Line
+from VeraGridEngine.Devices import Bus
+from VeraGridEngine.Devices import Generator
+from VeraGridEngine.Devices import Load
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions, PowerFlowDriver
+from VeraGridEngine.enumerations import BranchImpedanceMode
 
 Sbase = 100  # MVA
 
@@ -35,8 +22,8 @@ def test_tolerance_lf_higher():
     grid.logger = Logger()
 
     # Create buses
-    Bus0 = Bus(name="Bus0", vnom=25, is_slack=True)
-    Bus1 = Bus(name="Bus1", vnom=25)
+    Bus0 = Bus(name="Bus0", Vnom=25, is_slack=True)
+    Bus1 = Bus(name="Bus1", Vnom=25)
 
     grid.add_bus(Bus0)
     grid.add_bus(Bus1)
@@ -64,7 +51,7 @@ def test_tolerance_lf_higher():
 
     # Check solution
     approx_losses = round(1000 * power_flow.results.losses[0], 3)
-    solution = complex(0.128, 0.58)  # Expected solution from GridCal
+    solution = complex(0.128, 0.58)  # Expected solution from VeraGrid
     # Tested on ETAP 16.1.0 and pandapower
 
     print("\n=================================================================")
@@ -127,8 +114,8 @@ def test_tolerance_lf_lower():
     grid.logger = Logger()
 
     # Create buses
-    Bus0 = Bus(name="Bus0", vnom=25, is_slack=True)
-    Bus1 = Bus(name="Bus1", vnom=25)
+    Bus0 = Bus(name="Bus0", Vnom=25, is_slack=True)
+    Bus1 = Bus(name="Bus1", Vnom=25)
 
     grid.add_bus(Bus0)
     grid.add_bus(Bus1)
@@ -156,7 +143,7 @@ def test_tolerance_lf_lower():
 
     # Check solution
     approx_losses = round(1000 * power_flow.results.losses[0], 3)
-    solution = complex(0.104, 0.58)  # Expected solution from GridCal
+    solution = complex(0.104, 0.58)  # Expected solution from VeraGrid
     # Tested on ETAP 16.1.0 and pandapower
 
     print("\n=================================================================")
