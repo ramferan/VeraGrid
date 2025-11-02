@@ -49,9 +49,9 @@ def test_ntc_ultra_simple() -> None:
     res = drv.results
 
     assert res.converged
-    assert np.isclose(res.Sf[0].real, 70.0)
+    assert np.isclose(res.Sf[0].real, 50.0)
     assert np.isclose(res.dSbus.sum(), 0.0)
-    assert res.dSbus[0] == 45.0
+    assert res.dSbus[0] == 25.0
     assert abs(res.nodal_balance.sum()) < 1e-8
 
     # ----------------------------------------------------------

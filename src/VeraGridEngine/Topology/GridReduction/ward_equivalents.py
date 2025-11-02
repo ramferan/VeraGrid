@@ -74,9 +74,8 @@ def get_reduction_sets_1(nc: NumericalCircuit,
 
 
 def ward_standard_reduction(grid: MultiCircuit,
-                            reduction_bus_indices: IntVec,
-                            V0: CxVec,
-                            logger: Logger) -> MultiCircuit:
+                           reduction_bus_indices: IntVec,
+                           V0: CxVec) -> Tuple[MultiCircuit, Logger]:
     """
     Ward standard reduction according to:
     REVIEW OF THE WARD CLASS OF EXTERNAL EQUIVALENTS FOR POWER SYSTEMS
@@ -84,9 +83,10 @@ def ward_standard_reduction(grid: MultiCircuit,
     :param grid: MultiCircuit
     :param reduction_bus_indices: Indices of the buses to reduce
     :param V0: Initial power flow voltages
-    :param logger: Logger instance
     :return: Modified (in-place) MultiCircuit
     """
+    logger = Logger()
+
     nc = compile_numerical_circuit_at(grid, t_idx=None)
 
     # find the boundary set: buses from the internal set the join to the external set
@@ -130,7 +130,8 @@ def ward_standard_reduction(grid: MultiCircuit,
 
     IE = YEB @ VB + YEE @ VE
 
-    Ieq = - YBE @ YEE_fact(IE)
+    # Ieq = - YBE @ YEE_fact(IE)
+    Ieq = YBE @ YEE_fact(IE)
 
     # Equivalent power injections at the boundary
     Seq = (VB * np.conj(Ieq)) * nc.Sbase
@@ -157,16 +158,21 @@ def ward_standard_reduction(grid: MultiCircuit,
                 f = b_buses[i]
                 t = b_buses[j]
 
-                z = 1.0 / Yeq[i, j]
+                # Avoid adding impedances for disconnected cross-boundaries
+                if abs(Yeq[i, j]) > 1e-6:
+                    z = 1.0 / Yeq[i, j]
 
-                grid.add_series_reactance(obj=dev.SeriesReactance(
-                    name=f"Equivalent boundary impedance {b_buses[i]}-{b_buses[j]}",
-                    bus_from=grid.buses[f],
-                    bus_to=grid.buses[t],
-                    r=z.real,
-                    x=z.imag,
-                    rate=9999.0
-                ))
+                    grid.add_series_reactance(obj=dev.SeriesReactance(
+                        name=f"Equivalent boundary impedance {b_buses[i]}-{b_buses[j]}",
+                        bus_from=grid.buses[f],
+                        bus_to=grid.buses[t],
+                        r=z.real,
+                        x=z.imag,
+                        rate=9999.0
+                    ))
+                else:
+                    logger.add_warning(msg=f"Impedance between buses {f} and {t} is too small, \
+                                       skipping the boundary series reactance")
 
     # ----------------------------------------------------------------------
     # Add equivalent loads at the boundary
@@ -182,4 +188,4 @@ def ward_standard_reduction(grid: MultiCircuit,
     # ----------------------------------------------------------------------
     grid.delete_buses(lst=[grid.buses[e] for e in e_buses], delete_associated=True)
 
-    return grid
+    return grid, logger

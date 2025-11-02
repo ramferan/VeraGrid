@@ -30,7 +30,7 @@ import VeraGridEngine.Devices as dev
 import VeraGridEngine.Simulations as sim
 import VeraGridEngine.Simulations.PowerFlow.grid_analysis as grid_analysis
 from VeraGridEngine.Compilers.circuit_to_newton_pa import get_newton_mip_solvers_list
-from VeraGridEngine.Utils.MIP.selected_interface import get_ortools_available_mip_solvers
+from VeraGridEngine.Utils.MIP.selected_interface import get_available_mip_solvers
 from VeraGridEngine.IO.file_system import opf_file_path
 from VeraGridEngine.IO.veragrid.remote import RemoteInstruction
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
@@ -325,7 +325,7 @@ class SimulationsMain(TimeEventsMain):
             self.ui.solver_comboBox.setModel(gf.get_list_model(list(self.solvers_dict.keys())))
             self.ui.solver_comboBox.setCurrentIndex(0)
 
-            mip_solvers = get_ortools_available_mip_solvers()
+            mip_solvers = get_available_mip_solvers(tpe=MIPFramework.PuLP)
             self.ui.mip_solver_comboBox.setModel(gf.get_list_model(mip_solvers))
 
         elif eng == EngineType.NewtonPA:
@@ -381,7 +381,7 @@ class SimulationsMain(TimeEventsMain):
             self.ui.solver_comboBox.setCurrentIndex(0)
 
             # MIP solvers
-            mip_solvers = get_ortools_available_mip_solvers()
+            mip_solvers = get_available_mip_solvers(tpe=MIPFramework.PuLP)
             self.ui.mip_solver_comboBox.setModel(gf.get_list_model(mip_solvers))
 
         elif eng == EngineType.Bentayga:
@@ -2041,6 +2041,9 @@ class SimulationsMain(TimeEventsMain):
         lodf_tolerance = self.ui.opfContingencyToleranceSpinBox.value()
         maximize_flows = self.ui.opfMaximizeExcahngeCheckBox.isChecked()
         unit_commitment = self.ui.opfUnitCommitmentCheckBox.isChecked()
+        consider_ramps = self.ui.opfConsiderRampsCheckBox.isChecked()
+        consider_time_up_down = self.ui.opfConsiderUpDownTimeCheckBox.isChecked()
+        area_spinning_reserve = self.ui.opfSpinningReserveCheckBox.isChecked()
         generate_report = self.ui.addOptimalPowerFlowReportCheckBox.isChecked()
         robust = self.ui.fixOpfCheckBox.isChecked()
         generation_expansion_planning = self.ui.opfGEPCheckBox.isChecked()
@@ -2081,7 +2084,7 @@ class SimulationsMain(TimeEventsMain):
             acopf_v0 = pf_results.voltage
             acopf_S0 = pf_results.Sbus
         else:
-            if ips_init_with_pf:
+            if ips_init_with_pf and solver == SolverType.NONLINEAR_OPF:
                 self.show_warning_toast("Run a power flow first")
                 ips_init_with_pf = False
 
@@ -2105,6 +2108,9 @@ class SimulationsMain(TimeEventsMain):
             maximize_flows=maximize_flows,
             inter_aggregation_info=inter_aggregation_info,
             unit_commitment=unit_commitment,
+            consider_ramps=consider_ramps,
+            consider_time_up_down=consider_time_up_down,
+            area_spinning_reserve=area_spinning_reserve,
             generation_expansion_planning=generation_expansion_planning,
             export_model_fname=export_model_fname,
             generate_report=generate_report,

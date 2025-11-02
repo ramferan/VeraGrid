@@ -174,7 +174,7 @@ class MapLineContainer(GenericDiagramWidget, QGraphicsItemGroup):
         # second pass: create the segments
         self.redraw_segments()
 
-    def removeNode(self, node: LineLocationGraphicItem):
+    def remove_node(self, node: LineLocationGraphicItem):
         """
 
         :param node:
@@ -411,11 +411,12 @@ class MapLineContainer(GenericDiagramWidget, QGraphicsItemGroup):
             # Return the newly created node
             return graphic_obj
 
-        # else:
-        #     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
-        #     logging.info("Invalid node index")
+        else:
+            #     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+            #     logging.info("Invalid node index")
+            return None
 
-    def split_Line(self, index):
+    def split_line(self, index):
         """
         Split Line
         :param index:
@@ -461,6 +462,7 @@ class MapLineContainer(GenericDiagramWidget, QGraphicsItemGroup):
         else:
             # Handle invalid index
             error_msg("Index out of range or invalid", "split line")
+            return list(), list()
 
     def disable_line(self):
         """

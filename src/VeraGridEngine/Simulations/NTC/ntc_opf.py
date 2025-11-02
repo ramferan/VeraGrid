@@ -1232,7 +1232,7 @@ def add_linear_injections_formulation(t: Union[int, None],
 
             if not skip_generation_limits:
                 prob.add_cst(
-                    cst=ntc_vars.bus_vars.delta_p[t, k] <= bus_pmax_t[k],
+                    cst=base_power[k] + ntc_vars.bus_vars.delta_p[t, k] <= bus_pmax_t[k],
                     name=join(f'delta_p_up', [t, k], "_")
                 )
 
@@ -1243,7 +1243,7 @@ def add_linear_injections_formulation(t: Union[int, None],
 
             if not skip_generation_limits:
                 prob.add_cst(
-                    cst=-ntc_vars.bus_vars.delta_p[t, k] >= bus_pmin_t[k],
+                    cst=base_power[k] - ntc_vars.bus_vars.delta_p[t, k] >= bus_pmin_t[k],
                     name=join(f'delta_p_dwn', [t, k], "_")
                 )
 
@@ -1267,170 +1267,170 @@ def add_linear_injections_formulation(t: Union[int, None],
     return f_obj, base_power
 
 
-def add_linear_injections_formulation_proper(t: Union[int, None],
-                                             Sbase: float,
-                                             gen_data_t: GeneratorData,
-                                             batt_data_t: BatteryData,
-                                             load_data_t: LoadData,
-                                             bus_data_t: BusData,
-                                             branch_data_t: PassiveBranchData,
-                                             active_branch_data_t: ActiveBranchData,
-                                             hvdc_data_t: HvdcData,
-                                             bus_a1_idx: IntVec,
-                                             bus_a2_idx: IntVec,
-                                             transfer_method: AvailableTransferMode,
-                                             skip_generation_limits: bool,
-                                             ntc_vars: NtcVars,
-                                             prob: LpModel,
-                                             logger: Logger):
-    """
-    Add MIP injections formulation
-    :param t: time step
-    :param Sbase: base power (100 MVA)
-    :param gen_data_t: GeneratorData structure
-    :param batt_data_t: BatteryData structure
-    :param load_data_t: LoadData structure
-    :param bus_data_t: BusData structure
-    :param branch_data_t:
-    :param active_branch_data_t:
-    :param hvdc_data_t:
-    :param bus_a1_idx: bus indices within area "from"
-    :param bus_a2_idx: bus indices within area "to"
-    :param transfer_method: Exchange transfer method
-    :param skip_generation_limits: Skip generation limits?
-    :param ntc_vars: MIP variables structure
-    :param prob: MIP problem
-    :param logger: logger instance
-    :return objective function
-    """
-
-    gen_per_bus = gen_data_t.get_injections_per_bus().real / Sbase
-    batt_per_bus = batt_data_t.get_injections_per_bus().real / Sbase
-    load_per_bus = load_data_t.get_injections_per_bus().real / Sbase  # this comes with the proper sign already
-    base_power = gen_per_bus + batt_per_bus + load_per_bus
-
-    f_obj = 0
-
-    # get the area of every generator
-    gen_idx_1 = np.where(np.isin(gen_data_t.bus_idx, bus_a1_idx))[0]
-    gen_idx_2 = np.where(np.isin(gen_data_t.bus_idx, bus_a2_idx))[0]
-
-    batt_idx_1 = np.where(np.isin(batt_data_t.bus_idx, bus_a1_idx))[0]
-    batt_idx_2 = np.where(np.isin(batt_data_t.bus_idx, bus_a2_idx))[0]
-
-    load_idx_1 = np.where(np.isin(load_data_t.bus_idx, bus_a1_idx))[0]
-    load_idx_2 = np.where(np.isin(load_data_t.bus_idx, bus_a2_idx))[0]
-
-    ntc_vars.gen_vars.p[t, :] = gen_data_t.p / Sbase
-    ntc_vars.batt_vars.p[t, :] = batt_data_t.p / Sbase
-    ntc_vars.load_vars.p[t, :] = load_data_t.S.real / Sbase
-
-    for k in gen_idx_1:
-        if gen_data_t.p[k] < gen_data_t.pmax[k] and gen_data_t.active[k]:
-
-            if skip_generation_limits:
-                margin_up = 9999.0
-            else:
-                margin_up = (gen_data_t.pmax[k] - gen_data_t.p[k]) / Sbase
-
-            ntc_vars.gen_vars.p_inc[t, k] = prob.add_var(lb=0, ub=margin_up, name=join("gen_p_inc_", [t, k]))
-            ntc_vars.gen_vars.p[t, k] = gen_data_t.p[k] / Sbase + ntc_vars.gen_vars.p_inc[t, k]
-            ntc_vars.delta_1[t] += ntc_vars.gen_vars.p_inc[t, k]
-
-            i = gen_data_t.bus_idx[k]
-            ntc_vars.bus_vars.delta_p[t, i] += ntc_vars.gen_vars.p_inc[t, k]
-
-            f_obj += - ntc_vars.gen_vars.p_inc[t, k] * gen_data_t.shift_key[k]
-        else:
-            # the generator is maxed out
-            pass
-
-    for k in batt_idx_1:
-        if batt_data_t.p[k] < batt_data_t.pmax[k]:
-            if skip_generation_limits:
-                margin_up = 9999.0
-            else:
-                margin_up = (batt_data_t.pmax[k] - batt_data_t.p[k]) / Sbase
-
-            ntc_vars.batt_vars.p_inc[t, k] = prob.add_var(lb=0, ub=margin_up, name=join("batt_p_inc_", [t, k]))
-            ntc_vars.batt_vars.p[t, k] += ntc_vars.batt_vars.p_inc[t, k]
-            ntc_vars.delta_1[t] += ntc_vars.batt_vars.p_inc[t, k]
-
-            i = batt_data_t.bus_idx[k]
-            ntc_vars.bus_vars.delta_p[t, i] += ntc_vars.batt_vars.p_inc[t, k]
-
-            f_obj += - ntc_vars.batt_vars.p_inc[t, k] * batt_data_t.shift_key[k]
-        else:
-            # the battery is maxed out
-            pass
-
-    for k in gen_idx_2:
-        if gen_data_t.p[k] > gen_data_t.pmin[k] and gen_data_t.active[k]:
-
-            if skip_generation_limits:
-                margin_dwn = gen_data_t.p[k] / Sbase
-            else:
-                margin_dwn = (gen_data_t.p[k] - gen_data_t.pmin[k]) / Sbase
-            ntc_vars.gen_vars.p_inc[t, k] = prob.add_var(lb=0, ub=margin_dwn, name=join("gen_n_inc_", [t, k]))
-            ntc_vars.gen_vars.p[t, k] = (gen_data_t.p[k] / Sbase) - ntc_vars.gen_vars.p_inc[t, k]
-            ntc_vars.delta_2[t] += ntc_vars.gen_vars.p_inc[t, k]
-
-            i = gen_data_t.bus_idx[k]
-            ntc_vars.bus_vars.delta_p[t, i] += - ntc_vars.gen_vars.p_inc[t, k]
-
-            f_obj += - ntc_vars.gen_vars.p_inc[t, k] * gen_data_t.shift_key[k]
-        else:
-            # the generator cannot go lower
-            pass
-
-    for k in batt_idx_2:
-        if batt_data_t.p[k] > batt_data_t.pmin[k]:
-            if skip_generation_limits:
-                margin_dwn = batt_data_t.p[k] / Sbase
-            else:
-                margin_dwn = (batt_data_t.p[k] - batt_data_t.pmin[k]) / Sbase
-            ntc_vars.batt_vars.p_inc[t, k] = prob.add_var(lb=0, ub=margin_dwn, name=join("batt_n_inc_", [t, k]))
-            ntc_vars.batt_vars.p[t, k] += - ntc_vars.batt_vars.p_inc[t, k]
-            ntc_vars.delta_2[t] += ntc_vars.batt_vars.p_inc[t, k]
-
-            i = batt_data_t.bus_idx[k]
-            ntc_vars.bus_vars.delta_p[t, i] += - ntc_vars.batt_vars.p_inc[t, k]
-
-            f_obj += -ntc_vars.batt_vars.p_inc[t, k] * batt_data_t.shift_key[k]
-        else:
-            # the battery cannot go lower
-            pass
-
-    # formulate the nodal summations
-    for k in range(gen_data_t.nelm):
-        i = gen_data_t.bus_idx[k]
-        ntc_vars.bus_vars.Pinj[t, i] += ntc_vars.gen_vars.p[t, k]
-        ntc_vars.bus_vars.Pbalance[t, i] += ntc_vars.gen_vars.p[t, k]
-
-    for k in range(batt_data_t.nelm):
-        i = batt_data_t.bus_idx[k]
-        ntc_vars.bus_vars.Pinj[t, i] += ntc_vars.batt_vars.p[t, k]
-        ntc_vars.bus_vars.Pbalance[t, i] += ntc_vars.batt_vars.p[t, k]
-
-    for k in range(load_data_t.nelm):
-        i = load_data_t.bus_idx[k]
-        ntc_vars.bus_vars.Pinj[t, i] += -ntc_vars.load_vars.p[t, k]
-        ntc_vars.bus_vars.Pbalance[t, i] += -ntc_vars.load_vars.p[t, k]
-
-    # add the area equality constraint
-    ntc_vars.delta_sl_1[t] = prob.add_var(lb=0, ub=prob.INFINITY, name=join("DeltaSL_up_", [t]))
-    ntc_vars.delta_sl_2[t] = prob.add_var(lb=0, ub=prob.INFINITY, name=join("DeltaSL_down_", [t]))
-    prob.add_cst(
-        cst=ntc_vars.delta_1[t] - ntc_vars.delta_sl_1[t] == ntc_vars.delta_2[t] - ntc_vars.delta_sl_2[t],
-        name=join(f'deltas_equality_', [t], "_")
-    )
-
-    # minimize the power at area 2 (receiving area), maximize at area 1 (sending area)
-    # minimize the slacks
-    # f_obj += ntc_vars.delta_2[t] - ntc_vars.delta_1[t] + ntc_vars.delta_sl_1[t] + ntc_vars.delta_sl_2[t]
-    f_obj += ntc_vars.delta_sl_1[t] + ntc_vars.delta_sl_2[t]
-
-    return f_obj, base_power
+# def add_linear_injections_formulation_proper(t: Union[int, None],
+#                                              Sbase: float,
+#                                              gen_data_t: GeneratorData,
+#                                              batt_data_t: BatteryData,
+#                                              load_data_t: LoadData,
+#                                              bus_data_t: BusData,
+#                                              branch_data_t: PassiveBranchData,
+#                                              active_branch_data_t: ActiveBranchData,
+#                                              hvdc_data_t: HvdcData,
+#                                              bus_a1_idx: IntVec,
+#                                              bus_a2_idx: IntVec,
+#                                              transfer_method: AvailableTransferMode,
+#                                              skip_generation_limits: bool,
+#                                              ntc_vars: NtcVars,
+#                                              prob: LpModel,
+#                                              logger: Logger):
+#     """
+#     Add MIP injections formulation
+#     :param t: time step
+#     :param Sbase: base power (100 MVA)
+#     :param gen_data_t: GeneratorData structure
+#     :param batt_data_t: BatteryData structure
+#     :param load_data_t: LoadData structure
+#     :param bus_data_t: BusData structure
+#     :param branch_data_t:
+#     :param active_branch_data_t:
+#     :param hvdc_data_t:
+#     :param bus_a1_idx: bus indices within area "from"
+#     :param bus_a2_idx: bus indices within area "to"
+#     :param transfer_method: Exchange transfer method
+#     :param skip_generation_limits: Skip generation limits?
+#     :param ntc_vars: MIP variables structure
+#     :param prob: MIP problem
+#     :param logger: logger instance
+#     :return objective function
+#     """
+#
+#     gen_per_bus = gen_data_t.get_injections_per_bus().real / Sbase
+#     batt_per_bus = batt_data_t.get_injections_per_bus().real / Sbase
+#     load_per_bus = load_data_t.get_injections_per_bus().real / Sbase  # this comes with the proper sign already
+#     base_power = gen_per_bus + batt_per_bus + load_per_bus
+#
+#     f_obj = 0
+#
+#     # get the area of every generator
+#     gen_idx_1 = np.where(np.isin(gen_data_t.bus_idx, bus_a1_idx))[0]
+#     gen_idx_2 = np.where(np.isin(gen_data_t.bus_idx, bus_a2_idx))[0]
+#
+#     batt_idx_1 = np.where(np.isin(batt_data_t.bus_idx, bus_a1_idx))[0]
+#     batt_idx_2 = np.where(np.isin(batt_data_t.bus_idx, bus_a2_idx))[0]
+#
+#     load_idx_1 = np.where(np.isin(load_data_t.bus_idx, bus_a1_idx))[0]
+#     load_idx_2 = np.where(np.isin(load_data_t.bus_idx, bus_a2_idx))[0]
+#
+#     ntc_vars.gen_vars.p[t, :] = gen_data_t.p / Sbase
+#     ntc_vars.batt_vars.p[t, :] = batt_data_t.p / Sbase
+#     ntc_vars.load_vars.p[t, :] = load_data_t.S.real / Sbase
+#
+#     for k in gen_idx_1:
+#         if gen_data_t.p[k] < gen_data_t.pmax[k] and gen_data_t.active[k]:
+#
+#             if skip_generation_limits:
+#                 margin_up = 9999.0
+#             else:
+#                 margin_up = (gen_data_t.pmax[k] - gen_data_t.p[k]) / Sbase
+#
+#             ntc_vars.gen_vars.p_inc[t, k] = prob.add_var(lb=0, ub=margin_up, name=join("gen_p_inc_", [t, k]))
+#             ntc_vars.gen_vars.p[t, k] = gen_data_t.p[k] / Sbase + ntc_vars.gen_vars.p_inc[t, k]
+#             ntc_vars.delta_1[t] += ntc_vars.gen_vars.p_inc[t, k]
+#
+#             i = gen_data_t.bus_idx[k]
+#             ntc_vars.bus_vars.delta_p[t, i] += ntc_vars.gen_vars.p_inc[t, k]
+#
+#             f_obj += - ntc_vars.gen_vars.p_inc[t, k] * gen_data_t.shift_key[k]
+#         else:
+#             # the generator is maxed out
+#             pass
+#
+#     for k in batt_idx_1:
+#         if batt_data_t.p[k] < batt_data_t.pmax[k]:
+#             if skip_generation_limits:
+#                 margin_up = 9999.0
+#             else:
+#                 margin_up = (batt_data_t.pmax[k] - batt_data_t.p[k]) / Sbase
+#
+#             ntc_vars.batt_vars.p_inc[t, k] = prob.add_var(lb=0, ub=margin_up, name=join("batt_p_inc_", [t, k]))
+#             ntc_vars.batt_vars.p[t, k] += ntc_vars.batt_vars.p_inc[t, k]
+#             ntc_vars.delta_1[t] += ntc_vars.batt_vars.p_inc[t, k]
+#
+#             i = batt_data_t.bus_idx[k]
+#             ntc_vars.bus_vars.delta_p[t, i] += ntc_vars.batt_vars.p_inc[t, k]
+#
+#             f_obj += - ntc_vars.batt_vars.p_inc[t, k] * batt_data_t.shift_key[k]
+#         else:
+#             # the battery is maxed out
+#             pass
+#
+#     for k in gen_idx_2:
+#         if gen_data_t.p[k] > gen_data_t.pmin[k] and gen_data_t.active[k]:
+#
+#             if skip_generation_limits:
+#                 margin_dwn = gen_data_t.p[k] / Sbase
+#             else:
+#                 margin_dwn = (gen_data_t.p[k] - gen_data_t.pmin[k]) / Sbase
+#             ntc_vars.gen_vars.p_inc[t, k] = prob.add_var(lb=0, ub=margin_dwn, name=join("gen_n_inc_", [t, k]))
+#             ntc_vars.gen_vars.p[t, k] = (gen_data_t.p[k] / Sbase) - ntc_vars.gen_vars.p_inc[t, k]
+#             ntc_vars.delta_2[t] += ntc_vars.gen_vars.p_inc[t, k]
+#
+#             i = gen_data_t.bus_idx[k]
+#             ntc_vars.bus_vars.delta_p[t, i] += - ntc_vars.gen_vars.p_inc[t, k]
+#
+#             f_obj += - ntc_vars.gen_vars.p_inc[t, k] * gen_data_t.shift_key[k]
+#         else:
+#             # the generator cannot go lower
+#             pass
+#
+#     for k in batt_idx_2:
+#         if batt_data_t.p[k] > batt_data_t.pmin[k]:
+#             if skip_generation_limits:
+#                 margin_dwn = batt_data_t.p[k] / Sbase
+#             else:
+#                 margin_dwn = (batt_data_t.p[k] - batt_data_t.pmin[k]) / Sbase
+#             ntc_vars.batt_vars.p_inc[t, k] = prob.add_var(lb=0, ub=margin_dwn, name=join("batt_n_inc_", [t, k]))
+#             ntc_vars.batt_vars.p[t, k] += - ntc_vars.batt_vars.p_inc[t, k]
+#             ntc_vars.delta_2[t] += ntc_vars.batt_vars.p_inc[t, k]
+#
+#             i = batt_data_t.bus_idx[k]
+#             ntc_vars.bus_vars.delta_p[t, i] += - ntc_vars.batt_vars.p_inc[t, k]
+#
+#             f_obj += -ntc_vars.batt_vars.p_inc[t, k] * batt_data_t.shift_key[k]
+#         else:
+#             # the battery cannot go lower
+#             pass
+#
+#     # formulate the nodal summations
+#     for k in range(gen_data_t.nelm):
+#         i = gen_data_t.bus_idx[k]
+#         ntc_vars.bus_vars.Pinj[t, i] += ntc_vars.gen_vars.p[t, k]
+#         ntc_vars.bus_vars.Pbalance[t, i] += ntc_vars.gen_vars.p[t, k]
+#
+#     for k in range(batt_data_t.nelm):
+#         i = batt_data_t.bus_idx[k]
+#         ntc_vars.bus_vars.Pinj[t, i] += ntc_vars.batt_vars.p[t, k]
+#         ntc_vars.bus_vars.Pbalance[t, i] += ntc_vars.batt_vars.p[t, k]
+#
+#     for k in range(load_data_t.nelm):
+#         i = load_data_t.bus_idx[k]
+#         ntc_vars.bus_vars.Pinj[t, i] += -ntc_vars.load_vars.p[t, k]
+#         ntc_vars.bus_vars.Pbalance[t, i] += -ntc_vars.load_vars.p[t, k]
+#
+#     # add the area equality constraint
+#     ntc_vars.delta_sl_1[t] = prob.add_var(lb=0, ub=prob.INFINITY, name=join("DeltaSL_up_", [t]))
+#     ntc_vars.delta_sl_2[t] = prob.add_var(lb=0, ub=prob.INFINITY, name=join("DeltaSL_down_", [t]))
+#     prob.add_cst(
+#         cst=ntc_vars.delta_1[t] - ntc_vars.delta_sl_1[t] == ntc_vars.delta_2[t] - ntc_vars.delta_sl_2[t],
+#         name=join(f'deltas_equality_', [t], "_")
+#     )
+#
+#     # minimize the power at area 2 (receiving area), maximize at area 1 (sending area)
+#     # minimize the slacks
+#     # f_obj += ntc_vars.delta_2[t] - ntc_vars.delta_1[t] + ntc_vars.delta_sl_1[t] + ntc_vars.delta_sl_2[t]
+#     f_obj += ntc_vars.delta_sl_1[t] + ntc_vars.delta_sl_2[t]
+#
+#     return f_obj, base_power
 
 
 def add_linear_branches_formulation(t_idx: int,

@@ -11,28 +11,31 @@ That means that solves the OPF problem for a complete time series at once
 from __future__ import annotations
 import os
 import numpy as np
-from typing import List, Union, Tuple, Callable
+from typing import List, Union, Tuple, Callable, Dict
 from scipy.sparse import csc_matrix
 
 from VeraGridEngine.IO.file_system import opf_file_path
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Aggregation.inter_aggregation_info import InterAggregationInfo
 from VeraGridEngine.Devices.Aggregation.contingency_group import ContingencyGroup
+from VeraGridEngine.Devices.Substation.bus import Bus
+from VeraGridEngine.Devices.Branches.dc_line import DcLine
+from VeraGridEngine.Devices.Fluid.fluid_node import FluidNode
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
-from VeraGridEngine.DataStructures.generator_data import GeneratorData
-from VeraGridEngine.DataStructures.battery_data import BatteryData
-from VeraGridEngine.DataStructures.load_data import LoadData
-from VeraGridEngine.DataStructures.passive_branch_data import PassiveBranchData
-from VeraGridEngine.DataStructures.active_branch_data import ActiveBranchData
-from VeraGridEngine.DataStructures.hvdc_data import HvdcData
-from VeraGridEngine.DataStructures.vsc_data import VscData
-from VeraGridEngine.DataStructures.bus_data import BusData
-from VeraGridEngine.DataStructures.fluid_node_data import FluidNodeData
-from VeraGridEngine.DataStructures.fluid_path_data import FluidPathData
-from VeraGridEngine.DataStructures.fluid_turbine_data import FluidTurbineData
-from VeraGridEngine.DataStructures.fluid_pump_data import FluidPumpData
-from VeraGridEngine.DataStructures.fluid_p2x_data import FluidP2XData
+# from VeraGridEngine.DataStructures.generator_data import GeneratorData
+# from VeraGridEngine.DataStructures.battery_data import BatteryData
+# from VeraGridEngine.DataStructures.load_data import LoadData
+# from VeraGridEngine.DataStructures.passive_branch_data import PassiveBranchData
+# from VeraGridEngine.DataStructures.active_branch_data import ActiveBranchData
+# from VeraGridEngine.DataStructures.hvdc_data import HvdcData
+# from VeraGridEngine.DataStructures.vsc_data import VscData
+# from VeraGridEngine.DataStructures.bus_data import BusData
+# from VeraGridEngine.DataStructures.fluid_node_data import FluidNodeData
+# from VeraGridEngine.DataStructures.fluid_path_data import FluidPathData
+# from VeraGridEngine.DataStructures.fluid_turbine_data import FluidTurbineData
+# from VeraGridEngine.DataStructures.fluid_pump_data import FluidPumpData
+# from VeraGridEngine.DataStructures.fluid_p2x_data import FluidP2XData
 from VeraGridEngine.basic_structures import Logger, Vec, IntVec, DateVec, Mat
 from VeraGridEngine.Utils.MIP.selected_interface import LpExp, LpVar, LpModel, lpDot, join, get_model_instance
 from VeraGridEngine.enumerations import (HvdcControlType, ZonalGrouping, MIPSolvers, TapPhaseControl,
@@ -616,7 +619,6 @@ class SystemVars:
         :param gen_cost: Generation cost values (nt, ngen)
         :param batt_p: Battery power values (nt, nbatt)
         :param shedding_cost: Shedding cost values (nt, ngen)
-        :param overload_cost: Overload cost values (nt, ngen)
         """
         self.system_fuel = (gen_fuel_rates_matrix * gen_p.T).T
         self.system_emissions = (gen_emissions_rates_matrix * gen_p.T).T
@@ -734,37 +736,37 @@ class OpfVars:
         return data
 
 
-def add_linear_generation_formulation(local_t: Union[int, None],
+def add_linear_generation_formulation(local_t: int,
+                                      global_t: int | None,
+                                      grid: MultiCircuit,
+                                      bus_idx_dict: Dict[Bus, int],
                                       Sbase: float,
                                       time_array: DateVec,
                                       bus_vars: BusVars,
-                                      gen_data_t: GeneratorData,
                                       gen_vars: GenerationVars,
                                       prob: LpModel,
                                       unit_commitment: bool,
                                       ramp_constraints: bool,
-                                      consider_time_up_down: bool,
-                                      area_spinning_reserve: bool,
                                       skip_generation_limits: bool,
                                       all_generators_fixed: bool,
                                       vd: IntVec,
                                       nodal_capacity_active: bool,
                                       generation_expansion_planning: bool,
                                       use_glsk_as_cost: bool,
-                                      logger: Logger) -> LpExp:
+                                      logger: Logger):
     """
     Add MIP generation formulation
-    :param local_t: time step
+    :param local_t: time step (possibly reduced or from an interval)
+    :param global_t: global time (integer or None to signal for the snapshot)
+    :param grid: MultiCircuit instance
+    :param bus_idx_dict: Bus-index dictionary
     :param Sbase: base power (100 MVA)
     :param time_array: complete time array
     :param bus_vars: BusVars
-    :param gen_data_t: GeneratorData structure
     :param gen_vars: GenerationVars structure
     :param prob: LpModel
     :param unit_commitment: formulate unit commitment?
     :param ramp_constraints: formulate ramp constraints?
-    :param consider_time_up_down: consider time up/down?
-    :param area_spinning_reserve: area spinning reserve?
     :param skip_generation_limits: skip the generation limits?
     :param all_generators_fixed: All generators take their snapshot or profile values
                                  instead of resorting to dispatchable status
@@ -772,7 +774,7 @@ def add_linear_generation_formulation(local_t: Union[int, None],
     :param nodal_capacity_active: nodal capacity active?
     :param generation_expansion_planning: generation expansion plan?
     :param use_glsk_as_cost: if true, the GLSK values are used instead of the traditional costs
-    :param logger: Logger object
+    :param logger: Logger instance
     :return objective function
     """
     f_obj = 0.0
@@ -780,7 +782,7 @@ def add_linear_generation_formulation(local_t: Union[int, None],
     if nodal_capacity_active:
         # TODO: This looks like a bug
         # id_gen_nonvd = [i for i in range(gen_data_t.C_bus_elm.shape[1]) if i not in vd]
-        id_gen_nonvd = [i for i in range(gen_data_t.nelm) if i not in vd]
+        id_gen_nonvd = [i for i in range(grid.get_generators_number()) if i not in vd]
     else:
         id_gen_nonvd = []
 
@@ -793,207 +795,269 @@ def add_linear_generation_formulation(local_t: Union[int, None],
         year = 0
 
     # add generation stuff
-    for k in range(gen_data_t.nelm):
+    for k, elm in enumerate(grid.generators):
 
-        gen_vars.cost[local_t, k] = 0.0
-        bus_idx = gen_data_t.bus_idx[k]
-        # nodal_cap_condition = gen_data_t.bus_idx[k] not in vd if nodal_capacity_active else True
+        bus_idx = bus_idx_dict.get(elm.bus, None)
+        active = elm.get_active_at(global_t)
 
-        if gen_data_t.active[k] and k not in id_gen_nonvd and bus_idx > -1:  # TODO Review and change this stuff
+        if active and bus_idx is not None:
 
-            if gen_data_t.dispatchable[k] and not all_generators_fixed:
+            pmax_pu = elm.get_Pmax_at(global_t) / Sbase
+            pmin_pu = elm.get_Pmin_at(global_t) / Sbase
+            cost0_pu = elm.get_Cost0_at(global_t) / Sbase
+            cost1_pu = elm.get_Cost_at(global_t) / Sbase
 
-                # declare active power var (limits will be applied later)
-                gen_vars.p[local_t, k] = prob.add_var(-1e20, 1e20, join("gen_p_", [local_t, k], "_"))
+            gen_vars.cost[local_t, k] = 0.0
 
-                if unit_commitment:
+            # TODO Review and change the id_gen_nonvd stuff
+            if active and k not in id_gen_nonvd and bus_idx > -1:
 
-                    # declare unit commitment vars
-                    gen_vars.starting_up[local_t, k] = prob.add_bin(join("gen_starting_up_", [local_t, k], "_"))
-                    gen_vars.producing[local_t, k] = prob.add_bin(join("gen_producing_", [local_t, k], "_"))
-                    gen_vars.shutting_down[local_t, k] = prob.add_bin(join("gen_shutting_down_", [local_t, k], "_"))
+                if elm.enabled_dispatch and not all_generators_fixed:
 
-                    # operational cost (linear...)
-                    if use_glsk_as_cost:
-                        gen_vars.cost[local_t, k] += gen_data_t.shift_key[k] * gen_vars.p[local_t, k]
-                    else:
-                        gen_vars.cost[local_t, k] += (gen_data_t.cost_1[k] * gen_vars.p[local_t, k]
-                                                      + gen_data_t.cost_0[k] * gen_vars.producing[local_t, k])
+                    # declare active power var (limits will be applied later)
+                    gen_vars.p[local_t, k] = prob.add_var(
+                        lb=-1e20, ub=1e20, name=join("gen_p_", [local_t, k], "_")
+                    )
 
-                    # start-up cost
-                    if gen_data_t.startup_cost[k] != 0.0:
-                        gen_vars.cost[local_t, k] += gen_data_t.startup_cost[k] * gen_vars.starting_up[local_t, k]
+                    if unit_commitment:
 
-                    # shut-down cost
-                    if gen_data_t.shut_down_cost[k] != 0.0:
-                        gen_vars.cost[local_t, k] += gen_data_t.shut_down_cost[k] * gen_vars.shutting_down[local_t, k]
-
-                    # power boundaries of the generator
-                    if not skip_generation_limits:
-                        prob.add_cst(
-                            cst=gen_vars.p[local_t, k] >= (gen_data_t.pmin[k] / Sbase * gen_vars.producing[local_t, k]),
-                            name=join("gen_geq_Pmin", [local_t, k], "_")
+                        # declare unit commitment vars
+                        gen_vars.starting_up[local_t, k] = prob.add_int(
+                            0, 1, join("gen_starting_up_", [local_t, k], "_")
                         )
-                        prob.add_cst(
-                            cst=gen_vars.p[local_t, k] <= (gen_data_t.pmax[k] / Sbase * gen_vars.producing[local_t, k]),
-                            name=join("gen_leq_Pmax", [local_t, k], "_")
+                        gen_vars.producing[local_t, k] = prob.add_int(
+                            0, 1, join("gen_producing_", [local_t, k], "_")
+                        )
+                        gen_vars.shutting_down[local_t, k] = prob.add_int(
+                            0, 1, join("gen_shutting_down_", [local_t, k], "_")
                         )
 
-                    if local_t is not None:
-                        if local_t == 0:
-                            # NOTE: Here, gen_data_t.active[k] represents the producing state at t-1
-                            prob.add_cst(cst=gen_vars.starting_up[local_t, k] - gen_vars.shutting_down[local_t, k] ==
-                                             gen_vars.producing[local_t, k] - float(gen_data_t.active[k]),
-                                         name=join("binary_alg1_", [local_t, k], "_"))
-                            prob.add_cst(cst=gen_vars.starting_up[local_t, k] + gen_vars.shutting_down[local_t, k] <= 1,
-                                         name=join("binary_alg2_", [local_t, k], "_"))
+                        # operational cost (linear...)
+                        if use_glsk_as_cost:
+                            gen_vars.cost[local_t, k] += (
+                                    elm.get_shift_key_at(global_t) * gen_vars.p[local_t, k]
+                            )
                         else:
+                            gen_vars.cost[local_t, k] += (
+                                    cost1_pu * gen_vars.p[local_t, k]
+                                    + cost0_pu * gen_vars.producing[local_t, k]
+                            )
+
+                        # start-up cost
+                        gen_vars.cost[local_t, k] += (
+                                elm.StartupCost * gen_vars.starting_up[local_t, k]
+                        )
+
+                        # power boundaries of the generator
+                        if not skip_generation_limits:
                             prob.add_cst(
-                                cst=(gen_vars.starting_up[local_t, k] - gen_vars.shutting_down[local_t, k] ==
-                                     gen_vars.producing[local_t, k] - gen_vars.producing[local_t - 1, k]),
-                                name=join("binary_alg3_", [local_t, k], "_")
+                                cst=gen_vars.p[local_t, k] >= pmin_pu * gen_vars.producing[local_t, k],
+                                name=join("gen_geq_Pmin", [local_t, k], "_")
                             )
                             prob.add_cst(
-                                cst=gen_vars.starting_up[local_t, k] + gen_vars.shutting_down[local_t, k] <= 1,
-                                name=join("binary_alg4_", [local_t, k], "_")
+                                cst=gen_vars.p[local_t, k] <=  pmax_pu * gen_vars.producing[local_t, k],
+                                name=join("gen_leq_Pmax", [local_t, k], "_")
                             )
+
+                        if local_t is not None:
+                            if local_t == 0:
+                                prob.add_cst(
+                                    cst=gen_vars.starting_up[local_t, k] - gen_vars.shutting_down[local_t, k] ==
+                                        gen_vars.producing[local_t, k] - float(active),
+                                    name=join("binary_alg1_", [local_t, k], "_")
+                                )
+                                prob.add_cst(
+                                    cst=(gen_vars.starting_up[local_t, k] + gen_vars.shutting_down[local_t, k] <= 1),
+                                    name=join("binary_alg2_", [local_t, k], "_")
+                                )
+                            else:
+                                prob.add_cst(
+                                    cst=(gen_vars.starting_up[local_t, k] - gen_vars.shutting_down[local_t, k] ==
+                                         gen_vars.producing[local_t, k] - gen_vars.producing[local_t - 1, k]),
+                                    name=join("binary_alg3_", [local_t, k], "_")
+                                )
+                                prob.add_cst(
+                                    cst=gen_vars.starting_up[local_t, k] + gen_vars.shutting_down[local_t, k] <= 1,
+                                    name=join("binary_alg4_", [local_t, k], "_")
+                                )
+                    else:
+                        # No unit commitment
+
+                        # Operational cost (linear...)
+                        if use_glsk_as_cost:
+                            gen_vars.cost[local_t, k] += elm.get_shift_key_at(global_t) * gen_vars.p[local_t, k]
+                        else:
+                            gen_vars.cost[local_t, k] += (cost1_pu * gen_vars.p[local_t, k]) + cost0_pu
+
+                        if not skip_generation_limits:
+                            prob.set_var_bounds(var=gen_vars.p[local_t, k], lb=pmin_pu, ub=pmax_pu)
+
+                    # add the ramp constraints
+                    if ramp_constraints and local_t is not None:
+                        if local_t > 0:
+
+                            pmax = elm.get_Pmax_at(global_t)
+
+                            # TODO: review units here
+                            if elm.RampUp < pmax and elm.RampDown < pmax:
+                                # if the ramp is actually sufficiently restrictive...
+                                dt = (time_array[local_t] -
+                                      time_array[local_t - 1]).seconds / 3600.0  # time increment in hours
+
+                                # - ramp_down · dt <= P(t) - P(t-1) <= ramp_up · dt
+                                prob.add_cst(
+                                    cst=(-elm.RampDown / Sbase * dt <=
+                                         gen_vars.p[local_t, k] - gen_vars.p[local_t - 1, k])
+                                )
+                                prob.add_cst(
+                                    cst=gen_vars.p[local_t, k] - gen_vars.p[local_t - 1, k] <= elm.RampUp / Sbase * dt
+                                )
+
                 else:
-                    # No unit commitment
+
+                    # it is NOT dispatchable
+                    p_pu = elm.get_P_at(global_t) / Sbase
+
+                    # the generator is not dispatchable at time step
+                    if p_pu > 0:
+
+                        gen_vars.shedding[local_t, k] = prob.add_var(
+                            0, p_pu, join("gen_shedding_", [local_t, k], "_")
+                        )
+
+                        gen_vars.p[local_t, k] = p_pu - gen_vars.shedding[local_t, k]
+
+                        if use_glsk_as_cost:
+                            gen_vars.cost[local_t, k] += elm.get_shift_key_at(global_t) * gen_vars.shedding[local_t, k]
+
+                        else:
+                            gen_vars.cost[local_t, k] += cost1_pu * gen_vars.shedding[local_t, k]
+
+                    elif p_pu < 0:
+                        # the negative sign is because P is already negative here, to make it positive
+                        gen_vars.shedding[local_t, k] = prob.add_var(
+                            0, -p_pu, join("gen_shedding_", [local_t, k], "_")
+                        )
+
+                        gen_vars.p[local_t, k] = p_pu + gen_vars.shedding[local_t, k]
+
+                        if use_glsk_as_cost:
+                            gen_vars.cost[local_t, k] += elm.get_shift_key_at(global_t) * gen_vars.shedding[local_t, k]
+
+                        else:
+                            gen_vars.cost[local_t, k] += cost1_pu * gen_vars.shedding[local_t, k]
+
+                    else:
+                        # the generation value is exactly zero
+                        prob.set_var_bounds(var=gen_vars.p[local_t, k], lb=0.0, ub=0.0)
+
+                    gen_vars.producing[local_t, k] = 1
+                    gen_vars.shutting_down[local_t, k] = 0
+                    gen_vars.starting_up[local_t, k] = 0
 
                     # Operational cost (linear...)
                     if use_glsk_as_cost:
-                        gen_vars.cost[local_t, k] += gen_data_t.shift_key[k] * gen_vars.p[local_t, k]
-                    else:
-                        gen_vars.cost[local_t, k] += (gen_data_t.cost_1[k] * gen_vars.p[local_t, k]) + \
-                                                     gen_data_t.cost_0[k]
-
-                    if not skip_generation_limits:
-                        prob.set_var_bounds(var=gen_vars.p[local_t, k],
-                                            lb=gen_data_t.pmin[k] / Sbase,
-                                            ub=gen_data_t.pmax[k] / Sbase)
-
-                # add the ramp constraints
-                if ramp_constraints and local_t > 0 and not skip_generation_limits:
-
-                    # if the ramp is actually sufficiently restrictive...
-                    dt = (time_array[local_t] - time_array[local_t - 1]).seconds / 3600.0  # time increment in hours
-
-                    if gen_data_t.ramp_up[k] <= gen_data_t.pmax[k]:
-                        # P(t) - P(t-1) <= ramp_up · dt / Sbase
-                        prob.add_cst(
-                            gen_vars.p[local_t, k] - gen_vars.p[local_t - 1, k] <= gen_data_t.ramp_up[k] / Sbase * dt,
-                            name=join("ramp_up", [local_t, k])
+                        gen_vars.cost[local_t, k] += (
+                                elm.get_shift_key_at(global_t) * gen_vars.p[local_t, k]
                         )
                     else:
-                        logger.add_warning("Generator ramp up greater then Pmax",
-                                           value=gen_data_t.ramp_up[k],
-                                           device=f"{k}: {gen_data_t.names[k]}",
-                                           expected_value=gen_data_t.pmax[k])
+                        gen_vars.cost[local_t, k] += cost1_pu * gen_vars.p[local_t, k] + cost0_pu
 
-                    if gen_data_t.ramp_down[k] <= - gen_data_t.pmax[k]:
-                        # P(t-1) - P(t) <= ramp_down · dt / Sbase
-                        # NOTE: Ramp down must be negative
-                        prob.add_cst(
-                            gen_vars.p[local_t - 1, k] - gen_vars.p[local_t, k] <= gen_data_t.ramp_down[k] / Sbase * dt,
-                            name=join("ramp_dwn", [local_t, k])
-                        )
-                    else:
-                        logger.add_error("Generator ramp down lower than -Pmax",
-                                         value=gen_data_t.ramp_down[k],
-                                         device=f"{k}: {gen_data_t.names[k]}",
-                                         expected_value=-gen_data_t.pmax[k])
+                # add to the balance
+                bus_vars.Pbalance[local_t, bus_idx] += gen_vars.p[local_t, k]
 
-                # Generation Expansion Planning
-                if gen_data_t.is_candidate[k] and generation_expansion_planning:
-
-                    money_factor = np.power(1.0 + gen_data_t.discount_rate[k] / 100.0, year)
-
-                    # declare the investment binary
-                    gen_vars.invested[local_t, k] = prob.add_int(lb=0, ub=1, name=join("Ig_", [local_t, k]))
-
-                    # add the investment cost to the objective
-                    f_obj += gen_vars.invested[local_t, k] * (gen_data_t.pmax[k] / Sbase) * gen_data_t.capex[
-                        k] * money_factor
-
-                    if local_t > 0:
-                        # installation persistence
-                        prob.add_cst(
-                            gen_vars.invested[local_t - 1, k] <= gen_vars.invested[local_t, k],
-                            name=join("persist_", [local_t, k])
-                        )
-
-                    # maximum production constraint
-                    prob.add_cst(gen_vars.p[local_t, k] <= (gen_data_t.pmax[k] / Sbase) * gen_vars.invested[local_t, k],
-                                 name=join("max_prod_", [local_t, k]))
-                else:
-                    # is invested for already
-                    gen_vars.invested[local_t, k] = 1
+                # add to the generation injections in case of inter-area
+                bus_vars.Pgen[local_t, bus_idx] += gen_vars.p[local_t, k]
 
             else:
+                # the generator is not available at time step
+                gen_vars.p[local_t, k] = 0.0  # there has not been any variable assigned to p[t, k] at this point
 
-                # NOTE: it is NOT dispatchable
-                p = gen_data_t.p[k] / Sbase
-
-                # the generator is not dispatchable at time step
-                if p > 0:
-
-                    gen_vars.shedding[local_t, k] = prob.add_var(0, p,
-                                                                 join("gen_shedding_", [local_t, k], "_"))
-
-                    gen_vars.p[local_t, k] = p - gen_vars.shedding[local_t, k]
-
-                    if use_glsk_as_cost:
-                        gen_vars.cost[local_t, k] += gen_data_t.shift_key[k] * gen_vars.shedding[local_t, k]
-                    else:
-                        gen_vars.cost[local_t, k] += gen_data_t.cost_1[k] * gen_vars.shedding[local_t, k]
-
-                elif p < 0:
-                    # the negative sign is because P is already negative here, to make it positive
-                    gen_vars.shedding[local_t, k] = prob.add_var(0, -p,
-                                                                 join("gen_shedding_", [local_t, k], "_"))
-
-                    gen_vars.p[local_t, k] = p + gen_vars.shedding[local_t, k]
-
-                    if use_glsk_as_cost:
-                        gen_vars.cost[local_t, k] += gen_data_t.shift_key[k] * gen_vars.shedding[local_t, k]
-                    else:
-                        gen_vars.cost[local_t, k] += gen_data_t.cost_1[k] * gen_vars.shedding[local_t, k]
-
-                else:
-                    # the generation value is exactly zero
-                    prob.set_var_bounds(var=gen_vars.p[local_t, k], lb=0.0, ub=0.0)
-
-                gen_vars.producing[local_t, k] = 1
-                gen_vars.shutting_down[local_t, k] = 0
-                gen_vars.starting_up[local_t, k] = 0
-
-                # Operational cost (linear...)
-                if use_glsk_as_cost:
-                    gen_vars.cost[local_t, k] += gen_data_t.shift_key[k] * gen_vars.p[local_t, k]
-                else:
-                    gen_vars.cost[local_t, k] += (gen_data_t.cost_1[k] * gen_vars.p[local_t, k]) + gen_data_t.cost_0[k]
-
-            # add to the balance
-            bus_vars.Pbalance[local_t, bus_idx] += gen_vars.p[local_t, k]
-
-            # add to the generation injections in case of inter-area
-            bus_vars.Pgen[local_t, bus_idx] += gen_vars.p[local_t, k]
-
+            # add to the objective function the total cost of the generator
+            f_obj += gen_vars.cost[local_t, k]
         else:
-            # the generator is not available at time step
-            gen_vars.p[local_t, k] = 0.0  # there has not been any variable assigned to p[t, k] at this point
+            logger.add_error("Generator without bus", device_class="Generator",
+                             device_property="bus", device=elm.idtag)
 
-        # add to the objective function the total cost of the generator
-        f_obj += gen_vars.cost[local_t, k]
+    if generation_expansion_planning:
+        # formulate the investment
+        gen_dict = {elm.idtag: (idx, elm) for idx, elm in enumerate(grid.generators)}
+
+        capex = np.zeros(grid.get_generators_number())
+        discount_rate = np.zeros(grid.get_generators_number())
+        is_candidate = np.zeros(grid.get_generators_number(), dtype=bool)
+
+        for investment in grid.investments:
+
+            # search in generators
+            data = gen_dict.get(investment.device_idtag, None)
+            if data is not None:
+                idx, elm = data
+
+                if investment.CAPEX != 0.0:  # overwrite the base capex
+                    capex[idx] = investment.CAPEX
+
+                is_candidate[idx] = True
+                discount_rate[idx] = investment.group.discount_rate
+
+        for k, elm in enumerate(grid.generators):
+
+            bus_idx = bus_idx_dict.get(elm.bus, None)
+            active = elm.get_active_at(global_t)
+
+            if active and bus_idx is not None:
+
+                pmax_pu = elm.get_Pmax_at(global_t) / Sbase
+
+                gen_vars.cost[local_t, k] = 0.0
+
+                # get bus index
+                bus_idx = bus_idx_dict[elm.bus]
+
+                # TODO Review and change the id_gen_nonvd stuff
+                if elm.get_active_at(local_t) and k not in id_gen_nonvd and bus_idx > -1:
+
+                    if elm.enabled_dispatch and not all_generators_fixed:
+
+                        # Generation Expansion Planning
+                        if is_candidate[k] and generation_expansion_planning:
+
+                            money_factor = np.power(1.0 + discount_rate[k] / 100.0, year)
+
+                            # declare the investment binary
+                            gen_vars.invested[local_t, k] = prob.add_int(
+                                lb=0, ub=1, name=join("Ig_", [local_t, k])
+                            )
+
+                            # add the investment cost to the objective
+                            f_obj += gen_vars.invested[local_t, k] * pmax_pu * capex[k] * money_factor
+
+                            if local_t > 0:
+                                # installation persistence
+                                prob.add_cst(
+                                    cst=gen_vars.invested[local_t - 1, k] <= gen_vars.invested[local_t, k],
+                                    name=join("persist_", [local_t, k])
+                                )
+
+                            # maximum production constraint
+                            prob.add_cst(
+                                cst=(gen_vars.p[local_t, k] <= pmax_pu * gen_vars.invested[local_t, k]),
+                                name=join("max_prod_", [local_t, k])
+                            )
+                        else:
+                            # is invested for already
+                            gen_vars.invested[local_t, k] = 1
 
     return f_obj
 
 
-def add_linear_battery_formulation(t: Union[int, None],
+def add_linear_battery_formulation(local_t: int,
+                                   global_t: int | None,
+                                   grid: MultiCircuit,
+                                   bus_idx_dict: Dict[Bus, int],
                                    Sbase: float,
                                    time_array: DateVec,
                                    bus_vars: BusVars,
-                                   batt_data_t: BatteryData,
                                    batt_vars: BatteryVars,
                                    prob: LpModel,
                                    unit_commitment: bool,
@@ -1003,7 +1067,10 @@ def add_linear_battery_formulation(t: Union[int, None],
                                    energy_0: Vec):
     """
     Add MIP generation formulation
-    :param t: time step, if None we assume single time step
+    :param local_t: time step (possibly reduced or from an interval)
+    :param global_t: global time (integer or None to signal for the snapshot)
+    :param grid: MultiCircuit instance
+    :param bus_idx_dict: Bus-index dictionary
     :param Sbase: base power (100 MVA)
     :param time_array: complete time array
     :param bus_vars: BusVars
@@ -1018,161 +1085,175 @@ def add_linear_battery_formulation(t: Union[int, None],
     :return objective function
     """
     f_obj = 0.0
-    for k in range(batt_data_t.nelm):
+    for k, elm in enumerate(grid.batteries):
 
-        bus_idx = batt_data_t.bus_idx[k]
+        bus_idx = bus_idx_dict.get(elm.bus, None)
+        active = elm.get_active_at(global_t)
 
-        if batt_data_t.active[k] and bus_idx > -1:
+        if active and bus_idx is not None:
+
+            pmax_pu = elm.get_Pmax_at(global_t) / Sbase
+            pmin_pu = elm.get_Pmin_at(global_t) / Sbase
+            cost0_pu = elm.get_Cost0_at(global_t) / Sbase
+            cost1_pu = elm.get_Cost_at(global_t) / Sbase
 
             # declare active power var (limits will be applied later)
-            p_pos = prob.add_var(0, 1e20, join("batt_ppos_", [t, k], "_"))
-            p_neg = prob.add_var(0, 1e20, join("batt_pneg_", [t, k], "_"))
-            batt_vars.p[t, k] = p_pos - p_neg
+            p_pos = prob.add_var(0, 1e20, join("batt_ppos_", [local_t, k], "_"))
+            p_neg = prob.add_var(0, 1e20, join("batt_pneg_", [local_t, k], "_"))
+            batt_vars.p[local_t, k] = p_pos - p_neg
 
-            if batt_data_t.dispatchable[k]:
+            if elm.enabled_dispatch:
 
                 if unit_commitment:
 
                     # declare unit commitment vars
-                    batt_vars.starting_up[t, k] = prob.add_int(0, 1,
-                                                               join("bat_starting_up_", [t, k], "_"))
+                    batt_vars.starting_up[local_t, k] = prob.add_int(
+                        0, 1, join("bat_starting_up_", [local_t, k], "_")
+                    )
 
-                    batt_vars.producing[t, k] = prob.add_int(0, 1,
-                                                             join("bat_producing_", [t, k], "_"))
+                    batt_vars.producing[local_t, k] = prob.add_int(
+                        0, 1, join("bat_producing_", [local_t, k], "_")
+                    )
 
-                    batt_vars.shutting_down[t, k] = prob.add_int(0, 1,
-                                                                 join("bat_shutting_down_", [t, k], "_"))
+                    batt_vars.shutting_down[local_t, k] = prob.add_int(
+                        0, 1, join("bat_shutting_down_", [local_t, k], "_")
+                    )
 
                     # operational cost (linear...)
-                    f_obj += (batt_data_t.cost_1[k] * p_pos
-                              + batt_data_t.cost_0[k] * batt_vars.producing[t, k])
+                    f_obj += cost1_pu * p_pos + cost0_pu * batt_vars.producing[local_t, k]
 
                     # start-up cost
-                    f_obj += batt_data_t.startup_cost[k] * batt_vars.starting_up[t, k]
+                    f_obj += elm.StartupCost * batt_vars.starting_up[local_t, k]
 
                     # power boundaries of the generator
                     if not skip_generation_limits:
                         prob.add_cst(
-                            cst=(batt_vars.p[t, k] >= (batt_data_t.pmin[k] / Sbase * batt_vars.producing[t, k])),
-                            name=join("batt_geq_Pmin", [t, k], "_"))
+                            cst=(batt_vars.p[local_t, k] >= (pmin_pu * batt_vars.producing[local_t, k])),
+                            name=join("batt_geq_Pmin", [local_t, k], "_"))
 
                         prob.add_cst(
-                            cst=(batt_vars.p[t, k] <= (batt_data_t.pmax[k] / Sbase * batt_vars.producing[t, k])),
-                            name=join("batt_leq_Pmax", [t, k], "_"))
+                            cst=(batt_vars.p[local_t, k] <= (pmax_pu * batt_vars.producing[local_t, k])),
+                            name=join("batt_leq_Pmax", [local_t, k], "_"))
 
-                    if t is not None:
-                        if t == 0:
+                    if local_t is not None:
+                        if local_t == 0:
                             prob.add_cst(
-                                cst=(batt_vars.starting_up[t, k] - batt_vars.shutting_down[t, k] ==
-                                     batt_vars.producing[t, k] - float(batt_data_t.active[k])),
-                                name=join("binary_bat_alg1_", [t, k], "_"))
+                                cst=(batt_vars.starting_up[local_t, k] - batt_vars.shutting_down[local_t, k] ==
+                                     batt_vars.producing[local_t, k] - float(active)),
+                                name=join("binary_bat_alg1_", [local_t, k], "_"))
 
                             prob.add_cst(
-                                cst=batt_vars.starting_up[t, k] + batt_vars.shutting_down[t, k] <= 1,
-                                name=join("binary_bat_alg2_", [t, k], "_"))
+                                cst=batt_vars.starting_up[local_t, k] + batt_vars.shutting_down[local_t, k] <= 1,
+                                name=join("binary_bat_alg2_", [local_t, k], "_"))
                         else:
                             prob.add_cst(
-                                cst=(batt_vars.starting_up[t, k] - batt_vars.shutting_down[t, k] ==
-                                     batt_vars.producing[t, k] - batt_vars.producing[t - 1, k]),
-                                name=join("binary_bat_alg3_", [t, k], "_"))
+                                cst=(batt_vars.starting_up[local_t, k] - batt_vars.shutting_down[local_t, k] ==
+                                     batt_vars.producing[local_t, k] - batt_vars.producing[local_t - 1, k]),
+                                name=join("binary_bat_alg3_", [local_t, k], "_"))
 
                             prob.add_cst(
-                                cst=batt_vars.starting_up[t, k] + batt_vars.shutting_down[t, k] <= 1,
-                                name=join("binary_bat_alg4_", [t, k], "_"))
+                                cst=batt_vars.starting_up[local_t, k] + batt_vars.shutting_down[local_t, k] <= 1,
+                                name=join("binary_bat_alg4_", [local_t, k], "_"))
                 else:
                     # No unit commitment
 
                     # Operational cost (linear...)
-                    f_obj += (batt_data_t.cost_1[k] * p_pos) + batt_data_t.cost_0[k]
+                    f_obj += cost1_pu * p_pos + cost0_pu
 
                     # power boundaries of the generator
                     if not skip_generation_limits:
-                        prob.set_var_bounds(var=p_pos, lb=0, ub=+batt_data_t.pmax[k] / Sbase)
-                        prob.set_var_bounds(var=p_neg, lb=0, ub=-batt_data_t.pmin[k] / Sbase)
+                        prob.set_var_bounds(var=p_pos, lb=0, ub=pmax_pu)
+                        prob.set_var_bounds(var=p_neg, lb=0, ub=-pmin_pu)
 
                 # compute the time increment in hours
                 if len(time_array) > 1:
-                    dt = (time_array[t] - time_array[t - 1]).seconds / 3600.0
+                    dt = (time_array[local_t] - time_array[local_t - 1]).seconds / 3600.0
                 else:
                     dt = 1.0
 
-                if ramp_constraints and t is not None:
-                    if t > 0:
+                if ramp_constraints and local_t is not None:
+                    if local_t > 0:
 
                         # add the ramp constraints
-                        if batt_data_t.ramp_up[k] < batt_data_t.pmax[k] and \
-                                batt_data_t.ramp_down[k] < batt_data_t.pmax[k]:
+                        if elm.RampUp < elm.get_Pmax_at(global_t) and elm.RampDown < elm.get_Pmax_at(global_t):
                             # if the ramp is actually sufficiently restrictive...
                             # - ramp_down · dt <= P(t) - P(t-1) <= ramp_up · dt
                             prob.add_cst(
-                                cst=-batt_data_t.ramp_down[k] / Sbase * dt <= batt_vars.p[t, k] - batt_vars.p[t - 1, k])
+                                cst=-elm.RampDown / Sbase * dt <= batt_vars.p[local_t, k] - batt_vars.p[local_t - 1, k]
+                            )
                             prob.add_cst(
-                                cst=batt_vars.p[t, k] - batt_vars.p[t - 1, k] <= batt_data_t.ramp_up[k] / Sbase * dt)
+                                cst=batt_vars.p[local_t, k] - batt_vars.p[local_t - 1, k] <= elm.RampUp / Sbase * dt
+                            )
 
-                # # # set the energy  value Et = E(t - 1) + dt * Pb / eff
-                batt_vars.e[t, k] = prob.add_var(batt_data_t.e_min[k] / Sbase,
-                                                 batt_data_t.e_max[k] / Sbase,
-                                                 join("batt_e_", [t, k], "_"))
+                # set the energy  value Et = E(t - 1) + dt * Pb / eff
+                emin_pu = elm.energy * elm.min_soc / Sbase
+                emax_pu = elm.energy * elm.max_soc / Sbase
+                batt_vars.e[local_t, k] = prob.add_var(
+                    lb=emin_pu,
+                    ub=emax_pu,
+                    name=join("batt_e_", [local_t, k], "_")
+                )
 
-                if t > 0:
+                if local_t > 0:
                     # energy decreases / increases with power · dt
-                    prob.add_cst(cst=(batt_vars.e[t, k] == batt_vars.e[t - 1, k]
-                                      + dt * (batt_data_t.discharge_efficiency[k] * p_pos
-                                              - batt_data_t.charge_efficiency[k] * p_neg)),
-                                 name=join("batt_energy_", [t, k], "_"))
+                    prob.add_cst(cst=(batt_vars.e[local_t, k] == batt_vars.e[local_t - 1, k]
+                                      + dt * (elm.discharge_efficiency * p_pos - elm.charge_efficiency * p_neg)),
+                                 name=join("batt_energy_", [local_t, k], "_"))
                 else:
                     # set the initial energy value
-                    batt_vars.e[t, k] = energy_0[k] / Sbase
+                    batt_vars.e[local_t, k] = energy_0[k] / Sbase
 
             else:
 
                 # it is NOT dispatchable
 
                 # Operational cost (linear...)
-                f_obj += (batt_data_t.cost_1[k] * p_pos) + batt_data_t.cost_0[k]
+                f_obj += (cost1_pu * p_pos) + cost0_pu
 
-                p = batt_data_t.p[k] / Sbase
+                p_pu = elm.get_P_at(global_t) / Sbase
 
                 # the generator is not dispatchable at time step
-                if p > 0:
+                if p_pu > 0:
 
-                    batt_vars.shedding[t, k] = prob.add_var(0, p, join("bat_shedding_", [t, k], "_"))
+                    batt_vars.shedding[local_t, k] = prob.add_var(
+                        0, p_pu, join("bat_shedding_", [local_t, k], "_")
+                    )
 
                     prob.add_cst(
-                        cst=batt_vars.p[t, k] == batt_data_t.p[k] / Sbase - batt_vars.shedding[t, k],
-                        name=join("batt==PB-PBslack", [t, k], "_"))
+                        cst=batt_vars.p[local_t, k] == p_pu - batt_vars.shedding[local_t, k],
+                        name=join("batt==PB-PBslack", [local_t, k], "_"))
 
-                    f_obj += batt_data_t.cost_1[k] * batt_vars.shedding[t, k]
+                    f_obj += cost1_pu * batt_vars.shedding[local_t, k]
 
-                elif p < 0:
+                elif p_pu < 0:
                     # the negative sign is because P is already negative here
-                    batt_vars.shedding[t, k] = prob.add_var(lb=0,
-                                                            ub=-p,
-                                                            name=join("bat_shedding_", [t, k], "_"))
+                    batt_vars.shedding[local_t, k] = prob.add_var(
+                        lb=0, ub=-p_pu, name=join("bat_shedding_", [local_t, k], "_")
+                    )
 
                     prob.add_cst(
-                        cst=batt_vars.p[t, k] == batt_data_t.p[k] / Sbase + batt_vars.shedding[t, k],
-                        name=join("batt==PB+PBslack", [t, k], "_"))
+                        cst=batt_vars.p[local_t, k] == p_pu + batt_vars.shedding[local_t, k],
+                        name=join("batt==PB+PBslack", [local_t, k], "_"))
 
-                    f_obj += batt_data_t.cost_1[k] * batt_vars.shedding[t, k]
+                    f_obj += cost1_pu * batt_vars.shedding[local_t, k]
 
                 else:
                     # the generation value is exactly zero, pass
                     pass
 
-                batt_vars.producing[t, k] = 1
-                batt_vars.shutting_down[t, k] = 0
-                batt_vars.starting_up[t, k] = 0
+                batt_vars.producing[local_t, k] = 1
+                batt_vars.shutting_down[local_t, k] = 0
+                batt_vars.starting_up[local_t, k] = 0
 
             # add to the balance
-            bus_vars.Pbalance[t, bus_idx] += batt_vars.p[t, k]
+            bus_vars.Pbalance[local_t, bus_idx] += batt_vars.p[local_t, k]
 
             # add to the generation injections in case of inter-area
-            bus_vars.Pgen[t, bus_idx] += batt_vars.p[t, k]
+            bus_vars.Pgen[local_t, bus_idx] += batt_vars.p[local_t, k]
 
         else:
             # the generator is not available at a time step
-            batt_vars.p[t, k] = 0.0
+            batt_vars.p[local_t, k] = 0.0
 
     return f_obj
 
@@ -1210,15 +1291,20 @@ def add_nodal_capacity_formulation(t: Union[int, None],
     return f_obj
 
 
-def add_linear_load_formulation(t: Union[int, None],
+def add_linear_load_formulation(local_t: int,
+                                global_t: int | None,
+                                grid: MultiCircuit,
+                                bus_idx_dict: Dict[Bus, int],
                                 Sbase: float,
                                 bus_vars: BusVars,
-                                load_data_t: LoadData,
                                 load_vars: LoadVars,
                                 prob: LpModel):
     """
     Add MIP generation formulation
-    :param t: time step, if None we assume single time step
+    :param local_t: time step (possibly reduced or from an interval)
+    :param global_t: global time (integer or None to signal for the snapshot)
+    :param grid: MultiCircuit instance
+    :param bus_idx_dict: Bus-index dictionary
     :param Sbase: base power (100 MVA)
     :param bus_vars: BusVars
     :param load_data_t: BatteryData structure
@@ -1227,53 +1313,57 @@ def add_linear_load_formulation(t: Union[int, None],
     :return objective function
     """
     f_obj = 0.0
-    for k in range(load_data_t.nelm):
+    for k, elm in enumerate(grid.get_load_like_devices_iter()):
 
-        bus_idx = load_data_t.bus_idx[k]
+        bus_idx = bus_idx_dict.get(elm.bus, None)
+        active = elm.get_active_at(global_t)
 
-        if load_data_t.active[k] and bus_idx > -1:
+        if active and bus_idx is not None:
 
-            p_set = load_data_t.S[k].real / Sbase
+            cost1_pu = elm.get_Cost_at(global_t) / Sbase
+            p_set_pu = elm.get_P_at(global_t) / Sbase
 
-            if p_set > 0.0:
+            if p_set_pu > 0.0:
 
                 # assign load shedding variable
-                load_vars.shedding[t, k] = prob.add_var(lb=0,
-                                                        ub=p_set,
-                                                        name=join("load_shedding_", [t, k], "_"))
+                load_vars.shedding[local_t, k] = prob.add_var(
+                    lb=0,
+                    ub=p_set_pu,
+                    name=join("load_shedding_", [local_t, k], "_")
+                )
 
                 # store the load
-                load_vars.p[t, k] = p_set - load_vars.shedding[t, k]
+                load_vars.p[local_t, k] = p_set_pu - load_vars.shedding[local_t, k]
 
-                load_vars.shedding_cost[t, k] = load_data_t.cost[k] * load_vars.shedding[t, k]
+                load_vars.shedding_cost[local_t, k] = cost1_pu * load_vars.shedding[local_t, k]
 
                 # minimize the load shedding
-                f_obj += load_vars.shedding_cost[t, k]
+                f_obj += load_vars.shedding_cost[local_t, k]
             else:
                 # the load is negative, won't shed?
-                load_vars.shedding[t, k] = 0.0
+                load_vars.shedding[local_t, k] = 0.0
 
                 # store the load
-                load_vars.p[t, k] = load_data_t.S[k].real / Sbase
+                load_vars.p[local_t, k] = p_set_pu
 
             # add to the balance
-            bus_vars.Pbalance[t, bus_idx] += -load_vars.p[t, k]
+            bus_vars.Pbalance[local_t, bus_idx] += -load_vars.p[local_t, k]
 
             # add to the injections
             # bus_vars.Pinj[t, bus_idx] += - load_vars.p[t, k]
 
         else:
             # the load is not available at time step
-            load_vars.shedding[t, k] = 0.0
+            load_vars.shedding[local_t, k] = 0.0
 
     return f_obj
 
 
-def add_linear_branches_formulation(t: int,
+def add_linear_branches_formulation(local_t: int,
+                                    global_t: int | None,
+                                    grid: MultiCircuit,
+                                    bus_idx_dict: Dict[Bus, int],
                                     Sbase: float,
-                                    bus_data_t: BusData,
-                                    branch_data_t: PassiveBranchData,
-                                    ctrl_branch_data_t: ActiveBranchData,
                                     branch_vars: BranchVars,
                                     bus_vars: BusVars,
                                     prob: LpModel,
@@ -1281,11 +1371,11 @@ def add_linear_branches_formulation(t: int,
                                     add_losses_approximation: bool = False):
     """
     Formulate the branches
-    :param t: time index
+    :param local_t: time step (possibly reduced or from an interval)
+    :param global_t: global time (integer or None to signal for the snapshot)
+    :param grid: MultiCircuit instance
+    :param bus_idx_dict: Bus-index dictionary
     :param Sbase: base power (100 MVA)
-    :param bus_data_t: BusData
-    :param branch_data_t: BranchData
-    :param ctrl_branch_data_t: ControllableBranchData
     :param branch_vars: BranchVars
     :param bus_vars: BusVars
     :param prob: OR problem
@@ -1296,134 +1386,148 @@ def add_linear_branches_formulation(t: int,
     f_obj = 0.0
 
     # for each branch
-    for m in range(branch_data_t.nelm):
-        fr = branch_data_t.F[m]
-        to = branch_data_t.T[m]
+    for m, elm in enumerate(grid.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True)):
+        fr = bus_idx_dict.get(elm.bus_from, None)
+        to = bus_idx_dict.get(elm.bus_to, None)
 
         # copy rates
-        branch_vars.rates[t, m] = branch_data_t.rates[m]
+        branch_vars.rates[local_t, m] = elm.get_rate_at(global_t)
 
-        if branch_data_t.active[m]:
+        if elm.get_active_at(global_t):
+
+            rate_pu = branch_vars.rates[local_t, m] / Sbase
+            overload_cost_pu = elm.get_Cost_at(global_t) / Sbase
 
             # declare the flow LPVar
-            branch_vars.flows[t, m] = prob.add_var(lb=-inf,
-                                                   ub=inf,
-                                                   name=join("flow_", [t, m], "_"))
+            branch_vars.flows[local_t, m] = prob.add_var(lb=-inf,
+                                                         ub=inf,
+                                                         name=join("flow_", [local_t, m], "_"))
 
-            if branch_data_t.dc[m]:
+            if isinstance(elm, DcLine):
 
                 # DC Branch
-                if branch_data_t.R[m] == 0.0:
+                if elm.R == 0.0:
                     bk = 1e-20
                 else:
-                    bk = 1.0 / branch_data_t.R[m]
+                    bk = 1.0 / elm.R
 
-                branch_vars.flows[t, m] = bk * (bus_vars.Vm[t, fr] - bus_vars.Vm[t, to])
+                branch_vars.flows[local_t, m] = bk * (bus_vars.Vm[local_t, fr] - bus_vars.Vm[local_t, to])
 
             else:
                 # AC branch
 
                 # compute the branch susceptance
-                if branch_data_t.X[m] == 0.0:
+                if elm.X == 0.0:
                     bk = 1e-20
                 else:
-                    bk = 1.0 / branch_data_t.X[m]
+                    bk = 1.0 / elm.X
 
                 # compute the flow
-                if ctrl_branch_data_t.tap_phase_control_mode[m] == TapPhaseControl.Pf:
+                if elm.get_tap_phase_control_mode_at(global_t) == TapPhaseControl.Pf:
 
                     # add angle
-                    branch_vars.tap_angles[t, m] = prob.add_var(lb=ctrl_branch_data_t.tap_angle_min[m],
-                                                                ub=ctrl_branch_data_t.tap_angle_max[m],
-                                                                name=join("tap_ang_", [t, m], "_"))
+                    branch_vars.tap_angles[local_t, m] = prob.add_var(
+                        lb=elm.tap_phase_min,
+                        ub=elm.tap_phase_max,
+                        name=join("tap_ang_", [local_t, m], "_")
+                    )
 
                     # is a phase shifter device (like phase shifter transformer or VSC with P control)
                     # flow_ctr = branch_vars.flows[t, m] == bk * (
                     #         bus_vars.theta[t, fr] - bus_vars.theta[t, to] + branch_vars.tap_angles[t, m])
                     # prob.add_cst(cst=flow_ctr, name=join("Branch_flow_set_with_ps_", [t, m], "_"))
 
-                    branch_vars.flows[t, m] = bk * (bus_vars.Va[t, fr] -
-                                                    bus_vars.Va[t, to] +
-                                                    branch_vars.tap_angles[t, m])
+                    branch_vars.flows[local_t, m] = bk * (bus_vars.Va[local_t, fr] -
+                                                          bus_vars.Va[local_t, to] +
+                                                          branch_vars.tap_angles[local_t, m])
 
                 else:  # rest of the branches
                     # is a phase shifter device (like phase shifter transformer or VSC with P control)
                     # flow_ctr = branch_vars.flows[t, m] == bk * (bus_vars.theta[t, fr] - bus_vars.theta[t, to])
                     # prob.add_cst(cst=flow_ctr, name=join("Branch_flow_set_", [t, m], "_"))
 
-                    branch_vars.flows[t, m] = bk * (bus_vars.Va[t, fr] - bus_vars.Va[t, to])
+                    branch_vars.flows[local_t, m] = bk * (bus_vars.Va[local_t, fr] - bus_vars.Va[local_t, to])
 
             # power injected and subtracted due to the phase shift
-            bus_vars.Pbalance[t, fr] += - branch_vars.flows[t, m]
-            bus_vars.Pbalance[t, to] += branch_vars.flows[t, m]
+            bus_vars.Pbalance[local_t, fr] += - branch_vars.flows[local_t, m]
+            bus_vars.Pbalance[local_t, to] += branch_vars.flows[local_t, m]
 
             if add_losses_approximation:
                 # declare the abs flow LPVar
-                branch_vars.z_flows[t, m] = prob.add_var(lb=0,
-                                                         ub=inf,
-                                                         name=join("z_flow_", [t, m], "_"))
+                branch_vars.z_flows[local_t, m] = prob.add_var(lb=0,
+                                                               ub=inf,
+                                                               name=join("z_flow_", [local_t, m], "_"))
 
                 # zij ≥ Fij
-                prob.add_cst(cst=branch_vars.flows[t, m] <= branch_vars.z_flows[t, m],
-                             name=join("z_flow_u_lim_", [t, m]))
+                prob.add_cst(cst=branch_vars.flows[local_t, m] <= branch_vars.z_flows[local_t, m],
+                             name=join("z_flow_u_lim_", [local_t, m]))
 
                 # zij ≥ -Fij
-                prob.add_cst(cst=-branch_vars.flows[t, m] <= branch_vars.z_flows[t, m],
-                             name=join("z_flow_l_lim_", [t, m]))
+                prob.add_cst(cst=-branch_vars.flows[local_t, m] <= branch_vars.z_flows[local_t, m],
+                             name=join("z_flow_l_lim_", [local_t, m]))
 
                 # add to the objective (αij =rij * ∣Fij0∣/V2)
-                # insetad of the rates, the literature suggests an absolute initial value of the flow
-                V = bus_data_t.Vnom[branch_data_t.F[m]]
+                # instead of the rates, the literature suggests an absolute initial value of the flow
+                V = grid.buses[fr].Vnom
                 if V > 0.0:
-                    factor = branch_data_t.R[m] * branch_data_t.rates[m] / (V ** 2)
+                    factor = elm.R * rate_pu * Sbase / (V ** 2)
                 else:
-                    factor = branch_data_t.R[m]
+                    factor = elm.R
 
                 # store the values for later retrieval
-                branch_vars.losses[t, m] = branch_vars.z_flows[t, m] * factor
+                branch_vars.losses[local_t, m] = branch_vars.z_flows[local_t, m] * factor
 
                 # add the losses to the objective
-                f_obj += branch_vars.losses[t, m]
+                f_obj += branch_vars.losses[local_t, m]
 
                 # divide the losses contribution equally among the from and to buses as new loads
-                l_inj = 0.5 * branch_vars.losses[t, m]
-                bus_vars.Pbalance[t, fr] += - l_inj
-                bus_vars.Pbalance[t, to] += - l_inj
+                l_inj = 0.5 * branch_vars.losses[local_t, m]
+                bus_vars.Pbalance[local_t, fr] += - l_inj
+                bus_vars.Pbalance[local_t, to] += - l_inj
 
             # add the flow constraint if monitored
-            if branch_data_t.monitor_loading[m]:
-                branch_vars.flow_slacks_pos[t, m] = prob.add_var(0, inf,
-                                                                 name=join("flow_slack_pos_", [t, m], "_"))
-                branch_vars.flow_slacks_neg[t, m] = prob.add_var(0, inf,
-                                                                 name=join("flow_slack_neg_", [t, m], "_"))
+            if elm.monitor_loading:
+                branch_vars.flow_slacks_pos[local_t, m] = prob.add_var(
+                    0, inf, name=join("flow_slack_pos_", [local_t, m], "_")
+                )
+                branch_vars.flow_slacks_neg[local_t, m] = prob.add_var(
+                    0, inf, name=join("flow_slack_neg_", [local_t, m], "_")
+                )
 
                 # add upper rate constraint
-                branch_vars.flow_constraints_ub[t, m] = (branch_vars.flows[t, m] +
-                                                         branch_vars.flow_slacks_pos[t, m] -
-                                                         branch_vars.flow_slacks_neg[t, m]
-                                                         <= branch_data_t.rates[m] / Sbase)
-                prob.add_cst(cst=branch_vars.flow_constraints_ub[t, m],
-                             name=join("br_flow_upper_lim_", [t, m]))
+                branch_vars.flow_constraints_ub[local_t, m] = (branch_vars.flows[local_t, m] +
+                                                               branch_vars.flow_slacks_pos[local_t, m] -
+                                                               branch_vars.flow_slacks_neg[local_t, m]
+                                                               <= rate_pu)
+                prob.add_cst(
+                    cst=branch_vars.flow_constraints_ub[local_t, m],
+                    name=join("br_flow_upper_lim_", [local_t, m])
+                )
 
                 # add lower rate constraint
-                branch_vars.flow_constraints_lb[t, m] = (branch_vars.flows[t, m] +
-                                                         branch_vars.flow_slacks_pos[t, m] -
-                                                         branch_vars.flow_slacks_neg[t, m]
-                                                         >= -branch_data_t.rates[m] / Sbase)
-                prob.add_cst(cst=branch_vars.flow_constraints_lb[t, m],
-                             name=join("br_flow_lower_lim_", [t, m]))
+                branch_vars.flow_constraints_lb[local_t, m] = (branch_vars.flows[local_t, m] +
+                                                               branch_vars.flow_slacks_pos[local_t, m] -
+                                                               branch_vars.flow_slacks_neg[local_t, m]
+                                                               >= -rate_pu)
+                prob.add_cst(
+                    cst=branch_vars.flow_constraints_lb[local_t, m],
+                    name=join("br_flow_lower_lim_", [local_t, m])
+                )
 
-                branch_vars.overload_cost[t, m] = (branch_data_t.overload_cost[m] * branch_vars.flow_slacks_pos[t, m]
-                                                   + branch_data_t.overload_cost[m] * branch_vars.flow_slacks_neg[t, m])
+                branch_vars.overload_cost[local_t, m] = (
+                        overload_cost_pu * branch_vars.flow_slacks_pos[local_t, m]
+                        + overload_cost_pu * branch_vars.flow_slacks_neg[local_t, m])
+
                 # add to the objective function
-                f_obj += branch_vars.overload_cost[t, m]
+                f_obj += branch_vars.overload_cost[local_t, m]
 
     return f_obj
 
 
-def add_linear_branches_contingencies_formulation(t_idx: int,
+def add_linear_branches_contingencies_formulation(local_t: int,
+                                                  global_t: int | None,
+                                                  grid: MultiCircuit,
                                                   Sbase: float,
-                                                  branch_data_t: PassiveBranchData,
                                                   hvdc_vars: HvdcVars,
                                                   vsc_vars: VscVars,
                                                   branch_vars: BranchVars,
@@ -1432,9 +1536,10 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                                                   linear_multi_contingencies: LinearMultiContingencies):
     """
     Formulate the branches
-    :param t_idx: time index
+    :param local_t: time step (possibly reduced or from an interval)
+    :param global_t: global time (integer or None to signal for the snapshot)
+    :param grid: MultiCircuit instance
     :param Sbase: base power (100 MVA)
-    :param branch_data_t: BranchData
     :param hvdc_vars: HvdcVars
     :param vsc_vars: VscVars
     :param branch_vars: BranchVars
@@ -1443,43 +1548,51 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
     :param linear_multi_contingencies: LinearMultiContingencies
     :return objective function
     """
+
+    # We need all the branch objects for this one
+    all_branches = grid.get_branches(add_vsc=False, add_hvdc=False, add_switch=True)
+
     f_obj = 0.0
     for c, contingency in enumerate(linear_multi_contingencies.multi_contingencies):
 
         # compute the contingency flow (Lp expression)
         contingency_flows, mask, changed_idx = contingency.get_lp_contingency_flows(
-            base_flow=branch_vars.flows[t_idx, :],
-            injections=bus_vars.Pinj[t_idx, :],
-            hvdc_flow=hvdc_vars.flows[t_idx, :],
-            vsc_flow=vsc_vars.flows[t_idx, :]
+            base_flow=branch_vars.flows[local_t, :],
+            injections=bus_vars.Pinj[local_t, :],
+            hvdc_flow=hvdc_vars.flows[local_t, :],
+            vsc_flow=vsc_vars.flows[local_t, :]
         )
 
-        for m, contingency_flow in enumerate(contingency_flows):
+        for m in range(len(contingency_flows)):
+
+            contingency_flow = contingency_flows[m]
 
             if mask[m]:
 
                 if isinstance(contingency_flow, LpExp):  # if the contingency is not 0
 
+                    rate_pu = all_branches[m].get_rate_at(global_t) / Sbase
+
                     # declare slack variables
-                    pos_slack = prob.add_var(0, 1e20, join("br_cst_flow_pos_sl_", [t_idx, m, c]))
-                    neg_slack = prob.add_var(0, 1e20, join("br_cst_flow_neg_sl_", [t_idx, m, c]))
+                    pos_slack = prob.add_var(0, 1e20, join("br_cst_flow_pos_sl_", [local_t, m, c]))
+                    neg_slack = prob.add_var(0, 1e20, join("br_cst_flow_neg_sl_", [local_t, m, c]))
 
                     # register the contingency data to evaluate the result at the end
-                    branch_vars.add_contingency_flow(t=t_idx, m=m, c=c,
+                    branch_vars.add_contingency_flow(t=local_t, m=m, c=c,
                                                      flow_var=contingency_flow,
                                                      neg_slack=neg_slack,
                                                      pos_slack=pos_slack)
 
                     # add upper rate constraint
                     prob.add_cst(
-                        cst=contingency_flow + pos_slack - neg_slack <= branch_data_t.rates[m] / Sbase,
-                        name=join("br_cst_flow_upper_lim_", [t_idx, m, c])
+                        cst=contingency_flow + pos_slack - neg_slack <= rate_pu,
+                        name=join("br_cst_flow_upper_lim_", [local_t, m, c])
                     )
 
                     # add lower rate constraint
                     prob.add_cst(
-                        cst=contingency_flow + pos_slack - neg_slack >= -branch_data_t.rates[m] / Sbase,
-                        name=join("br_cst_flow_lower_lim_", [t_idx, m, c])
+                        cst=contingency_flow + pos_slack - neg_slack >= -rate_pu,
+                        name=join("br_cst_flow_lower_lim_", [local_t, m, c])
                     )
 
                     f_obj += pos_slack + neg_slack
@@ -1487,92 +1600,106 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
     return f_obj
 
 
-def add_linear_hvdc_formulation(t: int,
+def add_linear_hvdc_formulation(local_t: int,
+                                global_t: int | None,
+                                grid: MultiCircuit,
+                                bus_idx_dict: Dict[Bus, int],
                                 Sbase: float,
-                                hvdc_data_t: HvdcData,
                                 hvdc_vars: HvdcVars,
                                 bus_vars: BusVars,
                                 prob: LpModel):
     """
 
-    :param t:
+    :param local_t:
+    :param global_t:
+    :param grid:
+    :param bus_idx_dict:
     :param Sbase:
-    :param hvdc_data_t:
     :param hvdc_vars:
     :param bus_vars:
     :param prob:
     :return:
     """
     f_obj = 0.0
-    for m in range(hvdc_data_t.nelm):
+    for m, elm in enumerate(grid.hvdc_lines):
 
-        fr = hvdc_data_t.F[m]
-        to = hvdc_data_t.T[m]
-        hvdc_vars.rates[t, m] = hvdc_data_t.rates[m]
+        fr = bus_idx_dict.get(elm.bus_from, None)
+        to = bus_idx_dict.get(elm.bus_to, None)
 
-        if hvdc_data_t.active[m]:
+        # copy rates
+        hvdc_vars.rates[local_t, m] = elm.get_rate_at(global_t)
 
-            if hvdc_data_t.control_mode[m] == HvdcControlType.type_0_free:
+        if elm.get_active_at(global_t):
+            Pset_pu = elm.get_Pset_at(global_t) / Sbase
+            rate_pu = hvdc_vars.rates[local_t, m] / Sbase
+            overload_cost_pu = elm.get_Cost_at(global_t) / Sbase
+
+            if elm.control_mode == HvdcControlType.type_0_free:
 
                 # set the flow based on the angular difference
-                P0 = hvdc_data_t.Pset[m] / Sbase
-                k = hvdc_data_t.angle_droop[m]
-                hvdc_vars.flows[t, m] = (P0 + k * (bus_vars.Va[t, fr] - bus_vars.Va[t, to]))
+                P0 = Pset_pu
+                k = elm.angle_droop
+                hvdc_vars.flows[local_t, m] = (P0 + k * (bus_vars.Va[local_t, fr] - bus_vars.Va[local_t, to]))
 
                 # add the injections matching the flow
-                bus_vars.Pbalance[t, fr] += - hvdc_vars.flows[t, m]
-                bus_vars.Pbalance[t, to] += hvdc_vars.flows[t, m]
+                bus_vars.Pbalance[local_t, fr] += - hvdc_vars.flows[local_t, m]
+                bus_vars.Pbalance[local_t, to] += hvdc_vars.flows[local_t, m]
 
-            elif hvdc_data_t.control_mode[m] == HvdcControlType.type_1_Pset:
+            elif elm.control_mode == HvdcControlType.type_1_Pset:
 
-                if hvdc_data_t.dispatchable[m]:
+                if elm.dispatchable[m]:
 
                     # declare the flow var
-                    hvdc_vars.flows[t, m] = prob.add_var(lb=-hvdc_data_t.rates[m] / Sbase,
-                                                         ub=hvdc_data_t.rates[m] / Sbase,
-                                                         name=join("hvdc_flow_", [t, m], "_"))
+                    hvdc_vars.flows[local_t, m] = prob.add_var(
+                        lb=-rate_pu, ub=rate_pu, name=join("hvdc_flow_", [local_t, m], "_")
+                    )
 
                     # add the injections matching the flow
-                    bus_vars.Pbalance[t, fr] += - hvdc_vars.flows[t, m]
-                    bus_vars.Pbalance[t, to] += hvdc_vars.flows[t, m]
+                    bus_vars.Pbalance[local_t, fr] += - hvdc_vars.flows[local_t, m]
+                    bus_vars.Pbalance[local_t, to] += hvdc_vars.flows[local_t, m]
 
                 else:
 
-                    if hvdc_data_t.Pset[m] > hvdc_data_t.rates[m]:
-                        P0 = hvdc_data_t.rates[m] / Sbase
-                    elif hvdc_data_t.Pset[m] < -hvdc_data_t.rates[m]:
-                        P0 = -hvdc_data_t.rates[m] / Sbase
+                    if Pset_pu > rate_pu:
+                        P0 = rate_pu
+                    elif Pset_pu < -rate_pu:
+                        P0 = -rate_pu
                     else:
-                        P0 = hvdc_data_t.Pset[m] / Sbase
+                        P0 = Pset_pu
 
                     # declare the flow var
-                    hvdc_vars.flows[t, m] = prob.add_var(lb=P0, ub=P0,
-                                                         name=join("hvdc_flow_", [t, m], "_"))
+                    hvdc_vars.flows[local_t, m] = prob.add_var(
+                        lb=P0, ub=P0, name=join("hvdc_flow_", [local_t, m], "_")
+                    )
 
                     # add the injections matching the flow
-                    bus_vars.Pbalance[t, fr] += - hvdc_vars.flows[t, m]
-                    bus_vars.Pbalance[t, to] += hvdc_vars.flows[t, m]
+                    bus_vars.Pbalance[local_t, fr] += - hvdc_vars.flows[local_t, m]
+                    bus_vars.Pbalance[local_t, to] += hvdc_vars.flows[local_t, m]
             else:
-                raise Exception('OPF: Unknown HVDC control mode {}'.format(hvdc_data_t.control_mode[m]))
+                raise Exception('OPF: Unknown HVDC control mode {}'.format(elm.control_mode.value))
         else:
             # not active, therefore the flow is exactly zero
-            hvdc_vars.flows[t, m] = 0.0
+            hvdc_vars.flows[local_t, m] = 0.0
 
     return f_obj
 
 
-def add_linear_vsc_formulation(t: int,
+def add_linear_vsc_formulation(local_t: int,
+                               global_t: int | None,
+                               grid: MultiCircuit,
+                               bus_idx_dict: Dict[Bus, int],
                                Sbase: float,
-                               vsc_data_t: VscData,
                                vsc_vars: VscVars,
                                bus_vars: BusVars,
                                prob: LpModel,
                                logger: Logger):
     """
 
-    :param t:
+    :param local_t:
+    :param global_t:
+    :param grid:
+    :param bus_idx_dict:
     :param Sbase:
-    :param vsc_data_t:
     :param vsc_vars:
     :param bus_vars:
     :param prob:
@@ -1581,42 +1708,47 @@ def add_linear_vsc_formulation(t: int,
     """
     f_obj = 0.0
     any_dc_slack = False
-    for m in range(vsc_data_t.nelm):
+    for m, elm in enumerate(grid.vsc_devices):
 
-        fr = vsc_data_t.F[m]
-        to = vsc_data_t.T[m]
-        vsc_vars.rates[t, m] = vsc_data_t.rates[m]
+        fr = bus_idx_dict.get(elm.bus_from, None)
+        to = bus_idx_dict.get(elm.bus_to, None)
 
-        if vsc_data_t.active[m]:
+        # copy rates
+        vsc_vars.rates[local_t, m] = elm.get_rate_at(global_t)
+
+        if elm.get_active_at(global_t):
+
+            rate_pu = vsc_vars.rates[local_t, m] / Sbase
 
             # declare the flow var
-            vsc_vars.flows[t, m] = prob.add_var(lb=-vsc_data_t.rates[m] / Sbase,
-                                                ub=vsc_data_t.rates[m] / Sbase,
-                                                name=join("vsc_flow_", [t, m], "_"))
+            vsc_vars.flows[local_t, m] = prob.add_var(
+                lb=-rate_pu,
+                ub=rate_pu,
+                name=join("vsc_flow_", [local_t, m], "_")
+            )
 
             # add the injections matching the flow
-            bus_vars.Pbalance[t, fr] += - vsc_vars.flows[t, m]
-            bus_vars.Pbalance[t, to] += vsc_vars.flows[t, m]
+            bus_vars.Pbalance[local_t, fr] += - vsc_vars.flows[local_t, m]
+            bus_vars.Pbalance[local_t, to] += vsc_vars.flows[local_t, m]
 
-            if (vsc_data_t.control1[m] == ConverterControlType.Vm_dc or
-                    vsc_data_t.control2[m] == ConverterControlType.Vm_dc):
+            if elm.control1 == ConverterControlType.Vm_dc or elm.control2 == ConverterControlType.Vm_dc:
                 # set the DC slack
-                bus_vars.Vm[t, fr] = 1.0
+                bus_vars.Vm[local_t, fr] = 1.0
                 any_dc_slack = True
 
         else:
             # not active, therefore the flow is exactly zero
-            vsc_vars.flows[t, m] = 0.0
+            vsc_vars.flows[local_t, m] = 0.0
 
-    if not any_dc_slack and vsc_data_t.nelm > 0:
+    if not any_dc_slack and grid.get_vsc_number() > 0:
         logger.add_warning("No DC Slack! set Vm_dc in any of the converters")
 
     return f_obj
 
 
-def add_linear_node_balance(t_idx: int,
+def add_linear_node_balance(local_t: int,
+                            grid: MultiCircuit,
                             vd: IntVec,
-                            bus_data: BusData,
                             bus_vars: BusVars,
                             nodal_capacity_vars: NodalCapacityVars,
                             capacity_nodes_idx: IntVec,
@@ -1624,9 +1756,9 @@ def add_linear_node_balance(t_idx: int,
                             logger: Logger):
     """
     Add the Kirchhoff nodal equality
-    :param t_idx: time step
+    :param local_t: time step
+    :param grid: MultiCircuit
     :param vd: List of slack node indices
-    :param bus_data: BusData
     :param bus_vars: BusVars
     :param nodal_capacity_vars: NodalCapacityVars
     :param capacity_nodes_idx: IntVec
@@ -1637,26 +1769,26 @@ def add_linear_node_balance(t_idx: int,
     # Note: At this point, Pbalance has all the devices' power summed up inside (including branches)
 
     if len(capacity_nodes_idx) > 0:
-        bus_vars.Pbalance[t_idx, capacity_nodes_idx] += nodal_capacity_vars.P[t_idx, :]
+        bus_vars.Pbalance[local_t, capacity_nodes_idx] += nodal_capacity_vars.P[local_t, :]
 
     # add the equality restrictions
-    for k in range(bus_data.nbus):
-        if isinstance(bus_vars.Pbalance[t_idx, k], (int, float)):
-            bus_vars.kirchhoff[t_idx, k] = prob.add_cst(
-                cst=bus_vars.Va[t_idx, k] == 0,
-                name=join("island_bus_", [t_idx, k], "_")
+    for k in range(grid.get_bus_number()):
+        if isinstance(bus_vars.Pbalance[local_t, k], (int, float)):
+            bus_vars.kirchhoff[local_t, k] = prob.add_cst(
+                cst=bus_vars.Va[local_t, k] == 0,
+                name=join("island_bus_", [local_t, k], "_")
             )
             logger.add_warning("bus isolated",
-                               device=bus_data.names[k] + f'@t={t_idx}')
+                               device=f'{grid.buses[k].name}@t={local_t}')
         else:
-            bus_vars.kirchhoff[t_idx, k] = prob.add_cst(
-                cst=bus_vars.Pbalance[t_idx, k] == 0,
-                name=join("kirchoff_", [t_idx, k], "_")
+            bus_vars.kirchhoff[local_t, k] = prob.add_cst(
+                cst=bus_vars.Pbalance[local_t, k] == 0,
+                name=join("kirchoff_", [local_t, k], "_")
             )
 
-    Va = np.angle(bus_data.Vbus)
+    # set all slack angles to 0
     for i in vd:
-        prob.set_var_bounds(var=bus_vars.Va[t_idx, i], lb=Va[i], ub=Va[i])
+        prob.set_var_bounds(var=bus_vars.Va[local_t, i], lb=0.0, ub=0.0)
 
 
 def add_copper_plate_balance(t_idx: int,
@@ -1675,38 +1807,28 @@ def add_copper_plate_balance(t_idx: int,
     )
 
 
-def add_hydro_formulation(t: Union[int, None],
-                          time_global_tidx: Union[int, None],
+def add_hydro_formulation(local_t: Union[int, None],
+                          global_t: int | None,
+                          grid: MultiCircuit,
                           time_array: DateVec,
                           Sbase: float,
                           node_vars: FluidNodeVars,
                           path_vars: FluidPathVars,
                           inj_vars: FluidInjectionVars,
-                          node_data: FluidNodeData,
-                          path_data: FluidPathData,
-                          turbine_data: FluidTurbineData,
-                          pump_data: FluidPumpData,
-                          p2x_data: FluidP2XData,
-                          generator_data: GeneratorData,
                           generator_vars: GenerationVars,
                           fluid_level_0: Vec,
                           prob: LpModel,
                           logger: Logger):
     """
     Formulate the branches
-    :param t: local time index
-    :param time_global_tidx: global time index
+    :param local_t: local time index
+    :param global_t: global time index
+    :param grid: MultiCircuit
     :param time_array: list of time indices
     :param Sbase: base power of the system
     :param node_vars: FluidNodeVars
     :param path_vars: FluidPathVars
     :param inj_vars: FluidInjectionVars
-    :param node_data: FluidNodeData
-    :param path_data: FluidPathData
-    :param turbine_data: FluidTurbineData
-    :param pump_data: FluidPumpData
-    :param p2x_data: FluidP2XData
-    :param generator_data: GeneratorData
     :param generator_vars: GeneratorVars
     :param fluid_level_0: Initial node level
     :param prob: OR problem
@@ -1715,133 +1837,147 @@ def add_hydro_formulation(t: Union[int, None],
     """
 
     f_obj = 0.0
+    fluid_node_dict: Dict[FluidNode, int] = dict()
+    for m, elm in enumerate(grid.fluid_nodes):
+        node_vars.spillage[local_t, m] = prob.add_var(lb=0.00,
+                                                      ub=1e20,
+                                                      name=join("NodeSpillage_", [local_t, m], "_"))
 
-    for m in range(node_data.nelm):
-        node_vars.spillage[t, m] = prob.add_var(lb=0.00,
-                                                ub=1e20,
-                                                name=join("NodeSpillage_", [t, m], "_"))
+        f_obj += elm.get_spillage_cost_at(global_t) * node_vars.spillage[local_t, m]
 
-        f_obj += node_data.spillage_cost[m] * node_vars.spillage[t, m]
-        # f_obj += node_vars.spillage[t, m]
+        min_abs_level = elm.max_level * elm.min_soc
 
-        min_abs_level = node_data.max_level[m] * node_data.min_soc[m]
+        node_vars.current_level[local_t, m] = prob.add_var(lb=min_abs_level,
+                                                           ub=elm.max_level * elm.max_soc,
+                                                           name=join("level_", [local_t, m], "_"))
 
-        node_vars.current_level[t, m] = prob.add_var(lb=min_abs_level,
-                                                     ub=node_data.max_level[m] * node_data.max_soc[m],
-                                                     name=join("level_", [t, m], "_"))
-
-        if min_abs_level < node_data.min_level[m]:
+        if min_abs_level < elm.min_level:
             logger.add_error(msg='Node SOC is below the allowed minimum level',
                              value=min_abs_level,
-                             expected_value=node_data.min_level[m],
+                             expected_value=elm.min_level,
                              device_class="FluidNode",
-                             device_property=f"Min SOC at {t}")
+                             device_property=f"Min SOC at {local_t}")
 
-    for m in range(path_data.nelm):
-        path_vars.flow[t, m] = prob.add_var(lb=path_data.min_flow[m],
-                                            ub=path_data.max_flow[m],
-                                            name=join("hflow_", [t, m], "_"))
+    # initialize fluid path's vars
+    for m, elm in enumerate(grid.fluid_paths):
+        path_vars.flow[local_t, m] = prob.add_var(lb=elm.min_flow,
+                                                  ub=elm.max_flow,
+                                                  name=join("hflow_", [local_t, m], "_"))
 
     # Constraints
-    for m in range(path_data.nelm):
+    for m, elm in enumerate(grid.fluid_paths):
         # inflow: fluid flow entering the target node in m3/s
         # outflow: fluid flow leaving the source node in m3/s
         # flow: amount of fluid flowing through the river in m3/s
-        node_vars.flow_in[t, path_data.target_idx[m]] += path_vars.flow[t, m]
-        node_vars.flow_out[t, path_data.source_idx[m]] += path_vars.flow[t, m]
+        source_idx = fluid_node_dict.get(elm.source, None)
+        target_idx = fluid_node_dict.get(elm.target, None)
 
-    for m in range(turbine_data.nelm):
-        gen_idx = turbine_data.generator_idx[m]
-        plant_idx = turbine_data.plant_idx[m]
+        if source_idx is not None and target_idx is not None:
+            node_vars.flow_in[local_t, target_idx] += path_vars.flow[local_t, m]
+            node_vars.flow_out[local_t, source_idx] += path_vars.flow[local_t, m]
 
-        # flow [m3/s] = pgen [pu] * max_flow [m3/s] / (Pgen_max [MW] / Sbase [MW] * eff)
-        coeff = turbine_data.max_flow_rate[m] / (generator_data.pmax[gen_idx] / Sbase * turbine_data.efficiency[m])
-        turbine_flow = (generator_vars.p[t, gen_idx] * coeff)
-        # node_vars.flow_out[t, plant_idx] = turbine_flow  # assume only 1 turbine connected
+    gen_dict = {elm: i for i, elm in enumerate(grid.generators)}
 
-        # if t > 0:
-        inj_vars.flow[t, m] = turbine_flow  # to retrieve the value later on
+    for m, elm in enumerate(grid.turbines):
+        gen_idx = gen_dict.get(elm.generator, None)
+        plant_idx = fluid_node_dict.get(elm.plant, None)
 
-        prob.add_cst(cst=(node_vars.flow_out[t, plant_idx] == turbine_flow),
-                     name=join("turbine_river_", [t, m], "_"))
+        if gen_idx is not None and plant_idx is not None:
 
-        if generator_data.pmin[gen_idx] < 0:
-            logger.add_error(msg='Turbine generator pmin < 0 is not possible',
-                             value=generator_data.pmin[gen_idx])
+            # flow [m3/s] = pgen [pu] * max_flow [m3/s] / (Pgen_max [MW] / Sbase [MW] * eff)
+            coeff = elm.max_flow_rate / (elm.generator.get_Pmax_at(global_t) / Sbase * elm.efficiency)
+            turbine_flow = (generator_vars.p[local_t, gen_idx] * coeff)
+            # node_vars.flow_out[t, plant_idx] = turbine_flow  # assume only 1 turbine connected
+
+            # if t > 0:
+            inj_vars.flow[local_t, m] = turbine_flow  # to retrieve the value later on
+
+            prob.add_cst(cst=(node_vars.flow_out[local_t, plant_idx] == turbine_flow),
+                         name=join("turbine_river_", [local_t, m], "_"))
+
+            if elm.generator.get_Pmin_at(global_t) < 0:
+                logger.add_error(msg='Turbine generator pmin < 0 is not possible',
+                                 value=elm.generator.get_Pmin_at(global_t))
 
         # f_obj += turbine_flow
 
-    for m in range(pump_data.nelm):
-        gen_idx = pump_data.generator_idx[m]
-        plant_idx = pump_data.plant_idx[m]
+    n_turbines = grid.get_fluid_turbines_number()
+    for m, elm in enumerate(grid.pumps):
+        gen_idx = gen_dict.get(elm.generator, None)
+        plant_idx = fluid_node_dict.get(elm.plant, None)
 
-        # flow [m3/s] = pcons [pu] * max_flow [m3/s] * eff / (Pcons_min [MW] / Sbase [MW])
-        # invert the efficiency compared to a turbine
-        # pmin instead of pmax because the sign should be inverted (consuming instead of generating)
-        coeff = pump_data.max_flow_rate[m] * pump_data.efficiency[m] / (abs(generator_data.pmin[gen_idx]) / Sbase)
-        pump_flow = (generator_vars.p[t, gen_idx] * coeff)
-        # node_vars.flow_in[t, plant_idx] = pump_flow  # assume only 1 pump connected
+        if gen_idx is not None and plant_idx is not None:
+            # flow [m3/s] = pcons [pu] * max_flow [m3/s] * eff / (Pcons_min [MW] / Sbase [MW])
+            # invert the efficiency compared to a turbine
+            # pmin instead of pmax because the sign should be inverted (consuming instead of generating)
+            coeff = elm.max_flow_rate * elm.efficiency / (abs(elm.generator.get_Pmin_at(global_t)) / Sbase)
+            pump_flow = (generator_vars.p[local_t, gen_idx] * coeff)
+            # node_vars.flow_in[t, plant_idx] = pump_flow  # assume only 1 pump connected
 
-        # if t > 0:
-        inj_vars.flow[t, m + turbine_data.nelm] = - pump_flow
-        prob.add_cst(cst=(node_vars.flow_in[t, plant_idx] == - pump_flow),
-                     name=join("pump_river_", [t, m], "_"))
+            # if t > 0:
+            inj_vars.flow[local_t, m + n_turbines] = - pump_flow
+            prob.add_cst(cst=(node_vars.flow_in[local_t, plant_idx] == - pump_flow),
+                         name=join("pump_river_", [local_t, m], "_"))
 
-        if generator_data.pmax[gen_idx] > 0:
-            logger.add_error(msg='Pump generator pmax > 0 is not possible',
-                             value=generator_data.pmax[gen_idx])
+            if elm.generator.get_Pmax_at(global_t) > 0:
+                logger.add_error(msg='Pump generator pmax > 0 is not possible',
+                                 value=elm.generator.get_Pmax_at(global_t))
 
-        # f_obj += - pump_flow
+            # f_obj += - pump_flow
 
-    for m in range(p2x_data.nelm):
-        gen_idx = p2x_data.generator_idx[m]
+    n_pumps = grid.get_fluid_pumps_number()
+    for m, elm in enumerate(grid.p2xs):
+        gen_idx = gen_dict.get(elm.generator, None)
+        plant_idx = fluid_node_dict.get(elm.plant, None)
 
-        # flow[m3/s] = pcons [pu] * max_flow [m3/s] * eff / (Pcons_max [MW] / Sbase [MW])
-        # invert the efficiency compared to a turbine
-        # pmin instead of pmax because the sign should be inverted (consuming instead of generating)
-        coeff = p2x_data.max_flow_rate[m] * p2x_data.efficiency[m] / (abs(generator_data.pmin[gen_idx]) / Sbase)
-        p2x_flow = (generator_vars.p[t, gen_idx] * coeff)
+        if gen_idx is not None and plant_idx is not None:
 
-        # if t > 0:
-        node_vars.p2x_flow[t, p2x_data.plant_idx[m]] += - p2x_flow
-        inj_vars.flow[t, m + turbine_data.nelm + pump_data.nelm] = - p2x_flow
+            # flow[m3/s] = pcons [pu] * max_flow [m3/s] * eff / (Pcons_max [MW] / Sbase [MW])
+            # invert the efficiency compared to a turbine
+            # pmin instead of pmax because the sign should be inverted (consuming instead of generating)
+            coeff = elm.max_flow_rate * elm.efficiency / (abs(elm.generator.get_Pmin_at(global_t)) / Sbase)
+            p2x_flow = (generator_vars.p[local_t, gen_idx] * coeff)
 
-        if generator_data.pmax[gen_idx] > 0:
-            logger.add_error(msg='P2X generator pmax > 0 is not possible',
-                             value=generator_data.pmax[gen_idx])
+            # if t > 0:
+            node_vars.p2x_flow[local_t, plant_idx] += - p2x_flow
+            inj_vars.flow[local_t, m + n_turbines + n_pumps] = - p2x_flow
 
-        # f_obj += - p2x_flow
+            if elm.generator.get_Pmax_at(global_t) > 0:
+                logger.add_error(msg='P2X generator pmax > 0 is not possible',
+                                 value=elm.generator.get_Pmax_at(global_t))
 
-    if time_global_tidx is not None:
+            # f_obj += - p2x_flow
+
+    if global_t is not None:
         # constraints for the node level
-        for m in range(node_data.nelm):
-            if t == 0:
-                if len(time_array) > time_global_tidx + 1:
-                    dt = (time_array[time_global_tidx + 1] - time_array[time_global_tidx]).seconds
+        for m, elm in enumerate(grid.fluid_nodes):
+            if local_t == 0:
+                if len(time_array) > global_t + 1:
+                    dt = (time_array[global_t + 1] - time_array[global_t]).seconds
                 else:
-                    dt = 3600
+                    dt = 3600.0
 
                 # Initialize level at fluid_level_0
-                prob.add_cst(cst=(node_vars.current_level[t, m] ==
+                prob.add_cst(cst=(node_vars.current_level[local_t, m] ==
                                   fluid_level_0[m]
-                                  + dt * node_data.inflow[m]
-                                  + dt * node_vars.flow_in[t, m]
-                                  + dt * node_vars.p2x_flow[t, m]
-                                  - dt * node_vars.spillage[t, m]
-                                  - dt * node_vars.flow_out[t, m]),
-                             name=join("nodal_balance_", [t, m], "_"))
+                                  + dt * elm.get_inflow_at(global_t)
+                                  + dt * node_vars.flow_in[local_t, m]
+                                  + dt * node_vars.p2x_flow[local_t, m]
+                                  - dt * node_vars.spillage[local_t, m]
+                                  - dt * node_vars.flow_out[local_t, m]),
+                             name=join("nodal_balance_", [local_t, m], "_"))
             else:
                 # Update the level according to the in and out flows as time passes
-                dt = (time_array[time_global_tidx] - time_array[time_global_tidx - 1]).seconds
+                dt = (time_array[global_t] - time_array[global_t - 1]).seconds
 
-                prob.add_cst(cst=(node_vars.current_level[t, m] ==
-                                  node_vars.current_level[t - 1, m]
-                                  + dt * node_data.inflow[m]
-                                  + dt * node_vars.flow_in[t, m]
-                                  + dt * node_vars.p2x_flow[t, m]
-                                  - dt * node_vars.spillage[t, m]
-                                  - dt * node_vars.flow_out[t, m]),
-                             name=join("nodal_balance_", [t, m], "_"))
+                prob.add_cst(cst=(node_vars.current_level[local_t, m] ==
+                                  node_vars.current_level[local_t - 1, m]
+                                  + dt * elm.get_inflow_at(global_t)
+                                  + dt * node_vars.flow_in[local_t, m]
+                                  + dt * node_vars.p2x_flow[local_t, m]
+                                  - dt * node_vars.spillage[local_t, m]
+                                  - dt * node_vars.flow_out[local_t, m]),
+                             name=join("nodal_balance_", [local_t, m], "_"))
     return f_obj
 
 
@@ -1854,8 +1990,6 @@ def run_linear_opf_ts(grid: MultiCircuit,
                       contingency_groups_used: Union[List[ContingencyGroup], None] = None,
                       unit_commitment: bool = False,
                       ramp_constraints: bool = False,
-                      consider_time_up_down: bool = False,
-                      area_spinning_reserve: bool = False,
                       generation_expansion_planning: bool = False,
                       all_generators_fixed: bool = False,
                       lodf_threshold: float = 0.001,
@@ -1886,8 +2020,6 @@ def run_linear_opf_ts(grid: MultiCircuit,
     :param contingency_groups_used: List of contingency groups to use
     :param unit_commitment: Formulate unit commitment?
     :param ramp_constraints: Formulate ramp constraints?
-    :param consider_time_up_down: Consider the time up/down?
-    :param area_spinning_reserve: Area spinning reserve?
     :param generation_expansion_planning: Generation expansion planning?
     :param all_generators_fixed: All generators take their snapshot or profile values
                                  instead of resorting to dispatchable status
@@ -1907,7 +2039,6 @@ def run_linear_opf_ts(grid: MultiCircuit,
     :param export_model_fname: Export the model into LP and MPS?
     :param verbose: verbosity level
     :param robust: Robust optimization?
-    :param mip_framework: MIP framework to use
     :return: OpfVars
     """
     bus_dict = {bus: i for i, bus in enumerate(grid.buses)}
@@ -1955,6 +2086,9 @@ def run_linear_opf_ts(grid: MultiCircuit,
         inter_area_branches = list()
         inter_area_hvdc = list()
 
+    # dictionary of bus indices
+    bus_idx_dict: Dict[Bus, int] = grid.get_bus_index_dict()
+
     # declare structures of LP vars
     mip_vars = OpfVars(nt=nt, nbus=n, ng=ng, nb=nb, nl=nl,
                        nbr=nbr, n_hvdc=n_hvdc, n_vsc=n_vsc,
@@ -1971,27 +2105,29 @@ def run_linear_opf_ts(grid: MultiCircuit,
     # objective function
     f_obj: Union[LpExp, float] = 0.0
 
-    for local_t_idx, global_t_idx in enumerate(time_indices):  # use time_indices = [None] to simulate the snapshot
+    # compile the circuit at the master time index ------------------------------------------------------------
+    # note: There are very little chances of simplifying this step and experience shows
+    #       it is not worth the effort, so compile every time step
+    nc: NumericalCircuit = compile_numerical_circuit_at(
+        circuit=grid,
+        t_idx=None,  # yes, this is not a bug
+        bus_dict=bus_dict,
+        areas_dict=areas_dict,
+        fill_gep=generation_expansion_planning,
+        logger=logger
+    )
+
+    indices = nc.get_simulation_indices()
+
+    for local_t_idx in range(len(time_indices)):  # use time_indices = [None] to simulate the snapshot
+
+        global_t_idx = time_indices[local_t_idx]
 
         # time indices:
         # imagine that the complete VeraGrid DB time goes from 0 to 1000
         # but, for whatever reason, time_indices is [100..200]
         # local_t_idx would go from 0..100
         # global_t_idx would go from 100..200
-
-        # compile the circuit at the master time index ------------------------------------------------------------
-        # note: There are very little chances of simplifying this step and experience shows
-        #       it is not worth the effort, so compile every time step
-        nc: NumericalCircuit = compile_numerical_circuit_at(
-            circuit=grid,
-            t_idx=global_t_idx,  # yes, this is not a bug
-            bus_dict=bus_dict,
-            areas_dict=areas_dict,
-            fill_gep=generation_expansion_planning,
-            logger=logger
-        )
-
-        indices = nc.get_simulation_indices()
 
         # formulate the bus angles ---------------------------------------------------------------------------------
         for k in range(nc.bus_data.nbus):
@@ -2011,9 +2147,11 @@ def run_linear_opf_ts(grid: MultiCircuit,
 
         # formulate loads ------------------------------------------------------------------------------------------
         f_obj += add_linear_load_formulation(
-            t=local_t_idx,
+            local_t=local_t_idx,
+            global_t=global_t_idx,
+            grid=grid,
+            bus_idx_dict=bus_idx_dict,
             Sbase=nc.Sbase,
-            load_data_t=nc.load_data,
             bus_vars=mip_vars.bus_vars,
             load_vars=mip_vars.load_vars,
             prob=lp_model
@@ -2022,16 +2160,16 @@ def run_linear_opf_ts(grid: MultiCircuit,
         # formulate generation -------------------------------------------------------------------------------------
         f_obj += add_linear_generation_formulation(
             local_t=local_t_idx,
+            global_t=global_t_idx,
+            grid=grid,
+            bus_idx_dict=bus_idx_dict,
             Sbase=nc.Sbase,
             time_array=grid.time_profile,
             bus_vars=mip_vars.bus_vars,
-            gen_data_t=nc.generator_data,
             gen_vars=mip_vars.gen_vars,
             prob=lp_model,
             unit_commitment=unit_commitment,
             ramp_constraints=ramp_constraints,
-            consider_time_up_down=consider_time_up_down,
-            area_spinning_reserve=area_spinning_reserve,
             skip_generation_limits=skip_generation_limits,
             all_generators_fixed=all_generators_fixed,
             vd=indices.vd,
@@ -2047,11 +2185,13 @@ def run_linear_opf_ts(grid: MultiCircuit,
             energy_0 = nc.battery_data.soc_0 * nc.battery_data.enom  # in MWh here
 
         f_obj += add_linear_battery_formulation(
-            t=local_t_idx,
+            local_t=local_t_idx,
+            global_t=global_t_idx,
+            grid=grid,
+            bus_idx_dict=bus_idx_dict,
             Sbase=nc.Sbase,
             time_array=grid.time_profile,
             bus_vars=mip_vars.bus_vars,
-            batt_data_t=nc.battery_data,
             batt_vars=mip_vars.batt_vars,
             prob=lp_model,
             unit_commitment=unit_commitment,
@@ -2091,9 +2231,11 @@ def run_linear_opf_ts(grid: MultiCircuit,
 
             # formulate hvdc -------------------------------------------------------------------------------------------
             f_obj += add_linear_hvdc_formulation(
-                t=local_t_idx,
+                local_t=local_t_idx,
+                global_t=global_t_idx,
+                grid=grid,
+                bus_idx_dict=bus_idx_dict,
                 Sbase=nc.Sbase,
-                hvdc_data_t=nc.hvdc_data,
                 hvdc_vars=mip_vars.hvdc_vars,
                 bus_vars=mip_vars.bus_vars,
                 prob=lp_model
@@ -2101,9 +2243,11 @@ def run_linear_opf_ts(grid: MultiCircuit,
 
             # formulate vsc --------------------------------------------------------------------------------------------
             f_obj += add_linear_vsc_formulation(
-                t=local_t_idx,
+                local_t=local_t_idx,
+                global_t=global_t_idx,
+                grid=grid,
+                bus_idx_dict=bus_idx_dict,
                 Sbase=nc.Sbase,
-                vsc_data_t=nc.vsc_data,
                 vsc_vars=mip_vars.vsc_vars,
                 bus_vars=mip_vars.bus_vars,
                 prob=lp_model,
@@ -2112,11 +2256,11 @@ def run_linear_opf_ts(grid: MultiCircuit,
 
             # formulate branches ---------------------------------------------------------------------------------------
             f_obj += add_linear_branches_formulation(
-                t=local_t_idx,
+                local_t=local_t_idx,
+                global_t=global_t_idx,
+                grid=grid,
+                bus_idx_dict=bus_idx_dict,
                 Sbase=nc.Sbase,
-                bus_data_t=nc.bus_data,
-                branch_data_t=nc.passive_branch_data,
-                ctrl_branch_data_t=nc.active_branch_data,
                 branch_vars=mip_vars.branch_vars,
                 bus_vars=mip_vars.bus_vars,
                 prob=lp_model,
@@ -2127,9 +2271,9 @@ def run_linear_opf_ts(grid: MultiCircuit,
             # formulate nodes ------------------------------------------------------------------------------------------
 
             add_linear_node_balance(
-                t_idx=local_t_idx,
+                local_t=local_t_idx,
+                grid=grid,
                 vd=indices.vd,
-                bus_data=nc.bus_data,
                 bus_vars=mip_vars.bus_vars,
                 nodal_capacity_vars=mip_vars.nodal_capacity_vars,
                 capacity_nodes_idx=capacity_nodes_idx,
@@ -2149,7 +2293,7 @@ def run_linear_opf_ts(grid: MultiCircuit,
                                         distributed_slack=False,
                                         correct_values=True)
 
-                    # Compute the more generalistic contingency structures
+                    # Compute the more generalist contingency structures
                     mctg = LinearMultiContingencies(grid=grid,
                                                     contingency_groups_used=contingency_groups_used)
 
@@ -2159,9 +2303,10 @@ def run_linear_opf_ts(grid: MultiCircuit,
 
                     # formulate the contingencies
                     f_obj += add_linear_branches_contingencies_formulation(
-                        t_idx=local_t_idx,
+                        local_t=local_t_idx,
+                        global_t=global_t_idx,
+                        grid=grid,
                         Sbase=nc.Sbase,
-                        branch_data_t=nc.passive_branch_data,
                         branch_vars=mip_vars.branch_vars,
                         hvdc_vars=mip_vars.hvdc_vars,
                         vsc_vars=mip_vars.vsc_vars,
@@ -2197,19 +2342,14 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 fluid_level_0 = nc.fluid_node_data.initial_level
 
             if n_fluid_node > 0:
-                f_obj += add_hydro_formulation(t=local_t_idx,
-                                               time_global_tidx=global_t_idx,
+                f_obj += add_hydro_formulation(local_t=local_t_idx,
+                                               global_t=global_t_idx,
+                                               grid=grid,
                                                time_array=grid.time_profile,
                                                Sbase=nc.Sbase,
                                                node_vars=mip_vars.fluid_node_vars,
                                                path_vars=mip_vars.fluid_path_vars,
                                                inj_vars=mip_vars.fluid_inject_vars,
-                                               node_data=nc.fluid_node_data,
-                                               path_data=nc.fluid_path_data,
-                                               turbine_data=nc.fluid_turbine_data,
-                                               pump_data=nc.fluid_pump_data,
-                                               p2x_data=nc.fluid_p2x_data,
-                                               generator_data=nc.generator_data,
                                                generator_vars=mip_vars.gen_vars,
                                                fluid_level_0=fluid_level_0,
                                                prob=lp_model,
@@ -2245,9 +2385,7 @@ def run_linear_opf_ts(grid: MultiCircuit,
         logger.add_info("LP model saved as", value=export_model_fname)
         print('LP model saved as:', export_model_fname)
 
-    status = lp_model.solve(robust=robust,
-                            show_logs=verbose > 0,
-                            progress_text=progress_text)
+    status = lp_model.solve(robust=robust, show_logs=verbose > 0, progress_text=progress_text)
 
     # gather the results
     logger.add_info(msg="Status", value=lp_model.status2string(status))

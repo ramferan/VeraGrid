@@ -2,16 +2,17 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
+
 import numpy as np
-from PySide6 import QtCore
 from matplotlib import pyplot as plt
 
 from VeraGrid.Gui.pandas_model import PandasModel
+from VeraGrid.Gui.Main.SubClasses.Model.compiled_arrays_model import CompiledArraysModule
 from VeraGrid.Gui.Main.SubClasses.Server.server import ServerMain
 import VeraGrid.Gui.gui_functions as gf
 
-from VeraGridEngine.enumerations import EngineType, BranchImpedanceMode
-from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
+from VeraGridEngine.enumerations import BranchImpedanceMode
 
 
 class CompiledArraysMain(ServerMain):
@@ -27,6 +28,8 @@ class CompiledArraysMain(ServerMain):
 
         # create main window
         ServerMain.__init__(self, parent=parent)
+
+        self.compiled_arrays: CompiledArraysModule | None = None
 
         # array modes
         self.ui.arrayModeComboBox.addItem('real')
@@ -47,6 +50,9 @@ class CompiledArraysMain(ServerMain):
         """
         Simulation data structure clicked
         """
+        if self.compiled_arrays is None:
+            self.show_warning_toast("Calculate islands first!")
+            return
 
         tree_mdl = self.ui.simulationDataStructuresTreeView.model()
         item = tree_mdl.itemFromIndex(index)
@@ -59,9 +65,8 @@ class CompiledArraysMain(ServerMain):
             island_idx = self.ui.simulation_data_island_comboBox.currentIndex()
 
             if island_idx > -1 and self.circuit.valid_for_simulation():
-                # elm_type = self.ui.simulationDataStructuresTreeView.selectedIndexes()[0].data(role=QtCore.Qt.ItemDataRole.DisplayRole)
 
-                df = self.calculation_inputs_to_display[island_idx].get_structure(elm_type)
+                df = self.compiled_arrays.get_structure(island_idx, elm_type)
 
                 mdl = PandasModel(df)
 
@@ -123,47 +128,20 @@ class CompiledArraysMain(ServerMain):
         Recompile the circuits available to display
         :return:
         """
-        if self.circuit is not None:
+        if self.ui.apply_impedance_tolerances_checkBox.isChecked():
+            branch_impedance_tolerance_mode = BranchImpedanceMode.Upper
+        else:
+            branch_impedance_tolerance_mode = BranchImpedanceMode.Specified
 
-            engine = self.get_preferred_engine()
-
-            if engine == EngineType.VeraGrid:
-
-                if self.ui.apply_impedance_tolerances_checkBox.isChecked():
-                    branch_impedance_tolerance_mode = BranchImpedanceMode.Upper
-                else:
-                    branch_impedance_tolerance_mode = BranchImpedanceMode.Specified
-
-                numerical_circuit = compile_numerical_circuit_at(
-                    circuit=self.circuit,
-                    t_idx=None,
+        self.compiled_arrays = CompiledArraysModule(
+            grid=self.circuit,
+            engine=self.get_preferred_engine(),
                     branch_tolerance_mode=branch_impedance_tolerance_mode,
                     use_stored_guess=self.ui.use_voltage_guess_checkBox.isChecked(),
                     control_taps_phase=self.ui.control_tap_phase_checkBox.isChecked(),
                     control_taps_modules=self.ui.control_tap_modules_checkBox.isChecked(),
                     control_remote_voltage=self.ui.control_remote_voltage_checkBox.isChecked(),
-                )
-                calculation_inputs = numerical_circuit.split_into_islands()
-                self.calculation_inputs_to_display = calculation_inputs
-
-            elif engine == EngineType.Bentayga:
-                import VeraGridEngine.Compilers.circuit_to_bentayga as ben
-                self.calculation_inputs_to_display = ben.get_snapshots_from_bentayga(self.circuit)
-
-            elif engine == EngineType.NewtonPA:
-                import VeraGridEngine.Compilers.circuit_to_newton_pa as ne
-                self.calculation_inputs_to_display = ne.get_snapshots_from_newtonpa(self.circuit)
-
-            else:
-                # fallback to VeraGrid
-                numerical_circuit = compile_numerical_circuit_at(circuit=self.circuit, t_idx=None)
-                calculation_inputs = numerical_circuit.split_into_islands()
-                self.calculation_inputs_to_display = calculation_inputs
-
-            return True
-        else:
-            self.calculation_inputs_to_display = None
-            return False
+        )
 
     def update_islands_to_display(self):
         """
@@ -172,7 +150,7 @@ class CompiledArraysMain(ServerMain):
         """
         self.recompile_circuits_for_display()
         self.ui.simulation_data_island_comboBox.clear()
-        lst = ['Island ' + str(i) for i, circuit in enumerate(self.calculation_inputs_to_display)]
+        lst = ['Island ' + str(i) for i, circuit in enumerate(self.compiled_arrays.islands)]
         self.ui.simulation_data_island_comboBox.addItems(lst)
-        if len(self.calculation_inputs_to_display) > 0:
+        if len(self.compiled_arrays.islands) > 0:
             self.ui.simulation_data_island_comboBox.setCurrentIndex(0)

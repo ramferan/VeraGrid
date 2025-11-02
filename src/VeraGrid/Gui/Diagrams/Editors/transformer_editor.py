@@ -67,8 +67,10 @@ class TransformerEditor(QDialog):
             self.catalogue_combo.setModel(get_list_model(self.templates))
 
             if self.current_template is not None:
-                idx = self.templates.index(self.current_template)
-                if idx > -1:
+
+                try:
+                    idx = self.templates.index(self.current_template)
+
                     self.catalogue_combo.setCurrentIndex(idx)
 
                     # set the template parameters
@@ -77,6 +79,9 @@ class TransformerEditor(QDialog):
                     Pfe = self.current_template.Pfe  # kW
                     I0 = self.current_template.I0  # %
                     Vsc = self.current_template.Vsc  # %
+
+                except ValueError as e:
+                    print(f"Template not found for {self.transformer_obj.name}")
 
         # load template
         self.load_template_btn = QPushButton()

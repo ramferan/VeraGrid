@@ -829,6 +829,9 @@ def fill_generator_parent(
     data.x1[k] = elm.X1
     data.x2[k] = elm.X2
 
+    data.startup_cost[k] = elm.StartupCost
+    data.shut_down_cost[k] = elm.ShutdownCost
+
     data.ramp_up[k] = elm.RampUp
     data.ramp_down[k] = elm.RampDown
     data.min_time_up[k] = elm.MinTimeUp
@@ -1039,17 +1042,21 @@ def get_battery_data(
 def fill_parent_branch(i: int,
                        elm: BRANCH_TYPES,
                        data: PassiveBranchData,
+                       bus_data: BusData,
                        bus_dict: Dict[Bus, int],
-                       t_idx: int | None = None,
-                       time_series: bool = False):
+                       bus_voltage_used: BoolVec,
+                       use_stored_guess=False,
+                       t_idx: int | None = None, ):
     """
 
     :param i:
     :param elm:
     :param data:
+    :param bus_data:
     :param bus_dict:
+    :param bus_voltage_used:
+    :param use_stored_guess:
     :param t_idx:
-    :param time_series:
     :return:
     """
     data.names[i] = elm.name
@@ -1076,6 +1083,16 @@ def fill_parent_branch(i: int,
 
     data.virtual_tap_f[i], data.virtual_tap_t[i] = elm.get_virtual_taps()
 
+    # This is to initialize the bus voltages for branches
+    # that do have a significant virtual tap difference.
+    # i.e. transformers for distribution systems
+
+    if not bus_voltage_used[f] and not use_stored_guess:
+        bus_data.Vbus[f] = data.virtual_tap_f[i]
+
+    if not bus_voltage_used[t] and not use_stored_guess:
+        bus_data.Vbus[t] = data.virtual_tap_t[i]
+
     return f, t
 
 
@@ -1087,7 +1104,6 @@ def fill_controllable_branch(
         bus_data: BusData,
         bus_dict: Dict[Bus, int],
         t_idx: int | None,
-        time_series: bool,
         opf_results: VALID_OPF_RESULTS | None,
         use_stored_guess: bool,
         bus_voltage_used: BoolVec,
@@ -1104,7 +1120,6 @@ def fill_controllable_branch(
     :param bus_data:
     :param bus_dict:
     :param t_idx:
-    :param time_series:
     :param opf_results:
     :param use_stored_guess:
     :param bus_voltage_used:
@@ -1117,9 +1132,11 @@ def fill_controllable_branch(
     fill_parent_branch(i=ii,
                        elm=elm,
                        data=data,
+                       bus_data=bus_data,
                        bus_dict=bus_dict,
-                       t_idx=t_idx,
-                       time_series=time_series)
+                       bus_voltage_used=bus_voltage_used,
+                       use_stored_guess=use_stored_guess,
+                       t_idx=t_idx)
 
     if control_taps_phase:
         ctrl_data.tap_phase_control_mode[ii] = elm.get_tap_phase_control_mode_at(t_idx)
@@ -1201,12 +1218,10 @@ def get_branch_data(
         apply_temperature: bool,
         branch_tolerance_mode: BranchImpedanceMode,
         t_idx: int | None,
-        time_series: bool = False,
         opf_results: VALID_OPF_RESULTS | None = None,
         use_stored_guess: bool = False,
         control_taps_modules: bool = True,
         control_taps_phase: bool = True,
-        control_remote_voltage: bool = True,
         logger: Logger = Logger(),
         fill_three_phase: bool = False
 ) -> Dict[BRANCH_TYPES, int]:
@@ -1221,12 +1236,10 @@ def get_branch_data(
     :param apply_temperature: apply the temperature correction?
     :param branch_tolerance_mode: BranchImpedanceMode
     :param t_idx: time index (-1 is useless)
-    :param time_series: compile time series? else the sanpshot is compiled
     :param opf_results: OptimalPowerFlowResults
     :param use_stored_guess: use the stored voltage ?
     :param control_taps_modules: Control TapsModules
     :param control_taps_phase: Control TapsPhase
-    :param control_remote_voltage: Control RemoteVoltage
     :param logger: Logger
     :param fill_three_phase: Fill the tree phase info?
     :return: BranchData
@@ -1243,9 +1256,11 @@ def get_branch_data(
         fill_parent_branch(i=ii,
                            elm=elm,
                            data=data,
+                           bus_data=bus_data,
                            bus_dict=bus_dict,
-                           t_idx=t_idx,
-                           time_series=time_series)
+                           bus_voltage_used=bus_voltage_used,
+                           use_stored_guess=use_stored_guess,
+                           t_idx=t_idx)
 
         data.R[ii] = elm.R_corrected if apply_temperature else elm.R
 
@@ -1299,9 +1314,11 @@ def get_branch_data(
         fill_parent_branch(i=ii,
                            elm=elm,
                            data=data,
+                           bus_data=bus_data,
                            bus_dict=bus_dict,
-                           t_idx=t_idx,
-                           time_series=time_series)
+                           bus_voltage_used=bus_voltage_used,
+                           use_stored_guess=use_stored_guess,
+                           t_idx=t_idx)
 
         data.R[ii] = elm.R_corrected if apply_temperature else elm.R
 
@@ -1329,7 +1346,6 @@ def get_branch_data(
                                  bus_data=bus_data,
                                  bus_dict=bus_dict,
                                  t_idx=t_idx,
-                                 time_series=time_series,
                                  opf_results=opf_results,
                                  use_stored_guess=use_stored_guess,
                                  bus_voltage_used=bus_voltage_used,
@@ -1395,7 +1411,6 @@ def get_branch_data(
                                      bus_data=bus_data,
                                      bus_dict=bus_dict,
                                      t_idx=t_idx,
-                                     time_series=time_series,
                                      opf_results=opf_results,
                                      use_stored_guess=use_stored_guess,
                                      bus_voltage_used=bus_voltage_used,
@@ -1450,7 +1465,6 @@ def get_branch_data(
                                  bus_data=bus_data,
                                  bus_dict=bus_dict,
                                  t_idx=t_idx,
-                                 time_series=time_series,
                                  opf_results=opf_results,
                                  use_stored_guess=use_stored_guess,
                                  bus_voltage_used=bus_voltage_used,
@@ -1490,9 +1504,11 @@ def get_branch_data(
         fill_parent_branch(i=ii,
                            elm=elm,
                            data=data,
+                           bus_data=bus_data,
                            bus_dict=bus_dict,
-                           t_idx=t_idx,
-                           time_series=time_series)
+                           bus_voltage_used=bus_voltage_used,
+                           use_stored_guess=use_stored_guess,
+                           t_idx=t_idx)
 
         data.R[ii] = elm.R_corrected if apply_temperature else elm.R
 
@@ -1523,9 +1539,11 @@ def get_branch_data(
         fill_parent_branch(i=ii,
                            elm=elm,
                            data=data,
+                           bus_data=bus_data,
                            bus_dict=bus_dict,
-                           t_idx=t_idx,
-                           time_series=time_series)
+                           bus_voltage_used=bus_voltage_used,
+                           use_stored_guess=use_stored_guess,
+                           t_idx=t_idx)
 
         if fill_three_phase:
             data.phA[ii] = 1
@@ -1696,7 +1714,7 @@ def get_vsc_data(
     :param logger: Logger
     :return: VscData
     """
-    bus_angle_used = bus_data.bus_types == BusMode.Slack_tpe.value
+    bus_angle_used = np.array(bus_data.bus_types == BusMode.Slack_tpe.value).astype(bool)
     ii = 0
 
     # VSC
@@ -2119,7 +2137,6 @@ def compile_numerical_circuit_at(circuit: MultiCircuit,
         ctrl_data=nc.active_branch_data,
         circuit=circuit,
         t_idx=t_idx,
-        time_series=time_series,
         bus_dict=bus_dict,
         bus_data=nc.bus_data,
         bus_voltage_used=bus_voltage_used,
@@ -2129,7 +2146,6 @@ def compile_numerical_circuit_at(circuit: MultiCircuit,
         use_stored_guess=use_stored_guess,
         control_taps_modules=control_taps_modules,
         control_taps_phase=control_taps_phase,
-        control_remote_voltage=control_remote_voltage,
         fill_three_phase=fill_three_phase
     )
 

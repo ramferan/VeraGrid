@@ -176,34 +176,47 @@ def get_reduction_sets(grid: MultiCircuit, reduction_bus_indices: Sequence[int],
     """
     bus_idx_dict = grid.get_bus_index_dict()
     external_set = set(reduction_bus_indices)
-    internal_set = set()
-    internal_branches = list()
 
+    # Build neighbor lists to detect buses that become isolated if external_set is removed
+    n_buses = grid.get_bus_number()
+    neighbors = {i: set() for i in range(n_buses)}
+    branches = list(grid.get_branches(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch))
+    for branch in branches:
+        f = bus_idx_dict[branch.bus_from]
+        t = bus_idx_dict[branch.bus_to]
+        neighbors[f].add(t)
+        neighbors[t].add(f)
+
+    # Expand the external set with any bus whose neighbors are all in the external set
+    # Iterate until no more buses qualify (transitive closure)
+    changed = True
+    while changed:
+        changed = False
+        to_add = set()
+        for i in range(n_buses):
+            # Only consider buses that have at least one neighbor (if none, they're not connected to anything and
+            # should not be removed unless explicitly requested)
+            if i not in external_set and len(neighbors[i]) != 0 and neighbors[i].issubset(external_set):
+                to_add.add(i)
+        if to_add:
+            external_set.update(to_add)
+            changed = True
+
+    # All buses that will remain after reduction (including boundary buses) once floating buses are absorbed
+    all_bus_indices = set(range(n_buses))
+    internal_all_set = all_bus_indices - external_set
+
+    # Branches fully contained in the remaining grid (both ends not in external)
+    internal_branches = list()
     for k, branch in enumerate(grid.get_branches(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch)):
         f = bus_idx_dict[branch.bus_from]
         t = bus_idx_dict[branch.bus_to]
-        if f in external_set:
-            if t in external_set:
-                # the branch belongs to the external set
-                pass
-            else:
-                # the branch is a boundary link and t is a frontier bus
-                pass
-        else:
-            # we know f is not external...
-
-            if t in external_set:
-                # f is not in the external set, but t is: the branch is a boundary link and f is a frontier bus
-                pass
-            else:
-                # f nor t are in the external set: both belong to the internal set
-                internal_set.add(f)
-                internal_set.add(t)
-                internal_branches.append(k)
+        if (f in internal_all_set) and (t in internal_all_set):
+            internal_branches.append(k)
 
     # convert to arrays and sort
     external = np.sort(np.array(list(external_set)))
-    internal = np.sort(np.array(list(internal_set)))
+    internal = np.sort(np.array(list(internal_all_set)))
     internal_branches = np.array(internal_branches)
 
     return external, internal, internal_branches
@@ -388,7 +401,7 @@ def ptdf_reduction_projected(grid: MultiCircuit,
 
         bus = grid.buses[i]
         if abs(dPload[i]) > tol:
-            elm = Load(name=f"compensated load {i}", P=dPload[i])
+            elm = Load(name=f"compensated load {i}", P=-dPload[i])
 
             if dPbus_load_ts is not None:
                 elm.P_prof = dPbus_load_ts[:, i]
@@ -396,7 +409,8 @@ def ptdf_reduction_projected(grid: MultiCircuit,
             grid.add_load(bus=bus, api_obj=elm)
 
         if abs(dPgen[i]) > tol:
-            elm = Generator(name=f"compensated gen {i}", P=-dPgen[i], srap_enabled=False)
+            elm = Generator(name=f"compensated gen {i}", P=dPgen[i], srap_enabled=False, 
+                            is_controlled=False, power_factor=0.999)
 
             if dPbus_gen_ts is not None:
                 elm.P_prof = -dPbus_gen_ts[:, i]
@@ -404,7 +418,8 @@ def ptdf_reduction_projected(grid: MultiCircuit,
             grid.add_generator(bus=bus, api_obj=elm)
 
         if abs(dPgen_srap[i]) > tol:
-            elm = Generator(name=f"compensated gen {i}", P=-dPgen_srap[i], srap_enabled=True)
+            elm = Generator(name=f"compensated gen {i}", P=dPgen_srap[i], srap_enabled=True,
+                            is_controlled=False, power_factor=0.999)
 
             if dPbus_gen_srap_ts is not None:
                 elm.P_prof = -dPbus_gen_srap_ts[:, i]
@@ -416,6 +431,8 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     # Flows0 = lin.PTDF @ Pbus0
     # Flows4 = lin2.PTDF @ Pbus4
     # diff = Flows0[i_branches] - Flows4
+    
+    
 
     return grid, logger
 

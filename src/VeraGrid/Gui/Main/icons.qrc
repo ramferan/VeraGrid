@@ -1,6 +1,5 @@
 <RCC>
   <qresource prefix="Icons">
-    <file>icons/dyn_add.png</file>
     <file>icons/disconnector.png</file>
     <file>icons/reliability.png</file>
     <file>icons/ruler.png</file>

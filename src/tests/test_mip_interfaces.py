@@ -56,7 +56,7 @@ def test_issue_372_1():
             # export_model_fname="test_issue_372_1.lp"
             mip_framework=mip_framework,
             mip_solver=vg.MIPSolvers.HIGHS,
-            export_model_fname=f"NTC test_issue_372_1 {mip_framework.value}.lp"
+            export_model_fname=f"NTC test_issue_372_1 {mip_framework.value}.mps"
         )
 
         lin_options = vg.LinearAnalysisOptions()
@@ -86,8 +86,6 @@ def test_issue_372_1():
         bus_area_indices = grid.get_bus_area_indices()
         a1 = np.where(bus_area_indices == 0)[0]
         a2 = np.where(bus_area_indices == 1)[0]
-
-        theta = np.angle(res.voltage)
 
         # List of (branch index, branch object, flow sense w.r.t the area exchange)
         inter_info = grid.get_inter_areas_branches(a1=[grid.areas[0]], a2=[grid.areas[1]])

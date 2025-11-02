@@ -238,7 +238,7 @@ class LineLocationGraphicItem(QtWidgets.QGraphicsEllipseItem, NodeTemplate):
         Event handler for when the mouse enters the item.
         """
         self.hovered = True
-        self.setNodeColor(QColor(Qt.GlobalColor.red), QColor(Qt.GlobalColor.red))
+        self.set_node_color(QColor(Qt.GlobalColor.red), QColor(Qt.GlobalColor.red))
 
     def hoverLeaveEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
         """
@@ -288,9 +288,9 @@ class LineLocationGraphicItem(QtWidgets.QGraphicsEllipseItem, NodeTemplate):
         """
         Remove
         """
-        self.line_container.removeNode(node=self)
+        self.line_container.remove_node(node=self)
 
-    def setNodeColor(self, inner_color: QColor, border_color: QColor = None) -> None:
+    def set_node_color(self, inner_color: QColor, border_color: QColor = None) -> None:
         """
 
         :param inner_color:
@@ -312,7 +312,7 @@ class LineLocationGraphicItem(QtWidgets.QGraphicsEllipseItem, NodeTemplate):
         :return:
         """
         # Example: color assignment
-        self.setNodeColor(self.colorInner, self.colorBorder)
+        self.set_node_color(self.colorInner, self.colorBorder)
 
     def get_pos(self) -> QPointF:
         """

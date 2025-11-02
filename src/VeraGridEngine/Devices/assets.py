@@ -5611,6 +5611,16 @@ class Assets:
             elms += lst
         return elms
 
+    def get_load_like_devices_iter(self) -> Generator[INJECTION_DEVICE_TYPES, None, None]:
+        """
+        Get a list of all devices that can inject or subtract power from a node
+        :return: List of EditableDevice
+        """
+
+        for lst in self.get_load_like_devices_lists():
+            for elm in lst:
+                yield elm
+
     def get_load_like_device_number(self) -> int:
         """
         Get a list of all devices that can inject or subtract power from a node

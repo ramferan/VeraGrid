@@ -523,7 +523,9 @@ class FileSave:
         if self.file_name.endswith('.xlsx'):
             logger = self.save_excel()
 
-        elif self.file_name.endswith('.veragrid') or self.file_name.endswith('.dveragrid'):
+        elif (self.file_name.endswith('.veragrid')
+              or self.file_name.endswith('.dveragrid')
+              or self.file_name.endswith('.gridcal')):
             logger = self.save_zip()
 
         elif self.file_name.endswith('.sqlite'):

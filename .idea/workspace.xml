@@ -28,7 +28,62 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="merged from eroots devel" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="merged from eroots devel">
+      <change afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/compiled_arrays_model.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/Formulations/linear_opf_ts_b.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/tests/data/grids/New England_solar_case_OPF.gridcal" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/tests/data/grids/case14_complex_to_reduce.veragrid" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/tests/data/grids/case14_to_reduce.veragrid" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/tests/data/grids/case14_to_reduce_inactive.veragrid" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/doc/md_source/optimal_power_flow.md" beforeDir="false" afterPath="$PROJECT_DIR$/doc/md_source/optimal_power_flow.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/doc/md_source/topology.md" beforeDir="false" afterPath="$PROJECT_DIR$/doc/md_source/topology.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/Editors/transformer_editor.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/Editors/transformer_editor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/Branches/line_location_graphic_item.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/Branches/line_location_graphic_item.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/Branches/map_line_container.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/Branches/map_line_container.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/grid_map_widget.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/grid_map_widget.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/map_widget.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/MapWidget/map_widget.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Diagrams/SchematicWidget/schematic_widget.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/GridReduce/grid_reduce.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/GridReduce/grid_reduce.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/ConsoleLog.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/ConsoleLog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/MainWindow.ui" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/compiled_arrays.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/compiled_arrays.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/data_base.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/data_base.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/diagrams.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Model/diagrams.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Settings/configuration.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/Settings/configuration.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/io.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/io.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/SubClasses/simulations.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/icons.qrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/icons.qrc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/icons_rc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/Gui/Main/icons_rc.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGrid/__version__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGrid/__version__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Compilers/circuit_to_data.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/DataStructures/generator_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/DataStructures/generator_data.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/DataStructures/numerical_circuit.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/DataStructures/numerical_circuit.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/underground_line_type.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/Branches/underground_line_type.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Devices/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Devices/assets.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/IO/file_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/IO/file_handler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Derivatives/csc_derivatives.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/Derivatives/csc_derivatives.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/NTC/ntc_opf.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/NTC/ntc_opf.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/Formulations/linear_opf_ts.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/Formulations/linear_opf_ts.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_driver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_options.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_options.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_ts_driver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Simulations/OPF/opf_ts_driver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Topology/GridReduction/ptdf_grid_reduction.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Topology/GridReduction/ptdf_grid_reduction.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Topology/GridReduction/ward_equivalents.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Topology/GridReduction/ward_equivalents.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/gslv_interface.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/gslv_interface.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/mip_interface_template.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/mip_interface_template.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/ortools_interface.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/ortools_interface.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/pulp_interface.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/Utils/MIP/pulp_interface.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridEngine/__version__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridEngine/__version__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/VeraGridServer/__version__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/VeraGridServer/__version__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/data/grids/case14_merge1.gridcal" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/data/grids/case14_merge1.gridcal" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/data/grids/case14_merge2.gridcal" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/data/grids/case14_merge2.gridcal" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/data/grids/red_ultra_simple_ntc.gridcal" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/data/grids/red_ultra_simple_ntc.gridcal" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/test_grid_reduction.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_grid_reduction.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/test_mip_interfaces.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_mip_interfaces.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/test_ntc.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_ntc.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tests/test_opf.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/tests/test_opf.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -123,7 +178,7 @@
   &quot;associatedIndex&quot;: 8
 }</component>
   <component name="ProjectId" id="1bGvT9JqoJhBes9WGdphyWxAfMi" />
-  <component name="ProjectLevelVcsManager" settingsEditedManually="true">
+  <component name="ProjectLevelVcsManager">
     <OptionsSetting value="false" id="Update" />
     <ConfirmationsSetting value="2" id="Add" />
   </component>
@@ -295,6 +350,15 @@
       <option name="OPTIONS" value="" />
       <method v="2" />
     </configuration>
+    <configuration default="true" type="MatlabApplication">
+      <option name="FILE_PATH" value="" />
+      <option name="INTERPRETER_PATH" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="PARAMETERS" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <method v="2" />
+    </configuration>
     <configuration default="true" type="PyBehaveRunConfigurationType" factoryName="Behave">
       <module name="GridCalEngine" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -469,17 +533,9 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method v="2" />
     </configuration>
-    <configuration default="true" type="MatlabApplication">
-      <option name="FILE_PATH" value="" />
-      <option name="INTERPRETER_PATH" value="" />
-      <option name="WORKING_DIRECTORY" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <option name="PARAMETERS" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <method v="2" />
-    </configuration>
     <configuration name="ExecuteVeraGrid" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid (Public)" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -502,6 +558,7 @@
     </configuration>
     <configuration default="true" type="PythonConfigurationType" factoryName="Python">
       <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -524,6 +581,7 @@
     </configuration>
     <configuration default="true" type="Tox" factoryName="Tox">
       <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -536,6 +594,7 @@
     </configuration>
     <configuration default="true" type="docs" factoryName="Docutils task">
       <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -553,6 +612,7 @@
     </configuration>
     <configuration default="true" type="docs" factoryName="Sphinx task">
       <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -570,6 +630,7 @@
     </configuration>
     <configuration default="true" type="tests" factoryName="Doctests">
       <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -589,6 +650,7 @@
     </configuration>
     <configuration default="true" type="tests" factoryName="Nosetests">
       <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -605,6 +667,7 @@
     </configuration>
     <configuration default="true" type="tests" factoryName="py.test">
       <module name="GridCalEngine" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -622,6 +685,7 @@
     </configuration>
     <configuration name="pytest in test_gslv_conversion.py" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
       <module name="VeraGrid (Public)" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <option name="SDK_HOME" value="" />
@@ -2142,26 +2206,6 @@
           <option name="timeStamp" value="2596" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/tests/test_power_flow_acdc_generalized.py</url>
-          <line>131</line>
-          <option name="timeStamp" value="2600" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/tests/test_power_flow_acdc_generalized.py</url>
-          <line>62</line>
-          <option name="timeStamp" value="2601" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/tests/test_power_flow_acdc_generalized.py</url>
-          <line>232</line>
-          <option name="timeStamp" value="2604" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/tests/test_power_flow_acdc_generalized.py</url>
-          <line>245</line>
-          <option name="timeStamp" value="2606" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/VeraGridEngine/IO/cim/cgmes/cgmes_to_gridcal.py</url>
           <line>2528</line>
           <option name="timeStamp" value="2661" />
@@ -2195,11 +2239,6 @@
           <url>file://$PROJECT_DIR$/src/trunk/ntc/pmode3_eqs.py</url>
           <line>53</line>
           <option name="timeStamp" value="2712" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/tests/test_ntc.py</url>
-          <line>778</line>
-          <option name="timeStamp" value="2714" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/doc/make.py</url>

@@ -90,6 +90,14 @@ class LpModel(AbstractLpModel):
         """
         return self.model.add_var(name=name, lb=lb, ub=ub, is_int=True)
 
+    def add_bin(self, name: str = "") -> LpVar:
+        """
+        Make integer LP var
+        :param name: name (optional)
+        :return: LpVar
+        """
+        return self.model.add_var(name=name, lb=0, ub=1, is_int=True)
+
     def add_var(self, lb: float, ub: float, name: str = "") -> LpVar:
         """
         Make floating point LP var

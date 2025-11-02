@@ -478,7 +478,7 @@ the MultiCircuit at a specific state. This snapshot is **fungible**, meaning tha
 modifications made to it will not impact the original MultiCircuit and will
 vanish after the calculation. As such, all topology processing steps are
 performed on the **NumericalCircuit**, as described earlier in this section.
-This is a clean, correct and paralelizable appeach.
+This is a clean, correct and paralelizable approach.
 
 **CIM Compatibility Adjustments**
 

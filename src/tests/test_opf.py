@@ -533,6 +533,34 @@ def test_opf_load_not_shedding_because_of_line():
     assert np.allclose(driver.results.overloads[:, 0], -expected_overload)
 
 
+def test_opf_unit_commitment():
+    fname = os.path.join('data', 'grids', 'New England_solar_case_OPF.gridcal')
+
+    main_circuit = FileOpen(fname).open()
+
+    power_flow_options = PowerFlowOptions(SolverType.NR,
+                                          verbose=0,
+                                          control_q=False,
+                                          retry_with_other_methods=False)
+
+    opf_options = OptimalPowerFlowOptions(verbose=0,
+                                          solver=SolverType.LINEAR_OPF,
+                                          power_flow_options=power_flow_options,
+                                          time_grouping=TimeGrouping.Daily,
+                                          mip_solver=MIPSolvers.HIGHS,
+                                          mip_framework=MIPFramework.PuLP,
+                                          unit_commitment=True,
+                                          generate_report=True)
+
+    # run the opf time series
+    opf_ts = OptimalPowerFlowTimeSeriesDriver(grid=main_circuit,
+                                              options=opf_options,
+                                              time_indices=main_circuit.get_all_time_indices())
+    opf_ts.run()
+
+    print()
+
+
 if __name__ == '__main__':
     # test_opf()
     test_opf_generation_shedding()

@@ -33,6 +33,9 @@ class OptimalPowerFlowOptions(OptionsTemplate):
                  maximize_flows=False,
                  inter_aggregation_info: InterAggregationInfo | None = None,
                  unit_commitment=False,
+                 consider_ramps=False,
+                 consider_time_up_down=False,
+                 area_spinning_reserve=False,
                  use_glsk_as_cost: bool = False,
                  add_losses_approximation: bool = False,
                  generation_expansion_planning: bool = False,
@@ -64,6 +67,9 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         :param maximize_flows:
         :param inter_aggregation_info:
         :param unit_commitment:
+        :param consider_ramps:
+        :param consider_time_up_down:
+        :param area_spinning_reserve:
         :param use_glsk_as_cost: if true, the GLSK values are used instead of the traditional costs
         :param export_model_fname:
         :param generate_report:
@@ -104,6 +110,12 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         self.inter_aggregation_info = inter_aggregation_info
 
         self.unit_commitment = unit_commitment
+
+        self.consider_ramps = consider_ramps
+
+        self.consider_time_up_down = consider_time_up_down
+
+        self.area_spinning_reserve = area_spinning_reserve
 
         self.use_glsk_as_cost = use_glsk_as_cost
 
@@ -151,6 +163,9 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         self.register(key="use_glsk_as_cost", tpe=bool)
         self.register(key="inter_aggregation_info", tpe=DeviceType.InterAggregationInfo)
         self.register(key="unit_commitment", tpe=bool)
+        self.register(key="consider_ramps", tpe=bool)
+        self.register(key="consider_time_up_down", tpe=bool)
+        self.register(key="area_spinning_reserve", tpe=bool)
         self.register(key="export_model_fname", tpe=str)
         self.register(key="generate_report", tpe=bool)
         self.register(key="acopf_mode", tpe=AcOpfMode)

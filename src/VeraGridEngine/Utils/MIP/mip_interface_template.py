@@ -46,6 +46,10 @@ class AbstractLpModel(ABC):
         """Add a continuous variable."""
 
     @abstractmethod
+    def add_bin(self, name: str = "") -> Any:
+        """ add binary variable. """
+
+    @abstractmethod
     def add_cst(self, cst: Any, name: str = "") -> Any:
         """Add a constraint."""
 

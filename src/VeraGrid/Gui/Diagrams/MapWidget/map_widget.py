@@ -1521,14 +1521,14 @@ class MapWidget(QWidget):
         under the cursor.
         """
 
-        # if not given cursor coords, assume view centre
+        # if not given cursor coordinates, assume view centre
         if view_x is None:
             view_x = self.view_width // 4
 
         if view_y is None:
             view_y = self.view_height // 4
 
-        # get geo coords of view point
+        # get geo coordinates of view point
         longitude, latitude = self.view_to_geo_float(view_x, view_y)
 
         # get tile source to use the new level
@@ -1601,6 +1601,50 @@ class MapWidget(QWidget):
 
         # redraw the widget
         self.update()
+
+    def best_zoom_from_bbox(self,
+                            min_lat: float,
+                            max_lat: float,
+                            min_lon: float,
+                            max_lon: float) -> int:
+        """
+        Determine the most appropriate zoom level for the given lat/lon bounding box,
+        based on the MapWidget's tile source and viewport size.
+        :param min_lat: minimum latitude of bounding box
+        :param max_lat: maximum latitude of bounding box
+        :param min_lon: minimum longitude of bounding box
+        :param max_lon: maximum longitude of bounding box
+        :return: best zoom level (int)
+        """
+        tile_src = self.tile_src
+        view_width = self.view_width
+        view_height = self.view_height
+        tile_size_x = self.tile_width
+        tile_size_y = self.tile_height
+
+        # search from high zoom (more detail) to low zoom (zoomed out)
+        for z in range(tile_src.max_level, tile_src.min_level - 1, -1):
+            if not tile_src.set_level(z):
+                continue
+
+            # convert bbox corners to fractional tile coordinates at this zoom
+            tx_min, ty_min = tile_src.Geo2Tile(longitude=min_lon, latitude=min_lat)
+            tx_max, ty_max = tile_src.Geo2Tile(longitude=max_lon, latitude=max_lat)
+
+            # tile extents in X/Y
+            dx_tiles = abs(tx_max - tx_min)
+            dy_tiles = abs(ty_max - ty_min)
+
+            # pixel span at this zoom
+            width_px = dx_tiles * tile_size_x
+            height_px = dy_tiles * tile_size_y
+
+            # if fits in viewport, good zoom level
+            if width_px <= view_width and height_px <= view_height:
+                return z
+
+        # otherwise return the minimum zoom
+        return tile_src.min_level
 
     def rectify_key_tile(self) -> None:
         """

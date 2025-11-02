@@ -67,6 +67,7 @@ class GeneratorData:
         self.cost_0: Vec = np.zeros(nelm, dtype=float)
         self.cost_2: Vec = np.zeros(nelm, dtype=float)
         self.startup_cost: Vec = np.zeros(nelm, dtype=float)
+        self.shut_down_cost: Vec = np.zeros(nelm, dtype=float)
         self.ramp_up: Vec = np.zeros(nelm, dtype=float)
         self.ramp_down: Vec = np.zeros(nelm, dtype=float)
         self.min_time_up: Vec = np.zeros(nelm, dtype=float)
@@ -144,6 +145,7 @@ class GeneratorData:
         data.cost_1 = self.cost_1[elm_idx]
         data.cost_2 = self.cost_2[elm_idx]
         data.startup_cost = self.startup_cost[elm_idx]
+        data.shut_down_cost = self.shut_down_cost[elm_idx]
         data.ramp_up = self.ramp_up[elm_idx]
         data.ramp_down = self.ramp_down[elm_idx]
         data.min_time_up = self.min_time_up[elm_idx]
@@ -224,6 +226,7 @@ class GeneratorData:
         data.cost_1 = self.cost_1.copy()
         data.cost_2 = self.cost_2.copy()
         data.startup_cost = self.startup_cost.copy()
+        data.shut_down_cost = self.shut_down_cost.copy()
         data.ramp_up = self.ramp_up.copy()
         data.ramp_down = self.ramp_down.copy()
         data.min_time_up = self.min_time_up.copy()

@@ -125,6 +125,16 @@ class PulpLpModel(AbstractLpModel):
         self.model.addVariable(var)
         return var
 
+    def add_bin(self, name: str = "") -> LpVar:
+        """
+        Make integer LP var
+        :param name: name (optional)
+        :return: LpVar
+        """
+        var = pulp.LpVariable(name=name, lowBound=0, upBound=1, cat=pulp.LpInteger)
+        self.model.addVariable(var)
+        return var
+
     def add_var(self, lb: float, ub: float, name: str = "") -> LpVar:
         """
         Make floating point LP var

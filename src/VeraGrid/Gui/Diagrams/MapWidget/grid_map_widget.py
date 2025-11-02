@@ -651,57 +651,6 @@ class GridMapWidget(BaseDiagramWidget):
             # Delete the substation itself
             self.circuit.delete_substation(obj=api_object)
 
-    #
-    # def show_devices_to_disconnect_dialog(self,
-    #                                       devices: List[ALL_DEV_TYPES],
-    #                                       buses: List[Bus],
-    #                                       voltage_levels: List[VoltageLevel],
-    #                                       dialog_title: str):
-    #     """
-    #     Show a dialog with the list of all devices that will be disconnected
-    #
-    #     :param devices: List of devices to be disconnected
-    #     :param buses: List of buses associated with the substation
-    #     :param voltage_levels: List of voltage levels associated with the substation
-    #     :param dialog_title: Title for the dialog
-    #     """
-    #
-    #
-    #     # Combine all devices
-    #     all_devices = devices + buses + voltage_levels
-    #
-    #     if not all_devices:
-    #         info_msg('No devices to disconnect', dialog_title)
-    #         return
-    #
-    #     # Create custom properties for name, type, and ID tag
-    #     name_prop = GCProp(prop_name='name', tpe=str, units='', definition='Device name',
-    #                        display=True, editable=False)
-    #
-    #     type_prop = GCProp(prop_name='device_type', tpe=DeviceType, units='', definition='Device type',
-    #                        display=True, editable=False)
-    #
-    #     idtag_prop = GCProp(prop_name='idtag', tpe=str, units='', definition='ID tag',
-    #                         display=True, editable=False)
-    #
-    #     custom_props = [name_prop, type_prop, idtag_prop]
-    #
-    #     # Create and show the dialog
-    #     dialog = ElementsDialogue(name=dialog_title, elements=all_devices)
-    #
-    #     # Replace the model with our custom one that only shows name, type, and idtag
-    #     model = ObjectsModel(objects=all_devices,
-    #                          time_index=None,
-    #                          property_list=custom_props,
-    #                          parent=dialog.objects_table,
-    #                          editable=False)
-    #
-    #     dialog.objects_table.setModel(model)
-    #
-    #     # Make the dialog modal so the user must acknowledge it before continuing
-    #     dialog.setModal(True)
-    #     dialog.exec()
-
     def remove_branch_graphic(self, line: MAP_BRANCH_GRAPHIC_TYPES | MapLineContainer, delete_from_db: bool = False):
         """
         Removes line from diagram and scene
@@ -1110,16 +1059,37 @@ class GridMapWidget(BaseDiagramWidget):
         """
         lat = 0.0
         lon = 0.0
+        lat_max = -1e20
+        lat_min = 1e20
+        lon_max = -1e20
+        lon_min = 1e20
         n = 0
         for graphic_obj in self.graphics_manager.get_device_type_list(DeviceType.SubstationDevice):
             lat += graphic_obj.lat
             lon += graphic_obj.lon
+
+            lat_max = max(lat_max, graphic_obj.lat)
+            lat_min = min(lat_min, graphic_obj.lat)
+            lon_max = max(lon_max, graphic_obj.lon)
+            lon_min = min(lon_min, graphic_obj.lon)
             n += 1
 
         if n > 0:
             lat /= n
             lon /= n
             self.map.pan_position(latitude=lat, longitude=lon)
+
+            # this is to also move the diagram layer according to the map
+            # z = self.map.best_zoom_from_bbox(min_lat=lat_min,
+            #                                  max_lat=lat_max,
+            #                                  min_lon=lon_min,
+            #                                  max_lon=lon_max)
+
+            self.map.set_zoom_level(level=self.map.level)
+            # self.map.set_zoom_level(level=z)
+
+        else:
+            self.gui.show_warning_toast("No points to center :/")
 
     def colour_results(self,
                        Sbus: CxVec,

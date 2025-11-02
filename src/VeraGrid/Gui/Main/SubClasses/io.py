@@ -5,7 +5,6 @@
 
 import os
 from typing import Union, List, Callable
-import pandas as pd
 from PySide6 import QtWidgets
 
 import VeraGrid.Gui.gui_functions as gf
@@ -21,11 +20,9 @@ from VeraGrid.Gui.messages import yes_no_question, error_msg, warning_msg, info_
 from VeraGrid.Gui.GridGenerator.grid_generator_dialogue import GridGeneratorGUI
 from VeraGrid.Gui.RosetaExplorer.RosetaExplorer import RosetaExplorerGUI
 from VeraGrid.Gui.Main.SubClasses.Settings.configuration import ConfigurationMain
-
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Compilers.circuit_to_newton_pa import NEWTON_PA_AVAILABLE
 from VeraGridEngine.Compilers.circuit_to_pgm import PGM_AVAILABLE
-from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.IO.cim.cgmes.cgmes_export import get_available_cgmes_profiles
 from VeraGridEngine.enumerations import CGMESVersions, SimulationTypes
 from VeraGridEngine.IO.veragrid.contingency_parser import import_contingencies_from_json, export_contingencies_json_file
@@ -349,27 +346,10 @@ class IoMain(ConfigurationMain):
 
                 if self.circuit.has_diagrams():
                     # create the diagrams that came with the file
-                    # task = gf.AsyncTask(self.create_circuit_stored_diagrams)
-                    # self.task_pool.start(task)
                     self.create_circuit_stored_diagrams()
 
                 else:
                     if self.circuit.get_bus_number() > 300:
-                        # quit_msg = ("The grid is quite large, hence the schematic might be slow.\n"
-                        #             "Do you want to enable the schematic?\n"
-                        #             "(you can always enable the drawing later)")
-                        # reply = QtWidgets.QMessageBox.question(self, 'Enable schematic', quit_msg,
-                        #                                        QtWidgets.QMessageBox.StandardButton.Yes,
-                        #                                        QtWidgets.QMessageBox.StandardButton.No)
-                        #
-                        # if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
-                        #     # create schematic
-                        #     self.add_complete_bus_branch_diagram()
-                        # info_msg(text="The circuit has too many buses for an efficient diagram."
-                        #               "You can create diagrams and maps for parts of the circuit "
-                        #               "(or even the complete circuit) by going into the database "
-                        #               "and creating diagrams from there",
-                        #          title="The grid is quite big...")
                         self.show_info_toast("The grid is quite big, no diagram is automatically created",
                                              duration=5000)
 
@@ -448,13 +428,13 @@ class IoMain(ConfigurationMain):
         self.get_circuit_snapshot_datetime()
         self.change_theme_mode()
 
-    def install_plugin_now(self, fname: str):
+    def install_plugin_now(self, file_name: str):
         """
         Install plugin
-        :param fname: name of the plugin
+        :param file_name: name of the plugin
         """
-        if fname.endswith('.vgplugin'):
-            info = get_plugin_info(fname)
+        if file_name.endswith('.vgplugin'):
+            info = get_plugin_info(file_name)
 
             if info is not None:
 
@@ -476,7 +456,7 @@ class IoMain(ConfigurationMain):
                         else:
                             break
 
-                install_plugin(fname)
+                install_plugin(file_name)
                 self.add_plugins()
                 info_msg(f"{info.name} {info.version} installed!", "Plugin install")
             else:
@@ -915,6 +895,7 @@ class IoMain(ConfigurationMain):
 
         # declare the allowed file types
         files_types = "Excel file (*.xlsx)"
+
         # call dialog to select the file
         if self.project_directory is None:
             self.project_directory = ''
@@ -927,19 +908,12 @@ class IoMain(ConfigurationMain):
             if not filename.endswith('.xlsx'):
                 filename += '.xlsx'
 
-            numerical_circuit = compile_numerical_circuit_at(circuit=self.circuit)
-            calculation_inputs = numerical_circuit.split_into_islands()
+            if self.compiled_arrays is None:
+                self.recompile_circuits_for_display()
 
-            with pd.ExcelWriter(filename) as writer:  # pylint: disable=abstract-class-instantiated
+            self.compiled_arrays.export_to_excel(file_name=filename)
 
-                for c, calc_input in enumerate(calculation_inputs):
-
-                    for category, elms_in_category in calc_input.available_structures.items():
-                        for elm_type in elms_in_category:
-                            name = f"{category}_{elm_type}@{c}"
-                            df = calc_input.get_structure(elm_type).astype(str)
-                            df.to_excel(excel_writer=writer,
-                                        sheet_name=name[:31])  # excel supports 31 chars per sheet name
+            self.show_info_toast("Done!")
 
     def load_results_driver(self):
         """

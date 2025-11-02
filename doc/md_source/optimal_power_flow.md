@@ -64,6 +64,29 @@ print('Gen power\n', opf_ts_driver.results.generator_power)
 print('Nodal prices \n', opf_ts_driver.results.bus_shadow_prices)
 ```
 
+### Run a unit commitment example
+
+```python
+import numpy as np
+
+a = np.array([0.0004984, 0.001246, 0.00623 ])
+b = np.array([16.821 , 40.6196, 21.9296])
+c = np.array([220.4174, 161.8554, 171.2004])
+c_up = np.array([124.69, 249.22, 0])
+z_ini = np.array([1,1,0])
+pmax = np.array([220, 100, 20])
+pmin = np.array([100,10,10])
+d = np.array([178.690,168.450,161.840,157.830,158.160,163.690,
+176.860,194.210,209.670,221.540,233.180,240.820,
+247.030,248.470,253.830,260.900,261.120,251.680,
+250.890,242.100,242.050,231.680,205.070,200.690])
+
+```
+
+Note: In unit commitment problems where the initial generation
+state matters, we take the snapshot values as the initial
+condition for the generation active status.
+
 ### Run a linear optimization and verify with power flow
 
 Often ties, you want to dispatch the generation using a linear optimization, to then _verify_ the

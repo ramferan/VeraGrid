@@ -403,6 +403,9 @@ class SchematicWidget(BaseDiagramWidget):
         # nodes distance "explosion" factor
         self.expand_factor = 1.1
 
+        # Scale the view / do the zoom
+        self.scale_factor = 1.15  # 1.15
+
         # Zoom indicator
         self._zoom = 0
 
@@ -511,16 +514,14 @@ class SchematicWidget(BaseDiagramWidget):
         """
         self.editor_graphics_view.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
 
-        # Scale the view / do the zoom
-        scale_factor = 1.15
         # print(event.angleDelta().x(), event.angleDelta().y(), event.angleDelta().manhattanLength() )
         if event.angleDelta().y() > 0:
             # Zoom in
-            self.zoom_in(scale_factor)
+            self.zoom_in()
 
         else:
             # Zooming out
-            self.zoom_out(scale_factor)
+            self.zoom_out()
 
     def graphicsKeyPressEvent(self, event: QKeyEvent):
         """
@@ -531,19 +532,17 @@ class SchematicWidget(BaseDiagramWidget):
         if event.key() == Qt.Key.Key_Delete:
             self.delete_selected_from_widget(delete_from_db=True)
 
-    def zoom_in(self, scale_factor: float = 1.15) -> None:
+    def zoom_in(self) -> None:
         """
+        zoom in
+        """
+        self.editor_graphics_view.scale(self.scale_factor, self.scale_factor)
 
-        :param scale_factor:
+    def zoom_out(self) -> None:
         """
-        self.editor_graphics_view.scale(scale_factor, scale_factor)
-
-    def zoom_out(self, scale_factor: float = 1.15) -> None:
+        Zoom out
         """
-
-        :param scale_factor:
-        """
-        self.editor_graphics_view.scale(1.0 / scale_factor, 1.0 / scale_factor)
+        self.editor_graphics_view.scale(1.0 / self.scale_factor, 1.0 / self.scale_factor)
 
     def create_bus_graphics(self, bus: Bus, x: float, y: float, h: float, w: float,
                             draw_labels: bool = True, r: float = 0.0) -> BusGraphicItem | None:
@@ -1552,62 +1551,6 @@ class SchematicWidget(BaseDiagramWidget):
 
                             self.create_line(bus_from=bus,
                                              bus_to=fn_bus,
-                                             from_port=self.started_branch.get_terminal_from(),
-                                             to_port=self.started_branch.get_terminal_to())
-
-                        elif self.started_branch.connected_between_bus_and_cn():
-
-                            self.create_line(bus_from=self.started_branch.get_bus_from(),
-                                             cn_to=self.started_branch.get_cn_to(),
-                                             from_port=self.started_branch.get_terminal_from(),
-                                             to_port=self.started_branch.get_terminal_to())
-
-                        elif self.started_branch.connected_between_cn_and_bus():
-
-                            self.create_line(bus_to=self.started_branch.get_bus_to(),
-                                             cn_from=self.started_branch.get_cn_from(),
-                                             from_port=self.started_branch.get_terminal_from(),
-                                             to_port=self.started_branch.get_terminal_to())
-
-                        elif self.started_branch.connected_between_cn():
-
-                            self.create_line(cn_from=self.started_branch.get_cn_from(),
-                                             cn_to=self.started_branch.get_cn_to(),
-                                             from_port=self.started_branch.get_terminal_from(),
-                                             to_port=self.started_branch.get_terminal_to())
-
-                        elif self.started_branch.connected_between_busbar_and_bus():
-
-                            self.create_line(cn_from=self.started_branch.get_busbar_from().cn,
-                                             bus_to=self.started_branch.get_bus_to(),
-                                             from_port=self.started_branch.get_terminal_from(),
-                                             to_port=self.started_branch.get_terminal_to())
-
-                        elif self.started_branch.connected_between_bus_and_busbar():
-
-                            self.create_line(bus_from=self.started_branch.get_bus_from(),
-                                             cn_to=self.started_branch.get_busbar_to().cn,
-                                             from_port=self.started_branch.get_terminal_from(),
-                                             to_port=self.started_branch.get_terminal_to())
-
-                        elif self.started_branch.connected_between_busbar_and_cn():
-
-                            self.create_line(cn_from=self.started_branch.get_busbar_from().cn,
-                                             cn_to=self.started_branch.get_cn_to(),
-                                             from_port=self.started_branch.get_terminal_from(),
-                                             to_port=self.started_branch.get_terminal_to())
-
-                        elif self.started_branch.connected_between_cn_and_busbar():
-
-                            self.create_line(cn_from=self.started_branch.get_cn_from(),
-                                             cn_to=self.started_branch.get_busbar_to().cn,
-                                             from_port=self.started_branch.get_terminal_from(),
-                                             to_port=self.started_branch.get_terminal_to())
-
-                        elif self.started_branch.connected_between_busbar():
-
-                            self.create_line(cn_from=self.started_branch.get_busbar_from().cn,
-                                             cn_to=self.started_branch.get_busbar_to().cn,
                                              from_port=self.started_branch.get_terminal_from(),
                                              to_port=self.started_branch.get_terminal_to())
 
@@ -4765,10 +4708,6 @@ class SchematicWidget(BaseDiagramWidget):
             idx, sel_bus, sel_bus_graphic_item = idx_bus_list[0]
 
             generator_graphics.api_object.control_bus = sel_bus
-
-            if (yes_no_question(text="Do you want to set the profile?", title="Set regulation bus")
-                    and self.circuit.has_time_series):
-                generator_graphics.api_object.control_bus_prof.fill(sel_bus)
 
         else:
             error_msg(text="You need to select exactly one bus to be set as the generator regulation bus",
