@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QPushButton, QVBoxLayout, QDialog, QLabel, QComboBox
 from VeraGrid.Gui.gui_functions import get_list_model, create_spinbox
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
-from VeraGridEngine.Devices.Branches.transformer_type import TransformerType, reverse_transformer_short_circuit_study
+from VeraGridEngine.Devices.Branches.transformer_type import TransformerType
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 
 
@@ -50,12 +50,12 @@ class TransformerEditor(QDialog):
         self.Vf = self.transformer_obj.bus_from.Vnom
         self.Vt = self.transformer_obj.bus_to.Vnom
 
-        Pfe, Pcu, Vsc, I0, Sn = reverse_transformer_short_circuit_study(R=self.transformer_obj.R,
-                                                                        X=self.transformer_obj.X,
-                                                                        G=self.transformer_obj.G,
-                                                                        B=self.transformer_obj.B,
-                                                                        rate=self.transformer_obj.rate,
-                                                                        Sbase=self.Sbase)
+        # Pfe, Pcu, Vsc, I0, Sn = reverse_transformer_short_circuit_study(R=self.transformer_obj.R,
+        #                                                                 X=self.transformer_obj.X,
+        #                                                                 G=self.transformer_obj.G,
+        #                                                                 B=self.transformer_obj.B,
+        #                                                                 rate=self.transformer_obj.rate,
+        #                                                                 Sbase=self.Sbase)
 
         # ------------------------------------------------------------------------------------------
 
@@ -82,6 +82,26 @@ class TransformerEditor(QDialog):
 
                 except ValueError as e:
                     print(f"Template not found for {self.transformer_obj.name}")
+                    Sn = self.transformer_obj.Sn  # MVA
+                    Pcu = self.transformer_obj.Pcu  # kW
+                    Pfe = self.transformer_obj.Pfe  # kW
+                    I0 = self.transformer_obj.I0  # %
+                    Vsc = self.transformer_obj.Vsc  # %
+
+            else:
+                # set the template parameters
+                Sn = self.transformer_obj.Sn  # MVA
+                Pcu = self.transformer_obj.Pcu  # kW
+                Pfe = self.transformer_obj.Pfe  # kW
+                I0 = self.transformer_obj.I0  # %
+                Vsc = self.transformer_obj.Vsc  # %
+        else:
+            # set the template parameters
+            Sn = self.transformer_obj.Sn  # MVA
+            Pcu = self.transformer_obj.Pcu  # kW
+            Pfe = self.transformer_obj.Pfe  # kW
+            I0 = self.transformer_obj.I0  # %
+            Vsc = self.transformer_obj.Vsc  # %
 
         # load template
         self.load_template_btn = QPushButton()
@@ -109,8 +129,6 @@ class TransformerEditor(QDialog):
         self.accept_btn.clicked.connect(self.accept_click)
 
         # labels
-
-        # add all to the GUI
 
         # add all to the GUI
         self.layout.addWidget(QLabel("Suitable templates"))

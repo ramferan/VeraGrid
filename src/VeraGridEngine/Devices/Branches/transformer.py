@@ -535,12 +535,19 @@ class Transformer2W(ControllableBranchParent):
         :param Sbase:
         :return:
         """
-        Pfe, Pcu, Vsc, I0, Sn = reverse_transformer_short_circuit_study(R=self.R,
-                                                                        X=self.X,
-                                                                        G=self.G,
-                                                                        B=self.B,
-                                                                        rate=self.rate,
-                                                                        Sbase=Sbase)
+        if self.Vsc == 0:
+            Pfe, Pcu, Vsc, I0, Sn = reverse_transformer_short_circuit_study(R=self.R,
+                                                                            X=self.X,
+                                                                            G=self.G,
+                                                                            B=self.B,
+                                                                            rate=self.rate,
+                                                                            Sbase=Sbase)
+        else:
+            Pfe = self.Pfe
+            Pcu = self.Pcu
+            Vsc = self.Vsc
+            I0 = self.I0
+            Sn = self.Sn
 
         tpe = TransformerType(hv_nominal_voltage=self.HV,
                               lv_nominal_voltage=self.LV,
