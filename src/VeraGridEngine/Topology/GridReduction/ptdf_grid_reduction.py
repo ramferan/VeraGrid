@@ -342,6 +342,9 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     Flow0_gen = lin.get_flows(Pgen)
     Flow0_gen_srap = lin.get_flows(Pgen_srap)
 
+    # Flows0 = lin.PTDF @ Pbus0
+    # Flows0_check = Flow0_load + Flow0_gen + Flow0_gen_srap
+
     if grid.has_time_series:
         Pload_ts = get_Pload_ts(grid)
         Pgen_ts, Pgen_srap_ts = get_Pgen_ts(grid)
@@ -373,9 +376,9 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     X, _, _, _ = np.linalg.lstsq(lin2.PTDF, b)
     Pbus3_load, Pbus3_gen, Pbus3_gen_srap = X[:, 0], X[:, 1], X[:, 2]
 
-    dPload = Pbus_load2 - Pbus3_load
-    dPgen = Pbus_gen2 - Pbus3_gen
-    dPgen_srap = Pbus_gen_srap2 - Pbus3_gen_srap
+    dPload = Pbus3_load - Pbus_load2
+    dPgen = Pbus3_gen - Pbus_gen2
+    dPgen_srap = Pbus3_gen_srap - Pbus_gen_srap2
 
     if grid.has_time_series:
 
@@ -409,8 +412,7 @@ def ptdf_reduction_projected(grid: MultiCircuit,
             grid.add_load(bus=bus, api_obj=elm)
 
         if abs(dPgen[i]) > tol:
-            elm = Generator(name=f"compensated gen {i}", P=dPgen[i], srap_enabled=False, 
-                            is_controlled=False, power_factor=0.999)
+            elm = Generator(name=f"compensated gen {i}", P=dPgen[i], srap_enabled=False)
 
             if dPbus_gen_ts is not None:
                 elm.P_prof = -dPbus_gen_ts[:, i]
@@ -418,8 +420,7 @@ def ptdf_reduction_projected(grid: MultiCircuit,
             grid.add_generator(bus=bus, api_obj=elm)
 
         if abs(dPgen_srap[i]) > tol:
-            elm = Generator(name=f"compensated gen {i}", P=dPgen_srap[i], srap_enabled=True,
-                            is_controlled=False, power_factor=0.999)
+            elm = Generator(name=f"compensated gen {i}", P=dPgen_srap[i], srap_enabled=True)
 
             if dPbus_gen_srap_ts is not None:
                 elm.P_prof = -dPbus_gen_srap_ts[:, i]
@@ -431,8 +432,6 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     # Flows0 = lin.PTDF @ Pbus0
     # Flows4 = lin2.PTDF @ Pbus4
     # diff = Flows0[i_branches] - Flows4
-    
-    
 
     return grid, logger
 

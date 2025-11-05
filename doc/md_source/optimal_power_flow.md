@@ -23,6 +23,7 @@ Show the real associated values
 Control batteries
     Control the batteries state of charge when running the optimization in time series.
 
+🎥 [Watch the OPF video on YouTube](https://www.youtube.com/watch?v=o6oXBJ1Efqc)
 
 ## API
 

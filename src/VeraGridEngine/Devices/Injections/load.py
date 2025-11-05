@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-import pdb
 from typing import Union, List
 import numpy as np
 import pandas as pd
@@ -12,7 +11,7 @@ from matplotlib import pyplot as plt
 from VeraGridEngine.enumerations import DeviceType, BuildStatus
 from VeraGridEngine.Devices.Parents.load_parent import LoadParent
 from VeraGridEngine.Devices.profile import Profile
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, DynamicVarType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, DynamicVarType
 from VeraGridEngine.Utils.Symbolic.symbolic import piecewise
 from VeraGridEngine.Devices.Parents.editable_device import get_at
 
@@ -58,6 +57,7 @@ class Load(LoadParent):
         '_Ir3_prof',
         '_Ii3_prof',
 
+        '_contract_power',
         '_n_customers',
         '_n_customers_prof',
 
@@ -72,7 +72,9 @@ class Load(LoadParent):
                  G1=0.0, G2=0.0, G3=0.0, B1=0.0, B2=0.0, B3=0.0,
                  Ir1=0.0, Ir2=0.0, Ir3=0.0, Ii1=0.0, Ii2=0.0, Ii3=0.0, Pl0=1.0, Ql0=1.0,
                  active=True, mttf=0.0, mttr=0.0, capex=0, opex=0,
-                 init_params: dict[str, float] = {},
+                 n_customers: int = 0,
+                 contracted_power: float = 0.0,
+                 init_params: dict[str, float] | None = None,
                  build_status: BuildStatus = BuildStatus.Commissioned):
         """
         The load object implements the so-called ZIP model, in which the load can be
@@ -166,13 +168,15 @@ class Load(LoadParent):
         self._Ii2_prof = Profile(default_value=self.Ii2, data_type=float)
         self._Ii3_prof = Profile(default_value=self.Ii3, data_type=float)
 
-        self._n_customers: int = 1
+        self._n_customers: int = n_customers
         self._n_customers_prof = Profile(default_value=self._n_customers, data_type=int)
+
+        self._contract_power: float = contracted_power
 
         self.Pl0 = Pl0
         self.Ql0 = Ql0
 
-        self.init_params = init_params
+        self.init_params = init_params if init_params is not None else dict()
 
         self.register(key='Ir', units='MW', tpe=float,
                       definition='Active power of the current component at V=1.0 p.u.', profile_name='Ir_prof')
@@ -217,6 +221,7 @@ class Load(LoadParent):
                       profile_name='B3_prof')
         self.register(key='n_customers', units='unit', tpe=int,
                       definition='Number of customers represented by this load', profile_name='n_customers_prof')
+        self.register(key='contract_power', units='MW', tpe=float, definition='Nominal contracted power', )
 
     @property
     def Ir_prof(self) -> Profile:
@@ -698,6 +703,28 @@ class Load(LoadParent):
                 self._n_customers = val2
             else:
                 print("There must be at least one customer right?")
+        except ValueError as e:
+            print(e)
+
+    @property
+    def contract_power(self) -> float:
+        """
+        Return the contracted power
+        """
+        return self._contract_power
+
+    @contract_power.setter
+    def contract_power(self, val: float):
+        """
+        Set the contracted power
+        :param val: value greater than 0
+        """
+        try:
+            val2 = float(val)
+            if val2 > 0:
+                self._contract_power = val2
+            else:
+                print("Do they contract negative power?")
         except ValueError as e:
             print(e)
 

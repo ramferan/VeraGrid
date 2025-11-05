@@ -11,18 +11,22 @@ class UndergroundLineType(EditableDevice):
     __slots__ = (
         'Imax',
         'Vnom',
+        '_freq',
         'R',
         'X',
         'B',
+        '_C',
         'R0',
         'X0',
         'B0',
+        '_C0',
         'n_circuits'
     )
 
     def __init__(self, name: str = 'UndergroundLine', idtag: None | str = None, Imax: float = 1.0,
-                 Vnom: float = 1.0, R: float = 0.0, X: float = 0.0, B: float = 0.0,
-                 R0: float = 0.0, X0: float = 0.0, B0: float = 0.0) -> None:
+                 Vnom: float = 1.0, R: float = 0.0, X: float = 0.0, B: float = 0.0, C: float = 0.0,
+                 R0: float = 0.0, X0: float = 0.0, B0: float = 0.0, C0: float = 0.0,
+                 freq: float = 50.0) -> None:
         """
         Constructor
         :param name: name of the device
@@ -30,9 +34,12 @@ class UndergroundLineType(EditableDevice):
         :param R: Resistance of positive sequence in Ohm/km
         :param X: Reactance of positive sequence in Ohm/km
         :param B: Susceptance of positive sequence in uS/km
+        :param C: Capacitance of positive sequence in uF/km (alternative to B)
         :param R0: Resistance of zero sequence in Ohm/km
         :param X0: Reactance of zero sequence in Ohm/km
         :param B0: Susceptance of zero sequence in uS/km
+        :param C0: Capacitance of zero sequence in uF/km (alternative to B0)
+        :param freq: Frequency of underground line (Hz)
         """
         EditableDevice.__init__(self,
                                 name=name,
@@ -42,26 +49,34 @@ class UndergroundLineType(EditableDevice):
 
         self.Imax = float(Imax)
         self.Vnom = float(Vnom)
+        self._freq = float(freq)
 
         # impudence and admittance per unit of length
         self.R = float(R)
         self.X = float(X)
         self.B = float(B)
+        self._C = float(C)
 
         self.R0 = float(R0)
         self.X0 = float(X0)
         self.B0 = float(B0)
+        self._C0 = float(C0)
 
         self.n_circuits = 1
 
         self.register(key='Imax', units='kA', tpe=float, definition='Current rating of the line', old_names=['rating'])
         self.register(key='Vnom', units='kV', tpe=float, definition='Voltage rating of the line')
+        self.register(key='freq', units='Hz', tpe=float, definition='Cable frequency')
         self.register(key='R', units='Ohm/km', tpe=float, definition='Positive-sequence resistance per km')
         self.register(key='X', units='Ohm/km', tpe=float, definition='Positive-sequence reactance per km')
         self.register(key='B', units='uS/km', tpe=float, definition='Positive-sequence shunt susceptance per km')
+        self.register(key='C', units='uF/km', tpe=float,
+                      definition='Positive-sequence shunt capacitance per km (alternative to B')
         self.register(key='R0', units='Ohm/km', tpe=float, definition='Zero-sequence resistance per km')
         self.register(key='X0', units='Ohm/km', tpe=float, definition='Zero-sequence reactance per km')
         self.register(key='B0', units='uS/km', tpe=float, definition='Zero-sequence shunt susceptance per km')
+        self.register(key='C0', units='uF/km', tpe=float,
+                      definition='Zero-sequence shunt capacitance per km (alternative to B0')
         self.register(key='n_circuits', units='', tpe=int, definition='number of circuits')
 
     def get_values(self, Sbase: float, length: float):
@@ -100,19 +115,36 @@ class UndergroundLineType(EditableDevice):
         """
         return 1j * self.B
 
-    def change_base(self, Sbase_old, Sbase_new):
-        """
-        change the per unit base
-        :param Sbase_old: old base in MVA
-        :param Sbase_new: new base in MVA
-        """
-        b = Sbase_new / Sbase_old
+    @property
+    def C(self) -> float:
+        return self._C
 
-        self.R *= b
-        self.X *= b
-        self.B *= b
+    @C.setter
+    def C(self, C: float):
+        self._C = float(C)
 
-        self.R0 *= b
-        self.X0 *= b
-        self.B0 *= b
+        if self.auto_update_enabled:
+            self.B = 2 * np.pi * self._freq * self._C
 
+    @property
+    def C0(self) -> float:
+        return self._C0
+
+    @C0.setter
+    def C0(self, C0: float):
+        self._C0 = float(C0)
+
+        if self.auto_update_enabled:
+            self.B0 = 2 * np.pi * self._freq * self._C0
+
+    @property
+    def freq(self) -> float:
+        return self._freq
+
+    @freq.setter
+    def freq(self, freq: float):
+        self._freq = float(freq)
+
+        if self.auto_update_enabled:
+            self.B = 2 * np.pi * self._freq * self._C
+            self.B0 = 2 * np.pi * self._freq * self._C0

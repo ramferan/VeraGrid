@@ -26,7 +26,14 @@ insights, or a student diving into practical algorithms, VeraGrid’s got
 your back. It’s a high quality product made for all of us now and for
 the future generations.
 
-🎥 `Watch the introduction video on YouTube <https://www.youtube.com/watch?v=4ZDyWIX8_VE>`_
+🎥 Watch the spotlight series videos:
+
+- `1 - introduction  <https://www.youtube.com/watch?v=4ZDyWIX8_VE>`_
+
+- `2 - Power flow <https://www.youtube.com/watch?v=d9dTyO4wels>`_
+
+- `3 - Optimal power flow <https://www.youtube.com/watch?v=o6oXBJ1Efqc>`_
+
 
 
 

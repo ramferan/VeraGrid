@@ -71,7 +71,7 @@
     </favorite-branches>
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="devel" />
+        <entry key="$PROJECT_DIR$" value="master" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -221,7 +221,7 @@
     &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;devel&quot;,
     &quot;last_opened_file_path&quot;: &quot;/home/santi/Documentos/Git/GitHub/VeraGrid&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
@@ -661,10 +661,10 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.ExecuteVeraGrid" />
-        <item itemvalue="Python tests.pytest in test_gslv_conversion.py" />
         <item itemvalue="Python tests.pytest in test_gslv_conversion.py" />
         <item itemvalue="Python.ExecuteVeraGrid" />
+        <item itemvalue="Python.ExecuteVeraGrid" />
+        <item itemvalue="Python tests.pytest in test_gslv_conversion.py" />
         <item itemvalue="Python tests.pytest in test_gslv_conversion.py" />
       </list>
     </recent_temporary>
@@ -1798,7 +1798,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="612" />
+    <option name="localTasksCounter" value="613" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
