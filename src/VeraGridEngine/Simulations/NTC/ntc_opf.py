@@ -446,6 +446,199 @@ def pmode3_formulation2(prob, t_idx, m, rate, P0, droop, theta_f, theta_t, base_
 
     return flow
 
+    
+def pmode3_formulation3(prob, t_idx, m, rate, P0, droop, theta_f, theta_t, base_name: str = "hvdc"):
+    """
+    Formulation
+    ------------------------------------------------------------
+
+    Variables:
+      flow continuous
+      flow_lin continuous
+      z1 binary
+      z2 binary
+
+    Constraints:
+      pmode3_eq: flow_lin = P0 + k * (th_f - th_t)
+
+      upper_bound_flow_le: flow <= rate + M * (1 - z1)  # (less or equal)
+      upper_bound_flow_ge: flow >= rate - M * (1 - z1)  # (greater or equal)
+
+      lower_bound_flow_le: flow <= -rate + M * (1 - z2)
+      lower_bound_flow_ge: flow >= -rate - M * (1 - z2)
+
+      droop_active_le: flow_lin - (P0 + k*(th_f - th_t)) <= M * (z1 + z2)
+      droop_active_ge: flow_lin - (P0 + k*(th_f - th_t)) >= -M * (z1 + z2)
+
+      flow_match_le: flow - flow_lin <= M * (z1 + z2)
+      flow_match_ge: flow - flow_lin >= -M * (z1 + z2)
+
+      single_case_active: z1 + z2 <= 1
+      
+    Note that we add M for the so-called big M disjunction, to virtually remove conditionals
+    There is no hard rule to determine the value of M. 
+    However, something like 6 * rate is a good starting point. 
+    2 * rate is too small, and 10 * rate is too large.
+    """
+
+    # Variables
+    flow = prob.add_var(
+        lb=-prob.INFINITY,
+        ub=prob.INFINITY,
+        name=join(f"{base_name}_flow_", [t_idx, m], "_")
+    )
+
+    flow_lin = prob.add_var(
+        lb=-prob.INFINITY,
+        ub=prob.INFINITY,
+        name=join(f"{base_name}_flow_lin_", [t_idx, m], "_")
+    )
+
+    z1 = prob.add_int(lb=0, ub=1, name=join(f"{base_name}_z1_", [t_idx, m], "_"))
+    z2 = prob.add_int(lb=0, ub=1, name=join(f"{base_name}_z2_", [t_idx, m], "_"))
+
+    # Constant
+    M = 6 * rate  # safe Big-M
+
+    # Constraints
+    # Droop law 
+    prob.add_cst(flow_lin - (P0 + droop * (theta_f - theta_t)) <= M * (z1 + z2),
+                 name=f"droop_active_le_{t_idx}_{m}")
+    prob.add_cst(flow_lin - (P0 + droop * (theta_f - theta_t)) >= -M * (z1 + z2),
+                 name=f"droop_active_ge_{t_idx}_{m}")
+
+    # Central area
+    prob.add_cst(flow - flow_lin <= M * (z1 + z2),
+                 name=f"flow_match_le_{t_idx}_{m}")
+    prob.add_cst(flow - flow_lin >= -M * (z1 + z2),
+                 name=f"flow_match_ge_{t_idx}_{m}")
+
+    # Upper area
+    prob.add_cst(flow <= rate + M * (1 - z1),
+                 name=f"upper_bound_flow_le_{t_idx}_{m}")
+    prob.add_cst(flow >= rate - M * (1 - z1),
+                 name=f"upper_bound_flow_ge_{t_idx}_{m}")
+
+    # Lower area
+    prob.add_cst(flow <= -rate + M * (1 - z2),
+                 name=f"lower_bound_flow_le_{t_idx}_{m}")
+    prob.add_cst(flow >= -rate - M * (1 - z2),
+                 name=f"lower_bound_flow_ge_{t_idx}_{m}")
+
+    # Only one area active
+    prob.add_cst(z1 + z2 <= 1, name=f"single_case_active_{t_idx}_{m}")
+
+    return flow
+
+    return None
+
+    
+def pmode3_formulation_convex_hull(prob, t_idx, m, rate, P0, droop, theta_f, theta_t, f_obj,
+                                   dtheta_max=1.57, base_name: str = "hvdc"):
+    """
+    Convex-hull (Balas) formulation for HVDC Pmode3.
+
+    There are three areas, mutually exclusive, only one can be active: 
+    - Droop (central):     flow = g, where g = P0 + k * (theta_f - theta_t)
+    - Upper sat: flow = +rate
+    - Lower sat: flow = -rate
+
+    Variables:
+    flow    continuous between -rate and +rate
+    g       continuous, g = P0 + k * (th_f - th_t)
+    lam_d   binary (droop region)
+    lam_u   binary (upper saturation)
+    lam_l   binary (lower saturation)
+    f_d     continuous droop component of flow
+    f_u     continuous upper-sat component of flow
+    f_l     continuous lower-sat component of flow
+    g_d     continuous disaggregated copy of g used only in droop set
+
+    Constraints:
+    region_sum_eq:         lam_d + lam_u + lam_l = 1
+    droop_eq:              g = P0 + k * (th_f - th_t)
+    flow_decomp_eq:        flow = f_d + f_u + f_l
+    upper_sat_eq:          f_u = +rate * lam_u
+    lower_sat_eq:          f_l = -rate * lam_l
+    droop_comp_flow_link:  f_d = g_d
+
+    Disaggregated box for g_d (scaled by lam_d)
+    g_d_box_le:            g_d <= gU * lam_d
+    g_d_box_ge:            g_d >= gL * lam_d
+
+    Convex-hull link:
+    droop_link_hull_le:    g_d - g <=  gU * (1 - lam_d)
+    droop_link_hull_ge:    g_d - g >=  gL * (1 - lam_d)
+
+    - No explicit constraints on (theta_f - theta_t) are added.
+    - The parameters gL,gU are used only to bound the droop value (g_d) tightly.
+    """
+
+    tag = f"{t_idx}_{m}"
+    nm  = lambda s: f"{base_name}_{s}_{tag}"
+
+    # Vars
+    flow = prob.add_var(lb=-rate, ub=rate, name=nm("flow"))
+    g    = prob.add_var(lb=-prob.INFINITY, ub=prob.INFINITY, name=nm("g"))
+
+    lam_d = prob.add_int(lb=0, ub=1, name=nm("lam_d"))  # droop region
+    lam_u = prob.add_int(lb=0, ub=1, name=nm("lam_u"))  # upper saturation
+    lam_l = prob.add_int(lb=0, ub=1, name=nm("lam_l"))  # lower saturation
+
+    f_d = prob.add_var(lb=-prob.INFINITY, ub=prob.INFINITY, name=nm("f_d"))
+    f_u = prob.add_var(lb=-prob.INFINITY, ub=prob.INFINITY, name=nm("f_u"))
+    f_l = prob.add_var(lb=-prob.INFINITY, ub=prob.INFINITY, name=nm("f_l"))
+
+    g_d = prob.add_var(lb=-prob.INFINITY, ub=prob.INFINITY, name=nm("g_d"))
+
+    # Region selection
+    prob.add_cst(lam_d + lam_u + lam_l == 1, name=nm("region_sum_eq"))
+
+    # New vars
+    phi = prob.add_var(lb=-dtheta_max, ub=dtheta_max, name=nm("phi"))   # control angle
+    s   = prob.add_var(lb=0.0,        ub=prob.INFINITY, name=nm("phi_slack_abs"))
+
+    # Use phi in droop law (replace your droop_affine_eq)
+    prob.add_cst(g == P0 + droop * phi, name=nm("droop_affine_eq_phi"))
+
+    # Softly tie phi to actual angle difference (absolute value with linear slacks)
+    prob.add_cst(s >=  phi - (theta_f - theta_t), name=nm("phi_couple_pos"))
+    prob.add_cst(s >= -(phi - (theta_f - theta_t)), name=nm("phi_couple_neg"))
+
+    f_obj += 1.0 * s
+
+    # Droop eq.
+    # prob.add_cst(g == P0 + droop * (theta_f - theta_t), name=nm("droop_affine_eq"))
+
+    # Flow decomposition in the three areas
+    prob.add_cst(flow == f_d + f_u + f_l, name=nm("flow_decomp_eq"))
+
+    # Saturation regimes (exact, so we avoid Big-M)
+    prob.add_cst(f_u ==  rate * lam_u, name=nm("upper_sat_eq"))
+    prob.add_cst(f_l == -rate * lam_l, name=nm("lower_sat_eq"))
+
+    # Droop regime: f_d equals disaggregated droop variable g_d (maybe could be removed?)
+    prob.add_cst(f_d == g_d, name=nm("droop_comp_flow_link_eq"))
+
+    # We do not constrain theta directly but convexify the problem with:
+    g_span = abs(droop) * dtheta_max
+    gL = P0 - g_span  # Lower bound, like using M but better
+    gU = P0 + g_span  # Upper bound, like using M but better
+
+    prob.add_cst(g_d <= gU * lam_d, name=nm("g_d_box_le"))
+    prob.add_cst(g_d >= gL * lam_d, name=nm("g_d_box_ge"))
+
+    # Convex hull linking g_d to g when lam_d = 1
+    # Avoid indicators because hard to code into OrTools or PuLP
+    prob.add_cst(g_d - g <=  gU * (1 - lam_d), name=nm("droop_link_hull_le"))
+    prob.add_cst(g_d - g >=  gL * (1 - lam_d), name=nm("droop_link_hull_ge"))
+
+    # Consistency so we saturate only if g beyond the limit
+    prob.add_cst(g >=  rate * lam_u + gL * (1 - lam_u), name=nm("upper_sat_consistency_ge"))
+    prob.add_cst(g <= -rate * lam_l + gU * (1 - lam_l), name=nm("lower_sat_consistency_le"))
+
+    return flow, f_obj
+
 
 def formulate_lp_abs_value(prob: LpModel, lp_var: LpVar, ub: float, M: float, name: str):
     """
@@ -1262,7 +1455,8 @@ def add_linear_injections_formulation(t: Union[int, None],
 
     # minimize the power at area 2 (receiving area), maximize at area 1 (sending area)
     # minimize the slacks
-    f_obj += ntc_vars.delta_2[t] - ntc_vars.delta_1[t] + ntc_vars.delta_sl_1[t] + ntc_vars.delta_sl_2[t]
+    # f_obj += ntc_vars.delta_2[t] - ntc_vars.delta_1[t] + ntc_vars.delta_sl_1[t] + ntc_vars.delta_sl_2[t]
+    f_obj +=  - ntc_vars.delta_1[t]
 
     return f_obj, base_power
 
@@ -1608,8 +1802,10 @@ def add_linear_branches_formulation(t_idx: int,
                     prob.set_var_bounds(branch_vars.flows[t_idx, m], lb=-rate_pu, ub=rate_pu)
 
     # add the inter-area flows to the objective function with the correct sign
-    for k, sense in branch_vars.inter_space_branches:
-        f_obj += -branch_vars.flows[t_idx, k] * sense
+    # for k, sense in branch_vars.inter_space_branches:
+        # f_obj += -branch_vars.flows[t_idx, k] * sense
+
+    f_obj += 0.0
 
     return f_obj
 
@@ -1664,7 +1860,7 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
             vsc_flow=vsc_vars.flows[t_idx, :]
         )
 
-        for m in changed_idx:
+        for occ, m in enumerate(changed_idx):
 
             if isinstance(contingency_flows[m], LpExp):
 
@@ -1705,8 +1901,9 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
 
                     if con_loading[m] < 1.0:
                         # declare slack variables
-                        pos_slack = prob.add_var(0, 1e20, join("br_cst_flow_pos_sl_", [t_idx, m, c]))
-                        neg_slack = prob.add_var(0, 1e20, join("br_cst_flow_neg_sl_", [t_idx, m, c]))
+                        # Use occurrence index 'occ' to ensure unique names when changed_idx has duplicates
+                        pos_slack = prob.add_var(0, 1e20, join("br_cst_flow_pos_sl_", [t_idx, m, c, occ]))
+                        neg_slack = prob.add_var(0, 1e20, join("br_cst_flow_neg_sl_", [t_idx, m, c, occ]))
 
                         # register the contingency data to evaluate the result at the end
                         branch_vars.add_contingency_flow(t=t_idx, m=m, c=c,
@@ -1717,13 +1914,13 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                         # add upper rate constraint
                         prob.add_cst(
                             cst=contingency_flows[m] + pos_slack <= branch_data_t.contingency_rates[m] / Sbase,
-                            name=join("br_cst_flow_upper_lim_", [t_idx, m, c])
+                            name=join("br_cst_flow_upper_lim_", [t_idx, m, c, occ])
                         )
 
                         # add lower rate constraint
                         prob.add_cst(
                             cst=contingency_flows[m] - neg_slack >= -branch_data_t.contingency_rates[m] / Sbase,
-                            name=join("br_cst_flow_lower_lim_", [t_idx, m, c])
+                            name=join("br_cst_flow_lower_lim_", [t_idx, m, c, occ])
                         )
 
                         f_obj += pos_slack + neg_slack
@@ -1789,15 +1986,37 @@ def add_linear_hvdc_formulation(t_idx: int,
                     #                                                theta_f=vars_bus.theta[t_idx, fr],
                     #                                                theta_t=vars_bus.theta[t_idx, to])
 
-                    hvdc_vars.flows[t_idx, m] = pmode3_formulation2(prob=prob,
-                                                                    t_idx=t_idx,
-                                                                    m=m,
-                                                                    rate=hvdc_data_t.rates[m] / Sbase,
-                                                                    P0=P0,
-                                                                    droop=droop,
-                                                                    theta_f=vars_bus.Va[t_idx, fr],
-                                                                    theta_t=vars_bus.Va[t_idx, to],
-                                                                    base_name="hvdc")
+                    # hvdc_vars.flows[t_idx, m] = pmode3_formulation2(prob=prob,
+                    #                                                 t_idx=t_idx,
+                    #                                                 m=m,
+                    #                                                 rate=hvdc_data_t.rates[m] / Sbase,
+                    #                                                 P0=P0,
+                    #                                                 droop=droop,
+                    #                                                 theta_f=vars_bus.Va[t_idx, fr],
+                    #                                                 theta_t=vars_bus.Va[t_idx, to],
+                    #                                                 base_name="hvdc")
+
+                    # hvdc_vars.flows[t_idx, m] = pmode3_formulation3(prob=prob,
+                    #                                                 t_idx=t_idx,
+                    #                                                 m=m,
+                    #                                                 rate=hvdc_data_t.rates[m] / Sbase,
+                    #                                                 P0=P0,
+                    #                                                 droop=droop,
+                    #                                                 theta_f=vars_bus.Va[t_idx, fr],
+                    #                                                 theta_t=vars_bus.Va[t_idx, to],
+                    #                                                 base_name="hvdc")
+
+                    hvdc_vars.flows[t_idx, m], f_obj = pmode3_formulation_convex_hull(prob=prob,
+                                                                       t_idx=t_idx,
+                                                                       m=m,
+                                                                       rate=hvdc_data_t.rates[m] / Sbase,
+                                                                       P0=P0,
+                                                                       droop=droop,
+                                                                       theta_f=vars_bus.Va[t_idx, fr],
+                                                                       theta_t=vars_bus.Va[t_idx, to],
+                                                                       f_obj=f_obj,
+                                                                       dtheta_max=1.0,
+                                                                       base_name="hvdc")
 
                     # hvdc_vars.flows[t_idx, m] = formulate_hvdc_Pmode3_single_flow(
                     #     solver=prob,
@@ -1874,8 +2093,9 @@ def add_linear_hvdc_formulation(t_idx: int,
             prob.set_var_bounds(var=hvdc_vars.flows[t_idx, m], ub=0.0, lb=0.0)
 
     # add the flows to the objective function
-    for k, sense in hvdc_vars.inter_space_hvdc:
-        f_obj += -hvdc_vars.flows[t_idx, k] * sense
+    # for k, sense in hvdc_vars.inter_space_hvdc:
+        # f_obj += -hvdc_vars.flows[t_idx, k] * sense
+    f_obj += 0.0
 
     return f_obj
 

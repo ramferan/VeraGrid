@@ -4,11 +4,11 @@
 # SPDX-License-Identifier: MPL-2.0
 import os
 import numpy as np
-import VeraGridEngine.api as gce
+import VeraGridEngine.api as vg
 from VeraGridEngine.Compilers.circuit_to_gslv import GSLV_AVAILABLE, pg, to_gslv, compare_nc, CheckArr
 
 
-def compare_inputs(grid_gslv: "pg.MultiCircuit", grid_gc: gce.MultiCircuit, tol=1e-6, t_idx=None):
+def compare_inputs(grid_gslv: "pg.MultiCircuit", grid_gc: vg.MultiCircuit, tol=1e-6, t_idx=None):
     """
 
     :param grid_gslv:
@@ -23,10 +23,10 @@ def compare_inputs(grid_gslv: "pg.MultiCircuit", grid_gc: gce.MultiCircuit, tol=
 
     if t_idx is None:
         nc_gslv = pg.compile(grid=grid_gslv, logger=pg.Logger(), t_idx=0)
-        nc_gc = gce.compile_numerical_circuit_at(circuit=grid_gc, t_idx=None)
+        nc_gc = vg.compile_numerical_circuit_at(circuit=grid_gc, t_idx=None)
     else:
         nc_gslv = pg.compile(grid=grid_gslv, logger=pg.Logger(), t_idx=t_idx)
-        nc_gc = gce.compile_numerical_circuit_at(circuit=grid_gc, t_idx=t_idx)
+        nc_gc = vg.compile_numerical_circuit_at(circuit=grid_gc, t_idx=t_idx)
 
     # ------------------------------------------------------------------------------------------------------------------
     #  Compare base data
@@ -47,7 +47,7 @@ def compare_inputs(grid_gslv: "pg.MultiCircuit", grid_gc: gce.MultiCircuit, tol=
     return errors
 
 
-def compare_power_flow(grid_gslv: "pg.MultiCircuit", grid_gc: gce.MultiCircuit, tol=1e-6):
+def compare_power_flow(grid_gslv: "pg.MultiCircuit", grid_gc: vg.MultiCircuit, tol=1e-6):
     """
 
     :param grid_gslv:
@@ -55,13 +55,13 @@ def compare_power_flow(grid_gslv: "pg.MultiCircuit", grid_gc: gce.MultiCircuit, 
     :param tol:
     :return:
     """
-    gc_options = gce.PowerFlowOptions(gce.SolverType.NR,
+    gc_options = vg.PowerFlowOptions(vg.SolverType.NR,
                                       verbose=False,
                                       tolerance=1e-6,
                                       retry_with_other_methods=True,
                                       control_q=False,
                                       max_iter=15)
-    gc_power_flow = gce.PowerFlowDriver(grid_gc, gc_options)
+    gc_power_flow = vg.PowerFlowDriver(grid_gc, gc_options)
     gc_power_flow.run()
     gridcal_res = gc_power_flow.results
 
@@ -104,7 +104,7 @@ def test_gslv_compatibility():
 
         print(f"Testing: {fname}")
 
-        grid_gc = gce.open_file(filename=fname)
+        grid_gc = vg.open_file(filename=fname)
 
         # correct zero rates
         for br in grid_gc.get_branches():
@@ -138,7 +138,7 @@ def test_gslv_compatibility_ts():
 
     print(f"Testing: {fname}")
 
-    grid_gc = gce.open_file(filename=fname)
+    grid_gc = vg.open_file(filename=fname)
 
     # correct zero rates
     for br in grid_gc.get_branches():
@@ -165,13 +165,13 @@ def test_power_flow_ts():
     if not GSLV_AVAILABLE:
         return
 
-    grid = gce.open_file(filename=os.path.join('data', 'grids', 'IEEE39_1W.gridcal'))
+    grid = vg.open_file(filename=os.path.join('data', 'grids', 'IEEE39_1W.gridcal'))
 
-    options = gce.PowerFlowOptions(verbose=False)
+    options = vg.PowerFlowOptions(verbose=False)
 
-    drv = gce.PowerFlowTimeSeriesDriver(grid=grid,
+    drv = vg.PowerFlowTimeSeriesDriver(grid=grid,
                                         options=options,
-                                        engine=gce.EngineType.GSLV)
+                                        engine=vg.EngineType.GSLV)
 
     drv.run()
 
@@ -182,13 +182,13 @@ def test_contingencies_ts():
     if not GSLV_AVAILABLE:
         return
 
-    grid = gce.open_file(filename=os.path.join('data', 'grids', 'IEEE39_1W.gridcal'))
+    grid = vg.open_file(filename=os.path.join('data', 'grids', 'IEEE39_1W.gridcal'))
 
-    options = gce.ContingencyAnalysisOptions(
+    options = vg.ContingencyAnalysisOptions(
         use_provided_flows=False,
         Pf=None,
-        pf_options=gce.PowerFlowOptions(gce.SolverType.Linear),
-        lin_options=gce.LinearAnalysisOptions(),
+        pf_options=vg.PowerFlowOptions(vg.SolverType.Linear),
+        lin_options=vg.LinearAnalysisOptions(),
         use_srap=False,
         srap_max_power=1400.0,
         srap_top_n=5,
@@ -196,13 +196,13 @@ def test_contingencies_ts():
         srap_rever_to_nominal_rating=False,
         detailed_massive_report=False,
         contingency_deadband=0.0,
-        contingency_method=gce.ContingencyMethod.PowerFlow,
+        contingency_method=vg.ContingencyMethod.PowerFlow,
         contingency_groups=grid.contingency_groups
     )
 
-    drv = gce.ContingencyAnalysisTimeSeriesDriver(grid=grid,
+    drv = vg.ContingencyAnalysisTimeSeriesDriver(grid=grid,
                                                   options=options,
-                                                  engine=gce.EngineType.GSLV)
+                                                  engine=vg.EngineType.GSLV)
 
     drv.run()
 
@@ -235,7 +235,7 @@ def test_results_compatibility():
     for path in paths:
         fname = os.path.basename(path)
 
-        grid = gce.open_file(filename=path)
+        grid = vg.open_file(filename=path)
 
         # if grid.get_bus_number() < 2000000000:
         print("^" * 100)
@@ -247,22 +247,22 @@ def test_results_compatibility():
 
         # power flow ---------------------------------------------------------------
 
-        options = gce.PowerFlowOptions(verbose=0,
+        options = vg.PowerFlowOptions(verbose=0,
                                        use_stored_guess=True,
                                        retry_with_other_methods=False,
-                                       solver_type=gce.SolverType.NR,
+                                       solver_type=vg.SolverType.NR,
                                        control_q=False,
                                        tolerance=1e-8)
 
-        drv_gc = gce.PowerFlowDriver(grid=grid,
+        drv_gc = vg.PowerFlowDriver(grid=grid,
                                      options=options,
-                                     engine=gce.EngineType.VeraGrid)
+                                     engine=vg.EngineType.VeraGrid)
         drv_gc.run()
         res_gc = drv_gc.results
 
-        drv_gslv = gce.PowerFlowDriver(grid=grid,
+        drv_gslv = vg.PowerFlowDriver(grid=grid,
                                        options=options,
-                                       engine=gce.EngineType.GSLV)
+                                       engine=vg.EngineType.GSLV)
         drv_gslv.run()
         res_gslv = drv_gslv.results
 
@@ -270,9 +270,48 @@ def test_results_compatibility():
 
         if not all_ok or inpt_err_number > 0:
             logger.print(title=path)
-            gce.save_file(grid=grid, filename=os.path.join("output", fname + ".gridcal"))
+            vg.save_file(grid=grid, filename=os.path.join("output", fname + ".gridcal"))
             print()
         assert all_ok
+
+
+def test_gslv_veragrid_agreement():
+    """
+    This test sparked because on IEEE39_1W Snapshot
+    when failing branch 26 (k=26) the branches 31, 32, 33
+    (and only those) show different power flows
+    :return:
+    """
+
+    if not GSLV_AVAILABLE:
+        return
+
+    fname = os.path.join('data', 'grids', "IEEE39_1W.gridcal")
+
+    print(f"Testing: {fname}")
+
+    grid_gc = vg.open_file(filename=fname)
+
+    grid_gc.lines[26].active = False
+
+    # correct zero rates
+    for br in grid_gc.get_branches():
+        if br.rate <= 0:
+            br.rate = 9999.0
+
+    grid_gslv, gslv_dict = to_gslv(circuit=grid_gc,
+                                   use_time_series=False,
+                                   time_indices=None,
+                                   override_branch_controls=False,
+                                   opf_results=None)
+
+    errors = compare_inputs(grid_gslv=grid_gslv,
+                            grid_gc=grid_gc,
+                            tol=1e-6,
+                            t_idx=None)
+
+    print(errors)
+
 
 
 if __name__ == '__main__':

@@ -305,7 +305,7 @@ class NonLinearOptimalPfProblem:
                                       shape=(self.nbus, self.n_gen_disp_sh))
         self.Cdispgen_sh_t = self.Cdispgen.T
 
-        self.Inom = nc.generator_data.snom / self.Sbase
+        self.Inom = nc.generator_data.snom[self.gen_disp_idx] / self.Sbase
 
         self.c0 = np.r_[nc.generator_data.cost_0[self.gen_disp_idx], np.zeros(self.nsh)]
         self.c1 = np.r_[nc.generator_data.cost_1[self.gen_disp_idx], np.zeros(self.nsh)]
@@ -678,8 +678,8 @@ class NonLinearOptimalPfProblem:
 
         if self.options.ips_control_q_limits:  # if reactive power control...
             v_g = self.Vm[self.gen_bus_idx[self.gen_disp_idx]]
-            ctrlq_ineq = (np.power(self.Qg[:self.ngen], 2.0)
-                          + np.power(self.Pg[:self.ngen], 2.0)
+            ctrlq_ineq = (np.power(self.Qg[:self.n_gen_disp], 2.0)
+                          + np.power(self.Pg[:self.n_gen_disp], 2.0)
                           - np.power(v_g * self.Inom, 2.0))
         else:
             ctrlq_ineq = np.zeros(0)

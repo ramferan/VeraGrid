@@ -1,5 +1,7 @@
 <RCC>
   <qresource prefix="Icons">
+    <file>icons/time_series_crop_cluster.png</file>
+    <file>icons/time_series_crop.png</file>
     <file>icons/disconnector.png</file>
     <file>icons/reliability.png</file>
     <file>icons/ruler.png</file>

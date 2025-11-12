@@ -12,8 +12,8 @@ from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_driver 
                                                                                         ContingencyAnalysisResults)
 from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_ts_driver import (
     ContingencyAnalysisTimeSeriesDriver, ContingencyAnalysisTimeSeriesResults)
-from VeraGridEngine.Simulations.ContinuationPowerFlow.continuation_power_flow_driver import (ContinuationPowerFlowDriver,
-                                                                                             ContinuationPowerFlowResults)
+from VeraGridEngine.Simulations.ContinuationPowerFlow.continuation_power_flow_driver import (
+    ContinuationPowerFlowDriver, ContinuationPowerFlowResults)
 from VeraGridEngine.Simulations.LinearFactors.linear_analysis_driver import LinearAnalysisDriver, LinearAnalysisResults
 from VeraGridEngine.Simulations.LinearFactors.linear_analysis_ts_driver import (LinearAnalysisTimeSeriesDriver,
                                                                                 LinearAnalysisTimeSeriesResults)
@@ -29,10 +29,11 @@ from VeraGridEngine.Simulations.Stochastic.stochastic_power_flow_driver import (
 from VeraGridEngine.Simulations.Clustering.clustering_driver import ClusteringDriver, ClusteringResults
 from VeraGridEngine.Simulations.Reliability.blackout_driver import CascadingDriver, CascadingResults
 from VeraGridEngine.Simulations.InputsAnalysis.inputs_analysis_driver import InputsAnalysisDriver, InputsAnalysisResults
-from VeraGridEngine.Simulations.InvestmentsEvaluation.investments_evaluation_driver import (InvestmentsEvaluationDriver,
-                                                                                            InvestmentsEvaluationResults)
+from VeraGridEngine.Simulations.InvestmentsEvaluation.investments_evaluation_driver import (
+    InvestmentsEvaluationDriver, InvestmentsEvaluationResults)
 from VeraGridEngine.Simulations.SigmaAnalysis.sigma_analysis_driver import SigmaAnalysisDriver, SigmaAnalysisResults
-from VeraGridEngine.Simulations.NTC.ntc_driver import OptimalNetTransferCapacityDriver, OptimalNetTransferCapacityResults
+from VeraGridEngine.Simulations.NTC.ntc_driver import (
+    OptimalNetTransferCapacityDriver, OptimalNetTransferCapacityResults)
 from VeraGridEngine.Simulations.NTC.ntc_ts_driver import (OptimalNetTransferCapacityTimeSeriesDriver,
                                                           OptimalNetTransferCapacityTimeSeriesResults)
 from VeraGridEngine.Simulations.NodalCapacity.nodal_capacity_ts_driver import (NodalCapacityTimeSeriesDriver,
@@ -41,6 +42,7 @@ from VeraGridEngine.Simulations.Topology.node_groups_driver import NodeGroupsDri
 from VeraGridEngine.Simulations.Reliability.reliability_driver import ReliabilityStudyDriver, ReliabilityResults
 
 from VeraGridEngine.Simulations.Rms.rms_driver import RmsSimulationDriver
+from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import SmallSignalStabilityDriver
 
 DRIVER_OBJECTS = Union[
     AvailableTransferCapacityDriver,
@@ -66,7 +68,8 @@ DRIVER_OBJECTS = Union[
     InvestmentsEvaluationDriver,
     NodalCapacityTimeSeriesDriver,
     ReliabilityStudyDriver,
-    RmsSimulationDriver
+    RmsSimulationDriver,
+    SmallSignalStabilityDriver
 ]
 
 RESULTS_OBJECTS = Union[

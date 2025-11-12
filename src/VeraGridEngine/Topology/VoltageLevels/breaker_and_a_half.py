@@ -10,7 +10,7 @@ from VeraGridEngine.enumerations import BusGraphicType, SwitchGraphicType
 from VeraGridEngine.Topology.VoltageLevels.single_bar import connect_bar_segments
 
 
-def create_breaker_and_a_half(
+def create_breaker_and_a_half_with_disconnectors(
         name: str,
         grid: MultiCircuit,
         n_bays: int,
@@ -243,7 +243,7 @@ def create_breaker_and_a_half(
     return vl, conn_buses, all_buses, offset_total_x, offset_total_y
 
 
-def create_breaker_and_a_half_with_disconnectors(
+def create_breaker_and_a_half(
         name: str,
         grid: MultiCircuit,
         n_bays: int,

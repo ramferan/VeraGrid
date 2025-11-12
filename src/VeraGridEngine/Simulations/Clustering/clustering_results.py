@@ -36,9 +36,9 @@ class ClusteringResults(ResultsTemplate):
             study_results_type=StudyResultsType.Clustering
         )
 
-        self.time_indices = time_indices
-        self.sampled_probabilities = sampled_probabilities
-        self.original_sample_idx = original_sample_idx
+        self.time_indices: IntVec = time_indices
+        self.sampled_probabilities: Vec = sampled_probabilities
+        self.original_sample_idx: IntVec = original_sample_idx
 
         self.register(name='time_indices', tpe=IntVec)
         self.register(name='sampled_probabilities', tpe=Vec)

@@ -8,7 +8,7 @@ import numpy as np
 
 from VeraGridEngine.Devices.profile import Profile
 from typing import List, Dict, AnyStr, Any, Union, Type, Tuple
-from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.basic_structures import Logger, IntVec
 from VeraGridEngine.enumerations import (DeviceType, TimeFrame, BuildStatus, WindingsConnection,
                                          TapModuleControl, TapPhaseControl, SubObjectType, ConverterControlType,
                                          HvdcControlType, ActionType, AvailableTransferMode, ContingencyMethod,
@@ -802,12 +802,16 @@ class EditableDevice:
         # get the value of the magnitude
         snapshot_value = getattr(self, magnitude)
 
-        prof = self.get_profile(magnitude=magnitude)
+        # get the already existing profile
+        prof: Profile = self.get_profile(magnitude=magnitude)
 
-        prof.create_sparse(size=len(index), default_value=snapshot_value)
+        if prof is None:
+            print("The profile is none, this is a bug!")
+        else:
+            prof.create_sparse(size=len(index), default_value=snapshot_value)
 
         # set the profile variable associated with the magnitude
-        setattr(self, self.properties_with_profile[magnitude], prof)
+        # setattr(self, self.properties_with_profile[magnitude], prof)
 
     def ensure_profiles_exist(self, index):
         """
@@ -843,6 +847,14 @@ class EditableDevice:
         """
         for magnitude in self.properties_with_profile.keys():
             self.get_profile(magnitude=magnitude).clear()
+
+    def resample_profiles(self, indices: IntVec):
+        """
+        re-sample the object profiles (set all to None)
+        """
+        for magnitude in self.properties_with_profile.keys():
+            prof = self.get_profile(magnitude=magnitude)
+            prof.resample(indices=indices)
 
     def set_profile_values(self, t):
         """

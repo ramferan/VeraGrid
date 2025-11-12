@@ -166,6 +166,7 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
             # self.results.battery_energy = opf_vars.batt_vars.e[0, :]
 
             self.results.generator_power = opf_vars.gen_vars.p[0, :]
+            self.results.generator_shedding = opf_vars.gen_vars.shedding[0, :]
 
             self.results.Sf = opf_vars.branch_vars.flows[0, :]
             self.results.St = -opf_vars.branch_vars.flows[0, :]

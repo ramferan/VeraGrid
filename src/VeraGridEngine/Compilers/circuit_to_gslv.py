@@ -587,7 +587,7 @@ def add_investments(circuit: MultiCircuit,
     d = dict()
 
     for i, elm in enumerate(circuit.investments):
-        investment = convert_investment(elm, groups_dict=groups_dict[elm.group])
+        investment = convert_investment(elm, groups_dict=groups_dict)
         gslv_grid.add_investment(investment)
         d[elm] = investment
 

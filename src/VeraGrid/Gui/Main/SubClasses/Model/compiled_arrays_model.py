@@ -99,6 +99,7 @@ class CompiledArraysModule:
     }
 
     def __init__(self, grid: MultiCircuit,
+                 t_idx: int | None,
                  engine: EngineType,
                  apply_temperature=False,
                  branch_tolerance_mode=BranchImpedanceMode.Specified,
@@ -111,13 +112,23 @@ class CompiledArraysModule:
         """
 
         :param grid:
+        :param t_idx:
         :param engine:
+        :param apply_temperature:
+        :param branch_tolerance_mode:
+        :param use_stored_guess:
+        :param control_taps_modules:
+        :param control_taps_phase:
+        :param control_remote_voltage:
+        :param fill_gep:
+        :param fill_three_phase:
         """
         self.grid = grid
 
         if engine == EngineType.VeraGrid:
             nc = compile_numerical_circuit_at(
                 circuit=self.grid,
+                t_idx=t_idx,
                 apply_temperature=apply_temperature,
                 branch_tolerance_mode=branch_tolerance_mode,
                 use_stored_guess=use_stored_guess,

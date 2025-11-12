@@ -410,7 +410,7 @@ class BaseDiagramWidget(QSplitter):
         self.delete_with_dialogue(selected=self._get_selected(),
                                   delete_from_db=delete_from_db)
 
-    def delete_diagram_elements(self, elements: List[ALL_DEV_TYPES], propagate: bool):
+    def delete_diagram_elements(self, elements: List[ALL_DEV_TYPES]):
         """
         Delete device from the diagram registry
         :param elements: list of elements to delete

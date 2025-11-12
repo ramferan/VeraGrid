@@ -11,7 +11,7 @@ from collections import OrderedDict
 from typing import List, Tuple, Dict, Union
 
 # GUI imports
-from PySide6 import QtGui, QtWidgets
+from PySide6 import QtGui
 from matplotlib.colors import LinearSegmentedColormap
 
 import VeraGrid.Gui.gui_functions as gf
@@ -70,7 +70,6 @@ class SimulationsMain(TimeEventsMain):
         self.solvers_dict[SolverType.GAUSS.value] = SolverType.GAUSS
         self.solvers_dict[SolverType.LACPF.value] = SolverType.LACPF
         self.solvers_dict[SolverType.Linear.value] = SolverType.Linear
-        # self.solvers_dict[SolverType.GENERALISED.value] = SolverType.GENERALISED
 
         self.ui.solver_comboBox.setModel(gf.get_list_model(list(self.solvers_dict.keys())))
         self.ui.solver_comboBox.setCurrentIndex(0)
@@ -92,7 +91,7 @@ class SimulationsMain(TimeEventsMain):
         self.lp_solvers_dict[SolverType.GREEDY_DISPATCH_OPF.value] = SolverType.GREEDY_DISPATCH_OPF
         self.ui.lpf_solver_comboBox.setModel(gf.get_list_model(list(self.lp_solvers_dict.keys())))
 
-        # reliabilty modes
+        # reliability modes
         self.reliability_mode_dict = OrderedDict()
         self.reliability_mode_dict[ReliabilityMode.GenerationAdequacy.value] = ReliabilityMode.GenerationAdequacy
         self.reliability_mode_dict[ReliabilityMode.GridMetrics.value] = ReliabilityMode.GridMetrics
@@ -156,6 +155,7 @@ class SimulationsMain(TimeEventsMain):
         # self.contingency_engines_dict[ContingencyMethod.OptimalPowerFlow.value] = ContingencyMethod.OptimalPowerFlow
         self.contingency_engines_dict[ContingencyMethod.Linear.value] = ContingencyMethod.Linear
         self.contingency_engines_dict[ContingencyMethod.PTDF_scan.value] = ContingencyMethod.PTDF_scan
+        self.contingency_engines_dict[ContingencyMethod.HELM.value] = ContingencyMethod.HELM
         self.ui.contingencyEngineComboBox.setModel(gf.get_list_model(list(self.contingency_engines_dict.keys())))
 
         # list of stochastic power flow methods
@@ -511,7 +511,7 @@ class SimulationsMain(TimeEventsMain):
         """
         if self.circuit.valid_for_simulation():
             if self.circuit.time_profile is not None:
-                if len(self.circuit.time_profile) > 0:
+                if self.circuit.get_time_number() > 0:
                     return True
         return False
 
@@ -2632,27 +2632,14 @@ class SimulationsMain(TimeEventsMain):
 
                 if not self.session.is_this_running(SimulationTypes.InvestmentsEvaluation_run):
 
-                    if self.ui.internal_investment_methods_radioButton.isChecked():
-                        # evaluation method
-                        method = self.investment_evaluation_method_dict[
-                            self.ui.investment_evaluation_method_ComboBox.currentText()
-                        ]
+                    # evaluation method
+                    method = self.investment_evaluation_method_dict[
+                        self.ui.investment_evaluation_method_ComboBox.currentText()
+                    ]
 
-                        obj_fn_tpe = self.investment_evaluation_objfunc_dict[
-                            self.ui.investment_evaluation_objfunc_ComboBox.currentText()
-                        ]
-
-                        fn_ptr = None
-
-                    elif self.ui.plugins_investment_methods_radioButton.isChecked():
-
-                        method = InvestmentEvaluationMethod.FromPlugin
-                        obj_fn_tpe = InvestmentsEvaluationObjectives.FromPlugin
-                        fn_ptr = self.plugins_investment_evaluation_method_dict[
-                            self.ui.plugins_investment_evaluation_method_ComboBox.currentText()
-                        ]
-                    else:
-                        raise Exception("Unrecognized investment simulation mode")
+                    obj_fn_tpe = self.investment_evaluation_objfunc_dict[
+                        self.ui.investment_evaluation_objfunc_ComboBox.currentText()
+                    ]
 
                     # maximum number of function evaluations as a factor of the number of investments
                     max_eval = self.ui.max_investments_evluation_number_spinBox.value() * len(
@@ -2665,7 +2652,7 @@ class SimulationsMain(TimeEventsMain):
                         pf_options=self.get_selected_power_flow_options(),
                         opf_options=self.get_opf_options(),
                         obj_tpe=obj_fn_tpe,
-                        plugin_fcn_ptr=fn_ptr,
+                        plugin_fcn_ptr=None,
                     )
 
                     if obj_fn_tpe == InvestmentsEvaluationObjectives.PowerFlow:
@@ -2764,35 +2751,6 @@ class SimulationsMain(TimeEventsMain):
 
         if not self.session.is_anything_running():
             self.UNLOCK()
-
-    def get_clustering_results(self) -> Union[sim.ClusteringResults, None]:
-        """
-        Get the clustering results if available
-        :return: ClusteringResults or None
-        """
-        if self.ui.actionUse_clustering.isChecked():
-            _, clustering_results = self.session.clustering
-
-            if clustering_results is not None:
-                n = len(clustering_results.time_indices)
-
-                if n != self.ui.cluster_number_spinBox.value():
-                    error_msg("The number of clusters in the stored results is different from the specified :(\n"
-                              "Run another clustering analysis.")
-
-                    return None
-                else:
-                    # all ok
-                    return clustering_results
-            else:
-                # no results ...
-                self.show_warning_toast("There are no clustering results.")
-                self.ui.actionUse_clustering.setChecked(False)
-                return None
-
-        else:
-            # not marked ...
-            return None
 
     def run_clustering(self):
         """

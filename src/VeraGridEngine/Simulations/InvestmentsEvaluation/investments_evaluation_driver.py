@@ -60,7 +60,8 @@ class InvestmentsEvaluationDriver(DriverTemplate):
                 plot_y_idx=0,
                 max_eval=self.options.max_eval
             )
-    def initialize(self, max_iter):
+
+    def initialize(self, max_iter: int):
         """
         Initialize the results
         :param max_iter: Maximum iterations
@@ -206,7 +207,7 @@ class InvestmentsEvaluationDriver(DriverTemplate):
         n_partitions = int(round(pop_size))
 
         # compile the snapshot
-        self.initialize(max_iter=self.options.max_eval * 2)
+        self.initialize(max_iter=self.options.max_eval)
 
         # add baseline
         ret = self.objective_function(x=np.zeros(self.problem.n_vars(), dtype=int))

@@ -12,6 +12,7 @@ from VeraGridEngine.Simulations.ContingencyAnalysis.Methods.helm_contingencies i
 from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import multi_island_pf_nc
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions, SolverType
 from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_options import ContingencyAnalysisOptions
+from VeraGridEngine.enumerations import ContingencyOperationTypes
 
 
 def helm_contingency_analysis(grid: MultiCircuit,
@@ -30,7 +31,7 @@ def helm_contingency_analysis(grid: MultiCircuit,
     """
 
     # set the numerical circuit
-    numerical_circuit = compile_numerical_circuit_at(grid, t_idx=t)
+    nc = compile_numerical_circuit_at(grid, t_idx=t)
 
     if options.pf_options is None:
         pf_opts = PowerFlowOptions(solver_type=SolverType.Linear,
@@ -41,30 +42,32 @@ def helm_contingency_analysis(grid: MultiCircuit,
 
     # declare the results
     results = ContingencyAnalysisResults(ncon=len(grid.contingency_groups),
-                                         nbr=numerical_circuit.nbr,
-                                         nbus=numerical_circuit.nbus,
-                                         branch_names=numerical_circuit.branch_names,
-                                         bus_names=numerical_circuit.bus_names,
-                                         bus_types=numerical_circuit.bus_types,
+                                         nbr=nc.nbr,
+                                         nbus=nc.nbus,
+                                         branch_names=nc.passive_branch_data.names,
+                                         bus_names=nc.bus_data.names,
+                                         bus_types=nc.bus_data.bus_types,
                                          con_names=grid.get_contingency_group_names())
 
     # get contingency groups dictionary
     cg_dict = grid.get_contingency_group_dict()
 
     branches_dict = grid.get_branches_dict(add_vsc=False, add_hvdc=False, add_switch=True)
-    calc_branches = grid.get_branches(add_hvdc=False, add_vsc=False, add_switch=True)
-    mon_idx = numerical_circuit.passive_branch_data.get_monitor_enabled_indices()
+    # calc_branches = grid.get_branches(add_hvdc=False, add_vsc=False, add_switch=True)
+    mon_idx = nc.passive_branch_data.get_monitor_enabled_indices()
 
     # keep the original states
-    original_br_active = numerical_circuit.passive_branch_data.active.copy()
-    original_gen_active = numerical_circuit.generator_data.active.copy()
-    original_gen_p = numerical_circuit.generator_data.p.copy()
+    original_br_active = nc.passive_branch_data.active.copy()
+    original_gen_active = nc.generator_data.active.copy()
+    original_gen_p = nc.generator_data.p.copy()
 
     # run 0
-    pf_res_0 = multi_island_pf_nc(nc=numerical_circuit,
+    pf_res_0 = multi_island_pf_nc(nc=nc,
                                   options=pf_opts)
 
-    helm_variations = HelmVariations(numerical_circuit=numerical_circuit)
+    helm_variations = HelmVariations(numerical_circuit=nc)
+
+    Sbus = nc.get_power_injections_pu()
 
     # for each contingency group
     for ic, contingency_group in enumerate(grid.contingency_groups):
@@ -77,15 +80,14 @@ def helm_contingency_analysis(grid: MultiCircuit,
         for cnt in contingencies:
 
             # search for the contingency in the Branches
-            if cnt.device_idtag in branches_dict:
-                br_idx = branches_dict[cnt.device_idtag]
-
-                if cnt.prop == 'active':
+            br_idx = branches_dict.get(cnt.device_idtag, None)
+            if br_idx is not None:
+                if cnt.prop == ContingencyOperationTypes.Active:
                     contingency_br_indices.append(br_idx)
                 else:
                     print(f'Unknown contingency property {cnt.prop} at {cnt.name} {cnt.idtag}')
             else:
-                pass
+                print(f"Contingency device not found in branches: {cnt.device_idtag}")
 
         # report progress
         if t is None:
@@ -94,29 +96,33 @@ def helm_contingency_analysis(grid: MultiCircuit,
                 calling_class.report_progress2(ic, len(grid.contingency_groups) * 100)
 
         # run
-        V, Sf, loading = helm_variations.compute_variations(contingency_br_indices=contingency_br_indices)
+        V, Sf, loading = helm_variations.compute_variations(
+            contingency_br_indices=np.array(contingency_br_indices)
+        )
 
+        results.voltage[ic, :] = V
         results.Sf[ic, :] = Sf
-        results.Sbus[ic, :] = numerical_circuit.Sbus
+        results.Sbus[ic, :] = Sbus
         results.loading[ic, :] = loading
         results.report.analyze(t=t,
                                t_prob=t_prob,
                                mon_idx=mon_idx,
-                               nc=numerical_circuit,
+                               nc=nc,
                                base_flow=np.abs(pf_res_0.Sf),
                                base_loading=np.abs(pf_res_0.loading),
                                contingency_flows=np.abs(Sf),
                                contingency_loadings=np.abs(loading),
                                contingency_idx=ic,
-                               contingency_group=contingency_group)
+                               contingency_group=contingency_group,
+                               srap_ratings=nc.passive_branch_data.protection_rates,)
 
         # revert the states for the next run
-        numerical_circuit.passive_branch_data.active = original_br_active.copy()
-        numerical_circuit.generator_data.active = original_gen_active.copy()
-        numerical_circuit.generator_data.p = original_gen_p.copy()
+        nc.passive_branch_data.active = original_br_active.copy()
+        nc.generator_data.active = original_gen_active.copy()
+        nc.generator_data.p = original_gen_p.copy()
 
         if calling_class is not None:
-            if calling_class.is_cancelled():
+            if calling_class.is_cancel():
                 return results
 
     return results

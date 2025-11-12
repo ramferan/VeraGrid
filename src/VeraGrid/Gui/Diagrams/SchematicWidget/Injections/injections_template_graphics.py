@@ -208,34 +208,7 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         """
         Change the generator bus
         """
-        idx_bus_list = self._editor.get_selected_buses()
-
-        if len(idx_bus_list) == 2:
-
-            # detect the bus and its combinations
-            if idx_bus_list[0][1] == self.api_object.bus:
-                idx, old_bus, old_bus_graphic_item = idx_bus_list[0]
-                idx, new_bus, new_bus_graphic_item = idx_bus_list[1]
-            elif idx_bus_list[1][1] == self.api_object.bus:
-                idx, new_bus, new_bus_graphic_item = idx_bus_list[0]
-                idx, old_bus, old_bus_graphic_item = idx_bus_list[1]
-            else:
-                error_msg("The bus to change has not been selected!", 'Change bus')
-                return
-
-            ok = yes_no_question(
-                text=f"Are you sure that you want to relocate the bus from {old_bus.name} to {new_bus.name}?",
-                title='Change bus')
-
-            if ok:
-                self.api_object.bus = new_bus
-                new_bus_graphic_item.add_object(api_obj=self.api_object)
-                new_bus_graphic_item.update()
-                self._editor.remove_element(device=self.api_object, graphic_object=self)
-
-        else:
-            warning_msg("you have to select the origin and destination buses!",
-                        title='Change bus')
+        self._editor.change_injection_bus(injection_graphics=self)
 
     def rescale(self, scale: float = 1.0):
         """

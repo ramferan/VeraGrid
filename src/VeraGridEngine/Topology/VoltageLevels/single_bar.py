@@ -27,7 +27,7 @@ def connect_bar_segments(grid: MultiCircuit, bar_buses: List[dev.Bus], name: str
         grid.add_line(ln)
 
 
-def create_single_bar(name: str,
+def create_single_bar_with_disconnectors(name: str,
                       grid: MultiCircuit,
                       n_bays: int,
                       v_nom: float,
@@ -172,7 +172,7 @@ def create_single_bar(name: str,
     return vl, conn_buses, all_buses, offset_total_x, offset_total_y
 
 
-def create_single_bar_with_disconnectors(
+def create_single_bar(
         name: str,
         grid: MultiCircuit,
         n_bays: int,
@@ -283,7 +283,7 @@ def create_single_bar_with_disconnectors(
     return vl, conn_buses, all_buses, offset_total_x, offset_total_y
 
 
-def create_single_bar_with_bypass(
+def create_single_bar_with_bypass_with_disconnectors(
         name: str,
         grid: MultiCircuit,
         n_bays: int,
@@ -438,7 +438,7 @@ def create_single_bar_with_bypass(
     return vl, conn_buses, all_buses, offset_total_x, offset_total_y
 
 
-def create_single_bar_with_bypass_with_disconnectors(
+def create_single_bar_with_bypass(
         name: str,
         grid: MultiCircuit,
         n_bays: int,
@@ -552,7 +552,7 @@ def create_single_bar_with_bypass_with_disconnectors(
     return vl, conn_buses, all_buses, offset_total_x, offset_total_y
 
 
-def create_single_bar_with_splitter(
+def create_single_bar_with_splitter_with_disconnectors(
         name: str,
         grid: MultiCircuit,
         n_bays: int,
@@ -724,7 +724,7 @@ def create_single_bar_with_splitter(
     return vl, conn_buses, all_buses, offset_total_x, offset_total_y
 
 
-def create_single_bar_with_splitter_with_disconnectors(
+def create_single_bar_with_splitter(
         name: str,
         grid: MultiCircuit,
         n_bays: int,
@@ -785,9 +785,6 @@ def create_single_bar_with_splitter_with_disconnectors(
     grid.add_bus(bar2)
     l_x_pos.append(bar2.x)
     l_y_pos.append(bar2.y)
-
-    cb_bars = dev.Switch(name=f"CB_bars", bus_from=bar1, bus_to=bar2, graphic_type=SwitchGraphicType.CircuitBreaker)
-    grid.add_switch(cb_bars)
 
     for i in range(n_bays):
         if i < n_bays_bar_1:

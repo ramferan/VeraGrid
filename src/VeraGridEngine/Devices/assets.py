@@ -614,6 +614,25 @@ class Assets:
             elm.delete_profiles()
         self.time_profile = None
 
+    def resample_profiles(self, indices: IntVec):
+        """
+        resample the given profiles to the indices
+        :param indices: array of indices to keep
+        """
+        self.time_profile = pd.DatetimeIndex([self.time_profile[i] for i in indices])
+
+        for elm in self.items():
+            elm.resample_profiles(indices=indices)
+
+    def resample_profiles2(self, t0: int, t1: int):
+        """
+        Resample profiles
+        :param t0: first time index
+        :param t1: second time index
+        """
+        indices = np.arange(t0, t1)
+        self.resample_profiles(indices=indices)
+
     # ------------------------------------------------------------------------------------------------------------------
     # Snapshot time
     # ------------------------------------------------------------------------------------------------------------------
@@ -1411,18 +1430,18 @@ class Assets:
         except ValueError:
             print(f"Could not delete {obj.name}")
 
-    def delete_buses(self, lst: Sequence[dev.Bus], delete_associated=False):
+    def delete_branches_with_sets(self, buses_to_remove: Set[dev.Bus], delete_associated: bool = False):
         """
-        Delete a :ref:`Bus<bus>` object from the grid.
-        :param lst: Array of objects to remove
-        :param delete_associated: Delete the associated branches and injections
+        Delete branch objects that may contain contingencies, remedial actions, or investments
+        Used when you delete buses connected to branches
+        :param buses_to_remove: Set of buses to remove
+        :param delete_associated: Delete the associated branches
+        :return: None
         """
-        buses_to_remove = set(lst)
 
         branches_to_delete = list()
-        injections_to_delete = list()
 
-        # delete associated Branches in reverse order
+        # First find branches to delete from the passed buses
         for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True):
             for i in range(len(branch_list) - 1, -1, -1):
                 if branch_list[i].bus_from in buses_to_remove:
@@ -1436,8 +1455,52 @@ class Assets:
                     else:
                         branch_list[i].bus_to = None
 
-        for elm in branches_to_delete:
-            self.delete_branch(obj=elm)
+        # Optimized branch removal by creating a set for faster lookups
+        branches_to_delete_set = set(branches_to_delete)
+        
+        # Remove branches directly from lists in one pass
+        # This is more efficient than calling delete_branch for each
+        for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True):
+            # Use list comprehension to not consider branches to delete 
+            # This is faster than the multiple remove() calls we had before
+            branch_list[:] = [b for b in branch_list if b not in branches_to_delete_set]
+        
+        # Batch process groupings, faster than calling delete_groupings_with_object for each branch
+        if branches_to_delete:
+            branch_idtags = {b.idtag for b in branches_to_delete}  # all idtags to consider
+            
+            # Process contingencies in batch
+            contingencies_to_delete = [elm for elm in self.contingencies if elm.device_idtag in branch_idtags]
+            for elm in contingencies_to_delete:
+                self.delete_contingency(elm, del_group=True)
+            
+            # Process remedial actions in batch
+            remedial_actions_to_delete = [elm for elm in self.remedial_actions if elm.device_idtag in branch_idtags]
+            for elm in remedial_actions_to_delete:
+                self.delete_remedial_action(elm, del_group=True)
+            
+            # Process investments in batch
+            investments_to_delete = [elm for elm in self.investments if elm.device_idtag in branch_idtags]
+            for elm in investments_to_delete:
+                self.delete_investment(elm, del_group=True)
+
+        else:
+            # No branches to delete, so nothing to be done
+            pass
+
+        return None
+
+    def delete_buses(self, lst: Sequence[dev.Bus], delete_associated=False):
+        """
+        Delete a :ref:`Bus<bus>` object from the grid.
+        :param lst: Array of objects to remove
+        :param delete_associated: Delete the associated branches and injections
+        """
+        buses_to_remove = set(lst)
+        injections_to_delete = list()
+
+        # We delete the associated branches by knowing the buses to remove
+        self.delete_branches_with_sets(buses_to_remove, delete_associated)
 
         # delete the associated injection devices
         for inj_list in self.get_injection_devices_lists():
@@ -1448,11 +1511,19 @@ class Assets:
                     else:
                         inj_list[i].bus = None
 
-        for elm in injections_to_delete:
-            self.delete_injection_device(obj=elm)
+        # Optimized batch deletion of injection devices
+        if injections_to_delete:
+            injections_to_delete_set = set(injections_to_delete)
+            for inj_list in self.get_injection_devices_lists():
+                # Use list comprehension to filter out injections we have to delete
+                inj_list[:] = [inj for inj in inj_list if inj not in injections_to_delete_set]
+        else:
+            # No injections to delete, so nothing to be done
+            pass
 
-        # delete the bus itself
-        for elm in buses_to_remove:
+        # delete the bus itself - use set difference for faster removal
+        buses_to_remove_list = list(buses_to_remove)
+        for elm in buses_to_remove_list:
             try:
                 self._buses.remove(elm)
             except ValueError:

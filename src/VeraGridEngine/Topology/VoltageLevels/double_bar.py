@@ -10,7 +10,7 @@ from VeraGridEngine.enumerations import BusGraphicType, SwitchGraphicType
 from VeraGridEngine.Topology.VoltageLevels.single_bar import connect_bar_segments
 
 
-def create_double_bar(
+def create_double_bar_with_disconnectors(
         name: str,
         grid: MultiCircuit,
         n_bays: int,
@@ -228,7 +228,7 @@ def create_double_bar(
     return vl, conn_buses, all_buses, offset_total_x, offset_total_y
 
 
-def create_double_bar_with_disconnectors(
+def create_double_bar(
         name: str,
         grid: MultiCircuit,
         n_bays: int,
@@ -378,7 +378,7 @@ def create_double_bar_with_disconnectors(
     return vl, conn_buses, all_buses, offset_total_x, offset_total_y
 
 
-def create_double_bar_with_transference_bar(
+def create_double_bar_with_transference_bar_with_disconnectors(
         name: str,
         grid: MultiCircuit,
         n_bays: int,
@@ -419,7 +419,7 @@ def create_double_bar_with_transference_bar(
 
     if not bar_by_segments:
         bar1 = dev.Bus(name=f"{name} bar1", substation=substation, Vnom=v_nom, voltage_level=vl,
-                       width=(n_bays + 1) * bus_width + bus_width * 3 + (x_dist - bus_width) * n_bays,
+                       width=(n_bays + 1) * bus_width + bus_width * 2 + (x_dist - bus_width) * (n_bays - 1),
                        xpos=offset_x - bus_width,
                        ypos=offset_y + y_dist * 3,
                        country=country,
@@ -430,7 +430,7 @@ def create_double_bar_with_transference_bar(
         l_y_pos.append(bar1.y)
 
         bar2 = dev.Bus(name=f"{name} bar2", substation=substation, Vnom=v_nom, voltage_level=vl,
-                       width=(n_bays + 1) * bus_width + bus_width * 3 + (x_dist - bus_width) * n_bays,
+                       width=(n_bays + 1) * bus_width + bus_width * 2 + (x_dist - bus_width) * (n_bays - 1),
                        xpos=offset_x - bus_width,
                        ypos=offset_y + y_dist * 4, country=country,
                        graphic_type=BusGraphicType.BusBar)
@@ -440,7 +440,7 @@ def create_double_bar_with_transference_bar(
         l_y_pos.append(bar2.y)
 
         transfer_bar = dev.Bus(name=f"{name} transfer bar", substation=substation, Vnom=v_nom, voltage_level=vl,
-                               width=(n_bays + 1) * bus_width + bus_width * 3 + (x_dist - bus_width) * n_bays,
+                               width=(n_bays + 1) * bus_width + bus_width * 2 + (x_dist - bus_width) * (n_bays - 1),
                                xpos=offset_x - bus_width, ypos=offset_y + y_dist * 5, country=country,
                                graphic_type=BusGraphicType.BusBar)
         grid.add_bus(transfer_bar)
@@ -553,14 +553,14 @@ def create_double_bar_with_transference_bar(
 
     # coupling
     bus1 = dev.Bus(name=f"{name}_coupling_bar1", substation=substation, Vnom=v_nom, voltage_level=vl,
-                   xpos=offset_x + n_bays * x_dist + x_dist * 0.25,
+                   xpos=offset_x + n_bays * x_dist + x_dist * 0.5,
                    ypos=offset_y + y_dist * 3.6,
                    width=bus_width,
                    country=country,
                    graphic_type=BusGraphicType.Connectivity)
 
     bus2 = dev.Bus(name=f"{name}_coupling_bar2", substation=substation, Vnom=v_nom, voltage_level=vl,
-                   xpos=offset_x + n_bays * x_dist + x_dist * 0.25,
+                   xpos=offset_x + n_bays * x_dist + x_dist * 0.5,
                    ypos=offset_y + y_dist * 4.6,
                    width=bus_width,
                    country=country,
@@ -604,7 +604,7 @@ def create_double_bar_with_transference_bar(
     return vl, conn_buses, all_buses, offset_total_x, offset_total_y
 
 
-def create_double_bar_with_transference_bar_with_disconnectors(
+def create_double_bar_with_transference_bar(
         name: str,
         grid: MultiCircuit,
         n_bays: int,
@@ -645,7 +645,7 @@ def create_double_bar_with_transference_bar_with_disconnectors(
 
     if not bar_by_segments:
         bar1 = dev.Bus(name=f"{name} bar1", substation=substation, Vnom=v_nom, voltage_level=vl,
-                       width=(n_bays + 1) * bus_width + bus_width * 3 + (x_dist - bus_width) * n_bays,
+                       width=(n_bays + 1) * bus_width + bus_width * 2 + (x_dist - bus_width) * (n_bays - 1),
                        xpos=offset_x - bus_width, ypos=offset_y + y_dist * 2, country=country,
                        graphic_type=BusGraphicType.BusBar)
         grid.add_bus(bar1)
@@ -654,7 +654,7 @@ def create_double_bar_with_transference_bar_with_disconnectors(
         l_y_pos.append(bar1.y)
 
         bar2 = dev.Bus(name=f"{name} bar2", substation=substation, Vnom=v_nom, voltage_level=vl,
-                       width=(n_bays + 1) * bus_width + bus_width * 3 + (x_dist - bus_width) * n_bays,
+                       width=(n_bays + 1) * bus_width + bus_width * 2 + (x_dist - bus_width) * (n_bays - 1),
                        xpos=offset_x - bus_width, ypos=offset_y + y_dist * 3, country=country,
                        graphic_type=BusGraphicType.BusBar)
         grid.add_bus(bar2)
@@ -663,7 +663,7 @@ def create_double_bar_with_transference_bar_with_disconnectors(
         l_y_pos.append(bar2.y)
 
         transfer_bar = dev.Bus(name=f"{name} transfer bar", substation=substation, Vnom=v_nom, voltage_level=vl,
-                               width=(n_bays + 1) * bus_width + bus_width * 3 + (x_dist - bus_width) * n_bays,
+                               width=(n_bays + 1) * bus_width + bus_width * 2 + (x_dist - bus_width) * (n_bays - 1),
                                xpos=offset_x - bus_width, ypos=offset_y + y_dist * 4, country=country,
                                graphic_type=BusGraphicType.BusBar)
         grid.add_bus(transfer_bar)
@@ -761,7 +761,7 @@ def create_double_bar_with_transference_bar_with_disconnectors(
 
     # coupling
     bus1 = dev.Bus(f"{name}_coupling_bar1", substation=substation, Vnom=v_nom, voltage_level=vl,
-                   xpos=offset_x + n_bays * x_dist + x_dist * 0.25,
+                   xpos=offset_x + n_bays * x_dist + x_dist * 0.5,
                    ypos=offset_y + y_dist * 3.6,
                    width=bus_width,
                    country=country,

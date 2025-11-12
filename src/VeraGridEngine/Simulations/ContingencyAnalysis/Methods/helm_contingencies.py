@@ -5,7 +5,7 @@
 import numpy as np
 import scipy as sp
 
-from typing import List
+from typing import List, Tuple
 from VeraGridEngine.basic_structures import IntVec, CxVec
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 from VeraGridEngine.Topology.admittance_matrices import compute_admittances
@@ -17,6 +17,7 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.helm_power_flow impor
 def calc_V_outage(nc: NumericalCircuit,
                   If: CxVec,
                   Ybus: sp.sparse.csc_matrix,
+                  Yf: sp.sparse.csc_matrix,
                   sys_mat_factorization,
                   V0: CxVec,
                   S0: CxVec,
@@ -32,6 +33,8 @@ def calc_V_outage(nc: NumericalCircuit,
                   pv: IntVec,
                   vd: IntVec,
                   pqpv: IntVec,
+                  pqpv_original: IntVec,
+                  pq_original: IntVec,
                   contingency_br_indices: IntVec):
     """
     Calculate the voltage due to outages in a non-linear manner with HELM.
@@ -40,6 +43,7 @@ def calc_V_outage(nc: NumericalCircuit,
     :param nc: NumericalCircuit instance
     :param If: from currents of the initial power flow
     :param Ybus: original admittance matrix
+
     :param sys_mat_factorization:
     :param V0: initial voltage array
     :param S0: vector of powers
@@ -55,6 +59,8 @@ def calc_V_outage(nc: NumericalCircuit,
     :param pv: set of PV buses
     :param vd: set of slack buses
     :param pqpv: set of PQ + PV buses
+    :param pqpv_original: set of PQ + PV buses in the original order
+    :param pq_original: set of PQ buses in the original order, considering slack
     :param contingency_br_indices: array of branch indices of the contingency
     :return: V, Sf, loading, norm_f
     """
@@ -64,24 +70,26 @@ def calc_V_outage(nc: NumericalCircuit,
     #     npqpv, n = helm_preparation_dY(Yseries=Yseries, V0=V0, S0=S0,
     #                                    Ysh0=Ysh0, pq=pq, pv=pv, sl=vd, pqpv=pqpv)
 
+    conn = nc.get_connectivity_matrices()
+
     # compute the admittance of the contingency branches
-    adm = compute_admittances(R=nc.passive_branch_data.R[contingency_br_indices],
-                              X=nc.passive_branch_data.X[contingency_br_indices],
-                              G=nc.passive_branch_data.G[contingency_br_indices],
-                              B=nc.passive_branch_data.B[contingency_br_indices],
-                              tap_module=nc.active_branch_data.tap_module[contingency_br_indices],
-                              vtap_f=nc.passive_branch_data.virtual_tap_f[contingency_br_indices],
-                              vtap_t=nc.passive_branch_data.virtual_tap_t[contingency_br_indices],
-                              tap_angle=nc.active_branch_data.tap_angle[contingency_br_indices],
-                              Cf=nc.passive_branch_data.Cf[contingency_br_indices, :],
-                              Ct=nc.passive_branch_data.Ct[contingency_br_indices, :],
-                              Yshunt_bus=np.zeros(nc.nbus, dtype=complex),
-                              conn=nc.passive_branch_data.conn[contingency_br_indices],
-                              seq=1,
-                              add_windings_phase=False)
+    con_adm = compute_admittances(R=nc.passive_branch_data.R[contingency_br_indices],
+                                  X=nc.passive_branch_data.X[contingency_br_indices],
+                                  G=nc.passive_branch_data.G[contingency_br_indices],
+                                  B=nc.passive_branch_data.B[contingency_br_indices],
+                                  tap_module=nc.active_branch_data.tap_module[contingency_br_indices],
+                                  vtap_f=nc.passive_branch_data.virtual_tap_f[contingency_br_indices],
+                                  vtap_t=nc.passive_branch_data.virtual_tap_t[contingency_br_indices],
+                                  tap_angle=nc.active_branch_data.tap_angle[contingency_br_indices],
+                                  Cf=conn.Cf[contingency_br_indices, :],
+                                  Ct=conn.Ct[contingency_br_indices, :],
+                                  Yshunt_bus=np.zeros(nc.nbus, dtype=complex),
+                                  conn=nc.passive_branch_data.conn[contingency_br_indices],
+                                  seq=1,
+                                  add_windings_phase=False)
 
     # solve the modified HELM
-    _, V, _, norm_f = helm_coefficients_dY(dY=adm.Ybus,
+    _, V, _, norm_f = helm_coefficients_dY(dY=con_adm.Ybus,
                                            sys_mat_factorization=sys_mat_factorization,
                                            Uini=Uini,
                                            Xini=Xini,
@@ -100,11 +108,13 @@ def calc_V_outage(nc: NumericalCircuit,
                                            npqpv=len(pqpv),
                                            nbus=nc.nbus,
                                            sl=vd,
+                                           pqpv_original=pqpv_original,
+                                           pq_original=pq_original,
                                            tolerance=1e-6,
-                                           max_coeff=10)
+                                           max_coeff=30)
 
     # compute flows
-    Sf = (nc.passive_branch_data.Cf * V) * np.conj(adm.Yf * V) * nc.Sbase
+    Sf = V[nc.passive_branch_data.F] * np.conj(Yf @ V) * nc.Sbase
 
     # compute contingency loading
     loading = Sf / (nc.passive_branch_data.rates + 1e-9)
@@ -168,11 +178,11 @@ class HelmVariations:
 
                     self.preparations.append(helm_prep)
 
-    def compute_variations(self, contingency_br_indices):
+    def compute_variations(self, contingency_br_indices: IntVec) -> Tuple[CxVec, CxVec, CxVec]:
         """
-
-        :param contingency_br_indices:
-        :return:
+        Compute a branch contingency
+        :param contingency_br_indices: array of branch indices to fail
+        :return: V, Sf, loading
         """
         n_br = self.numerical_circuit.nbr
         n_bus = self.numerical_circuit.nbus
@@ -191,32 +201,38 @@ class HelmVariations:
                     contingency_br_indices_is = list()
                     for c in contingency_br_indices:
                         ci = branch_index_mapping.get(c, None)
-                        if ci:
+                        if ci is not None:
                             contingency_br_indices_is.append(ci)
+                    contingency_br_indices_is = np.array(contingency_br_indices_is, dtype=int)
 
                     pre = self.preparations[n_island]
                     adm = island.get_admittance_matrices()
                     Sbus = island.get_power_injections_pu()
 
-                    V_isl, Sf_isl, loading_isl, err = calc_V_outage(nc=island,
-                                                                    If=np.zeros(island.nbr, dtype=complex),
-                                                                    Ybus=adm.Ybus,
-                                                                    sys_mat_factorization=pre.sys_mat_factorization,
-                                                                    V0=island.bus_data.Vbus,
-                                                                    S0=Sbus,
-                                                                    Uini=pre.Uini,
-                                                                    Xini=pre.Xini,
-                                                                    Yslack=pre.Yslack,
-                                                                    Vslack=pre.Vslack,
-                                                                    vec_P=pre.vec_P,
-                                                                    vec_Q=pre.vec_Q,
-                                                                    Ysh=pre.Ysh,
-                                                                    vec_W=pre.vec_W,
-                                                                    pq=pre.pq,
-                                                                    pv=pre.pv,
-                                                                    vd=pre.sl,
-                                                                    pqpv=pre.pqpv,
-                                                                    contingency_br_indices=contingency_br_indices_is)
+                    V_isl, Sf_isl, loading_isl, err = calc_V_outage(
+                        nc=island,
+                        If=np.zeros(island.nbr, dtype=complex),
+                        Ybus=adm.Ybus,
+                        Yf=adm.Yf,
+                        sys_mat_factorization=pre.sys_mat_factorization,
+                        V0=island.bus_data.Vbus,
+                        S0=Sbus,
+                        Uini=pre.Uini,
+                        Xini=pre.Xini,
+                        Yslack=pre.Yslack,
+                        Vslack=pre.Vslack,
+                        vec_P=pre.vec_P,
+                        vec_Q=pre.vec_Q,
+                        Ysh=pre.Ysh,
+                        vec_W=pre.vec_W,
+                        pq=pre.pq,
+                        pv=pre.pv,
+                        vd=pre.sl,
+                        pqpv=pre.pqpv,
+                        pqpv_original=pre.pqpv_original,
+                        pq_original=pre.pq_original,
+                        contingency_br_indices=contingency_br_indices_is,
+                    )
 
                     # assign objects to the full matrix
                     V[island.bus_data.original_idx] = V_isl

@@ -241,10 +241,9 @@ class DataBaseTableMain(DiagramsMain):
                                         magnitude=magnitude,
                                         data_format=mtype,
                                         parent=self.ui.profiles_tableView)
+                    self.ui.profiles_tableView.setModel(mdl)
                 else:
-                    mdl = None
-
-                self.ui.profiles_tableView.setModel(mdl)
+                    self.ui.profiles_tableView.setModel(None)
             else:
                 self.ui.profiles_tableView.setModel(None)
 
@@ -357,6 +356,7 @@ class DataBaseTableMain(DiagramsMain):
             ts_mdl = gf.get_list_model(self.circuit.profile_magnitudes[elm_type][0])
             self.ui.device_type_magnitude_comboBox.setModel(ts_mdl)
             self.ui.device_type_magnitude_comboBox_2.setModel(ts_mdl)
+            self.display_profiles(proxy_mdl=proxy)
             # the TS display will be triggered by the on-change event of the combobox
 
             # update the associations view
@@ -677,7 +677,7 @@ class DataBaseTableMain(DiagramsMain):
             self.grid_reduction_dialogue.exec()
 
             if self.grid_reduction_dialogue.did_reduce:
-                self.delete_from_all_diagrams(elements=[bus for i, bus, graphic in selected_buses])
+                self.delete_from_all_diagrams(elements=list(selected_buses))
 
     def grid_reduction_from_schematic_selection(self):
         """

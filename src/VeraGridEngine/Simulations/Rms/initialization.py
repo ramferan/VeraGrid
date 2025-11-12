@@ -2,18 +2,15 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import pdb
+
 from typing import Tuple, Any, Sequence, Callable, Dict
 import math
 import numba as nb
 import numpy as np
-from pygments.lexers.textfmts import TodotxtLexer
-from scipy.optimize import newton_krylov
 
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
-from VeraGridEngine.Utils.Symbolic import BlockSolver
-from VeraGridEngine.Utils.Symbolic.symbolic import _emit, _emit_one
-from VeraGridEngine.Utils.Symbolic.block import Block, Expr, Var
+from VeraGridEngine.Utils.Symbolic.symbolic import _emit_one
+from VeraGridEngine.Utils.Symbolic.block import Block, Expr
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.enumerations import DynamicVarType
@@ -27,7 +24,6 @@ def _compile_equation(eqs: Sequence[Expr],
     Compile the array of expressions to a function that returns an array of values for those expressions
     :param eqs: Iterable of expressions (Expr)
     :param uid2sym_vars: dictionary relating the uid of a var with its array name (i.e. var[0])
-    :param uid2sym_params:
     :param add_doc_string: add the docstring?
     :return: Function pointer that returns an array
     """
@@ -47,8 +43,9 @@ def _compile_equation(eqs: Sequence[Expr],
 
 
 def compose_system_block(grid: MultiCircuit,
-                          power_flow_results: PowerFlowResults, vars2device:Dict[int, PhysicalDevice], vars_glob_name2uid: Dict[str, int]) -> Tuple[Block, Dict[Tuple[int, str], float]]:
-
+                         power_flow_results: PowerFlowResults,
+                         vars2device: Dict[int, PhysicalDevice],
+                         vars_glob_name2uid: Dict[str, int]) -> Tuple[Block, Dict[Tuple[int, str], float]]:
     """
     Compose all RMS models
     :param grid:
@@ -151,9 +148,12 @@ def compose_system_block(grid: MultiCircuit,
         bus_rms_mdl = elm.bus.rms_model.model
         mdl = elm.rms_model.model
 
-
-        init_guess[(mdl.external_mapping[DynamicVarType.P].uid, mdl.external_mapping[DynamicVarType.P].name)] = init_guess[(bus_rms_mdl.external_mapping[DynamicVarType.P].uid, bus_rms_mdl.external_mapping[DynamicVarType.P].name)]
-        init_guess[(mdl.external_mapping[DynamicVarType.Q].uid, mdl.external_mapping[DynamicVarType.Q].name)] = init_guess[(bus_rms_mdl.external_mapping[DynamicVarType.Q].uid, bus_rms_mdl.external_mapping[DynamicVarType.Q].name)]
+        init_guess[(mdl.external_mapping[DynamicVarType.P].uid, mdl.external_mapping[DynamicVarType.P].name)] = \
+        init_guess[
+            (bus_rms_mdl.external_mapping[DynamicVarType.P].uid, bus_rms_mdl.external_mapping[DynamicVarType.P].name)]
+        init_guess[(mdl.external_mapping[DynamicVarType.Q].uid, mdl.external_mapping[DynamicVarType.Q].name)] = \
+        init_guess[
+            (bus_rms_mdl.external_mapping[DynamicVarType.Q].uid, bus_rms_mdl.external_mapping[DynamicVarType.Q].name)]
 
         mdl_vars = mdl.state_vars + mdl.algebraic_vars
 
@@ -200,10 +200,10 @@ def compose_system_block(grid: MultiCircuit,
 
     # del buses P, Q
     for i, elm in enumerate(grid.buses):
-            mdl = elm.rms_model.model
-            del init_guess[(mdl.external_mapping[DynamicVarType.P].uid,
+        mdl = elm.rms_model.model
+        del init_guess[(mdl.external_mapping[DynamicVarType.P].uid,
                         mdl.external_mapping[DynamicVarType.P].name)]
-            del init_guess[(mdl.external_mapping[DynamicVarType.Q].uid,
+        del init_guess[(mdl.external_mapping[DynamicVarType.Q].uid,
                         mdl.external_mapping[DynamicVarType.Q].name)]
 
     return sys_block, init_guess
@@ -232,7 +232,7 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
 
     # instantiate vars2device  and vars_glob_name2uid dicts
 
-    vars2device:Dict[int, PhysicalDevice] = dict()
+    vars2device: Dict[int, PhysicalDevice] = dict()
     vars_glob_name2uid: Dict[str, int] = dict()
     # find events
     rms_events = grid.rms_events
@@ -247,8 +247,6 @@ def initialize_rms(grid: MultiCircuit, power_flow_results, logger: Logger = Logg
     Q: ObjVec = np.zeros(n, dtype=object)
     P_used = np.zeros(n, dtype=int)
     Q_used = np.zeros(n, dtype=int)
-
-
 
     # initialize buses
     for i, elm in enumerate(grid.buses):

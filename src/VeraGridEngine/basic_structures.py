@@ -24,7 +24,7 @@ Vec = npt.NDArray[np.float64]
 CxVec = npt.NDArray[np.complex128]
 StrVec = npt.NDArray[np.str_]
 ObjVec = npt.NDArray[np.object_]
-Mat = npt.NDArray[np.float64] | np.ndarray[tuple[int, int], np.dtype[np.float64]]  # no way yet to say it is 2D
+Mat = Union[npt.NDArray[np.float64], np.ndarray[tuple[int, int], np.dtype[np.float64]]]  # no way yet to say it is 2D
 CxMat = npt.NDArray[np.complex128]  # no way yet to say it is 2D
 IntMat = npt.NDArray[np.int_]  # no way yet to say it is 2D
 StrMat = npt.NDArray[np.str_]  # no way yet to say it is 2D
@@ -221,7 +221,8 @@ def get_time_groups(t_array: pd.DatetimeIndex, grouping: TimeGrouping) -> List[i
     last = -1
 
     i = 0
-    for i, t in enumerate(t_array):
+    for i in range(len(t_array)):
+        t = t_array[i]
 
         if grouping == TimeGrouping.Monthly:
             if t.month != last:

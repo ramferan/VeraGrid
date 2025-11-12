@@ -14,7 +14,7 @@ from scipy.sparse import lil_matrix
 from scipy.sparse.linalg import spsolve as scipy_spsolve
 
 from VeraGridEngine.enumerations import DeviceType
-from VeraGridEngine.basic_structures import Logger, Vec, IntVec, CxVec, Mat, ObjVec, CxMat, BoolVec, IntMat
+from VeraGridEngine.basic_structures import Logger, Vec, IntVec, CxVec, Mat, ObjVec, CxMat, BoolVec, IntMat, Vector
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.Devices.Aggregation.contingency_group import ContingencyGroup
@@ -740,6 +740,8 @@ class ContingencyIndices:
         :param contingency_group: ContingencyGroup
         :param contingency_group_dict: dictionary to get the list of contingencies matching a contingency group
         :param branches_dict: dictionary to get the branch index by the branch idtag
+        :param hvdc_dict: dictionary to get the HvdcLine index by the branch idtag
+        :param vsc_dict: dictionary to get the Vsc index by the branch idtag
         :param injections_bus_index_dict: dictionary to get the injection device bus index by the generator idtag
         """
 
@@ -829,19 +831,17 @@ class LinearMultiContingencies:
         self.__vsc_dict = grid.get_vsc_index_dict()
         self.__injections_bus_index_dict = grid.get_injections_bus_index_dict(bus_index_dict=bus_index_dict)
 
-        self.contingency_indices_list = list()
+        self.contingency_indices_list = Vector(len(self.contingency_groups_used))
 
         # for each contingency group
         for ic, contingency_group in enumerate(self.contingency_groups_used):
-            self.contingency_indices_list.append(
-                ContingencyIndices(
-                    contingency_group=contingency_group,
-                    contingency_group_dict=self.__contingency_group_dict,
-                    branches_dict=self.__branches_dict,
-                    hvdc_dict=self.__hvdc_dict,
-                    vsc_dict=self.__vsc_dict,
-                    injections_bus_index_dict=self.__injections_bus_index_dict
-                )
+            self.contingency_indices_list[ic] = ContingencyIndices(
+                contingency_group=contingency_group,
+                contingency_group_dict=self.__contingency_group_dict,
+                branches_dict=self.__branches_dict,
+                hvdc_dict=self.__hvdc_dict,
+                vsc_dict=self.__vsc_dict,
+                injections_bus_index_dict=self.__injections_bus_index_dict
             )
 
         # list of LinearMultiContingency objects that are used later to compute the contingency flows
@@ -992,7 +992,7 @@ class LinearMultiContingencies:
 
     def get_single_con_branch_idx(self) -> Tuple[IntVec, IntVec]:
         """
-        Get the branch index array and the contringency group it belongs array
+        Get the branch index array and the contingency group it belongs array
         :return: array of single contingency branch indices,
                  array of the matching contingency groups
         """

@@ -27,7 +27,7 @@ def kmeans_sampling(x_input: Mat, n_points: int = 10) -> Tuple[IntVec, Vec, IntV
     model = KMeans(n_clusters=n_points, random_state=0, n_init=10)
 
     # model fitting
-    original_points_cluster_indices = model.fit_predict(x_input)
+    original_points_cluster_indices = model.fit_predict(np.nan_to_num(x_input))
 
     # compute probabilities
     centroids, counts = np.unique(model.labels_, return_counts=True)

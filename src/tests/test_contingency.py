@@ -35,7 +35,7 @@ def test_contingency() -> None:
         pf_driver = PowerFlowDriver(grid=main_circuit, options=pf_options)
         pf_driver.run()
 
-        # assert that the power flow matches whatevet it was done with the contingencies
+        # assert that the power flow matches whatever it was done with the contingencies
         assert (np.allclose(cont_analysis_driver.results.Sf[i, :], pf_driver.results.Sf))
 
         assert cont_analysis_driver.results.Sf[i, i] == complex(0, 0)
@@ -106,7 +106,6 @@ def test_linear_contingency():
 #         nc.passive_branch_data.active[k] = 1
 
 
-
 # def test_ieee14_contingencies_psse() -> None:
 #     """
 #     Check that the contingencies match conceptually
@@ -144,3 +143,110 @@ def test_linear_contingency():
 #             print()
 #
 #         nc.passive_branch_data.active[k] = 1
+
+
+def test_single_contingency_helm() -> None:
+    """
+    Run a single contingency to check we get matching results
+    Comparison between HELM, NR, and HELM with contingency factorization
+    """
+
+    fname = os.path.join('data', 'grids', 'IEEE14_single_contingency.gridcal')
+    main_circuit = FileOpen(fname).open()
+
+    
+    # First run power flow with deactivated line
+    main_circuit.lines[2].active = False  # Line 2_3 out
+
+    pf_driver = PowerFlowDriver(main_circuit, PowerFlowOptions(SolverType.HELM,
+                                        verbose=False,
+                                        use_stored_guess=False,
+                                        control_q=False))
+    pf_driver.run()
+
+    # Then run contingency with HELM
+    main_circuit.lines[2].active = True  # Line 2_3 out
+
+    con_helm = ContingencyAnalysisDriver(
+        grid=main_circuit,
+        options=ContingencyAnalysisOptions(
+            pf_options=PowerFlowOptions(SolverType.HELM,
+                                        verbose=False,
+                                        use_stored_guess=False,
+                                        control_q=False),
+            contingency_method=ContingencyMethod.HELM
+        ),
+        linear_multiple_contingencies=None
+    )
+    con_helm.run()
+
+    # Finally run contingency with NR
+    main_circuit.lines[2].active = True  # Line 2_3 out
+
+    con_nr = ContingencyAnalysisDriver(
+        grid=main_circuit,
+        options=ContingencyAnalysisOptions(
+            pf_options=PowerFlowOptions(SolverType.NR,
+                                        verbose=False,
+                                        use_stored_guess=False,
+                                        control_q=False),
+            contingency_method=ContingencyMethod.PowerFlow
+        ),
+        linear_multiple_contingencies=None
+    )
+    con_nr.run()
+
+    # tol depends on how many coefficients we give to HELM
+    # Generally 30 coefficients is alright but for contingencies fewer could be acceptable
+    ok1 = np.allclose(abs(pf_driver.results.voltage), abs(con_helm.results.voltage), atol=1e-06)
+    ok2 = np.allclose(abs(con_helm.results.voltage), abs(con_nr.results.voltage), atol=1e-06)
+
+    assert ok1
+    assert ok2
+
+
+def test_contingency_helm() -> None:
+    """
+    Check that the contingencies match conceptually
+    :return:
+    """
+    fname = os.path.join('data', 'grids', 'IEEE14_contingency.gridcal')
+    main_circuit = FileOpen(fname).open()
+
+    # Run contingency with HELM
+    con_helm = ContingencyAnalysisDriver(
+        grid=main_circuit,
+        options=ContingencyAnalysisOptions(
+            pf_options=PowerFlowOptions(SolverType.HELM,
+                                        verbose=False,
+                                        use_stored_guess=False,
+                                        control_q=False),
+            contingency_method=ContingencyMethod.HELM
+        ),
+        linear_multiple_contingencies=None
+    )
+    con_helm.run()
+
+    # Run contingency with NR
+    main_circuit.lines[2].active = True  # Line 2_3 out
+
+    con_nr = ContingencyAnalysisDriver(
+        grid=main_circuit,
+        options=ContingencyAnalysisOptions(
+            pf_options=PowerFlowOptions(SolverType.NR,
+                                        verbose=False,
+                                        use_stored_guess=False,
+                                        control_q=False),
+            contingency_method=ContingencyMethod.PowerFlow
+        ),
+        linear_multiple_contingencies=None
+    )
+    con_nr.run()
+
+    ok = np.allclose(con_helm.results.Sf.real, con_nr.results.Sf.real)
+    assert ok
+
+
+if __name__ == "__main__":
+    # test_contingency_helm()
+    test_single_contingency_helm()

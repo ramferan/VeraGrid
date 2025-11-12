@@ -510,6 +510,18 @@ class PowerFlowResults(ResultsTemplate):
                                   },
                             index=self.branch_names)
 
+    def get_voltage_df(self):
+
+        return pd.DataFrame(data={'Um 1 [p.u.]': np.abs(self.voltage),
+                                  'Ua 1 [º]': np.angle(self.voltage, deg=True)},
+                            index=self.bus_names)
+
+    def get_current_df(self):
+
+        return pd.DataFrame(data={'Im 1 [p.u.]': np.abs(self.If),
+                                  'Ia 1 [º]': np.angle(self.If, deg=True)},
+                            index=self.branch_names)
+
     def mdl(self, result_type: ResultTypes) -> ResultsTable:
         """
         get the ResultsTable model

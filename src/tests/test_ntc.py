@@ -372,7 +372,6 @@ def test_issue_372_3():
         The HVDC power must be: P0 + angle_droop · (theta_f − theta_t) (all in proper units)
 
     """
-    # fname = os.path.join('data', 'grids', 'ntc_test.gridcal')
     fname = os.path.join('data', 'grids', 'IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal')
 
     grid = gce.open_file(fname)
@@ -722,7 +721,8 @@ def test_ntc_pmode_saturation() -> None:
     grid = gce.open_file(fname)
 
     grid.hvdc_lines[0].control_mode = gce.HvdcControlType.type_0_free
-    grid.hvdc_lines[0].angle_droop = 0.2  # this will force a greater pmode3 flow
+    # grid.hvdc_lines[0].angle_droop = 0.2  # this will force a greater pmode3 flow
+    grid.hvdc_lines[0].angle_droop = 2000  # this will force a greater pmode3 flow
 
     grid.hvdc_lines[1].control_mode = gce.HvdcControlType.type_1_Pset
 
@@ -779,7 +779,82 @@ def test_ntc_pmode_saturation() -> None:
     theta_t = np.angle(res.voltage[4], deg=True)
     hvdc_power = dev.Pset + k * (theta_f - theta_t)
     assert np.isclose(res.hvdc_Pf[0], grid.hvdc_lines[0].rate, atol=1e-6)  # the power must saturate to the rate
-    assert res.hvdc_Pf[0] > hvdc_power  # the actual power must be greater than what the angles suggest
+    assert res.hvdc_Pf[0] < hvdc_power  # the actual power must be lower than what the angles suggest
+
+    assert res.converged
+    assert abs(res.nodal_balance.sum()) < 1e-8
+
+
+def test_ntc_pmode_non_saturation() -> None:
+    """
+    In this test we set a small droop coefficient and check the HVDC operates
+    in the droop region (Pmode3).
+    """
+    np.set_printoptions(precision=4)
+    fname = os.path.join('data', 'grids', 'ntc_test.gridcal')
+
+    grid = gce.open_file(fname)
+
+    grid.hvdc_lines[0].control_mode = gce.HvdcControlType.type_0_free
+    grid.hvdc_lines[0].angle_droop = 0.2  # this will force a small pmode3 flow
+    # grid.hvdc_lines[0].angle_droop = 2000  # this will force a greater pmode3 flow
+
+    grid.hvdc_lines[1].control_mode = gce.HvdcControlType.type_1_Pset
+
+    a1 = [grid.areas[0]]
+    a2 = [grid.areas[1]]
+
+    info = grid.get_inter_aggregation_info(objects_from=a1,
+                                           objects_to=a2)
+
+    opf_options = gce.OptimalPowerFlowOptions()
+    lin_options = gce.LinearAnalysisOptions()
+
+    ntc_options = gce.OptimalNetTransferCapacityOptions(
+        sending_bus_idx=info.idx_bus_from,
+        receiving_bus_idx=info.idx_bus_to,
+        transfer_method=gce.AvailableTransferMode.InstalledPower,
+        loading_threshold_to_report=98.0,
+        skip_generation_limits=True,
+        transmission_reliability_margin=0.1,
+        branch_exchange_sensitivity=0.01,
+        use_branch_exchange_sensitivity=True,
+        branch_rating_contribution=1.0,
+        monitor_only_ntc_load_rule_branches=True,
+        consider_contingencies=True,
+        opf_options=opf_options,
+        lin_options=lin_options
+    )
+
+    drv = gce.OptimalNetTransferCapacityDriver(grid, ntc_options)
+
+    drv.run()
+
+    res = drv.results
+
+    bus_area_indices = grid.get_bus_area_indices()
+
+    # List of (branch index, branch object, flow sense w.r.t the area exchange)
+    inter_info = grid.get_inter_areas_branches(a1=a1, a2=a2)
+    inter_area_branch_idx = [x[0] for x in inter_info]
+    inter_area_branch_sense = [x[2] for x in inter_info]
+
+    inter_info_hvdc = grid.get_inter_areas_hvdc_branches(a1=a1, a2=a2)
+    inter_area_hvdc_idx = [x[0] for x in inter_info_hvdc]
+    inter_area_hvdc_sense = [x[2] for x in inter_info_hvdc]
+
+    # Monitored & selected by the exchange sensitivity criteria branches must not be overloaded beyond 100%
+    monitor_idx = np.where(res.monitor_logic == 1)[0]
+    assert np.all(res.loading[monitor_idx] <= 1)
+
+    # The HVDC power must be: P0 + angle_droop · (theta_f − theta_t) (all in proper units)
+    dev = grid.hvdc_lines[0]
+    k = dev.angle_droop
+    theta_f = np.angle(res.voltage[3], deg=True)
+    theta_t = np.angle(res.voltage[4], deg=True)
+    hvdc_power = dev.Pset + k * (theta_f - theta_t)
+    assert res.hvdc_Pf[0] < grid.hvdc_lines[0].rate  # the power must be less than the rate
+    assert np.isclose(res.hvdc_Pf[0], hvdc_power, atol=1e-6)  # close to the power from the angles
 
     assert res.converged
     assert abs(res.nodal_balance.sum()) < 1e-8
@@ -908,7 +983,7 @@ def test_ntc_vsc():
 def test_ntc_vsc_contingencies():
     """
     This test runs a test grid with VSC systems where controllers pairs are in Pset and Vdc modes
-    No contingencies are enabled
+    Contingencies are enabled
     """
     fname = os.path.join('data', 'grids', 'ntc_test_cont (vsc).gridcal')
 
@@ -1458,4 +1533,9 @@ if __name__ == '__main__':
     # test_ntc_pmode_saturation()
     # test_ntc_vsc()
     # test_ntc_vsc_contingencies()
-    test_2_node_several_conditions_ntc()
+    # test_2_node_several_conditions_ntc()
+    # test_ntc_pmode_saturation()
+    # test_ntc_pmode_non_saturation()
+    # test_issue_372_3()
+    test_hvdc_lines_tests()
+    # test_activs_2000_acdc()

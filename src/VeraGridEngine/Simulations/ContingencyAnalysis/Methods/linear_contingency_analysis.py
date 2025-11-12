@@ -48,13 +48,15 @@ def linear_contingency_analysis(nc: NumericalCircuit,
         report_text('Analyzing outage distribution factors in a non-linear fashion...')
 
     # declare the results
-    results = ContingencyAnalysisResults(ncon=len(linear_multiple_contingencies.contingency_groups_used),
-                                         nbr=nc.nbr,
-                                         nbus=nc.nbus,
-                                         branch_names=nc.passive_branch_data.names,
-                                         bus_names=nc.bus_data.names,
-                                         bus_types=nc.bus_data.bus_types,
-                                         con_names=linear_multiple_contingencies.get_contingency_group_names())
+    results = ContingencyAnalysisResults(
+        ncon=len(linear_multiple_contingencies.contingency_groups_used),
+        nbr=nc.nbr,
+        nbus=nc.nbus,
+        branch_names=nc.passive_branch_data.names,
+        bus_names=nc.bus_data.names,
+        bus_types=nc.bus_data.bus_types,
+        con_names=np.array(linear_multiple_contingencies.get_contingency_group_names())
+    )
 
     linear_analysis = LinearAnalysis(nc=nc,
                                      distributed_slack=options.lin_options.distribute_slack,
@@ -93,6 +95,7 @@ def linear_contingency_analysis(nc: NumericalCircuit,
             if multi_contingency.has_injection_contingencies():
                 contingency_group = linear_multiple_contingencies.contingency_groups_used[ic]
                 contingencies = linear_multiple_contingencies.contingency_group_dict[contingency_group.idtag]
+                linear_multiple_contingencies.get_single_con_branch_idx()
                 # injections = nc.set_linear_con_or_ra_status(event_list=contingencies)
                 injections = nc.set_con_or_ra_status(event_list=contingencies)
             else:
@@ -201,4 +204,3 @@ def linear_contingency_scan_numba(nbr: int, n_con_groups: int,
             problems.append((m, -1))
 
     return SbrCon, LoadingCon, problems
-

@@ -168,7 +168,12 @@ class Base:
             hex_string_without_X = hex_string[:-1]  # Remove the last character
         else:
             hex_string_without_X = hex_string  # No 'X', keep the original string
-        return int(hex_string_without_X, 16)  # hex string to int
+
+        try:
+            return int(hex_string_without_X, 16)  # hex string to int
+        except ValueError:
+            # an illegal value like 3c3b5330e94e444e965b688e0d1a88ebLASLACLG makes the previous crash
+            return hash(repr(self))
 
     def __lt__(self, other):
         return self.__hash__() < other.__hash__()

@@ -213,10 +213,12 @@ class PowerFlowResults3Ph(ResultsTemplate):
         self.sh_names = sh_names
         self.bus_types: IntVec = bus_types
 
+        self.Sbus: CxVec = np.zeros(3*n, dtype=complex)
         self.Sbus_A: CxVec = np.zeros(n, dtype=complex)
         self.Sbus_B: CxVec = np.zeros(n, dtype=complex)
         self.Sbus_C: CxVec = np.zeros(n, dtype=complex)
 
+        self.voltage: CxVec = np.zeros(3*n, dtype=complex)
         self.voltage_A: CxVec = np.zeros(n, dtype=complex)
         self.voltage_B: CxVec = np.zeros(n, dtype=complex)
         self.voltage_C: CxVec = np.zeros(n, dtype=complex)
@@ -312,10 +314,12 @@ class PowerFlowResults3Ph(ResultsTemplate):
         self.register(name='bus_area_indices', tpe=IntVec)
         self.register(name='area_names', tpe=IntVec)
 
+        self.register(name='Sbus', tpe=CxVec)
         self.register(name='Sbus_A', tpe=CxVec)
         self.register(name='Sbus_B', tpe=CxVec)
         self.register(name='Sbus_C', tpe=CxVec)
 
+        self.register(name='voltage', tpe=CxVec)
         self.register(name='voltage_A', tpe=CxVec)
         self.register(name='voltage_B', tpe=CxVec)
         self.register(name='voltage_C', tpe=CxVec)
@@ -456,10 +460,12 @@ class PowerFlowResults3Ph(ResultsTemplate):
         vsc_a, vsc_b, vsc_c = get_3p_indices(length_3p=len(results.St_vsc))
         hvdc_a, hvdc_b, hvdc_c = get_3p_indices(length_3p=len(results.St_hvdc))
 
+        self.voltage = results.V
         self.voltage_A[b_idx] = results.V[ia]
         self.voltage_B[b_idx] = results.V[ib]
         self.voltage_C[b_idx] = results.V[ic]
 
+        self.Sbus = results.Scalc
         self.Sbus_A[b_idx] = results.Scalc[ia]
         self.Sbus_B[b_idx] = results.Scalc[ib]
         self.Sbus_C[b_idx] = results.Scalc[ic]
@@ -599,21 +605,15 @@ class PowerFlowResults3Ph(ResultsTemplate):
             "QlossC": self.losses_C.imag,
         }, index=self.branch_names)
 
-    def get_voltage_3ph_df(self) -> pd.DataFrame:
-        """
-        Get a DataFrame with the buses results, Vm in p.u., Va in deg
-        :return: DataFrame
-        """
-        df = pd.DataFrame(data={
-            'Vm_A': np.abs(self.voltage_A).round(5),
-            'Vm_B': np.abs(self.voltage_B).round(5),
-            'Vm_C': np.abs(self.voltage_C).round(5),
-            'Va_A': np.angle(self.voltage_A, deg=True).round(1),
-            'Va_B': np.angle(self.voltage_B, deg=True).round(1),
-            'Va_C': np.angle(self.voltage_C, deg=True).round(1)
-        }, index=self.bus_names)
+    def get_voltage_3ph_df(self):
 
-        return df
+        return pd.DataFrame(data={'Um A [p.u.]': np.abs(self.voltage_A).round(4),
+                                  'Ua A [º]': np.angle(self.voltage_A, deg=True).round(1),
+                                  'Um B [p.u.]': np.abs(self.voltage_B).round(4),
+                                  'Ua B [º]': np.angle(self.voltage_B, deg=True).round(1),
+                                  'Um C [p.u.]': np.abs(self.voltage_C).round(4),
+                                  'Ua C [º]': np.angle(self.voltage_C, deg=True).round(1)},
+                            index=self.bus_names)
 
     def export_all(self):
         """

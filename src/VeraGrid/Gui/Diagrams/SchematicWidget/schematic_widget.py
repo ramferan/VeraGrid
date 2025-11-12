@@ -50,7 +50,7 @@ from VeraGridEngine.enumerations import TerminalType
 
 from VeraGrid.Gui.SubstationDesigner.voltage_level_conversion import VoltageLevelConversionWizard
 from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem, RoundTerminalItem
-from VeraGrid.Gui.Diagrams.SchematicWidget.Substation.bus_graphics import BusGraphicItem
+from VeraGrid.Gui.Diagrams.SchematicWidget.Substation.bus_graphics import BusGraphicItem, INJECTION_GRAPHICS
 from VeraGrid.Gui.Diagrams.SchematicWidget.Fluid.fluid_node_graphics import FluidNodeGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Fluid.fluid_path_graphics import FluidPathGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics import LineGraphicItem
@@ -87,6 +87,7 @@ BRANCH_GRAPHICS = Union[
     SeriesReactanceGraphicItem,
     SwitchGraphicItem
 ]
+
 
 OPTIONAL_PORT = Union[BarTerminalItem, RoundTerminalItem, None]
 
@@ -4820,6 +4821,48 @@ class SchematicWidget(BaseDiagramWidget):
                                              fluid_paths=fluid_paths)
 
         self.draw_additional_diagram(diagram=diagram)
+
+    def change_injection_bus(self, injection_graphics: INJECTION_GRAPHICS):
+        """
+
+        :param injection_graphics:
+        :return:
+        """
+
+        idx_bus_list = self.get_selected_buses()
+
+        if len(idx_bus_list) == 2:
+
+            # detect the bus and its combinations
+            if idx_bus_list[0][1] == injection_graphics.api_object.bus:
+                idx, old_bus, old_bus_graphic_item = idx_bus_list[0]
+                idx, new_bus, new_bus_graphic_item = idx_bus_list[1]
+            elif idx_bus_list[1][1] == injection_graphics.api_object.bus:
+                idx, new_bus, new_bus_graphic_item = idx_bus_list[0]
+                idx, old_bus, old_bus_graphic_item = idx_bus_list[1]
+            else:
+                error_msg("The bus to change has not been selected!", 'Change bus')
+                return
+
+            ok = yes_no_question(
+                text=f"Are you sure that you want to relocate the bus from {old_bus.name} to {new_bus.name}?",
+                title='Change bus')
+
+            if ok:
+
+                # set the API object new bus
+                injection_graphics.api_object.bus = new_bus
+
+                # add the graphics for the new bus
+                new_bus_graphic_item.add_object(api_obj=injection_graphics.api_object)
+                new_bus_graphic_item.update()
+
+                self._remove_from_scene(injection_graphics.nexus)
+                self._remove_from_scene(injection_graphics)
+
+        else:
+            warning_msg("you have to select the origin and destination buses!",
+                        title='Change bus')
 
     def reconnect_bus_graphics(self,
                                bus_graphics: BusGraphicItem,

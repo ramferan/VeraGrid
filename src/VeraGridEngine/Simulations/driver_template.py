@@ -6,12 +6,11 @@
 from __future__ import annotations
 import time
 import numpy as np
-from typing import List, Dict, Union, TYPE_CHECKING
+from typing import Union, TYPE_CHECKING
 from VeraGridEngine.basic_structures import IntVec, Vec
 from VeraGridEngine.basic_structures import Logger, Mat
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-import VeraGridEngine.Topology.topology as tp
 
 if TYPE_CHECKING:
     from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults

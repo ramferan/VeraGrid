@@ -12,7 +12,6 @@ import threading
 import webbrowser
 from typing import List, Union
 
-# import darkdetect
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -32,6 +31,8 @@ from VeraGridEngine.Compilers.circuit_to_bentayga import BENTAYGA_AVAILABLE
 from VeraGridEngine.Compilers.circuit_to_newton_pa import NEWTON_PA_AVAILABLE
 from VeraGridEngine.Compilers.circuit_to_gslv import GSLV_AVAILABLE
 from VeraGridEngine.Compilers.circuit_to_pgm import PGM_AVAILABLE
+from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
+
 import VeraGrid.Gui.gui_functions as gf
 import VeraGrid.Session.synchronization_driver as syncdrv
 from VeraGrid.Gui.AboutDialogue.about_dialogue import AboutDialogueGuiGUI
@@ -39,7 +40,7 @@ from VeraGrid.Gui.Analysis.AnalysisDialogue import GridAnalysisGUI
 from VeraGrid.Gui.ContingencyPlanner.contingency_planner_dialogue import ContingencyPlannerGUI
 from VeraGrid.Gui.CoordinatesInput.coordinates_dialogue import CoordinatesInputGUI
 from VeraGrid.Gui.general_dialogues import CheckListDialogue, StartEndSelectionDialogue
-from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg
+from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg, error_msg
 from VeraGrid.Gui.GridGenerator.grid_generator_dialogue import GridGeneratorGUI
 from VeraGrid.Gui.LoadCatalogue.catalogue_dialogue import CatalogueGUI
 from VeraGrid.Gui.Main.MainWindow import Ui_mainWindow, QMainWindow
@@ -213,8 +214,6 @@ class BaseMainGui(QMainWindow):
         # dark mode detection ------------------------------------------------------------------------------------------
         self.ui.dark_mode_checkBox.setChecked(IS_DARK)
 
-
-
         self.calculation_inputs_to_display = None
 
         # --------------------------------------------------------------------------------------------------------------
@@ -261,7 +260,6 @@ class BaseMainGui(QMainWindow):
         """
         if not self.any_thread_running():
             self.LOCK(False)
-
 
     @property
     def file_name(self) -> str:
@@ -443,7 +441,9 @@ class BaseMainGui(QMainWindow):
         """
         Setup the time sliders
         """
-        for slider in [self.ui.diagram_step_slider, self.ui.db_step_slider]:
+        for slider in [self.ui.diagram_step_slider,
+                       self.ui.db_step_slider,
+                       self.ui.compiled_arrays_step_slider]:
             if self.circuit.has_time_series:
                 slider.setRange(-1, self.circuit.get_time_number() - 1)
             else:
@@ -714,13 +714,16 @@ class BaseMainGui(QMainWindow):
         self.console.append_output('\tapp.open_file(): Prompt to load VeraGrid compatible file')
         self.console.append_output('\tapp.save_file(): Prompt to save VeraGrid file')
         self.console.append_output('\tapp.export_diagram(): Prompt to export the diagram in png.')
-        self.console.append_output('\tapp.create_schematic_from_api(): Create the schematic from the circuit information.')
-        self.console.append_output('\tapp.adjust_all_node_width(): Adjust the width of all the nodes according to their name.')
+        self.console.append_output(
+            '\tapp.create_schematic_from_api(): Create the schematic from the circuit information.')
+        self.console.append_output(
+            '\tapp.adjust_all_node_width(): Adjust the width of all the nodes according to their name.')
         self.console.append_output('\tapp.numerical_circuit: get compilation of the assets.')
         self.console.append_output('\tapp.islands: get compilation of the assets split into the topological islands.')
 
         self.console.append_output('\n\nCircuit functions:')
-        self.console.append_output('\tapp.circuit.plot_graph(): Plot a graph in a Matplotlib window. Call plt.show() after.')
+        self.console.append_output(
+            '\tapp.circuit.plot_graph(): Plot a graph in a Matplotlib window. Call plt.show() after.')
 
         self.console.append_output('\n\nPower flow results:')
         self.console.append_output('\tapp.session.power_flow.voltage:\t the nodal voltages in per unit')
@@ -728,8 +731,10 @@ class BaseMainGui(QMainWindow):
         self.console.append_output('\tapp.session.power_flow.loading:\t the branch loading in %')
         self.console.append_output('\tapp.session.power_flow.losses:\t the branch losses in per unit')
         self.console.append_output('\tapp.session.power_flow.power:\t the nodal power Injections in per unit')
-        self.console.append_output('\tapp.session.power_flow.Sf:\t the branch power Injections in per unit at the "from" side')
-        self.console.append_output('\tapp.session.power_flow.St:\t the branch power Injections in per unit at the "to" side')
+        self.console.append_output(
+            '\tapp.session.power_flow.Sf:\t the branch power Injections in per unit at the "from" side')
+        self.console.append_output(
+            '\tapp.session.power_flow.St:\t the branch power Injections in per unit at the "to" side')
 
         self.console.append_output('\n\nShort circuit results:')
         self.console.append_output('\tapp.session.short_circuit.voltage:\t the nodal voltages in per unit')
@@ -737,9 +742,12 @@ class BaseMainGui(QMainWindow):
         self.console.append_output('\tapp.session.short_circuit.loading:\t the branch loading in %')
         self.console.append_output('\tapp.session.short_circuit.losses:\t the branch losses in per unit')
         self.console.append_output('\tapp.session.short_circuit.power:\t the nodal power Injections in per unit')
-        self.console.append_output('\tapp.session.short_circuit.power_from:\t the branch power Injections in per unit at the "from" side')
-        self.console.append_output('\tapp.session.short_circuit.power_to:\t the branch power Injections in per unit at the "to" side')
-        self.console.append_output('\tapp.session.short_circuit.short_circuit_power:\t Short circuit power in MVA of the grid nodes')
+        self.console.append_output(
+            '\tapp.session.short_circuit.power_from:\t the branch power Injections in per unit at the "from" side')
+        self.console.append_output(
+            '\tapp.session.short_circuit.power_to:\t the branch power Injections in per unit at the "to" side')
+        self.console.append_output(
+            '\tapp.session.short_circuit.short_circuit_power:\t Short circuit power in MVA of the grid nodes')
 
         self.console.append_output('\n\nOptimal power flow results:')
         self.console.append_output('\tapp.session.optimal_power_flow.voltage:\t the nodal voltages angles in rad')
@@ -749,31 +757,47 @@ class BaseMainGui(QMainWindow):
         self.console.append_output('\tapp.session.optimal_power_flow.Sf:\t the branch power Sf')
 
         self.console.append_output('\n\nTime series power flow results:')
-        self.console.append_output('\tapp.session.power_flow_ts.time:\t Profiles time index (pandas DateTimeIndex object)')
-        self.console.append_output('\tapp.session.power_flow_ts.load_profiles:\t Load profiles matrix (row: time, col: node)')
-        self.console.append_output('\tapp.session.power_flow_ts.gen_profiles:\t Generation profiles matrix (row: time, col: node)')
-        self.console.append_output('\tapp.session.power_flow_ts.voltages:\t nodal voltages results matrix (row: time, col: node)')
-        self.console.append_output('\tapp.session.power_flow_ts.currents:\t Branches currents results matrix (row: time, col: branch)')
-        self.console.append_output('\tapp.session.power_flow_ts.loadings:\t Branches loadings results matrix (row: time, col: branch)')
-        self.console.append_output('\tapp.session.power_flow_ts.losses:\t Branches losses results matrix (row: time, col: branch)')
+        self.console.append_output(
+            '\tapp.session.power_flow_ts.time:\t Profiles time index (pandas DateTimeIndex object)')
+        self.console.append_output(
+            '\tapp.session.power_flow_ts.load_profiles:\t Load profiles matrix (row: time, col: node)')
+        self.console.append_output(
+            '\tapp.session.power_flow_ts.gen_profiles:\t Generation profiles matrix (row: time, col: node)')
+        self.console.append_output(
+            '\tapp.session.power_flow_ts.voltages:\t nodal voltages results matrix (row: time, col: node)')
+        self.console.append_output(
+            '\tapp.session.power_flow_ts.currents:\t Branches currents results matrix (row: time, col: branch)')
+        self.console.append_output(
+            '\tapp.session.power_flow_ts.loadings:\t Branches loadings results matrix (row: time, col: branch)')
+        self.console.append_output(
+            '\tapp.session.power_flow_ts.losses:\t Branches losses results matrix (row: time, col: branch)')
 
         self.console.append_output('\n\nVoltage stability power flow results:')
-        self.console.append_output('\tapp.session.continuation_power_flow.voltage:\t Voltage values for every power multiplication factor.')
-        self.console.append_output('\tapp.session.continuation_power_flow.lambda:\t Value of power multiplication factor applied')
-        self.console.append_output('\tapp.session.continuation_power_flow.Sf:\t Power values for every power multiplication factor.')
+        self.console.append_output(
+            '\tapp.session.continuation_power_flow.voltage:\t Voltage values for every power multiplication factor.')
+        self.console.append_output(
+            '\tapp.session.continuation_power_flow.lambda:\t Value of power multiplication factor applied')
+        self.console.append_output(
+            '\tapp.session.continuation_power_flow.Sf:\t Power values for every power multiplication factor.')
 
         self.console.append_output('\n\nMonte Carlo power flow results:')
         self.console.append_output('\tapp.session.stochastic_power_flow.V_avg:\t nodal voltage average result.')
         self.console.append_output('\tapp.session.stochastic_power_flow.I_avg:\t branch current average result.')
         self.console.append_output('\tapp.session.stochastic_power_flow.Loading_avg:\t branch loading average result.')
         self.console.append_output('\tapp.session.stochastic_power_flow.Losses_avg:\t branch losses average result.')
-        self.console.append_output('\tapp.session.stochastic_power_flow.V_std:\t nodal voltage standard deviation result.')
-        self.console.append_output('\tapp.session.stochastic_power_flow.I_std:\t branch current standard deviation result.')
-        self.console.append_output('\tapp.session.stochastic_power_flow.Loading_std:\t branch loading standard deviation result.')
-        self.console.append_output('\tapp.session.stochastic_power_flow.Losses_std:\t branch losses standard deviation result.')
+        self.console.append_output(
+            '\tapp.session.stochastic_power_flow.V_std:\t nodal voltage standard deviation result.')
+        self.console.append_output(
+            '\tapp.session.stochastic_power_flow.I_std:\t branch current standard deviation result.')
+        self.console.append_output(
+            '\tapp.session.stochastic_power_flow.Loading_std:\t branch loading standard deviation result.')
+        self.console.append_output(
+            '\tapp.session.stochastic_power_flow.Losses_std:\t branch losses standard deviation result.')
         self.console.append_output('\tapp.session.stochastic_power_flow.V_avg_series:\t nodal voltage average series.')
-        self.console.append_output('\tapp.session.stochastic_power_flow.V_std_series:\t branch current standard deviation series.')
-        self.console.append_output('\tapp.session.stochastic_power_flow.error_series:\t Monte Carlo error series (the convergence value).')
+        self.console.append_output(
+            '\tapp.session.stochastic_power_flow.V_std_series:\t branch current standard deviation series.')
+        self.console.append_output(
+            '\tapp.session.stochastic_power_flow.error_series:\t Monte Carlo error series (the convergence value).')
         self.console.append_output('The same for app.latin_hypercube_sampling')
 
     def add_console_vars(self):
@@ -821,3 +845,32 @@ class BaseMainGui(QMainWindow):
         :param duration: duration in ms
         """
         self.toast_manager.show_info_toast(message=message, duration=duration)
+
+    def get_clustering_results(self) -> Union[ClusteringResults, None]:
+        """
+        Get the clustering results if available
+        :return: ClusteringResults or None
+        """
+        if self.ui.actionUse_clustering.isChecked():
+            _, clustering_results = self.session.clustering
+
+            if clustering_results is not None:
+                n = len(clustering_results.time_indices)
+
+                if n != self.ui.cluster_number_spinBox.value():
+                    error_msg("The number of clusters in the stored results is different from the specified :(\n"
+                              "Run another clustering analysis.")
+
+                    return None
+                else:
+                    # all ok
+                    return clustering_results
+            else:
+                # no results ...
+                self.show_warning_toast("There are no clustering results.")
+                self.ui.actionUse_clustering.setChecked(False)
+                return None
+
+        else:
+            # not marked ...
+            return None

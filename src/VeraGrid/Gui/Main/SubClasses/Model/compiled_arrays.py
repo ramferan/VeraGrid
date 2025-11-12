@@ -46,6 +46,9 @@ class CompiledArraysMain(ServerMain):
         # tree clicks
         self.ui.simulationDataStructuresTreeView.clicked.connect(self.view_simulation_objects_data)
 
+        # slider
+        self.ui.compiled_arrays_step_slider.valueChanged.connect(self.update_compiled_arrays_time_slider_texts)
+
     def view_simulation_objects_data(self, index):
         """
         Simulation data structure clicked
@@ -133,15 +136,21 @@ class CompiledArraysMain(ServerMain):
         else:
             branch_impedance_tolerance_mode = BranchImpedanceMode.Specified
 
+        idx = self.ui.compiled_arrays_step_slider.value()
+
         self.compiled_arrays = CompiledArraysModule(
             grid=self.circuit,
+            t_idx=idx if idx > -1 else None,
             engine=self.get_preferred_engine(),
-                    branch_tolerance_mode=branch_impedance_tolerance_mode,
-                    use_stored_guess=self.ui.use_voltage_guess_checkBox.isChecked(),
-                    control_taps_phase=self.ui.control_tap_phase_checkBox.isChecked(),
-                    control_taps_modules=self.ui.control_tap_modules_checkBox.isChecked(),
-                    control_remote_voltage=self.ui.control_remote_voltage_checkBox.isChecked(),
+            branch_tolerance_mode=branch_impedance_tolerance_mode,
+            use_stored_guess=self.ui.use_voltage_guess_checkBox.isChecked(),
+            control_taps_phase=self.ui.control_tap_phase_checkBox.isChecked(),
+            control_taps_modules=self.ui.control_tap_modules_checkBox.isChecked(),
+            control_remote_voltage=self.ui.control_remote_voltage_checkBox.isChecked(),
         )
+
+        # clean the table
+        self.ui.simulationDataStructureTableView.setModel(None)
 
     def update_islands_to_display(self):
         """
@@ -154,3 +163,26 @@ class CompiledArraysMain(ServerMain):
         self.ui.simulation_data_island_comboBox.addItems(lst)
         if len(self.compiled_arrays.islands) > 0:
             self.ui.simulation_data_island_comboBox.setCurrentIndex(0)
+
+    def update_compiled_arrays_time_slider_texts(self):
+        """
+        Update the slider text label as it is moved
+        :return:
+        """
+        idx = self.ui.compiled_arrays_step_slider.value()
+
+        if idx > -1:
+            val = f"[{idx}] {self.circuit.time_profile[idx]}"
+            self.ui.compiled_arrays_step_label.setText(val)
+        else:
+            self.ui.compiled_arrays_step_label.setText(f"Snapshot [{self.circuit.get_snapshot_time_str()}]")
+
+        # recompile the circuit
+        self.recompile_circuits_for_display()
+
+        tree_indices = self.ui.simulationDataStructuresTreeView.selectedIndexes()
+
+        if len(tree_indices) > 0:
+            self.view_simulation_objects_data(
+                index=tree_indices[0]
+            )

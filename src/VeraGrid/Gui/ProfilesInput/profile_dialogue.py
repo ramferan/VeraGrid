@@ -571,19 +571,20 @@ class ProfileInputGUI(QtWidgets.QDialog):
                                  expected_value=self.circuit.get_time_number())
                 all_ok = False
             else:
-                # try to recognize the time
-                time_array, msg, ok = try_parse_dates(df.index)
-
-                if not ok:
-                    logger.add_error(msg="Imported dates are garbage. "
-                                         "Use a proper format like day/month/year hour:minute:second",
-                                     value=len_prof,
-                                     expected_value=self.circuit.get_time_number())
-                    all_ok = False
-                else:
-                    self.time = time_array
+                # things match, we pick the circuit time
+                self.time = self.circuit.time_profile
         else:
-            self.time = self.circuit.time_profile
+            # try to recognize the time
+            time_array, msg, ok = try_parse_dates(df.index)
+
+            if not ok:
+                logger.add_error(msg="Imported dates are garbage. "
+                                     "Use a proper format like day/month/year hour:minute:second",
+                                 value=len_prof,
+                                 expected_value=self.circuit.get_time_number())
+                all_ok = False
+            else:
+                self.time = time_array
 
         if all_ok:
 
@@ -996,7 +997,7 @@ class ProfileInputGUI(QtWidgets.QDialog):
                 if not zeroed[i]:
 
                     if normalized:
-                        arr = self.data[:, i]
+                        arr = self.data[:, i].copy()
                         mx = arr.max()
                         if mx != 0.0:
                             arr /= mx  # divide each series by the maximum of itself

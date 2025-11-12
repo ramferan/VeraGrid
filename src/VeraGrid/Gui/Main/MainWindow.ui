@@ -81,7 +81,19 @@
        <enum>QFrame::Shadow::Raised</enum>
       </property>
       <layout class="QGridLayout" name="gridLayout_7">
-       <item row="4" column="3">
+       <item row="2" column="3">
+        <widget class="QLabel" name="progress_label">
+         <property name="font">
+          <font>
+           <pointsize>10</pointsize>
+          </font>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="3">
         <widget class="QProgressBar" name="progressBar">
          <property name="font">
           <font>
@@ -106,7 +118,7 @@ QProgressBar::chunk{
          </property>
         </widget>
        </item>
-       <item row="4" column="0">
+       <item row="5" column="0">
         <widget class="QPushButton" name="cancelButton">
          <property name="minimumSize">
           <size>
@@ -128,18 +140,6 @@ QProgressBar::chunk{
          <property name="icon">
           <iconset resource="icons.qrc">
            <normaloff>:/Icons/icons/delete.png</normaloff>:/Icons/icons/delete.png</iconset>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="3">
-        <widget class="QLabel" name="progress_label">
-         <property name="font">
-          <font>
-           <pointsize>10</pointsize>
-          </font>
-         </property>
-         <property name="text">
-          <string/>
          </property>
         </widget>
        </item>
@@ -2004,6 +2004,40 @@ QProgressBar::chunk{
                         </widget>
                        </item>
                        <item>
+                        <widget class="QPushButton" name="crop_profiles_pushButton">
+                         <property name="toolTip">
+                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Time series  crop to the selected time interval&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                         </property>
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="icon">
+                          <iconset resource="icons.qrc">
+                           <normaloff>:/Icons/icons/time_series_crop.png</normaloff>:/Icons/icons/time_series_crop.png</iconset>
+                         </property>
+                         <property name="flat">
+                          <bool>false</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QPushButton" name="crop_cluster_profiles_pushButton">
+                         <property name="toolTip">
+                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Time series crop to the clusteres time indices.&lt;/p&gt;&lt;p&gt;For that you need cluster simulation in memory&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                         </property>
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="icon">
+                          <iconset resource="icons.qrc">
+                           <normaloff>:/Icons/icons/time_series_crop_cluster.png</normaloff>:/Icons/icons/time_series_crop_cluster.png</iconset>
+                         </property>
+                         <property name="flat">
+                          <bool>false</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
                         <spacer name="horizontalSpacer">
                          <property name="orientation">
                           <enum>Qt::Orientation::Horizontal</enum>
@@ -2273,13 +2307,19 @@ QProgressBar::chunk{
                 <enum>QFrame::Shadow::Raised</enum>
                </property>
                <layout class="QGridLayout" name="gridLayout_19">
+                <property name="topMargin">
+                 <number>8</number>
+                </property>
                 <property name="rightMargin">
                  <number>0</number>
                 </property>
-                <item row="0" column="2" colspan="2">
+                <property name="verticalSpacing">
+                 <number>8</number>
+                </property>
+                <item row="0" column="1" colspan="4">
                  <widget class="QComboBox" name="simulation_data_island_comboBox"/>
                 </item>
-                <item row="0" column="1">
+                <item row="0" column="0">
                  <widget class="QPushButton" name="exportSimulationDataButton">
                   <property name="maximumSize">
                    <size>
@@ -2299,7 +2339,7 @@ QProgressBar::chunk{
                   </property>
                  </widget>
                 </item>
-                <item row="0" column="0">
+                <item row="0" column="5">
                  <widget class="QPushButton" name="compute_simulation_data_pushButton">
                   <property name="maximumSize">
                    <size>
@@ -2319,7 +2359,7 @@ QProgressBar::chunk{
                   </property>
                  </widget>
                 </item>
-                <item row="1" column="0" colspan="4">
+                <item row="1" column="0" colspan="6">
                  <widget class="QTreeView" name="simulationDataStructuresTreeView">
                   <property name="animated">
                    <bool>true</bool>
@@ -2342,26 +2382,10 @@ QProgressBar::chunk{
                 <property name="topMargin">
                  <number>8</number>
                 </property>
+                <property name="verticalSpacing">
+                 <number>8</number>
+                </property>
                 <item row="0" column="3">
-                 <widget class="QComboBox" name="arrayModeComboBox"/>
-                </item>
-                <item row="0" column="5">
-                 <spacer name="horizontalSpacer_23">
-                  <property name="orientation">
-                   <enum>Qt::Orientation::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>510</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-                <item row="1" column="0" colspan="7">
-                 <widget class="QTableView" name="simulationDataStructureTableView"/>
-                </item>
-                <item row="0" column="1">
                  <widget class="QPushButton" name="copyArraysToNumpyButton">
                   <property name="toolTip">
                    <string>Copy to data frame to clipboard in array format</string>
@@ -2375,7 +2399,30 @@ QProgressBar::chunk{
                   </property>
                  </widget>
                 </item>
-                <item row="0" column="6">
+                <item row="0" column="0">
+                 <widget class="QSlider" name="compiled_arrays_step_slider">
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Time slider&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Move this time slider to select the appropriate time slot to view.&lt;/p&gt;&lt;p&gt;The first position sets the snapshot values, the rest attend to the time series values.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  </property>
+                  <property name="orientation">
+                   <enum>Qt::Orientation::Horizontal</enum>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <spacer name="horizontalSpacer_23">
+                  <property name="orientation">
+                   <enum>Qt::Orientation::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>300</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item row="0" column="8">
                  <widget class="QPushButton" name="plotArraysButton">
                   <property name="minimumSize">
                    <size>
@@ -2395,7 +2442,10 @@ QProgressBar::chunk{
                   </property>
                  </widget>
                 </item>
-                <item row="0" column="2">
+                <item row="1" column="0" colspan="9">
+                 <widget class="QTableView" name="simulationDataStructureTableView"/>
+                </item>
+                <item row="0" column="4">
                  <widget class="QPushButton" name="copyArraysButton">
                   <property name="minimumSize">
                    <size>
@@ -2412,6 +2462,24 @@ QProgressBar::chunk{
                   <property name="icon">
                    <iconset resource="icons.qrc">
                     <normaloff>:/Icons/icons/copy.png</normaloff>:/Icons/icons/copy.png</iconset>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="5">
+                 <widget class="QComboBox" name="arrayModeComboBox"/>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QLabel" name="compiled_arrays_step_label">
+                  <property name="font">
+                   <font>
+                    <pointsize>9</pointsize>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>Snapshot</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignmentFlag::AlignCenter</set>
                   </property>
                  </widget>
                 </item>
@@ -8479,6 +8547,18 @@ QProgressBar::chunk{
                <property name="topMargin">
                 <number>0</number>
                </property>
+               <item row="26" column="0" colspan="2">
+                <widget class="QLabel" name="label_153">
+                 <property name="font">
+                  <font>
+                   <pointsize>9</pointsize>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>Objective function</string>
+                 </property>
+                </widget>
+               </item>
                <item row="20" column="0">
                 <widget class="QLabel" name="label_31">
                  <property name="text">
@@ -8536,55 +8616,53 @@ QProgressBar::chunk{
                  </property>
                 </widget>
                </item>
-               <item row="21" column="1" colspan="2">
-                <widget class="QLabel" name="label_121">
-                 <property name="palette">
-                  <palette>
-                   <active>
-                    <colorrole role="WindowText">
-                     <brush brushstyle="SolidPattern">
-                      <color alpha="255">
-                       <red>85</red>
-                       <green>87</green>
-                       <blue>83</blue>
-                      </color>
-                     </brush>
-                    </colorrole>
-                   </active>
-                   <inactive>
-                    <colorrole role="WindowText">
-                     <brush brushstyle="SolidPattern">
-                      <color alpha="255">
-                       <red>85</red>
-                       <green>87</green>
-                       <blue>83</blue>
-                      </color>
-                     </brush>
-                    </colorrole>
-                   </inactive>
-                   <disabled>
-                    <colorrole role="WindowText">
-                     <brush brushstyle="SolidPattern">
-                      <color alpha="255">
-                       <red>190</red>
-                       <green>190</green>
-                       <blue>190</blue>
-                      </color>
-                     </brush>
-                    </colorrole>
-                   </disabled>
-                  </palette>
+               <item row="13" column="0">
+                <widget class="QLabel" name="label_88">
+                 <property name="minimumSize">
+                  <size>
+                   <width>24</width>
+                   <height>24</height>
+                  </size>
                  </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>16</pointsize>
-                  </font>
+                 <property name="maximumSize">
+                  <size>
+                   <width>24</width>
+                   <height>24</height>
+                  </size>
                  </property>
                  <property name="text">
-                  <string>Investment evaluation</string>
+                  <string/>
                  </property>
-                 <property name="alignment">
-                  <set>Qt::AlignmentFlag::AlignBottom|Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft</set>
+                 <property name="pixmap">
+                  <pixmap resource="icons.qrc">:/Icons/icons/color_grid.png</pixmap>
+                 </property>
+                 <property name="scaledContents">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="21" column="0">
+                <widget class="QLabel" name="label_120">
+                 <property name="minimumSize">
+                  <size>
+                   <width>24</width>
+                   <height>24</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>24</width>
+                   <height>24</height>
+                  </size>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                 <property name="pixmap">
+                  <pixmap resource="icons.qrc">:/Icons/icons/expansion_planning.png</pixmap>
+                 </property>
+                 <property name="scaledContents">
+                  <bool>true</bool>
                  </property>
                 </widget>
                </item>
@@ -8638,30 +8716,27 @@ QProgressBar::chunk{
                  </property>
                 </widget>
                </item>
-               <item row="17" column="2">
-                <widget class="QSpinBox" name="node_distances_elements_spinBox">
+               <item row="27" column="0" colspan="2">
+                <widget class="QLabel" name="label_159">
                  <property name="font">
                   <font>
                    <pointsize>9</pointsize>
                   </font>
                  </property>
-                 <property name="toolTip">
-                  <string>Minimum size of the group</string>
+                 <property name="text">
+                  <string>Minimum form capacity</string>
                  </property>
-                 <property name="statusTip">
-                  <string/>
+                </widget>
+               </item>
+               <item row="24" column="0" colspan="2">
+                <widget class="QLabel" name="label_3">
+                 <property name="font">
+                  <font>
+                   <pointsize>9</pointsize>
+                  </font>
                  </property>
-                 <property name="suffix">
-                  <string> elements</string>
-                 </property>
-                 <property name="minimum">
-                  <number>1</number>
-                 </property>
-                 <property name="maximum">
-                  <number>99999</number>
-                 </property>
-                 <property name="value">
-                  <number>2</number>
+                 <property name="text">
+                  <string>Method</string>
                  </property>
                 </widget>
                </item>
@@ -8717,135 +8792,51 @@ QProgressBar::chunk{
                  </property>
                 </widget>
                </item>
-               <item row="25" column="0" colspan="3">
-                <widget class="QRadioButton" name="internal_investment_methods_radioButton">
-                 <property name="font">
-                  <font>
-                   <pointsize>9</pointsize>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Internal method</string>
-                 </property>
-                 <property name="checked">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="13" column="0">
-                <widget class="QLabel" name="label_88">
-                 <property name="minimumSize">
-                  <size>
-                   <width>24</width>
-                   <height>24</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>24</width>
-                   <height>24</height>
-                  </size>
-                 </property>
-                 <property name="text">
-                  <string/>
-                 </property>
-                 <property name="pixmap">
-                  <pixmap resource="icons.qrc">:/Icons/icons/color_grid.png</pixmap>
-                 </property>
-                 <property name="scaledContents">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="10" column="2">
-                <widget class="QSpinBox" name="cluster_number_spinBox">
+               <item row="27" column="2">
+                <widget class="QSpinBox" name="firmCapacityShareSpinBox">
                  <property name="font">
                   <font>
                    <pointsize>9</pointsize>
                   </font>
                  </property>
                  <property name="toolTip">
-                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of clusters, this affects all the simulations that deal with clustering&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  <string>In adequecy and simple dispatch indicated the minimum share of total firm capacity of the system to be in desirable, less is penalized</string>
                  </property>
                  <property name="suffix">
-                  <string> Clusters</string>
+                  <string> %</string>
+                 </property>
+                 <property name="minimum">
+                  <number>0</number>
+                 </property>
+                 <property name="maximum">
+                  <number>100</number>
+                 </property>
+                 <property name="value">
+                  <number>20</number>
+                 </property>
+                </widget>
+               </item>
+               <item row="23" column="2">
+                <widget class="QSpinBox" name="max_investments_evluation_number_spinBox">
+                 <property name="font">
+                  <font>
+                   <pointsize>9</pointsize>
+                  </font>
+                 </property>
+                 <property name="toolTip">
+                  <string>Number of maximum evaluations for the optimization methods</string>
+                 </property>
+                 <property name="suffix">
+                  <string> x number of investments</string>
                  </property>
                  <property name="minimum">
                   <number>1</number>
                  </property>
                  <property name="maximum">
-                  <number>999999</number>
+                  <number>999999999</number>
                  </property>
                  <property name="value">
-                  <number>200</number>
-                 </property>
-                </widget>
-               </item>
-               <item row="18" column="0" colspan="2">
-                <widget class="QLabel" name="label_44">
-                 <property name="text">
-                  <string/>
-                 </property>
-                </widget>
-               </item>
-               <item row="29" column="0" colspan="3">
-                <widget class="QRadioButton" name="plugins_investment_methods_radioButton">
-                 <property name="font">
-                  <font>
-                   <pointsize>9</pointsize>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Plugin method</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="12" column="0" colspan="2">
-                <widget class="QLabel" name="label_7">
-                 <property name="text">
-                  <string/>
-                 </property>
-                </widget>
-               </item>
-               <item row="28" column="0" colspan="2">
-                <widget class="QLabel" name="label_153">
-                 <property name="font">
-                  <font>
-                   <pointsize>9</pointsize>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Objective function</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="30" column="2">
-                <widget class="QComboBox" name="plugins_investment_evaluation_method_ComboBox">
-                 <property name="font">
-                  <font>
-                   <pointsize>9</pointsize>
-                  </font>
-                 </property>
-                </widget>
-               </item>
-               <item row="10" column="0" colspan="2">
-                <widget class="QLabel" name="label_33">
-                 <property name="font">
-                  <font>
-                   <pointsize>9</pointsize>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Number of clusters</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="28" column="2">
-                <widget class="QComboBox" name="investment_evaluation_objfunc_ComboBox">
-                 <property name="font">
-                  <font>
-                   <pointsize>9</pointsize>
-                  </font>
+                  <number>4</number>
                  </property>
                 </widget>
                </item>
@@ -8925,6 +8916,81 @@ QProgressBar::chunk{
                  </layout>
                 </widget>
                </item>
+               <item row="16" column="0" colspan="2">
+                <widget class="QLabel" name="label_38">
+                 <property name="font">
+                  <font>
+                   <pointsize>9</pointsize>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>Nodal distances</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="10" column="2">
+                <widget class="QSpinBox" name="cluster_number_spinBox">
+                 <property name="font">
+                  <font>
+                   <pointsize>9</pointsize>
+                  </font>
+                 </property>
+                 <property name="toolTip">
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of clusters, this affects all the simulations that deal with clustering&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
+                 <property name="suffix">
+                  <string> Clusters</string>
+                 </property>
+                 <property name="minimum">
+                  <number>1</number>
+                 </property>
+                 <property name="maximum">
+                  <number>999999</number>
+                 </property>
+                 <property name="value">
+                  <number>200</number>
+                 </property>
+                </widget>
+               </item>
+               <item row="23" column="0" colspan="2">
+                <widget class="QLabel" name="label_51">
+                 <property name="font">
+                  <font>
+                   <pointsize>9</pointsize>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>Maximum evaluations</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="18" column="0" colspan="2">
+                <widget class="QLabel" name="label_44">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="30" column="1">
+                <spacer name="verticalSpacer_16">
+                 <property name="orientation">
+                  <enum>Qt::Orientation::Vertical</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>20</width>
+                   <height>250</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item row="12" column="0" colspan="2">
+                <widget class="QLabel" name="label_7">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
                <item row="16" column="2">
                 <widget class="QDoubleSpinBox" name="node_distances_sigma_doubleSpinBox">
                  <property name="font">
@@ -8961,77 +9027,106 @@ QProgressBar::chunk{
                  </property>
                 </widget>
                </item>
-               <item row="23" column="2">
-                <widget class="QSpinBox" name="max_investments_evluation_number_spinBox">
+               <item row="24" column="2">
+                <widget class="QComboBox" name="investment_evaluation_method_ComboBox">
                  <property name="font">
                   <font>
                    <pointsize>9</pointsize>
                   </font>
                  </property>
                  <property name="toolTip">
-                  <string>Number of maximum evaluations for the optimization methods</string>
+                  <string>Select the investment evaluation method</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="17" column="2">
+                <widget class="QSpinBox" name="node_distances_elements_spinBox">
+                 <property name="font">
+                  <font>
+                   <pointsize>9</pointsize>
+                  </font>
+                 </property>
+                 <property name="toolTip">
+                  <string>Minimum size of the group</string>
+                 </property>
+                 <property name="statusTip">
+                  <string/>
                  </property>
                  <property name="suffix">
-                  <string> x number of investments</string>
+                  <string> elements</string>
                  </property>
                  <property name="minimum">
                   <number>1</number>
                  </property>
                  <property name="maximum">
-                  <number>999999999</number>
+                  <number>99999</number>
                  </property>
                  <property name="value">
-                  <number>4</number>
+                  <number>2</number>
                  </property>
                 </widget>
                </item>
-               <item row="8" column="0">
-                <widget class="QLabel" name="label_94">
-                 <property name="minimumSize">
-                  <size>
-                   <width>24</width>
-                   <height>24</height>
-                  </size>
+               <item row="21" column="1" colspan="2">
+                <widget class="QLabel" name="label_121">
+                 <property name="palette">
+                  <palette>
+                   <active>
+                    <colorrole role="WindowText">
+                     <brush brushstyle="SolidPattern">
+                      <color alpha="255">
+                       <red>85</red>
+                       <green>87</green>
+                       <blue>83</blue>
+                      </color>
+                     </brush>
+                    </colorrole>
+                   </active>
+                   <inactive>
+                    <colorrole role="WindowText">
+                     <brush brushstyle="SolidPattern">
+                      <color alpha="255">
+                       <red>85</red>
+                       <green>87</green>
+                       <blue>83</blue>
+                      </color>
+                     </brush>
+                    </colorrole>
+                   </inactive>
+                   <disabled>
+                    <colorrole role="WindowText">
+                     <brush brushstyle="SolidPattern">
+                      <color alpha="255">
+                       <red>190</red>
+                       <green>190</green>
+                       <blue>190</blue>
+                      </color>
+                     </brush>
+                    </colorrole>
+                   </disabled>
+                  </palette>
                  </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>24</width>
-                   <height>24</height>
-                  </size>
+                 <property name="font">
+                  <font>
+                   <pointsize>16</pointsize>
+                  </font>
                  </property>
                  <property name="text">
-                  <string/>
+                  <string>Investment evaluation</string>
                  </property>
-                 <property name="pixmap">
-                  <pixmap resource="icons.qrc">:/Icons/icons/clustering.png</pixmap>
-                 </property>
-                 <property name="scaledContents">
-                  <bool>true</bool>
+                 <property name="alignment">
+                  <set>Qt::AlignmentFlag::AlignBottom|Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft</set>
                  </property>
                 </widget>
                </item>
-               <item row="33" column="1">
-                <spacer name="verticalSpacer_16">
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Vertical</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>20</width>
-                   <height>250</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-               <item row="30" column="0" colspan="2">
-                <widget class="QLabel" name="label_83">
+               <item row="10" column="0" colspan="2">
+                <widget class="QLabel" name="label_33">
                  <property name="font">
                   <font>
                    <pointsize>9</pointsize>
                   </font>
                  </property>
                  <property name="text">
-                  <string>Method</string>
+                  <string>Number of clusters</string>
                  </property>
                 </widget>
                </item>
@@ -9085,20 +9180,17 @@ QProgressBar::chunk{
                  </property>
                 </widget>
                </item>
-               <item row="16" column="0" colspan="2">
-                <widget class="QLabel" name="label_38">
+               <item row="26" column="2">
+                <widget class="QComboBox" name="investment_evaluation_objfunc_ComboBox">
                  <property name="font">
                   <font>
                    <pointsize>9</pointsize>
                   </font>
                  </property>
-                 <property name="text">
-                  <string>Nodal distances</string>
-                 </property>
                 </widget>
                </item>
-               <item row="21" column="0">
-                <widget class="QLabel" name="label_120">
+               <item row="8" column="0">
+                <widget class="QLabel" name="label_94">
                  <property name="minimumSize">
                   <size>
                    <width>24</width>
@@ -9115,53 +9207,10 @@ QProgressBar::chunk{
                   <string/>
                  </property>
                  <property name="pixmap">
-                  <pixmap resource="icons.qrc">:/Icons/icons/expansion_planning.png</pixmap>
+                  <pixmap resource="icons.qrc">:/Icons/icons/clustering.png</pixmap>
                  </property>
                  <property name="scaledContents">
                   <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="26" column="0" colspan="2">
-                <widget class="QLabel" name="label_3">
-                 <property name="font">
-                  <font>
-                   <pointsize>9</pointsize>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Method</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="26" column="2">
-                <widget class="QComboBox" name="investment_evaluation_method_ComboBox">
-                 <property name="font">
-                  <font>
-                   <pointsize>9</pointsize>
-                  </font>
-                 </property>
-                 <property name="toolTip">
-                  <string>Select the investment evaluation method</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="24" column="0" colspan="2">
-                <widget class="QLabel" name="label_87">
-                 <property name="text">
-                  <string/>
-                 </property>
-                </widget>
-               </item>
-               <item row="23" column="0" colspan="2">
-                <widget class="QLabel" name="label_51">
-                 <property name="font">
-                  <font>
-                   <pointsize>9</pointsize>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Maximum evaluations</string>
                  </property>
                 </widget>
                </item>
@@ -9186,53 +9235,61 @@ QProgressBar::chunk{
                <property name="topMargin">
                 <number>0</number>
                </property>
-               <item row="9" column="0" colspan="3">
-                <widget class="Line" name="line_10">
-                 <property name="palette">
-                  <palette>
-                   <active>
-                    <colorrole role="WindowText">
-                     <brush brushstyle="SolidPattern">
-                      <color alpha="255">
-                       <red>186</red>
-                       <green>189</green>
-                       <blue>182</blue>
-                      </color>
-                     </brush>
-                    </colorrole>
-                   </active>
-                   <inactive>
-                    <colorrole role="WindowText">
-                     <brush brushstyle="SolidPattern">
-                      <color alpha="255">
-                       <red>186</red>
-                       <green>189</green>
-                       <blue>182</blue>
-                      </color>
-                     </brush>
-                    </colorrole>
-                   </inactive>
-                   <disabled>
-                    <colorrole role="WindowText">
-                     <brush brushstyle="SolidPattern">
-                      <color alpha="255">
-                       <red>190</red>
-                       <green>190</green>
-                       <blue>190</blue>
-                      </color>
-                     </brush>
-                    </colorrole>
-                   </disabled>
-                  </palette>
+               <item row="10" column="2">
+                <widget class="QSpinBox" name="cascading_islands_spinBox">
+                 <property name="font">
+                  <font>
+                   <pointsize>9</pointsize>
+                  </font>
                  </property>
-                 <property name="frameShadow">
-                  <enum>QFrame::Shadow::Plain</enum>
+                 <property name="toolTip">
+                  <string>Number of islands produced until the analysis stops</string>
                  </property>
-                 <property name="lineWidth">
-                  <number>4</number>
+                 <property name="minimum">
+                  <number>1</number>
                  </property>
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Horizontal</enum>
+                 <property name="maximum">
+                  <number>999999</number>
+                 </property>
+                 <property name="value">
+                  <number>2</number>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="0">
+                <widget class="QLabel" name="label_75">
+                 <property name="minimumSize">
+                  <size>
+                   <width>24</width>
+                   <height>24</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>24</width>
+                   <height>24</height>
+                  </size>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                 <property name="pixmap">
+                  <pixmap resource="icons.qrc">:/Icons/icons/stochastic_power_flow.png</pixmap>
+                 </property>
+                 <property name="scaledContents">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="15" column="2">
+                <widget class="QComboBox" name="reliability_method_comboBox">
+                 <property name="font">
+                  <font>
+                   <pointsize>9</pointsize>
+                  </font>
+                 </property>
+                 <property name="toolTip">
+                  <string>Reliability evaluation method</string>
                  </property>
                 </widget>
                </item>
@@ -9257,78 +9314,8 @@ QProgressBar::chunk{
                  </property>
                 </widget>
                </item>
-               <item row="5" column="2">
-                <widget class="QSpinBox" name="tolerance_stochastic_spinBox">
-                 <property name="font">
-                  <font>
-                   <pointsize>9</pointsize>
-                  </font>
-                 </property>
-                 <property name="toolTip">
-                  <string>Monte Carlo variance until stop</string>
-                 </property>
-                 <property name="prefix">
-                  <string>1e-</string>
-                 </property>
-                 <property name="minimum">
-                  <number>1</number>
-                 </property>
-                 <property name="maximum">
-                  <number>20</number>
-                 </property>
-                 <property name="value">
-                  <number>4</number>
-                 </property>
-                </widget>
-               </item>
-               <item row="10" column="2">
-                <widget class="QSpinBox" name="cascading_islands_spinBox">
-                 <property name="font">
-                  <font>
-                   <pointsize>9</pointsize>
-                  </font>
-                 </property>
-                 <property name="toolTip">
-                  <string>Number of islands produced until the analysis stops</string>
-                 </property>
-                 <property name="minimum">
-                  <number>1</number>
-                 </property>
-                 <property name="maximum">
-                  <number>999999</number>
-                 </property>
-                 <property name="value">
-                  <number>2</number>
-                 </property>
-                </widget>
-               </item>
-               <item row="8" column="0">
-                <widget class="QLabel" name="label_78">
-                 <property name="minimumSize">
-                  <size>
-                   <width>24</width>
-                   <height>24</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>24</width>
-                   <height>24</height>
-                  </size>
-                 </property>
-                 <property name="text">
-                  <string/>
-                 </property>
-                 <property name="pixmap">
-                  <pixmap resource="icons.qrc">:/Icons/icons/blackout.png</pixmap>
-                 </property>
-                 <property name="scaledContents">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="1" colspan="2">
-                <widget class="QLabel" name="label_47">
+               <item row="13" column="1" colspan="2">
+                <widget class="QLabel" name="label_100">
                  <property name="palette">
                   <palette>
                    <active>
@@ -9372,7 +9359,7 @@ QProgressBar::chunk{
                   </font>
                  </property>
                  <property name="text">
-                  <string>Stochastic power flow</string>
+                  <string>Reliability</string>
                  </property>
                  <property name="alignment">
                   <set>Qt::AlignmentFlag::AlignBottom|Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft</set>
@@ -9443,68 +9430,66 @@ QProgressBar::chunk{
                  </property>
                 </widget>
                </item>
-               <item row="11" column="0" colspan="3">
-                <widget class="QLabel" name="label_156">
-                 <property name="text">
-                  <string/>
+               <item row="18" column="1">
+                <spacer name="verticalSpacer_8">
+                 <property name="orientation">
+                  <enum>Qt::Orientation::Vertical</enum>
                  </property>
-                </widget>
-               </item>
-               <item row="16" column="2">
-                <widget class="QSpinBox" name="max_iterations_reliability_spinBox">
-                 <property name="font">
-                  <font>
-                   <pointsize>9</pointsize>
-                  </font>
-                 </property>
-                 <property name="toolTip">
-                  <string>Maximum number of Monte Carlo samples</string>
-                 </property>
-                 <property name="minimum">
-                  <number>10</number>
-                 </property>
-                 <property name="maximum">
-                  <number>99999999</number>
-                 </property>
-                 <property name="value">
-                  <number>1000</number>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="0" colspan="2">
-                <widget class="QLabel" name="label_55">
-                 <property name="font">
-                  <font>
-                   <pointsize>9</pointsize>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Method</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="13" column="0">
-                <widget class="QLabel" name="label_99">
-                 <property name="minimumSize">
+                 <property name="sizeHint" stdset="0">
                   <size>
-                   <width>24</width>
-                   <height>24</height>
+                   <width>20</width>
+                   <height>40</height>
                   </size>
                  </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>24</width>
-                   <height>24</height>
-                  </size>
+                </spacer>
+               </item>
+               <item row="1" column="0" colspan="3">
+                <widget class="Line" name="line_4">
+                 <property name="palette">
+                  <palette>
+                   <active>
+                    <colorrole role="WindowText">
+                     <brush brushstyle="SolidPattern">
+                      <color alpha="255">
+                       <red>186</red>
+                       <green>189</green>
+                       <blue>182</blue>
+                      </color>
+                     </brush>
+                    </colorrole>
+                   </active>
+                   <inactive>
+                    <colorrole role="WindowText">
+                     <brush brushstyle="SolidPattern">
+                      <color alpha="255">
+                       <red>186</red>
+                       <green>189</green>
+                       <blue>182</blue>
+                      </color>
+                     </brush>
+                    </colorrole>
+                   </inactive>
+                   <disabled>
+                    <colorrole role="WindowText">
+                     <brush brushstyle="SolidPattern">
+                      <color alpha="255">
+                       <red>190</red>
+                       <green>190</green>
+                       <blue>190</blue>
+                      </color>
+                     </brush>
+                    </colorrole>
+                   </disabled>
+                  </palette>
                  </property>
-                 <property name="text">
-                  <string/>
+                 <property name="frameShadow">
+                  <enum>QFrame::Shadow::Plain</enum>
                  </property>
-                 <property name="pixmap">
-                  <pixmap resource="icons.qrc">:/Icons/icons/reliability.png</pixmap>
+                 <property name="lineWidth">
+                  <number>4</number>
                  </property>
-                 <property name="scaledContents">
-                  <bool>true</bool>
+                 <property name="orientation">
+                  <enum>Qt::Orientation::Horizontal</enum>
                  </property>
                 </widget>
                </item>
@@ -9565,45 +9550,8 @@ QProgressBar::chunk{
                  </property>
                 </widget>
                </item>
-               <item row="10" column="0" colspan="2">
-                <widget class="QLabel" name="label_28">
-                 <property name="font">
-                  <font>
-                   <pointsize>9</pointsize>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Aditional islands until stop</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="2">
-                <widget class="QComboBox" name="stochastic_pf_method_comboBox">
-                 <property name="font">
-                  <font>
-                   <pointsize>9</pointsize>
-                  </font>
-                 </property>
-                 <property name="toolTip">
-                  <string>Stochastic power flow method</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="17" column="1">
-                <spacer name="verticalSpacer_8">
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Vertical</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>20</width>
-                   <height>40</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-               <item row="0" column="0">
-                <widget class="QLabel" name="label_75">
+               <item row="13" column="0">
+                <widget class="QLabel" name="label_99">
                  <property name="minimumSize">
                   <size>
                    <width>24</width>
@@ -9620,15 +9568,112 @@ QProgressBar::chunk{
                   <string/>
                  </property>
                  <property name="pixmap">
-                  <pixmap resource="icons.qrc">:/Icons/icons/stochastic_power_flow.png</pixmap>
+                  <pixmap resource="icons.qrc">:/Icons/icons/reliability.png</pixmap>
                  </property>
                  <property name="scaledContents">
                   <bool>true</bool>
                  </property>
                 </widget>
                </item>
-               <item row="1" column="0" colspan="3">
-                <widget class="Line" name="line_4">
+               <item row="0" column="1" colspan="2">
+                <widget class="QLabel" name="label_47">
+                 <property name="palette">
+                  <palette>
+                   <active>
+                    <colorrole role="WindowText">
+                     <brush brushstyle="SolidPattern">
+                      <color alpha="255">
+                       <red>85</red>
+                       <green>87</green>
+                       <blue>83</blue>
+                      </color>
+                     </brush>
+                    </colorrole>
+                   </active>
+                   <inactive>
+                    <colorrole role="WindowText">
+                     <brush brushstyle="SolidPattern">
+                      <color alpha="255">
+                       <red>85</red>
+                       <green>87</green>
+                       <blue>83</blue>
+                      </color>
+                     </brush>
+                    </colorrole>
+                   </inactive>
+                   <disabled>
+                    <colorrole role="WindowText">
+                     <brush brushstyle="SolidPattern">
+                      <color alpha="255">
+                       <red>190</red>
+                       <green>190</green>
+                       <blue>190</blue>
+                      </color>
+                     </brush>
+                    </colorrole>
+                   </disabled>
+                  </palette>
+                 </property>
+                 <property name="font">
+                  <font>
+                   <pointsize>16</pointsize>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>Stochastic power flow</string>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignmentFlag::AlignBottom|Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft</set>
+                 </property>
+                </widget>
+               </item>
+               <item row="16" column="2">
+                <widget class="QSpinBox" name="max_iterations_reliability_spinBox">
+                 <property name="font">
+                  <font>
+                   <pointsize>9</pointsize>
+                  </font>
+                 </property>
+                 <property name="toolTip">
+                  <string>Maximum number of Monte Carlo samples</string>
+                 </property>
+                 <property name="minimum">
+                  <number>10</number>
+                 </property>
+                 <property name="maximum">
+                  <number>99999999</number>
+                 </property>
+                 <property name="value">
+                  <number>1000</number>
+                 </property>
+                </widget>
+               </item>
+               <item row="10" column="0" colspan="2">
+                <widget class="QLabel" name="label_28">
+                 <property name="font">
+                  <font>
+                   <pointsize>9</pointsize>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>Aditional islands until stop</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="5" column="0" colspan="2">
+                <widget class="QLabel" name="label_12">
+                 <property name="font">
+                  <font>
+                   <pointsize>9</pointsize>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>Voltage variance</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="9" column="0" colspan="3">
+                <widget class="Line" name="line_10">
                  <property name="palette">
                   <palette>
                    <active>
@@ -9677,18 +9722,6 @@ QProgressBar::chunk{
                  </property>
                 </widget>
                </item>
-               <item row="5" column="0" colspan="2">
-                <widget class="QLabel" name="label_12">
-                 <property name="font">
-                  <font>
-                   <pointsize>9</pointsize>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Voltage variance</string>
-                 </property>
-                </widget>
-               </item>
                <item row="6" column="0" colspan="2">
                 <widget class="QLabel" name="label_13">
                  <property name="font">
@@ -9698,58 +9731,6 @@ QProgressBar::chunk{
                  </property>
                  <property name="text">
                   <string>Samples</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="13" column="1" colspan="2">
-                <widget class="QLabel" name="label_100">
-                 <property name="palette">
-                  <palette>
-                   <active>
-                    <colorrole role="WindowText">
-                     <brush brushstyle="SolidPattern">
-                      <color alpha="255">
-                       <red>85</red>
-                       <green>87</green>
-                       <blue>83</blue>
-                      </color>
-                     </brush>
-                    </colorrole>
-                   </active>
-                   <inactive>
-                    <colorrole role="WindowText">
-                     <brush brushstyle="SolidPattern">
-                      <color alpha="255">
-                       <red>85</red>
-                       <green>87</green>
-                       <blue>83</blue>
-                      </color>
-                     </brush>
-                    </colorrole>
-                   </inactive>
-                   <disabled>
-                    <colorrole role="WindowText">
-                     <brush brushstyle="SolidPattern">
-                      <color alpha="255">
-                       <red>190</red>
-                       <green>190</green>
-                       <blue>190</blue>
-                      </color>
-                     </brush>
-                    </colorrole>
-                   </disabled>
-                  </palette>
-                 </property>
-                 <property name="font">
-                  <font>
-                   <pointsize>16</pointsize>
-                  </font>
-                 </property>
-                 <property name="text">
-                  <string>Reliability</string>
-                 </property>
-                 <property name="alignment">
-                  <set>Qt::AlignmentFlag::AlignBottom|Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft</set>
                  </property>
                 </widget>
                </item>
@@ -9765,15 +9746,83 @@ QProgressBar::chunk{
                  </property>
                 </widget>
                </item>
-               <item row="15" column="2">
-                <widget class="QComboBox" name="reliability_method_comboBox">
+               <item row="3" column="2">
+                <widget class="QComboBox" name="stochastic_pf_method_comboBox">
                  <property name="font">
                   <font>
                    <pointsize>9</pointsize>
                   </font>
                  </property>
                  <property name="toolTip">
-                  <string>Reliability evaluation method</string>
+                  <string>Stochastic power flow method</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="8" column="0">
+                <widget class="QLabel" name="label_78">
+                 <property name="minimumSize">
+                  <size>
+                   <width>24</width>
+                   <height>24</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>24</width>
+                   <height>24</height>
+                  </size>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                 <property name="pixmap">
+                  <pixmap resource="icons.qrc">:/Icons/icons/blackout.png</pixmap>
+                 </property>
+                 <property name="scaledContents">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="5" column="2">
+                <widget class="QSpinBox" name="tolerance_stochastic_spinBox">
+                 <property name="font">
+                  <font>
+                   <pointsize>9</pointsize>
+                  </font>
+                 </property>
+                 <property name="toolTip">
+                  <string>Monte Carlo variance until stop</string>
+                 </property>
+                 <property name="prefix">
+                  <string>1e-</string>
+                 </property>
+                 <property name="minimum">
+                  <number>1</number>
+                 </property>
+                 <property name="maximum">
+                  <number>20</number>
+                 </property>
+                 <property name="value">
+                  <number>4</number>
+                 </property>
+                </widget>
+               </item>
+               <item row="11" column="0" colspan="3">
+                <widget class="QLabel" name="label_156">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="0" colspan="2">
+                <widget class="QLabel" name="label_55">
+                 <property name="font">
+                  <font>
+                   <pointsize>9</pointsize>
+                  </font>
+                 </property>
+                 <property name="text">
+                  <string>Method</string>
                  </property>
                 </widget>
                </item>
@@ -11164,7 +11213,7 @@ QProgressBar::chunk{
      <x>0</x>
      <y>0</y>
      <width>1372</width>
-     <height>33</height>
+     <height>39</height>
     </rect>
    </property>
    <property name="font">

@@ -10,7 +10,7 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import BusGraphicType, SwitchGraphicType
 
 
-def create_ring(
+def create_ring_with_disconnectors(
         name: str,
         grid: MultiCircuit,
         n_bays: int,
@@ -126,7 +126,7 @@ def create_ring(
     return vl, conn_buses, all_buses, offset_total_x, offset_total_y
 
 
-def create_ring_with_disconnectors(
+def create_ring(
         name: str,
         grid: MultiCircuit,
         n_bays: int,

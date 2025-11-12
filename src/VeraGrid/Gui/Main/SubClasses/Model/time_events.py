@@ -10,10 +10,11 @@ from matplotlib import pyplot as plt
 
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, SimulationTypes
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGrid.Gui.general_dialogues import NewProfilesStructureDialogue, TimeReIndexDialogue, LogsDialogue
-from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg
+from VeraGrid.Gui.general_dialogues import (NewProfilesStructureDialogue, TimeReIndexDialogue, LogsDialogue,
+                                            StartEndSelectionDialogue)
+from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg, error_msg
 from VeraGrid.Gui.Main.SubClasses.Model.data_base import DataBaseTableMain
 from VeraGrid.Gui.ProfilesInput.models_dialogue import ModelsInputGUI
 from VeraGrid.Gui.ProfilesInput.profile_dialogue import ProfileInputGUI, GeneratorsProfileOptionsDialogue
@@ -41,6 +42,9 @@ class TimeEventsMain(DataBaseTableMain):
         self.ui.new_profiles_structure_pushButton.clicked.connect(self.new_profiles_structure)
         self.ui.delete_profiles_structure_pushButton.clicked.connect(self.delete_profiles_structure)
         self.ui.edit_profiles_pushButton.clicked.connect(self.import_profiles)
+        self.ui.crop_profiles_pushButton.clicked.connect(self.crop_profiles)
+        self.ui.crop_cluster_profiles_pushButton.clicked.connect(self.crop_profiles_cluster)
+
         self.ui.edit_profiles_from_models_pushButton.clicked.connect(self.import_profiles_from_models)
         self.ui.set_profile_state_button.clicked.connect(self.set_profile_state_to_snapshot)
         self.ui.profile_add_pushButton.clicked.connect(lambda: self.modify_profiles('+'))
@@ -177,6 +181,74 @@ class TimeEventsMain(DataBaseTableMain):
             else:
                 self.show_error_toast("There are no objects...", duration=3000)
 
+    def crop_profiles(self):
+        """
+        Crop (resample) the profiles
+        """
+        if self.circuit.has_time_series:
+            if self.circuit.get_time_number() > 0:
+                self.start_end_dialogue_window = StartEndSelectionDialogue(min_value=0,
+                                                                           max_value=len(self.circuit.time_profile),
+                                                                           time_array=self.circuit.time_profile)
+
+                self.start_end_dialogue_window.setModal(True)
+                self.start_end_dialogue_window.exec()
+
+                if self.start_end_dialogue_window.is_accepted:
+                    self.circuit.resample_profiles2(
+                        t0=self.start_end_dialogue_window.start_value,
+                        t1=self.start_end_dialogue_window.end_value + 1
+                    )
+
+                    self.setup_sim_indices(st=self.start_end_dialogue_window.start_value,
+                                           en=self.start_end_dialogue_window.end_value)
+
+                    self.show_info_toast("Resampled!")
+            else:
+                self.show_error_toast("Empty time series :/")
+
+        else:
+            self.show_warning_toast("No profiles to crop :/")
+
+    def crop_profiles_cluster(self):
+        """
+        Crop (resample) the profiles
+        """
+        if self.circuit.has_time_series:
+            if self.circuit.get_time_number() > 0:
+                _, clustering_results = self.session.clustering
+
+                if clustering_results is not None:
+                    n = len(clustering_results.time_indices)
+
+                    if n != self.ui.cluster_number_spinBox.value():
+                        error_msg("The number of clusters in the stored results is different from the specified :(\n"
+                                  "Run another clustering analysis.")
+
+                        return
+                    else:
+                        # all ok
+                        ok = yes_no_question("Are you sure that you want to crop "
+                                             "the profiles to the clustered results?\n"
+                                             "This cannot be undone.\n"
+                                             "Also, the clustering will be removed after this.")
+
+                        if ok:
+                            self.circuit.resample_profiles(indices=clustering_results.time_indices)
+                            self.setup_sim_indices(st=0, en=self.circuit.get_time_number() - 1)
+
+                            # we need to remove the clustering simulation because it no longer matches the time data
+                            self.session.delete_driver(driver_type=SimulationTypes.ClusteringAnalysis_run)
+                            self.show_info_toast("Resampled!")
+                else:
+                    self.show_error_toast("Run clustering simulation first")
+
+            else:
+                self.show_error_toast("Empty time series :/")
+
+        else:
+            self.show_warning_toast("No profiles to crop :/")
+
     def modify_profiles(self, operation='+'):
         """
         Edit profiles with a linear combination
@@ -192,105 +264,107 @@ class TimeEventsMain(DataBaseTableMain):
         if dev_type_text is not None:
             magnitudes, mag_types = self.circuit.profile_magnitudes[dev_type_text]
             idx = self.ui.device_type_magnitude_comboBox.currentIndex()
-            magnitude = magnitudes[idx]
 
-            dev_type = self.circuit.device_type_name_dict[dev_type_text]
-            objects: List[ALL_DEV_TYPES] = self.circuit.get_elements_by_type(dev_type)
-            # Assign profiles
-            if len(objects) > 0:
+            if idx > -1:
+                magnitude = magnitudes[idx]
 
-                indices = self.ui.profiles_tableView.selectedIndexes()
+                dev_type = self.circuit.device_type_name_dict[dev_type_text]
+                objects: List[ALL_DEV_TYPES] = self.circuit.get_elements_by_type(dev_type)
+                # Assign profiles
+                if len(objects) > 0:
 
-                # attr = objects[0].properties_with_profile[magnitude]
+                    indices = self.ui.profiles_tableView.selectedIndexes()
 
-                model = self.ui.profiles_tableView.model()
+                    # attr = objects[0].properties_with_profile[magnitude]
 
-                mod_cols = list()
+                    model = self.ui.profiles_tableView.model()
 
-                if len(indices) == 0:
-                    # no index was selected
-                    for i, elm in enumerate(objects):
+                    mod_cols = list()
 
-                        # get the property object
-                        gc_prop = elm.registered_properties[magnitude]
+                    if len(indices) == 0:
+                        # no index was selected
+                        for i, elm in enumerate(objects):
 
-                        # get the profile
-                        profile = elm.get_profile_by_prop(prop=gc_prop)
+                            # get the property object
+                            gc_prop = elm.registered_properties[magnitude]
 
-                        # compute the dense array (this is the simple way of doing this)
-                        array = profile.toarray()
+                            # get the profile
+                            profile = elm.get_profile_by_prop(prop=gc_prop)
 
-                        if operation == '+':
-                            mod_array = (array + value).astype(gc_prop.tpe)
-                            mod_cols.append(i)
+                            # compute the dense array (this is the simple way of doing this)
+                            array = profile.toarray()
 
-                        elif operation == '-':
-                            mod_array = (array - value).astype(gc_prop.tpe)
-                            mod_cols.append(i)
+                            if operation == '+':
+                                mod_array = (array + value).astype(gc_prop.tpe)
+                                mod_cols.append(i)
 
-                        elif operation == '*':
-                            mod_array = (array * value).astype(gc_prop.tpe)
-                            mod_cols.append(i)
+                            elif operation == '-':
+                                mod_array = (array - value).astype(gc_prop.tpe)
+                                mod_cols.append(i)
 
-                        elif operation == '/':
-                            mod_array = (array / value).astype(gc_prop.tpe)
-                            mod_cols.append(i)
+                            elif operation == '*':
+                                mod_array = (array * value).astype(gc_prop.tpe)
+                                mod_cols.append(i)
 
-                        elif operation == 'set':
-                            mod_array = (np.ones(len(array)) * value).astype(gc_prop.tpe)
-                            mod_cols.append(i)
+                            elif operation == '/':
+                                mod_array = (array / value).astype(gc_prop.tpe)
+                                mod_cols.append(i)
 
-                        else:
-                            raise Exception('Operation not supported: ' + str(operation))
+                            elif operation == 'set':
+                                mod_array = (np.ones(len(array)) * value).astype(gc_prop.tpe)
+                                mod_cols.append(i)
 
-                        # apply the newly computed array
-                        profile.set(arr=mod_array)
+                            else:
+                                raise Exception('Operation not supported: ' + str(operation))
 
-                else:
-                    # indices were selected ...
+                            # apply the newly computed array
+                            profile.set(arr=mod_array)
 
-                    for idx in indices:
+                    else:
+                        # indices were selected ...
 
-                        # get the device
-                        elm = objects[idx.column()]
+                        for idx in indices:
 
-                        # get the property object
-                        gc_prop = elm.registered_properties[magnitude]
+                            # get the device
+                            elm = objects[idx.column()]
 
-                        # get the profile
-                        profile = elm.get_profile_by_prop(prop=gc_prop)
+                            # get the property object
+                            gc_prop = elm.registered_properties[magnitude]
 
-                        # compute the dense array (this is the simple way of doing this)
-                        array = profile.toarray().copy()
+                            # get the profile
+                            profile = elm.get_profile_by_prop(prop=gc_prop)
 
-                        if operation == '+':
-                            array[idx.row()] += value
-                            mod_cols.append(idx.column())
+                            # compute the dense array (this is the simple way of doing this)
+                            array = profile.toarray().copy()
 
-                        elif operation == '-':
-                            array[idx.row()] -= value
-                            mod_cols.append(idx.column())
+                            if operation == '+':
+                                array[idx.row()] += value
+                                mod_cols.append(idx.column())
 
-                        elif operation == '*':
-                            array[idx.row()] *= value
-                            mod_cols.append(idx.column())
+                            elif operation == '-':
+                                array[idx.row()] -= value
+                                mod_cols.append(idx.column())
 
-                        elif operation == '/':
-                            array[idx.row()] /= value
-                            mod_cols.append(idx.column())
+                            elif operation == '*':
+                                array[idx.row()] *= value
+                                mod_cols.append(idx.column())
 
-                        elif operation == 'set':
-                            array[idx.row()] = value
-                            mod_cols.append(idx.column())
+                            elif operation == '/':
+                                array[idx.row()] /= value
+                                mod_cols.append(idx.column())
 
-                        else:
-                            raise Exception('Operation not supported: ' + str(operation))
+                            elif operation == 'set':
+                                array[idx.row()] = value
+                                mod_cols.append(idx.column())
 
-                        # apply the newly computed array
-                        profile.set(arr=array)
+                            else:
+                                raise Exception('Operation not supported: ' + str(operation))
 
-                # update model
-                model.update()
+                            # apply the newly computed array
+                            profile.set(arr=array)
+
+                    # update model
+                    model.update()
 
     def set_profile_as_linear_combination(self):
         """
@@ -390,7 +464,6 @@ class TimeEventsMain(DataBaseTableMain):
             if len(obj_idx):
                 fig = plt.figure(figsize=(12, 8))
                 ax = fig.add_subplot(111)
-
 
                 units_dict = {attr: pair.units for attr, pair in objects[0].registered_properties.items()}
 
@@ -521,3 +594,4 @@ class TimeEventsMain(DataBaseTableMain):
             mdl.paste_from_clipboard(row_idx=row_idx, col_idx=col_idx)
         else:
             warning_msg('There is no profile displayed, please display one', 'Paste profile to clipboard')
+

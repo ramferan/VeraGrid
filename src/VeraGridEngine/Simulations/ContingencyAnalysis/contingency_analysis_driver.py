@@ -122,7 +122,7 @@ class ContingencyAnalysisDriver(DriverTemplate):
                     options=self.options,
                     linear_multiple_contingencies=self.linear_multiple_contingencies,
                     area_names=area_names,
-                    bus_area_indices=bus_area_indices,
+                    bus_area_indices=np.array(bus_area_indices, dtype=int),
                     F=F,
                     T=T,
                     report_text=self.report_text,
@@ -145,7 +145,7 @@ class ContingencyAnalysisDriver(DriverTemplate):
                     options=self.options,
                     linear_multiple_contingencies=self.linear_multiple_contingencies,
                     area_names=area_names,
-                    bus_area_indices=bus_area_indices,
+                    bus_area_indices=np.array(bus_area_indices, dtype=int),
                     F=F,
                     T=T,
                     report_text=self.report_text,
@@ -164,6 +164,7 @@ class ContingencyAnalysisDriver(DriverTemplate):
                     t=t_idx,
                     t_prob=t_prob
                 )
+
             elif self.options.contingency_method == ContingencyMethod.OptimalPowerFlow:
                 self.results = optimal_linear_contingency_analysis(
                     grid=self.grid,
