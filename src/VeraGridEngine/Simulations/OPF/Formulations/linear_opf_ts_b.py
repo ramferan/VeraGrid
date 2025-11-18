@@ -812,7 +812,7 @@ def add_linear_generation_formulation(local_t: int,
             # TODO Review and change the id_gen_nonvd stuff
             if active and k not in id_gen_nonvd and bus_idx > -1:
 
-                if elm.enabled_dispatch and not all_generators_fixed:
+                if elm.get_enabled_dispatch_at(global_t) and not all_generators_fixed:
 
                     # declare active power var (limits will be applied later)
                     gen_vars.p[local_t, k] = prob.add_var(
@@ -1017,7 +1017,7 @@ def add_linear_generation_formulation(local_t: int,
                 # TODO Review and change the id_gen_nonvd stuff
                 if elm.get_active_at(local_t) and k not in id_gen_nonvd and bus_idx > -1:
 
-                    if elm.enabled_dispatch and not all_generators_fixed:
+                    if elm.get_enabled_dispatch_at(global_t) and not all_generators_fixed:
 
                         # Generation Expansion Planning
                         if is_candidate[k] and generation_expansion_planning:
@@ -1102,7 +1102,7 @@ def add_linear_battery_formulation(local_t: int,
             p_neg = prob.add_var(0, 1e20, join("batt_pneg_", [local_t, k], "_"))
             batt_vars.p[local_t, k] = p_pos - p_neg
 
-            if elm.enabled_dispatch:
+            if elm.get_enabled_dispatch_at(global_t):
 
                 if unit_commitment:
 

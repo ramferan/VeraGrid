@@ -532,6 +532,57 @@ def pmode3_formulation3(prob, t_idx, m, rate, P0, droop, theta_f, theta_t, base_
 
     return None
 
+
+def pmode3_formulation_impr(prob, t_idx, m, rate, P0, droop, theta_f, theta_t, base_name: str = "hvdc"):
+    """
+    Formulation for HVDC link with three operating regions using big-M and binary variables.
+    """
+    # Variables
+    flow = prob.add_var(
+        lb=-rate,
+        ub=rate,
+        name=f"{base_name}_flow_{t_idx}_{m}"
+    )
+    z1 = prob.add_int(lb=0, ub=1, name=f"{base_name}_z1_{t_idx}_{m}")
+    z2 = prob.add_int(lb=0, ub=1, name=f"{base_name}_z2_{t_idx}_{m}")
+    z3 = prob.add_int(lb=0, ub=1, name=f"{base_name}_z3_{t_idx}_{m}")
+
+    # Constants
+    delta = theta_f - theta_t
+    delta_low = (-rate - P0) / droop
+    delta_high = (rate - P0) / droop
+    M = 20 * rate  # Big-M as per note; may need adjustment for angle constraints
+
+    # Exactly one region active
+    prob.add_cst(z1 + z2 + z3 >= 1, name=f"one_region_ge_{t_idx}_{m}")
+    prob.add_cst(z1 + z2 + z3 <= 1, name=f"one_region_le_{t_idx}_{m}")
+
+    # Region constraints
+    # Region 1 (z1=1): saturated at -rate, delta <= delta_low
+    prob.add_cst(delta <= delta_low + M * (1 - z1), name=f"region1_le_{t_idx}_{m}")
+
+    # Region 2 (z2=1): droop, delta_low <= delta <= delta_high
+    prob.add_cst(delta >= delta_low - M * (1 - z2), name=f"region2_ge_{t_idx}_{m}")
+    prob.add_cst(delta <= delta_high + M * (1 - z2), name=f"region2_le_{t_idx}_{m}")
+
+    # Region 3 (z3=1): saturated at +rate, delta >= delta_high
+    prob.add_cst(delta >= delta_high - M * (1 - z3), name=f"region3_ge_{t_idx}_{m}")
+
+    # Power constraints
+    # Region 1: flow = -rate when z1=1
+    prob.add_cst(flow >= -rate - M * (1 - z1), name=f"power1_ge_{t_idx}_{m}")
+    prob.add_cst(flow <= -rate + M * (1 - z1), name=f"power1_le_{t_idx}_{m}")
+
+    # Region 2: flow = P0 + droop * (theta_f - theta_t) when z2=1
+    prob.add_cst(flow - (P0 + droop * delta) >= -M * (1 - z2), name=f"power2_ge_{t_idx}_{m}")
+    prob.add_cst(flow - (P0 + droop * delta) <= M * (1 - z2), name=f"power2_le_{t_idx}_{m}")
+
+    # Region 3: flow = rate when z3=1
+    prob.add_cst(flow >= rate - M * (1 - z3), name=f"power3_ge_{t_idx}_{m}")
+    prob.add_cst(flow <= rate + M * (1 - z3), name=f"power3_le_{t_idx}_{m}")
+
+    return flow
+
     
 def pmode3_formulation_convex_hull(prob, t_idx, m, rate, P0, droop, theta_f, theta_t, f_obj,
                                    dtheta_max=1.57, base_name: str = "hvdc"):
@@ -2006,7 +2057,7 @@ def add_linear_hvdc_formulation(t_idx: int,
                     #                                                 theta_t=vars_bus.Va[t_idx, to],
                     #                                                 base_name="hvdc")
 
-                    hvdc_vars.flows[t_idx, m], f_obj = pmode3_formulation_convex_hull(prob=prob,
+                    hvdc_vars.flows[t_idx, m] = pmode3_formulation_impr(prob=prob,
                                                                        t_idx=t_idx,
                                                                        m=m,
                                                                        rate=hvdc_data_t.rates[m] / Sbase,
@@ -2014,9 +2065,19 @@ def add_linear_hvdc_formulation(t_idx: int,
                                                                        droop=droop,
                                                                        theta_f=vars_bus.Va[t_idx, fr],
                                                                        theta_t=vars_bus.Va[t_idx, to],
-                                                                       f_obj=f_obj,
-                                                                       dtheta_max=1.0,
                                                                        base_name="hvdc")
+
+                    # hvdc_vars.flows[t_idx, m], f_obj = pmode3_formulation_convex_hull(prob=prob,
+                    #                                                    t_idx=t_idx,
+                    #                                                    m=m,
+                    #                                                    rate=hvdc_data_t.rates[m] / Sbase,
+                    #                                                    P0=P0,
+                    #                                                    droop=droop,
+                    #                                                    theta_f=vars_bus.Va[t_idx, fr],
+                    #                                                    theta_t=vars_bus.Va[t_idx, to],
+                    #                                                    f_obj=f_obj,
+                    #                                                    dtheta_max=1.0,
+                    #                                                    base_name="hvdc")
 
                     # hvdc_vars.flows[t_idx, m] = formulate_hvdc_Pmode3_single_flow(
                     #     solver=prob,

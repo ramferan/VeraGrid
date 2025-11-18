@@ -21,8 +21,6 @@ from VeraGridEngine.Simulations.ContingencyAnalysis.Methods.nonlinear_contingenc
 from VeraGridEngine.Simulations.ContingencyAnalysis.Methods.linear_contingency_analysis import (
     linear_contingency_analysis)
 from VeraGridEngine.Simulations.ContingencyAnalysis.Methods.helm_contingency_analysis import helm_contingency_analysis
-from VeraGridEngine.Simulations.ContingencyAnalysis.Methods.optimal_linear_contingency_analysis import \
-    optimal_linear_contingency_analysis
 from VeraGridEngine.Compilers.circuit_to_bentayga import BENTAYGA_AVAILABLE
 from VeraGridEngine.Compilers.circuit_to_newton_pa import (NEWTON_PA_AVAILABLE, newton_pa_contingencies,
                                                            translate_newton_pa_contingencies)
@@ -165,17 +163,17 @@ class ContingencyAnalysisDriver(DriverTemplate):
                     t_prob=t_prob
                 )
 
-            elif self.options.contingency_method == ContingencyMethod.OptimalPowerFlow:
-                self.results = optimal_linear_contingency_analysis(
-                    grid=self.grid,
-                    options=self.options,
-                    opf_options=None,  # TODO: finalize this
-                    linear_multiple_contingencies=self.linear_multiple_contingencies,
-                    calling_class=self,
-                    t=t_idx,
-                    t_prob=t_prob,
-                    logger=self.logger
-                )
+            # elif self.options.contingency_method == ContingencyMethod.OptimalPowerFlow:
+                # self.results = optimal_linear_contingency_analysis(
+                #     grid=self.grid,
+                #     options=self.options,
+                #     opf_options=None,  # TODO: finalize this
+                #     linear_multiple_contingencies=self.linear_multiple_contingencies,
+                #     calling_class=self,
+                #     t=t_idx,
+                #     t_prob=t_prob,
+                #     logger=self.logger
+                # )
             else:
                 raise Exception(f'Unknown contingency engine {self.options.contingency_method}')
 

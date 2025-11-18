@@ -620,6 +620,7 @@ def helm_coefficients_dY(dY, sys_mat_factorization, Uini, Xini,
     """
 
     AYred = dY[np.ix_(pqpv_original, pqpv_original)]  # difference admittance matrix without slack buses
+    AYsl = dY[np.ix_(pqpv_original, sl)]  # difference admittance matrix involving slack buses
 
     # --------------------------- PREPARING IMPLEMENTATION -------------------------------------------------------------
     U = np.zeros((max_coeff + 1, npqpv), dtype=complex)  # voltages
@@ -635,12 +636,15 @@ def helm_coefficients_dY(dY, sys_mat_factorization, Uini, Xini,
 
     # get the current Injections that appear due to the slack buses reduction
     I_inj_slack = Yslack[pqpv, :] * Vslack
-    AIred = AYred @ U[0, :]
+    AI_inj_slack = AYsl[pqpv, :] * Vslack
 
     Ysl_sum = Yslack.sum(axis=1).A1
+    AYsl_sum = AYsl.sum(axis=1).A1
 
-    dval[pq] = I_inj_slack[pq] - Ysl_sum[pq] + (vec_P[pq] - vec_Q[pq] * 1j) * X[0, pq] - U[0, pq] * Ysh[pq] + 1.0 * AIred[pq]
-    dval[pv] = I_inj_slack[pv] - Ysl_sum[pv] + (vec_P[pv]) * X[0, pv] - U[0, pv] * Ysh[pv] + 1.0 * AIred[pv]
+    AIred = AYred @ U[0, :]
+
+    dval[pq] = I_inj_slack[pq] + 1.0 * AI_inj_slack[pq] - Ysl_sum[pq] + (vec_P[pq] - vec_Q[pq] * 1j) * X[0, pq] - U[0, pq] * Ysh[pq] + 1.0 * AIred[pq]
+    dval[pv] = I_inj_slack[pv] + 1.0 * AI_inj_slack[pv] - Ysl_sum[pv] + (vec_P[pv]) * X[0, pv] - U[0, pv] * Ysh[pv] + 1.0 * AIred[pv]
 
     # compose the right-hand side vector
     RHS = np.r_[dval.real, dval.imag, vec_W[pv] - (U[0, pv] * U[0, pv]).real]  # vec_W[pv_] - 1.0

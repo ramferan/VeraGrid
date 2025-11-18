@@ -138,7 +138,6 @@ class NodalCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                                      contingency_groups_used=self.grid.contingency_groups,
                                      unit_commitment=self.opf_options.unit_commitment,
                                      ramp_constraints=self.opf_options.unit_commitment,
-                                     all_generators_fixed=False,
                                      lodf_threshold=self.opf_options.lodf_tolerance,
                                      maximize_inter_area_flow=self.opf_options.maximize_flows,
                                      inter_aggregation_info=self.opf_options.inter_aggregation_info,

@@ -837,7 +837,8 @@ def fill_generator_parent(
     data.min_time_up[k] = elm.MinTimeUp
     data.min_time_down[k] = elm.MinTimeDown
 
-    data.dispatchable[k] = elm.enabled_dispatch
+    data.dispatchable[k] = elm.get_enabled_dispatch_at(t_idx)
+    data.must_run[k] = elm.get_must_run_at(t_idx)
     data.capex[k] = elm.capex
 
     data.snom[k] = elm.Snom

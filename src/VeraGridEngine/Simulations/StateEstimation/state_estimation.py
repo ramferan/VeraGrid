@@ -143,13 +143,17 @@ def Jacobian_SE(Ybus: csc_matrix, Yf: csc_matrix, Yt: csc_matrix, V: CxVec,
     return H, h, S
 
 
-def get_measurements_and_deviations(se_input: StateEstimationInput, Sbase: float,
+def get_measurements_and_deviations(t: int|None,
+                                    se_input: StateEstimationInput,
+                                    Sbase: float,
                                     use_current_squared_meas: bool = True) -> Tuple[Vec, Vec, ObjVec]:
     """
     get_measurements_and_deviations the measurements into "measurements" and "sigma"
     ordering: Pinj, Pflow, Qinj, Qflow, Iflow, Vm
+    :param t: time step
     :param se_input: StateEstimationInput object
     :param Sbase: base power in MVA (i.e. 100 MVA)
+    :param use_current_squared_meas: use squared current measurements?
     :return: measurements vector in per-unit, sigma vector in per-unit
     """
 
@@ -169,16 +173,16 @@ def get_measurements_and_deviations(se_input: StateEstimationInput, Sbase: float
                 se_input.qf_value,
                 se_input.qt_value]:
         for m in lst:
-            magnitudes[k] = m.get_value_pu(Sbase)
-            sigma[k] = m.get_standard_deviation_pu(Sbase)
+            magnitudes[k] = m.get_value_pu_at(t, Sbase)
+            sigma[k] = m.get_standard_deviation_pu_at(t, Sbase)
             measurements[k] = m
             k += 1
 
     if not use_current_squared_meas:
         for lst in [se_input.if_value, se_input.it_value]:
             for m in lst:
-                I_pu = m.get_value_pu(Sbase)
-                sig_I = m.get_standard_deviation_pu(Sbase)
+                I_pu = m.get_value_pu_at(t, Sbase)
+                sig_I = m.get_standard_deviation_pu_at(t, Sbase)
 
                 # Use current magnitude directly (more stable)
                 y = max(abs(I_pu), 1e-4)  # Avoid zero
@@ -193,8 +197,8 @@ def get_measurements_and_deviations(se_input: StateEstimationInput, Sbase: float
         for lst in [se_input.if_value,
                     se_input.it_value]:
             for m in lst:
-                magnitudes[k] = np.power(m.get_value_pu(Sbase), 2)
-                sigma[k] = m.get_standard_deviation_pu(Sbase)
+                magnitudes[k] = np.power(m.get_value_pu_at(t, Sbase), 2)
+                sigma[k] = m.get_standard_deviation_pu_at(t, Sbase)
                 measurements[k] = m
                 k += 1
 
@@ -344,7 +348,9 @@ def solve_se_lm(nc: NumericalCircuit,
     load_per_bus = nc.load_data.get_injections_per_bus() / nc.Sbase
 
     # pick the measurements and uncertainties (initially in physical units: MW, MVAr, A, pu V)
-    z, sigma, measurements = get_measurements_and_deviations(se_input=se_input, Sbase=nc.Sbase)
+    z, sigma, measurements = get_measurements_and_deviations(t=None,
+                                                             se_input=se_input,
+                                                             Sbase=nc.Sbase)
 
     # Levenberg-Marquardt method
     iter_ = 0
@@ -644,7 +650,7 @@ def solve_se_nr(nc: NumericalCircuit,
     load_per_bus = nc.load_data.get_injections_per_bus() / nc.Sbase
 
     # pick the measurements and uncertainties (initially in physical units: MW, MVAr, A, pu V)
-    z, sigma, measurements = get_measurements_and_deviations(se_input=se_input, Sbase=nc.Sbase)
+    z, sigma, measurements = get_measurements_and_deviations(t=None, se_input=se_input, Sbase=nc.Sbase)
 
     # compute the weights matrix using per-unit sigma
     sigma2 = np.power(sigma, 2.0)
@@ -859,7 +865,9 @@ def solve_se_gauss_newton(nc: NumericalCircuit,
     load_per_bus = nc.load_data.get_injections_per_bus() / nc.Sbase
 
     # Get measurements
-    z, sigma, measurements = get_measurements_and_deviations(se_input=se_input, Sbase=nc.Sbase,
+    z, sigma, measurements = get_measurements_and_deviations(t=None,
+                                                             se_input=se_input,
+                                                             Sbase=nc.Sbase,
                                                              use_current_squared_meas=True)
     # Weight matrix with regularization to avoid numerical issues
     sigma2 = np.power(sigma, 2.0)
@@ -1046,7 +1054,9 @@ def decoupled_state_estimation(nc: NumericalCircuit,
     n_non_slack = len(non_slack_buses)
 
     # --- Measurement vector and weights ---
-    z, sigma, measurements = get_measurements_and_deviations(se_input=se_input, Sbase=nc.Sbase,
+    z, sigma, measurements = get_measurements_and_deviations(t=None,
+                                                             se_input=se_input,
+                                                             Sbase=nc.Sbase,
                                                              use_current_squared_meas=False)
     W = diags(1.0 / sigma ** 2, 0, format="csc")
 

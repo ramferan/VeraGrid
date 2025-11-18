@@ -56,82 +56,6 @@ def run_simple_dispatch(grid: MultiCircuit,
     return Pl, Pg
 
 
-def run_simple_dispatch_ts_old(grid: MultiCircuit,
-                               time_indices: IntVec,
-                               logger: Logger,
-                               text_prog=None,
-                               prog_func=None) -> Tuple[Vec, Vec]:
-    """
-    Simple generation dispatch for the time series
-    :param grid: MultiCircuit instance
-    :param time_indices: grid time indices where to simulate
-    :param logger: logger
-    :param text_prog: text report function
-    :param prog_func: progress report function
-    :return Pl, Pg
-    """
-    if text_prog is not None:
-        text_prog('Simple dispatch...')
-
-    nt = len(time_indices)
-    ng = grid.get_generators_number()
-    nl = grid.get_load_like_device_number()
-
-    Pg = np.zeros((nt, ng))  # dispatched generation (to be filled)
-    dispatchable_indices = list()  # generator indices that are available for beign dispatched
-    Pg_sta = np.zeros((nt, ng))  # non dispatchable Pg
-    Pl = np.zeros((nt, nl))  # load (non dispatchable)
-    P_avail = np.zeros((nt, ng))  # generation available power
-
-    # gather generation info
-    for i, gen in enumerate(grid.get_generators()):
-
-        # Gather the profiles as arrays
-        elm_p = gen.P_prof.toarray()
-
-        elm_active = gen.active_prof.toarray()
-
-        Pg[:, i] = elm_p[time_indices] * elm_active[time_indices]  # copy at first ...
-
-        if gen.enabled_dispatch:
-            elm_p_max = gen.Pmax_prof.toarray()
-            bad_p_max_idx = np.where(elm_p_max <= 0)[0]
-            if len(bad_p_max_idx) > 0:
-
-                for tt in bad_p_max_idx:
-                    logger.add_error("Generator Pmax <= 0", device=gen.name,
-                                     value=elm_p_max[tt], expected_value=">0")
-
-                elm_p_max[bad_p_max_idx] = 9999.0
-
-            P_avail[:, i] = elm_p_max * elm_active[time_indices]
-            dispatchable_indices.append(i)
-        else:
-            Pg_sta[:, i] = Pg[:, i].copy()
-
-    # gather load info
-    for i, load in enumerate(grid.get_loads()):
-        elm_p = load.P_prof.toarray()
-        elm_active = load.active_prof.toarray()
-
-        Pl[:, i] = elm_p[time_indices] * elm_active[time_indices]
-
-    # for every time step...
-    for t_idx, t in enumerate(time_indices):
-        # generator share that is available
-        generation_share_at_t = P_avail[t_idx, :] / P_avail[t_idx, :].sum()
-
-        # total power that is needed at the time step, scaled to the generation available
-        required_power = (Pl[t_idx, :].sum() - Pg_sta[t_idx, :].sum()) * generation_share_at_t
-
-        # set the values
-        Pg[t_idx, dispatchable_indices] = required_power[dispatchable_indices]
-
-        if prog_func is not None:
-            prog_func((t_idx + 1) / nt * 100.0)
-
-    return Pl, Pg
-
 
 @nb.njit(cache=True)
 def greedy_dispatch(
@@ -163,7 +87,7 @@ def greedy_dispatch(
     :param gen_profile: ndarray (T, G) - Precomputed generator output (for renewables or constraints).
     :param gen_p_max: ndarray (T, G) - array of generators maximum power
     :param gen_p_min: ndarray (T, G) - array of generators minimum power
-    :param gen_dispatchable: ndarray (G,) - Boolean flag per generator (True if dispatchable).
+    :param gen_dispatchable: ndarray (T, G) - Boolean flag per generator (True if dispatchable).
     :param gen_active: ndarray (T, G) - Boolean array indicating whether each generator is active.
     :param gen_cost: ndarray (T, G) - Generator cost profile per timestep.
     :param batt_active: ndarray (T, B) - Battery active states.
@@ -210,7 +134,7 @@ def greedy_dispatch(
         gen_order = list()
         for g in range(G):
             if gen_active[t, g]:
-                if gen_dispatchable[g]:
+                if gen_dispatchable[t, g]:
                     # store the dispatchable generation for later
                     gen_order.append((gen_cost[t, g], g))
                 else:
@@ -318,7 +242,7 @@ def greedy_dispatch2(
     :param gen_profile: ndarray (T, G) - Precomputed generator output (for renewables or constraints).
     :param gen_p_max: ndarray (T, G) - array of generators maximum power
     :param gen_p_min: ndarray (T, G) - array of generators minimum power
-    :param gen_dispatchable: ndarray (G,) - Boolean flag per generator (True if dispatchable).
+    :param gen_dispatchable: ndarray (T, G) - Boolean flag per generator (True if dispatchable).
     :param gen_active: ndarray (T, G) - Boolean array indicating whether each generator is active.
     :param gen_cost: ndarray (T, G) - Generator cost profile per timestep.
     :param batt_active: ndarray (T, B) - Battery active states.
@@ -380,7 +304,7 @@ def greedy_dispatch2(
 
         for g in range(G):
             if gen_active[t, g]:
-                if gen_dispatchable[g]:
+                if gen_dispatchable[t, g]:
                     gen_order.append((gen_cost[t, g], g))
                 else:
                     # available NDG this step (keep original behaviour)
@@ -573,7 +497,7 @@ def greedy_dispatch2(
         if ndg_excess > tol and ndg_surplus_after_batt[t] > tol:
             for g in range(G):
                 if gen_active[t, g]:
-                    if gen_dispatchable[g]:
+                    if gen_dispatchable[t, g]:
                         ndg_curtailment_per_gen[t, g] = 0.0
                     else:
                         w = ndg_unused[t, g] / ndg_excess
@@ -629,7 +553,7 @@ class GreedyDispatchInputs:
 
         # generators
         self.gen_profile = np.zeros((nt, ng), dtype=float)
-        self.gen_dispatchable = np.zeros(ng, dtype=int)
+        self.gen_dispatchable = np.zeros((nt, ng), dtype=int)
         self.gen_active = np.zeros((nt, ng), dtype=int)
         self.gen_cost = np.zeros((nt, ng), dtype=float)
         self.gen_p_max = np.zeros((nt, ng), dtype=float)
@@ -640,7 +564,7 @@ class GreedyDispatchInputs:
             self.gen_cost[:, i] = elm.Cost_prof.toarray()[time_indices] + elm.opex
             self.gen_p_max[:, i] = elm.Pmax_prof.toarray()[time_indices]
             self.gen_p_min[:, i] = elm.Pmin_prof.toarray()[time_indices]
-            self.gen_dispatchable[i] = elm.enabled_dispatch
+            self.gen_dispatchable[:, i] = elm.enabled_dispatch_prof.toarray()[time_indices]
 
         self.gen_profile = np.nan_to_num(self.gen_profile)
 
@@ -700,7 +624,7 @@ class GreedyDispatchInputsSnapshot:
 
         # generators
         self.gen_profile = np.zeros((nt, ng), dtype=float)
-        self.gen_dispatchable = np.zeros(ng, dtype=int)
+        self.gen_dispatchable = np.zeros((nt, ng), dtype=int)
         self.gen_active = np.zeros((nt, ng), dtype=int)
         self.gen_cost = np.zeros((nt, ng), dtype=float)
         self.gen_p_max = np.zeros((nt, ng), dtype=float)
@@ -711,7 +635,7 @@ class GreedyDispatchInputsSnapshot:
             self.gen_cost[:, i] = elm.Cost
             self.gen_p_max[:, i] = elm.Pmax
             self.gen_p_min[:, i] = elm.Pmin
-            self.gen_dispatchable[i] = elm.enabled_dispatch
+            self.gen_dispatchable[:, i] = elm.enabled_dispatch
 
         self.gen_profile = np.nan_to_num(self.gen_profile)
 

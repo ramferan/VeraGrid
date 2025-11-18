@@ -255,7 +255,7 @@ class FileOpen:
                 # print(name, file_extension)
                 if file_extension.lower() in ['.xls', '.xlsx']:
 
-                    data_dictionary = load_from_xls(self.file_name)
+                    data_dictionary = load_from_xls(self.file_name, self.logger)
 
                     # Pass the table-like data dictionary to objects in this circuit
                     if 'version' not in data_dictionary:

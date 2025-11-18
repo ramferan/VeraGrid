@@ -2240,7 +2240,8 @@ class DiagramsMain(CompiledArraysMain):
             if isinstance(diagram, (SchematicWidget, GridMapWidget)):
 
                 # declare the allowed file types
-                files_types = "Scalable Vector Graphics (*.png);;Portable Network Graphics (*.png)"
+                files_types = ("Scalable Vector Graphics (*.svg);;"
+                               "Portable Network Graphics (*.png)")
 
                 f_name = str(os.path.join(self.project_directory, self.ui.grid_name_line_edit.text()))
 
@@ -2250,8 +2251,8 @@ class DiagramsMain(CompiledArraysMain):
 
                 if filename != "":
                     if 'svg' in type_selected:
-                        if not filename.endswith('.png'):
-                            filename += ".png"
+                        if not filename.endswith('.svg'):
+                            filename += ".svg"
 
                     elif 'png' in type_selected:
                         if not filename.endswith('.png'):

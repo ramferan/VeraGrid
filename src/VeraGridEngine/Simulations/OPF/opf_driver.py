@@ -141,7 +141,6 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
                 ramp_constraints=False,
                 consider_time_up_down = False,
                 area_spinning_reserve = False,
-                all_generators_fixed=False,
                 lodf_threshold=self.options.lodf_tolerance,
                 maximize_inter_area_flow=self.options.maximize_flows,
                 inter_aggregation_info=self.options.inter_aggregation_info,

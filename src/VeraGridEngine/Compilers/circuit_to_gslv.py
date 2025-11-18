@@ -1073,7 +1073,7 @@ def convert_generator(k: int, elm: dev.Generator, bus_dict: Dict[str, "pg.Bus"],
         Qmax=elm.Qmax,
         Snom=elm.Snom,
         is_controlled=elm.is_controlled,
-        enabled_dispatch=elm.enabled_dispatch,
+        enabled_dispatch=elm.enabled_dispatch,  # TODO: pass to profile
         q_points=elm.q_curve.get_data().tolist(),
         use_reactive_power_curve=elm.use_reactive_power_curve
     )

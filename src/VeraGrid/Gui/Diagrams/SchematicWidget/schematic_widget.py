@@ -1962,7 +1962,7 @@ class SchematicWidget(BaseDiagramWidget):
             image = self.get_image(transparent=False)
             image.save(filename)
 
-        elif extension == '.png':
+        elif extension == '.svg':
             w = self.editor_graphics_view.width()
             h = self.editor_graphics_view.height()
             svg_gen = QSvgGenerator()

@@ -306,6 +306,170 @@ def ptdf_reduction(grid: MultiCircuit,
     return grid, logger
 
 
+def ptdf_reduction_ree_bad(grid: MultiCircuit,
+                           reduction_bus_indices: IntVec,
+                           tol=1e-8) -> Tuple[MultiCircuit, Logger]:
+    """
+    In-place Grid reduction using the PTDF injection mirroring
+    No theory available
+    :param grid: MultiCircuit
+    :param reduction_bus_indices: Bus indices of the buses to delete
+    :param PTDF: PTDF matrix
+    :param lin_ts: LinearAnalysisTs
+    :param tol: Tolerance, any equivalent power value under this is omitted
+    """
+    logger = Logger()
+
+    # find the boundary set: buses from the internal set the join to the external set
+    e_buses, i_buses, i_branches = get_reduction_sets(grid=grid, reduction_bus_indices=reduction_bus_indices)
+
+    if len(e_buses) == 0:
+        logger.add_info(msg="Nothing to reduce")
+        return grid, logger
+
+    if len(i_buses) == 0:
+        logger.add_info(msg="Nothing to keep (null grid as a result)")
+        return grid, logger
+
+    # base flows
+    Pbus0 = grid.get_Pbus()
+    Pload = get_Pload(grid)
+    Pgen, Pgen_srap = get_Pgen(grid)
+
+    nc = compile_numerical_circuit_at(circuit=grid, t_idx=None)
+    lin = LinearAnalysis(nc=nc)
+    PTDF = lin.PTDF
+
+    # flows
+    Flows0 = PTDF @ Pbus0
+    Flow_load = PTDF @ Pload
+    Flow_gen = PTDF @ Pgen
+    Flow_gen_srap = PTDF @ Pgen_srap
+
+    # move the external injection to the boundary like in the Di-Shi method
+    relocate_injections(grid=grid, reduction_bus_indices=reduction_bus_indices)
+
+    # reduce
+    to_be_deleted = [grid.buses[e] for e in e_buses]
+    for bus in to_be_deleted:
+        grid.delete_bus(obj=bus, delete_associated=True)
+
+    # Injections that remain
+    Pload2 = Pload[i_buses]
+    Pgen2 = Pgen[i_buses]
+    Pgen_srap2 = Pgen_srap[i_buses]
+
+    # re-make the linear analysis
+    nc2 = compile_numerical_circuit_at(grid)
+    lin2 = LinearAnalysis(nc2)
+
+    # reconstruct injections that should be to keep the flows the same
+    b = np.c_[Flow_load[i_branches], Flow_gen[i_branches], Flow_gen_srap[i_branches]]
+    X, _, _, _ = np.linalg.lstsq(lin2.PTDF, b)
+    Pload3, Pgen3, Pgen_srap3 = X[:, 0], X[:, 1], X[:, 2]
+
+    dPload = Pload2 - Pload3
+    dPgen = Pgen2 - Pgen3
+    dPgen_srap = Pgen_srap2 - Pgen_srap3
+
+    n2 = grid.get_bus_number()
+    tol = 1e-5
+    for i in range(n2):
+
+        bus = grid.buses[i]
+        if abs(dPload[i]) > tol:
+            elm = Load(name=f"compensated load {i}", P=-dPload[i])
+            grid.add_load(bus=bus, api_obj=elm)
+
+        if abs(dPgen[i]) > tol:
+            elm = Generator(name=f"compensated gen {i}", P=-dPgen[i], srap_enabled=False)
+            grid.add_generator(bus=bus, api_obj=elm)
+
+        if abs(dPgen_srap[i]) > tol:
+            elm = Generator(name=f"compensated gen {i}", P=-dPgen_srap[i], srap_enabled=True)
+            grid.add_generator(bus=bus, api_obj=elm)
+
+    # proof that the flows are actually the same
+    Pbus4 = grid.get_Pbus()
+    Flows4 = lin2.PTDF @ Pbus4
+
+    diff = Flows0[i_branches] - Flows4
+
+    return grid, logger
+
+
+def ptdf_reduction_ree_less_bad(grid: MultiCircuit,
+                                reduction_bus_indices: IntVec,
+                                tol=1e-8) -> Tuple[MultiCircuit, Logger]:
+    """
+    In-place Grid reduction using the PTDF injection mirroring
+    No theory available
+    :param grid: MultiCircuit
+    :param reduction_bus_indices: Bus indices of the buses to delete
+    :param PTDF: PTDF matrix
+    :param lin_ts: LinearAnalysisTs
+    :param tol: Tolerance, any equivalent power value under this is omitted
+    """
+    logger = Logger()
+
+    # find the boundary set: buses from the internal set the join to the external set
+    e_buses, i_buses, i_branches = get_reduction_sets(grid=grid, reduction_bus_indices=reduction_bus_indices)
+
+    if len(e_buses) == 0:
+        logger.add_info(msg="Nothing to reduce")
+        return grid, logger
+
+    if len(i_buses) == 0:
+        logger.add_info(msg="Nothing to keep (null grid as a result)")
+        return grid, logger
+
+    # base flows
+    Pbus0 = grid.get_Pbus()
+
+    nc = compile_numerical_circuit_at(circuit=grid, t_idx=None)
+    lin = LinearAnalysis(nc=nc)
+    PTDF = lin.PTDF
+
+    # flows
+    Flows0 = PTDF @ Pbus0
+
+    # reduce
+    to_be_deleted = [grid.buses[e] for e in e_buses]
+    for bus in to_be_deleted:
+        grid.delete_bus(obj=bus, delete_associated=True)
+
+    # Injections that remain
+    Pbus2 = Pbus0[i_buses]
+
+    # re-make the linear analysis
+    nc2 = compile_numerical_circuit_at(grid)
+    lin2 = LinearAnalysis(nc2)
+
+    # reconstruct injections that should be to keep the flows the same
+    Pbus3, _, _, _ = np.linalg.lstsq(lin2.PTDF, Flows0[i_branches])
+
+    dPbus = Pbus2 - Pbus3
+
+    n2 = grid.get_bus_number()
+    tol = 1e-5
+    for i in range(n2):
+
+        bus = grid.buses[i]
+
+        if abs(dPbus[i]) > tol:
+            elm = Generator(name=f"compensated gen {i}", P=-dPbus[i], srap_enabled=True)
+            grid.add_generator(bus=bus, api_obj=elm)
+
+    # proof that the flows are actually the same
+    Pbus4 = grid.get_Pbus()
+    Flows4 = lin2.PTDF @ Pbus4
+
+    diff = Flows0[i_branches] - Flows4
+
+    return grid, logger
+
+
+
 def ptdf_reduction_projected(grid: MultiCircuit,
                              reduction_bus_indices: IntVec,
                              tol=1e-8) -> Tuple[MultiCircuit, Logger]:
@@ -391,9 +555,10 @@ def ptdf_reduction_projected(grid: MultiCircuit,
         Pbus3_gen_ts = lin_ts2.get_injections_ts(flows_ts=Flows0_gen_ts[:, i_branches])
         Pbus3_gen_srap_ts = lin_ts2.get_injections_ts(flows_ts=Flows0_gen_srap_ts[:, i_branches])
 
-        dPbus_load_ts = Pload2_ts - Pbus3_load_ts
-        dPbus_gen_ts = Pgen2_ts - Pbus3_gen_ts
-        dPbus_gen_srap_ts = Pgen2_srap_ts - Pbus3_gen_srap_ts
+        dPbus_load_ts = Pbus3_load_ts - Pload2_ts
+        dPbus_gen_ts = Pbus3_gen_ts - Pgen2_ts
+        dPbus_gen_srap_ts = Pbus3_gen_srap_ts - Pgen2_srap_ts
+
     else:
         dPbus_load_ts = None
         dPbus_gen_ts = None
@@ -403,29 +568,84 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     for i in range(n2):
 
         bus = grid.buses[i]
-        if abs(dPload[i]) > tol:
-            elm = Load(name=f"compensated load {i}", P=-dPload[i])
+
+        # --------- NEW BLOCK -----------
+        # Instead of adding both generators and loads, we add only what is needed
+        power_balance = (dPgen[i] + dPgen_srap[i]) - (-dPload[i])
+
+        if power_balance > 0.0:
+
+            # Compute the proportion of SRAP generation to move
+            # The ratio is 1.0 if everything is SRAP based, 0.0 if fully non-SRAP
+            ratio_gen_srap = dPgen_srap[i] / (dPgen_srap[i] + dPgen[i] + 1e-20)
+
+            # Add the SRAP generator if there is any SRAP generation
+            if ratio_gen_srap > 1e-6:
+                elm_srap = Generator(name=f"compensated gen {i}", 
+                                P=power_balance * ratio_gen_srap, 
+                                srap_enabled=True)
+
+                if dPbus_gen_srap_ts is not None:
+                    elm_srap.P_prof = dPbus_gen_srap_ts[:, i]
+
+                grid.add_generator(bus=bus, api_obj=elm_srap)
+
+            else:
+                # no need to add an SRAP generator
+                pass
+        
+            # Add the non-SRAP generator if there is any non-SRAP generation
+            if (1 - ratio_gen_srap) > 1e-6:
+                elm_gen = Generator(name=f"compensated gen {i}", 
+                                P=power_balance * (1 - ratio_gen_srap), 
+                                srap_enabled=False)
+
+                if dPbus_gen_ts is not None:
+                    elm_gen.P_prof = dPbus_gen_ts[:, i]
+
+                grid.add_generator(bus=bus, api_obj=elm_gen)
+
+            else:
+                # no need to add a non SRAP generator
+                pass
+
+        elif power_balance < 0.0:
+            elm = Load(name=f"compensated load {i}", P=-power_balance)
 
             if dPbus_load_ts is not None:
                 elm.P_prof = dPbus_load_ts[:, i]
 
             grid.add_load(bus=bus, api_obj=elm)
 
-        if abs(dPgen[i]) > tol:
-            elm = Generator(name=f"compensated gen {i}", P=dPgen[i], srap_enabled=False)
+        else:
+            # nothing to add
+            pass
+            
 
-            if dPbus_gen_ts is not None:
-                elm.P_prof = -dPbus_gen_ts[:, i]
+        # --------- OLD BLOCK -----------
+        # if abs(dPload[i]) > tol:
+        #     elm = Load(name=f"compensated load {i}", P=-dPload[i])
 
-            grid.add_generator(bus=bus, api_obj=elm)
+        #     if dPbus_load_ts is not None:
+        #         elm.P_prof = dPbus_load_ts[:, i]
 
-        if abs(dPgen_srap[i]) > tol:
-            elm = Generator(name=f"compensated gen {i}", P=dPgen_srap[i], srap_enabled=True)
+        #     grid.add_load(bus=bus, api_obj=elm)
 
-            if dPbus_gen_srap_ts is not None:
-                elm.P_prof = -dPbus_gen_srap_ts[:, i]
+        # if abs(dPgen[i]) > tol:
+        #     elm = Generator(name=f"compensated gen {i}", P=dPgen[i], srap_enabled=False)
 
-            grid.add_generator(bus=bus, api_obj=elm)
+        #     if dPbus_gen_ts is not None:
+        #         elm.P_prof = -dPbus_gen_ts[:, i]
+
+        #     grid.add_generator(bus=bus, api_obj=elm)
+
+        # if abs(dPgen_srap[i]) > tol:
+        #     elm = Generator(name=f"compensated gen {i}", P=dPgen_srap[i], srap_enabled=True)
+
+        #     if dPbus_gen_srap_ts is not None:
+        #         elm.P_prof = -dPbus_gen_srap_ts[:, i]
+
+        #     grid.add_generator(bus=bus, api_obj=elm)
 
     # proof that the flows are actually the same
     # Pbus4 = grid.get_Pbus(apply_active=True)

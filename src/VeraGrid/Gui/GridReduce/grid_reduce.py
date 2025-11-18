@@ -15,7 +15,7 @@ from VeraGrid.Session.session import SimulationSession
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Topology.GridReduction.di_shi_grid_reduction import di_shi_reduction
-from VeraGridEngine.Topology.GridReduction.ptdf_grid_reduction import ptdf_reduction, ptdf_reduction_projected
+from VeraGridEngine.Topology.GridReduction.ptdf_grid_reduction import ptdf_reduction, ptdf_reduction_projected, ptdf_reduction_ree_bad, ptdf_reduction_ree_less_bad
 from VeraGridEngine.Topology.GridReduction.ward_equivalents import ward_standard_reduction
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import GridReductionMethod
@@ -128,6 +128,16 @@ class GridReduceDialogue(QtWidgets.QDialog):
                         grid=self._grid,
                         reduction_bus_indices=reduction_bus_indices,
                     )
+
+                    # grid_reduced, logger = ptdf_reduction_ree_bad(
+                    #     grid=self._grid,
+                    #     reduction_bus_indices=reduction_bus_indices,
+                    # )
+
+                    # grid_reduced, logger = ptdf_reduction_ree_less_bad(
+                    #     grid=self._grid,
+                    #     reduction_bus_indices=reduction_bus_indices,
+                    # )
 
                 else:
                     raise NotImplementedError("Reduction method not supported")

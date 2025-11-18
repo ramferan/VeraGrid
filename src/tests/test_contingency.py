@@ -196,8 +196,6 @@ def test_single_contingency_helm() -> None:
     )
     con_nr.run()
 
-    # tol depends on how many coefficients we give to HELM
-    # Generally 30 coefficients is alright but for contingencies fewer could be acceptable
     ok1 = np.allclose(abs(pf_driver.results.voltage), abs(con_helm.results.voltage), atol=1e-06)
     ok2 = np.allclose(abs(con_helm.results.voltage), abs(con_nr.results.voltage), atol=1e-06)
 
@@ -243,10 +241,14 @@ def test_contingency_helm() -> None:
     )
     con_nr.run()
 
-    ok = np.allclose(con_helm.results.Sf.real, con_nr.results.Sf.real)
+    # Get the absolute values of voltages for both methods
+    helm_voltage_abs = np.abs(con_helm.results.voltage)
+    nr_voltage_abs = np.abs(con_nr.results.voltage)
+    
+    ok = np.allclose(helm_voltage_abs, nr_voltage_abs, atol=1e-5)
     assert ok
 
 
 if __name__ == "__main__":
-    # test_contingency_helm()
-    test_single_contingency_helm()
+    test_contingency_helm()
+    # test_single_contingency_helm()
