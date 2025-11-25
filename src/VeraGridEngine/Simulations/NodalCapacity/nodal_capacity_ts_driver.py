@@ -17,12 +17,13 @@ from VeraGridEngine.Simulations.NodalCapacity.nodal_capacity_ts_results import N
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 from VeraGridEngine.Simulations.ContinuationPowerFlow.continuation_power_flow_driver import ContinuationPowerFlowDriver
-from VeraGridEngine.Simulations.ContinuationPowerFlow.continuation_power_flow_options import ContinuationPowerFlowOptions
+from VeraGridEngine.Simulations.ContinuationPowerFlow.continuation_power_flow_options import (
+    ContinuationPowerFlowOptions)
 from VeraGridEngine.Simulations.ContinuationPowerFlow.continuation_power_flow_input import ContinuationPowerFlowInput
 from VeraGridEngine.Simulations.driver_template import TimeSeriesDriverTemplate
 from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
 from VeraGridEngine.basic_structures import IntVec
-from VeraGridEngine.enumerations import NodalCapacityMethod, CpfStopAt, CpfParametrization
+from VeraGridEngine.enumerations import NodalCapacityMethod, CpfStopAt, CpfParametrization, OpfDispatchMode
 
 
 class NodalCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
@@ -129,29 +130,26 @@ class NodalCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             self.report_text('Formulating problem...')
 
         # DC optimal power flow
-        opf_vars = run_linear_opf_ts(grid=self.grid,
-                                     time_indices=self.time_indices,
-                                     solver_type=self.opf_options.mip_solver,
-                                     zonal_grouping=self.opf_options.zonal_grouping,
-                                     skip_generation_limits=self.opf_options.skip_generation_limits,
-                                     consider_contingencies=self.opf_options.consider_contingencies,
-                                     contingency_groups_used=self.grid.contingency_groups,
-                                     unit_commitment=self.opf_options.unit_commitment,
-                                     ramp_constraints=self.opf_options.unit_commitment,
-                                     lodf_threshold=self.opf_options.lodf_tolerance,
-                                     maximize_inter_area_flow=self.opf_options.maximize_flows,
-                                     inter_aggregation_info=self.opf_options.inter_aggregation_info,
-                                     energy_0=batteries_energy_0,
-                                     optimize_nodal_capacity=True,
-                                     nodal_capacity_sign=self.options.nodal_capacity_sign,
-                                     capacity_nodes_idx=self.options.capacity_nodes_idx,
-                                     logger=self.logger,
-                                     progress_text=self.report_text,
-                                     progress_func=self.report_progress,
-                                     export_model_fname=self.opf_options.export_model_fname,
-                                     verbose=self.opf_options.verbose,
-                                     robust=self.opf_options.robust,
-                                     mip_framework=self.opf_options.mip_framework)
+        opf_vars, model = run_linear_opf_ts(grid=self.grid,
+                                            time_indices=self.time_indices,
+                                            dispatch_mode=OpfDispatchMode.NodalCapacity,
+                                            solver_type=self.opf_options.mip_solver,
+                                            zonal_grouping=self.opf_options.zonal_grouping,
+                                            skip_generation_limits=self.opf_options.skip_generation_limits,
+                                            consider_contingencies=self.opf_options.consider_contingencies,
+                                            contingency_groups_used=self.grid.contingency_groups,
+                                            ramp_constraints=self.opf_options.consider_ramps,
+                                            lodf_threshold=self.opf_options.lodf_tolerance,
+                                            inter_aggregation_info=self.opf_options.inter_aggregation_info,
+                                            energy_0=batteries_energy_0,
+                                            nodal_capacity_sign=self.options.nodal_capacity_sign,
+                                            capacity_nodes_idx=self.options.capacity_nodes_idx,
+                                            logger=self.logger,
+                                            progress_text=self.report_text,
+                                            progress_func=self.report_progress,
+                                            verbose=self.opf_options.verbose,
+                                            robust=self.opf_options.robust,
+                                            mip_framework=self.opf_options.mip_framework)
 
         self.results.Sbus = opf_vars.bus_vars.Pinj + 1j * np.zeros_like(opf_vars.bus_vars.Pinj)
         self.results.voltage = np.ones((opf_vars.nt, opf_vars.nbus)) * np.exp(1j * opf_vars.bus_vars.Va)

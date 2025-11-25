@@ -217,11 +217,11 @@ def get_time_groups(t_array: pd.DatetimeIndex, grouping: TimeGrouping) -> List[i
     :return: list of indices that determine the partitions
     """
     groups: List[int] = list()
-
+    nt = len(t_array)
     last = -1
 
     i = 0
-    for i in range(len(t_array)):
+    for i in range(nt):
         t = t_array[i]
 
         if grouping == TimeGrouping.Monthly:
@@ -245,7 +245,7 @@ def get_time_groups(t_array: pd.DatetimeIndex, grouping: TimeGrouping) -> List[i
                 groups.append(i)
 
     # add the last index if it is not already there
-    if len(t_array) > 0:
+    if nt > 0:
         if i != groups[len(groups) - 1]:
             groups.append(i)
 

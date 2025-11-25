@@ -184,7 +184,7 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
 
         :return:
         """
-        max_vl = 1.0  # 1 KV
+        max_vl = 1.0  # 1 kV
         for vl_graphics in self.voltage_level_graphics:
             max_vl = max(max_vl, vl_graphics.api_object.Vnom)
 
@@ -242,7 +242,7 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
         """
         Set the Z-order based on the voltage level voltage
         """
-        max_vl = 1.0  # 1 KV
+        max_vl = 1.0  # 1 kV
         for vl_graphics in self.voltage_level_graphics:
             max_vl = max(max_vl, vl_graphics.api_object.Vnom)
 
@@ -730,7 +730,7 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
             max_value=100000.0,
             default_value=self.editor.diagram.default_bus_voltage,
             title="Add voltage level",
-            text="Voltage (KV)",
+            text="Voltage (kV)",
         )
 
         inpt.exec()

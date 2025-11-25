@@ -14,6 +14,8 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results import NumericPower
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph import (PfBasicFormulation3Ph,
                                                                                         expand3ph,
                                                                                         expandVoltage3ph)
+from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import (floating_star_currents,
+                                                                                    floating_star_powers)
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.newton_raphson_fx import newton_raphson_fx
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.powell_fx import powell_fx
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.levenberg_marquadt_fx import levenberg_marquardt_fx
@@ -270,6 +272,7 @@ def __multi_island_pf_nc_limited_support_3ph(nc: NumericalCircuit,
         n_gen=nc.ngen,
         n_batt=nc.nbatt,
         n_sh=nc.nshunt,
+        n_load=nc.nload,
         bus_names=nc.bus_data.get_3ph_names(),
         branch_names=nc.passive_branch_data.get_3ph_names(),
         hvdc_names=nc.hvdc_data.names,
@@ -277,6 +280,7 @@ def __multi_island_pf_nc_limited_support_3ph(nc: NumericalCircuit,
         gen_names=nc.generator_data.names,
         batt_names=nc.battery_data.names,
         sh_names=nc.shunt_data.names,
+        load_names=nc.load_data.names,
         bus_types=nc.bus_data.bus_types,
     )
 
@@ -334,6 +338,53 @@ def __multi_island_pf_nc_limited_support_3ph(nc: NumericalCircuit,
     results.Pt_hvdc = - Pt_hvdc * nc.Sbase  # we change the sign to keep the sign convention with AC lines
     results.loading_hvdc = loading_hvdc
     results.losses_hvdc = Losses_hvdc * nc.Sbase
+
+    load_bus_idx = nc.load_data.bus_idx
+    load_idx = nc.load_data.original_idx
+
+    for i in load_idx:
+
+        if nc.load_data.A_floatingstar[i] > 0:
+            results.load_Vn[i] = nc.load_data.A_floatingstar[i] * results.voltage_A[load_bus_idx[i]] + \
+                              nc.load_data.B_floatingstar[i] * results.voltage_B[load_bus_idx[i]] + \
+                              nc.load_data.C_floatingstar[i] * results.voltage_C[load_bus_idx[i]]
+
+        elif nc.load_data.I3_floatingstar[i+1] > 0.0+0.0j:
+
+            Vn_prev = (results.voltage_A[load_bus_idx[i]] + results.voltage_B[load_bus_idx[i]] + results.voltage_C[
+                load_bus_idx[i]]) / 3
+
+            Ia, Ib, Ic, results.load_Vn[i] = floating_star_currents(results.voltage_A[load_bus_idx[i]],
+                                                                 results.voltage_B[load_bus_idx[i]],
+                                                                 results.voltage_C[load_bus_idx[i]],
+                                                                 nc.load_data.I3_floatingstar[4 * i + 1],
+                                                                 nc.load_data.I3_floatingstar[4 * i + 2],
+                                                                 nc.load_data.I3_floatingstar[4 * i + 3],
+                                                                 Vn_prev)
+
+        elif nc.load_data.S3_floatingstar[i+1] > 0.0+0.0j:
+
+            Ia, Ib, Ic, results.load_Vn[i] = floating_star_powers(results.voltage_A[load_bus_idx[i]],
+                                                                  results.voltage_B[load_bus_idx[i]],
+                                                                  results.voltage_C[load_bus_idx[i]],
+                                                                  nc.load_data.S3_floatingstar[4 * i + 1],
+                                                                  nc.load_data.S3_floatingstar[4 * i + 2],
+                                                                  nc.load_data.S3_floatingstar[4 * i + 3])
+
+        else:
+            results.load_Vn[i] = results.voltage_N[load_bus_idx[i]]
+
+    shunt_bus_idx = nc.shunt_data.bus_idx
+    shunt_idx = nc.shunt_data.original_idx
+    for i in shunt_idx:
+
+        if nc.shunt_data.A_floatingstar[i] != 0.0 + 0.0j:
+            results.shunt_Vn[i] = nc.shunt_data.A_floatingstar[i] * results.voltage_A[shunt_bus_idx[i]] + \
+                                  nc.shunt_data.B_floatingstar[i] * results.voltage_B[shunt_bus_idx[i]] + \
+                                  nc.shunt_data.C_floatingstar[i] * results.voltage_C[shunt_bus_idx[i]]
+
+        else:
+            results.shunt_Vn[i] = results.voltage_N[shunt_bus_idx[i]]
 
     return results
 

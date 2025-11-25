@@ -13,16 +13,14 @@ from PySide6 import QtGui, QtWidgets, QtCore
 from matplotlib import pyplot as plt
 from pandas.plotting import register_matplotlib_converters
 
-import VeraGridEngine.Devices.Diagrams.palettes as palettes
-from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
 
+import VeraGridEngine.Devices.Diagrams.palettes as palettes
 from VeraGridEngine import ContingencyOperationTypes
 from VeraGridEngine.IO.file_system import tiles_path
-from VeraGrid.Gui.general_dialogues import (CheckListDialogue, StartEndSelectionDialogue, InputSearchDialogue,
-                                            InputNumberDialogue, LogsDialogue)
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Simulations import PowerFlowResults, ContinuationPowerFlowResults, PowerFlowTimeSeriesResults
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
+from VeraGridEngine.Simulations.StateEstimation.state_estimation_results import StateEstimationResults
 from VeraGridEngine.Utils.progress_bar import print_progress_bar
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import SimulationTypes, Colormaps
@@ -44,6 +42,11 @@ from VeraGrid.Gui.Main.SubClasses.Model.compiled_arrays import CompiledArraysMai
 from VeraGrid.Gui.Main.object_select_window import ObjectSelectWindow, ListSelectWindow
 from VeraGrid.Gui.Diagrams.MapWidget.Tiles.TileProviders.cartodb import CartoDbTiles
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
+from VeraGrid.Gui.rms_events_editor_dialog import RmsEventDialogue
+from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
+from VeraGrid.Gui.general_dialogues import ShortCircuitSelector
+from VeraGrid.Gui.general_dialogues import (CheckListDialogue, StartEndSelectionDialogue, InputSearchDialogue,
+                                            InputNumberDialogue, LogsDialogue)
 
 ALL_EDITORS = Union[SchematicWidget, GridMapWidget, BaseDiagramWidget]
 ALL_EDITORS_NONE = Union[None, SchematicWidget, GridMapWidget]
@@ -219,10 +222,11 @@ class DiagramsMain(CompiledArraysMain):
         # task watcher for video export
         self.video_thread: VideoExportWorker | None = None
 
+        self.sc_selector_dialogue: ShortCircuitSelector | None = None
+
         # --------------------------------------------------------------------------------------------------------------
         self.ui.actionTakePicture.triggered.connect(self.take_picture)
         self.ui.actionRecord_video.triggered.connect(self.record_video)
-        self.ui.actionDelete_selected.triggered.connect(self.delete_selected_diagram_widgets)
         self.ui.actionTry_to_fix_buses_location.triggered.connect(self.try_to_fix_buses_location)
         self.ui.actionSet_schematic_positions_from_GPS_coordinates.triggered.connect(self.set_xy_from_lat_lon)
 
@@ -237,6 +241,8 @@ class DiagramsMain(CompiledArraysMain):
         self.ui.actionAdd_selected_to_contingency.triggered.connect(self.add_selected_to_contingency)
         self.ui.actionAdd_selected_as_remedial_action.triggered.connect(self.add_selected_to_remedial_action)
         self.ui.actionAdd_selected_as_new_investment.triggered.connect(self.add_selected_to_investment)
+        self.ui.actionAdd_rms_event_to_selected.triggered.connect(self.add_rms_event_to_selected)
+        self.ui.actionAdd_short_circuit_events.triggered.connect(self.add_short_circuit_events)
 
         self.ui.actionZoom_in.triggered.connect(self.zoom_in)
         self.ui.actionZoom_out.triggered.connect(self.zoom_out)
@@ -308,7 +314,7 @@ class DiagramsMain(CompiledArraysMain):
         """
         return self.ui.dataStructureTableView.model()
 
-    def get_selected_table_objects(self) -> List[ALL_DEV_TYPES]:
+    def get_selected_db_table_objects(self) -> List[ALL_DEV_TYPES]:
         """
         Get the list of selected objects
         :return: List[ALL_DEV_TYPES]
@@ -608,6 +614,62 @@ class DiagramsMain(CompiledArraysMain):
                 cmap=cmap
             )
 
+    def se_colouring(self, diagram_widget: ALL_EDITORS,
+                     results: StateEstimationResults,
+                     cmap: Colormaps,
+                     use_flow_based_width: bool = False,
+                     min_branch_width: int = 2,
+                     max_branch_width: int = 5,
+                     min_bus_width: int = 2,
+                     max_bus_width: int = 5):
+        """
+
+        :param diagram_widget:
+        :param results:
+        :param cmap:
+        :param use_flow_based_width:
+        :param min_branch_width:
+        :param max_branch_width:
+        :param min_bus_width:
+        :param max_bus_width:
+        :return:
+        """
+        bus_active = self.circuit.get_bus_actives(t_idx=None)
+        br_active = self.circuit.get_branch_actives(t_idx=None, add_vsc=False, add_hvdc=False, add_switch=True)
+        hvdc_active = self.circuit.get_hvdc_actives(t_idx=None)
+        vsc_active = self.circuit.get_vsc_actives(t_idx=None)
+
+        return diagram_widget.colour_results(
+            Sbus=results.Sbus,
+            bus_active=bus_active,
+            Sf=results.Sf,
+            St=results.St,
+            voltages=results.voltage,
+            loadings=np.abs(results.loading),
+            types=results.bus_types,
+            losses=results.losses,
+            br_active=br_active,
+            hvdc_Pf=results.Pf_hvdc,
+            hvdc_Pt=results.Pt_hvdc,
+            hvdc_losses=results.losses_hvdc,
+            hvdc_loading=results.loading_hvdc,
+            hvdc_active=hvdc_active,
+            vsc_Pf=results.Pf_vsc,
+            vsc_Pt=results.St_vsc.real,
+            vsc_Qt=results.St_vsc.imag,
+            vsc_losses=results.losses_vsc,
+            vsc_loading=results.loading_vsc,
+            vsc_active=vsc_active,
+            ma=results.tap_module,
+            tau=results.tap_angle,
+            use_flow_based_width=use_flow_based_width,
+            min_branch_width=min_branch_width,
+            max_branch_width=max_branch_width,
+            min_bus_width=min_bus_width,
+            max_bus_width=max_bus_width,
+            cmap=cmap
+        )
+
     def pf_ts_colouring(self, t_idx: int,
                         diagram_widget: ALL_EDITORS,
                         results: PowerFlowTimeSeriesResults, cmap: Colormaps,
@@ -768,13 +830,13 @@ class DiagramsMain(CompiledArraysMain):
         hvdc_active = self.circuit.get_hvdc_actives(t_idx=None)
         vsc_active = self.circuit.get_vsc_actives(t_idx=None)
 
-        return diagram_widget.colour_results(Sbus=results.Sbus1,
+        return diagram_widget.colour_results(Sbus=results.Sbus1[:, 0],
                                              bus_active=bus_active,
-                                             Sf=results.Sf1,
-                                             St=results.St1,
-                                             voltages=results.voltage1,
+                                             Sf=results.Sf1[:, 0],
+                                             St=results.St1[:, 0],
+                                             voltages=results.voltage1[:, 0],
                                              types=results.bus_types,
-                                             loadings=results.loading1,
+                                             loadings=results.loading1[:, 0],
                                              br_active=br_active,
                                              hvdc_Pf=None,
                                              hvdc_Pt=None,
@@ -1320,6 +1382,22 @@ class DiagramsMain(CompiledArraysMain):
                 if allow_popups:
                     info_msg(f"{current_study} does not have values for the snapshot")
 
+        elif current_study == sim.StateEstimationDriver.tpe.value:
+            if t_idx is None:
+                results: sim.StateEstimationResults = self.session.get_results(SimulationTypes.StateEstimation_run)
+                self.se_colouring(diagram_widget=diagram_widget,
+                                  results=results,
+                                  cmap=cmap,
+                                  use_flow_based_width=use_flow_based_width,
+                                  min_branch_width=min_branch_width,
+                                  max_branch_width=max_branch_width,
+                                  min_bus_width=min_bus_width,
+                                  max_bus_width=max_bus_width)
+
+            else:
+                if allow_popups:
+                    info_msg(f"{current_study} only has values for the snapshot")
+
         elif current_study == sim.ContinuationPowerFlowDriver.tpe.value:
             if t_idx is None:
                 results: sim.ContinuationPowerFlowResults = self.session.get_results(
@@ -1765,7 +1843,7 @@ class DiagramsMain(CompiledArraysMain):
         Add a bus vicinity diagram
         :return:
         """
-        sel = self.get_selected_table_objects()
+        sel = self.get_selected_db_table_objects()
 
         if len(sel) > 0:
 
@@ -2546,6 +2624,81 @@ class DiagramsMain(CompiledArraysMain):
                         self.circuit.add_investment(con)
             else:
                 info_msg("Select some elements in the schematic first", "Add selected to investment")
+
+    def add_rms_event_to_selected(self) -> None:
+        """
+        Add rms event to a selected device
+        """
+        if self.circuit.valid_for_simulation():
+
+            # get the selected device to apply event to
+            target_devices = self.get_selected_devices()
+
+            if len(target_devices) == 1:
+
+                group_name = "Rms Event " + str(len(self.circuit.get_rms_events_groups_names()))
+                target_device = target_devices[0]
+                # launch rms event editor dialogue
+
+                target_device_name = target_device.type_name + ": " + target_device.name
+                device_params = [var for var in
+                                 target_device.rms_model.model.event_dict.keys()]  # list of device parameters
+                device_params_str = [var.name for var in device_params]  # list of device parameters
+                rms_events_dialog = RmsEventDialogue(parameters_list=device_params_str,
+                                                     target_device_name=target_device_name)
+
+                if rms_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    # create a new events group
+                    group = dev.RmsEventsGroup(idtag=None,
+                                               name='Rms Events Group 1',
+                                               category="single" if len(target_devices) == 1 else "multiple")
+                    self.circuit.add_rms_events_group(group)
+
+                    events_data = rms_events_dialog.get_data()  # data for all the events affecting a device, it is structured in lists of floats for time and value info, and lists of parameters for parameter info
+                    events_list = []
+                    for i, event in enumerate(events_data["parameters"]):
+                        events_list.append(dev.RmsEvent(target_device, device_params[
+                            device_params_str.index(events_data["parameters"][i])],
+                                                        float(events_data["target_times"][i]),
+                                                        float(events_data["values"][i]), group=group))
+
+                    for event in events_list:
+                        self.circuit.add_rms_event(event)
+
+            else:
+                raise ValueError(f"Select one and only one device to add event to")
+
+    def add_short_circuit_events(self):
+        """
+
+        :return:
+        """
+        if self.circuit.valid_for_simulation():
+
+            # get the selected investment devices
+            selected: List[Tuple[int, dev.Bus, BusGraphicItem | None]] = self.get_selected_buses()
+
+            if len(selected) > 0:
+
+                self.sc_selector_dialogue = ShortCircuitSelector()
+                self.sc_selector_dialogue.exec()
+
+                if self.sc_selector_dialogue.was_accepted:
+
+                    for _, bus, _ in selected:
+                        sc = dev.ShortCircuitEvent(
+                            name=f"{bus.name} {self.sc_selector_dialogue.fault.value}",
+                            device=bus,
+                            fault_type=self.sc_selector_dialogue.fault,
+                            method=self.sc_selector_dialogue.method,
+                            phases=self.sc_selector_dialogue.phases
+                        )
+
+                        self.circuit.add_short_circuit_definition(sc)
+
+                    self.show_info_toast(f"{len(selected)} short circuit events added!")
+            else:
+                self.show_warning_toast("Select some buses in the diagram!")
 
     def select_buses_by_property(self, prop: str):
         """

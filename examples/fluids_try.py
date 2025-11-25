@@ -56,14 +56,14 @@ class FluidNode:
         """
         return self.max_level > self.min_level
 
-    def get_inflow_value(self, solver: LpModel) -> float:
+    def get_inflow_value(self, solver: OrToolsLpModel) -> float:
 
         if isinstance(self.inflow, float):
             return self.inflow
         else:
             return solver.get_value(self.inflow)
 
-    def get_outflow_value(self, solver: LpModel) -> float:
+    def get_outflow_value(self, solver: OrToolsLpModel) -> float:
 
         if isinstance(self.outflow, float):
             return self.outflow
@@ -220,7 +220,7 @@ def hydro_dispatch_transport(fluid_nodes: List[FluidNode],
     :param demand: demand in MW
     :param dt: time step in hours
     """
-    solver = LpModel(solver_type=MIPSolvers.SCIP)
+    solver = OrToolsLpModel(solver_type=MIPSolvers.SCIP)
 
     # Variables ----------------------------------------------------------------
     for turbine in turbines:
@@ -380,7 +380,7 @@ def hydro_dispatch_transport(fluid_nodes: List[FluidNode],
         print(solver.logger)
 
 
-def plot_hydro_dispatch(solver: LpModel,
+def plot_hydro_dispatch(solver: OrToolsLpModel,
                         nodes: List[FluidNode],
                         turbines: List[Turbine],
                         pumps: List[Pump],

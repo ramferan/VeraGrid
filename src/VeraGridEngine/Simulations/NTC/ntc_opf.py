@@ -142,7 +142,8 @@ def get_transfer_power_scaling_per_bus(bus_data_t: BusData,
     # get values per bus
     gen_per_bus = gen_data_t.get_injections_per_bus() / Sbase
     load_per_bus = load_data_t.get_injections_per_bus() / Sbase
-    pinst_per_bus = gen_data_t.get_installed_power_per_bus() / Sbase
+    pinst_per_bus = gen_data_t.get_array_per_bus(gen_data_t.installed_p * gen_data_t.active) / Sbase
+    # pinst_per_bus = gen_data_t.get_array_per_bus(gen_data_t.installed_p) / Sbase
 
     # Evaluate transfer method
     if transfer_method == AvailableTransferMode.InstalledPower:
@@ -157,7 +158,8 @@ def get_transfer_power_scaling_per_bus(bus_data_t: BusData,
             p_max = gen_data_t.get_pmax_per_bus() / Sbase
 
         # dispatchable_bus = (gen_data_t.C_bus_elm * gen_data_t.dispatchable).astype(bool).astype(float)
-        dispatchable_bus = gen_data_t.get_dispatchable_per_bus().astype(float)
+        dispatchable_bus = gen_data_t.get_array_per_bus(
+            (gen_data_t.dispatchable * gen_data_t.active).astype(float)).astype(bool).astype(float)
 
     elif transfer_method == AvailableTransferMode.Generation:
         p_ref = gen_per_bus
@@ -171,7 +173,8 @@ def get_transfer_power_scaling_per_bus(bus_data_t: BusData,
             p_max = gen_data_t.get_pmax_per_bus() / Sbase
 
         # dispatchable_bus = (gen_data_t.C_bus_elm * gen_data_t.dispatchable).astype(bool).astype(float)
-        dispatchable_bus = gen_data_t.get_dispatchable_per_bus().astype(float)
+        dispatchable_bus = gen_data_t.get_array_per_bus(
+            (gen_data_t.dispatchable * gen_data_t.active).astype(float)).astype(bool).astype(float)
 
     elif transfer_method == AvailableTransferMode.Load:
         p_ref = load_per_bus
@@ -2205,21 +2208,38 @@ def add_linear_vsc_formulation(t_idx: int,
                 P0 = vsc_data_t.control2_val[m] / Sbase
 
                 # convert MW/deg to pu/rad
-                droop = vsc_data_t.control1_val * 57.295779513 / Sbase  # MW/deg -> p.u./rad
+                droop = vsc_data_t.control1_val[m] * 57.295779513 / Sbase  # MW/deg -> p.u./rad
 
                 if saturate:
 
-                    vsc_vars.flows[t_idx, m] = pmode3_formulation2(
-                        prob=prob,
-                        t_idx=t_idx,
-                        m=m,
-                        rate=vsc_data_t.rates[m] / Sbase,
-                        P0=P0,
-                        droop=droop,
-                        theta_f=bus_vars.Va[t_idx, control_bus_idx],  # control bus
-                        theta_t=bus_vars.Va[t_idx, to],  # ac bus
-                        base_name="vsc"
-                    )
+                    # vsc_vars.flows[t_idx, m] = pmode3_formulation2(
+                    #     prob=prob,
+                    #     t_idx=t_idx,
+                    #     m=m,
+                    #     rate=vsc_data_t.rates[m] / Sbase,
+                    #     P0=P0,
+                    #     droop=droop,
+                    #     theta_f=bus_vars.Va[t_idx, control_bus_idx],  # control bus
+                    #     theta_t=bus_vars.Va[t_idx, to],  # ac bus
+                    #     base_name="vsc"
+                    # )
+
+                    # On the selection of the angles:
+                    # The VSC connects an AC bus (to) to a DC bus (from)
+                    # On the other end of the DC connection, there is a second VSC
+                    # The AC bus of this second VSC is the control_bus_idx
+                    # Hence, if P = P0 + k · (theta_f - theta_t), then:
+                    # theta_f = Va at to, theta_t = Va at control_bus_idx
+
+                    vsc_vars.flows[t_idx, m] = pmode3_formulation_impr(prob=prob,
+                                                                       t_idx=t_idx,
+                                                                       m=m,
+                                                                       rate=vsc_data_t.rates[m] / Sbase,
+                                                                       P0=P0,
+                                                                       droop=droop,
+                                                                       theta_f=bus_vars.Va[t_idx, control_bus_idx],
+                                                                       theta_t=bus_vars.Va[t_idx, to],
+                                                                       base_name="vsc")
 
                 else:
 
@@ -2235,7 +2255,7 @@ def add_linear_vsc_formulation(t_idx: int,
                     # flow = P0 + k · (theta_f - theta_t)
                     prob.add_cst(
                         cst=vsc_vars.flows[t_idx, m] == P0 + droop * (
-                                bus_vars.Va[t_idx, fr] - bus_vars.Va[control_bus_idx, to]),
+                                bus_vars.Va[t_idx, control_bus_idx] - bus_vars.Va[t_idx, to]),
                         name=join("vsc_flow_cst_", [t_idx, m], "_")
                     )
 
@@ -2427,10 +2447,9 @@ def run_linear_ntc_opf(grid: MultiCircuit,
                        logger: Logger = Logger(),
                        progress_text: Union[None, Callable[[str], None]] = None,
                        progress_func: Union[None, Callable[[float], None]] = None,
-                       export_model_fname: Union[None, str] = None,
                        verbose: int = 0,
                        robust: bool = False,
-                       mip_framework: MIPFramework = MIPFramework.PuLP) -> NtcVars:
+                       mip_framework: MIPFramework = MIPFramework.PuLP) -> Tuple[NtcVars, LpModel]:
     """
 
     :param grid: MultiCircuit instance
@@ -2451,7 +2470,6 @@ def run_linear_ntc_opf(grid: MultiCircuit,
     :param logger: logger instance
     :param progress_text: function to report text messages
     :param progress_func: function to report progress
-    :param export_model_fname: Export the model into LP and MPS?
     :param verbose: Verbosity level
     :param robust: Robust optimization?
     :param mip_framework: MIPFramework to use
@@ -2716,11 +2734,6 @@ def run_linear_ntc_opf(grid: MultiCircuit,
     if progress_func is not None:
         progress_func(0)
 
-    if export_model_fname is not None:
-        lp_model.save_model(file_name=export_model_fname)
-        logger.add_info("LP model saved", value=export_model_fname)
-        print('LP model saved as:', export_model_fname)
-
     # solve the model
     status = lp_model.solve(robust=robust, show_logs=verbose > 0, progress_text=progress_text)
 
@@ -2807,4 +2820,4 @@ def run_linear_ntc_opf(grid: MultiCircuit,
     logger.add_info("Structural inter-area rate", value=vars_v.structural_ntc[t_idx])
     logger.add_info("Inter-area NTC", value=vars_v.inter_area_flows[t_idx])
 
-    return vars_v
+    return vars_v, lp_model

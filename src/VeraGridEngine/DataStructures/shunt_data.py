@@ -34,7 +34,12 @@ class ShuntData:
         self.Y: CxVec = np.zeros(nelm, dtype=complex)
 
         # self.Y3_delta = np.zeros(self.nelm * 3, dtype=complex)
-        self.Y3_star = np.zeros((self.nelm * 3, 3), dtype=complex)
+        self.Y3_star = np.zeros((self.nelm * 4, 4), dtype=complex)
+        self.Y3_delta = np.zeros((self.nelm * 4), dtype=complex)
+
+        self.A_floatingstar = np.zeros(self.nelm, dtype=complex)
+        self.B_floatingstar = np.zeros(self.nelm, dtype=complex)
+        self.C_floatingstar = np.zeros(self.nelm, dtype=complex)
 
         self.qmin: Vec = np.zeros(nelm, dtype=float)
         self.qmax: Vec = np.zeros(nelm, dtype=float)
@@ -81,6 +86,10 @@ class ShuntData:
         data.controllable = self.controllable[elm_idx]
 
         data.Y = self.Y[elm_idx]
+
+        elm_idx_4 = ((elm_idx * 4)[:, np.newaxis] + np.arange(4)).flatten()
+        data.Y3_delta = self.Y3_delta[elm_idx_4]
+        data.Y3_star = self.Y3_star[elm_idx_4]
 
         data.qmax = self.qmax[elm_idx]
         data.qmin = self.qmin[elm_idx]
@@ -134,6 +143,8 @@ class ShuntData:
         data.controllable = self.controllable.copy()
 
         data.Y = self.Y.copy()
+        data.Y3_star = self.Y3_star.copy()
+        data.Y3_delta = self.Y3_delta.copy()
 
         data.qmax = self.qmax.copy()
         data.qmin = self.qmin.copy()

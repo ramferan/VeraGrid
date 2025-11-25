@@ -94,3 +94,7 @@ class AbstractLpModel(ABC):
     @abstractmethod
     def is_mip(self) -> bool:
         """Return True if model has integer variables."""
+
+    @abstractmethod
+    def model_as_string(self) -> str:
+        """Return model string representation (LP)"""

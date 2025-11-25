@@ -13,7 +13,8 @@ from PySide6.QtWidgets import QMenu, QGraphicsSceneMouseEvent, QGraphicsItem
 
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import InjectionTemplateGraphicItem
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
-from VeraGrid.Gui.gui_functions import add_menu_entry, add_sub_menu
+from VeraGrid.Gui.gui_functions import add_menu_entry
+from VeraGrid.Gui.general_dialogues import ShortCircuitSelector
 from VeraGrid.Gui.Diagrams.generic_graphics import (GenericDiagramWidget, ACTIVE, DEACTIVATED,
                                                     FONT_SCALE, EMERGENCY, TRANSPARENT)
 from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem, HandleItem, RoundTerminalItem
@@ -31,12 +32,10 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.current_injection_graphics
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.controllable_shunt_graphics import (
     ControllableShuntGraphicItem,
     ControllableShunt)
-from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsChoiceDialog
-from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
-
-from VeraGridEngine.enumerations import DeviceType, FaultType, BusGraphicType
+from VeraGridEngine.enumerations import DeviceType, FaultType, BusGraphicType, MethodShortCircuit, PhasesShortCircuit
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
 from VeraGridEngine.Devices.Substation import Bus
+from VeraGridEngine.Devices.Aggregation.short_cirtcuit_event import ShortCircuitEvent
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -188,8 +187,6 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             self.sizer.setFlag(self.GraphicsItemFlag.ItemIsMovable)
 
         # Enabled for short circuit
-        self.sc_enabled = np.zeros(4, dtype=bool)
-        self.sc_type = FaultType.ph3
         self.pen_width = 4
 
         self._terminal.setPen(QPen(TRANSPARENT, self.pen_width, self.style,
@@ -501,47 +498,15 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                        function_ptr=self.enable_disable_label_drawing,
                        checkeable=True,
                        checked_value=self.draw_labels)
+        #
+        # sc = add_sub_menu(menu=menu,
+        #                   text="Short circuit",
+        #                   icon_path=":/Icons/icons/short_circuit.png")
 
         add_menu_entry(menu=menu,
-                       text="Rms Editor",
-                       function_ptr=self.edit_rms,
-                       icon_path=":/Icons/icons/edit.png")
-
-        sc = add_sub_menu(menu=menu,
-                          text="Short circuit",
-                          icon_path=":/Icons/icons/short_circuit.png")
-
-        add_menu_entry(menu=sc,
-                       text="3-phase (x)" if self.sc_enabled[0] else "3-phase",
+                       text="add Short circuit",
                        icon_path=":/Icons/icons/short_circuit.png",
-                       function_ptr=self.enable_disable_sc_3p,
-                       checkeable=True,
-                       checked_value=self.sc_enabled[0])
-
-        add_menu_entry(menu=sc,
-                       text="Line-Ground (x)" if self.sc_enabled[1] else "Line-Ground",
-                       icon_path=":/Icons/icons/short_circuit.png",
-                       function_ptr=self.enable_disable_sc_lg,
-                       checkeable=True,
-                       checked_value=self.sc_enabled[1])
-
-        add_menu_entry(menu=sc,
-                       text="Line-Line (x)" if self.sc_enabled[2] else "Line-Line",
-                       icon_path=":/Icons/icons/short_circuit.png",
-                       function_ptr=self.enable_disable_sc_ll,
-                       checkeable=True,
-                       checked_value=self.sc_enabled[2])
-
-        add_menu_entry(menu=sc,
-                       text="Line-Line-Ground (x)" if self.sc_enabled[3] else "Line-Line-Ground",
-                       icon_path=":/Icons/icons/short_circuit.png",
-                       function_ptr=self.enable_disable_sc_llg,
-                       checkeable=True,
-                       checked_value=self.sc_enabled[3])
-
-        add_menu_entry(menu=sc,
-                       text="Disable",
-                       function_ptr=self.disable_sc)
+                       function_ptr=self.add_short_circuit)
 
         # types
         # ph3 = '3x'
@@ -640,20 +605,6 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
         menu.exec_(event.screenPos())
 
-    def edit_rms(self):
-        templates = [t.name for t in
-                     self.editor.circuit.sequence_line_types]  # TODO: find where to build and save the templates
-
-        choice_dialog = RmsChoiceDialog(templates, parent=self.editor)
-        if choice_dialog.exec() == QtWidgets.QDialog.Accepted:
-            if choice_dialog.choice == "template":
-                template_name = choice_dialog.selected_template
-                print(f"User chose template: {template_name}")
-                # TODO: missing finding the template object and apply it to self.api_object
-            elif choice_dialog.choice == "editor":
-                dlg = RmsModelEditorGUI(self.api_object.rms_model, parent=self.editor)
-                dlg.show()
-
     def assign_status_to_profile(self):
         """
         Assign the snapshot rate to the profile
@@ -747,61 +698,23 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                         if host.api_object is not None:
                             self._editor.set_active_status_to_profile(host.api_object, override_question=True)
 
-    def any_short_circuit(self) -> bool:
-        """
-        Determine if there are short circuits enabled
-        :return:
-        """
-        return np.sum(self.sc_enabled) > 0
-
-    def enable_sc(self) -> None:
-        """
-        Enable the short circuit
-        """
-        self.tile.setPen(QPen(QColor(EMERGENCY['color']), self.pen_width))
-
-    def disable_sc(self):
-        """
-        Disable short circuit
-        """
-        self.tile.setPen(QPen(TRANSPARENT, self.pen_width))
-        self.sc_enabled[:] = 0  # set all to zero
-
-    def enable_disable_sc_3p(self):
+    def add_short_circuit(self) -> None:
         """
         Enable 3-phase short circuit
         """
-        self.sc_enabled[:] = 0  # set all to zero
-        self.sc_enabled[0] = True
-        self.sc_type = FaultType.ph3
-        self.enable_sc()
-
-    def enable_disable_sc_lg(self):
-        """
-        Enable line ground short circuit
-        """
-        self.sc_enabled[:] = 0  # set all to zero
-        self.sc_enabled[1] = True
-        self.sc_type = FaultType.LG
-        self.enable_sc()
-
-    def enable_disable_sc_ll(self):
-        """
-        Enable line-line short circuit
-        """
-        self.sc_enabled[:] = 0  # set all to zero
-        self.sc_enabled[2] = True
-        self.sc_type = FaultType.LL
-        self.enable_sc()
-
-    def enable_disable_sc_llg(self):
-        """
-        Enable line-line-ground short circuit
-        """
-        self.sc_enabled[:] = 0  # set all to zero
-        self.sc_enabled[3] = True
-        self.sc_type = FaultType.LLG
-        self.enable_sc()
+        self.w = ShortCircuitSelector()
+        self.w.exec()
+        
+        if self.w.was_accepted:
+            sc = ShortCircuitEvent(
+                name=f"{self.api_object.name} {self.w.fault.value}",
+                device=self.api_object,
+                fault_type=self.w.fault,
+                method=self.w.method,
+                phases=self.w.phases
+            )
+    
+            self.editor.circuit.add_short_circuit_definition(sc)
 
     def enable_disable_dc(self):
         """
@@ -1035,7 +948,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             vm = format_str.format(Vm)
             vm_kv = format_str.format(Vm * self._api_object.Vnom)
             va = format_str.format(Va)
-            msg += f"V={vm_kv} KV<br>  {vm}&lt;{va}º p.u.<br>"
+            msg += f"V={vm_kv} kV<br>  {vm}&lt;{va}º p.u.<br>"
 
             if P is not None:
                 p = format_str.format(P)
@@ -1087,7 +1000,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                     vm = format_str.format(Vm_i)
                     vm_kv = format_str.format(Vm_i * self._api_object.Vnom)
                     va = format_str.format(Va_i)
-                    msg += f"V{ph}={vm_kv} KV / {vm}&lt;{va}º p.u.<br>"
+                    msg += f"V{ph}={vm_kv} kV / {vm}&lt;{va}º p.u.<br>"
 
             for P_i, Q_i, ph in zip([PA, PB, PC], [QA, QB, QC], ["a", "b", "c"]):
                 if not (P_i == 0.0 and Q_i == 0.0):

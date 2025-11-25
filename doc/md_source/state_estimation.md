@@ -44,7 +44,7 @@ m_circuit.add_line(br2)
 m_circuit.add_line(br3)
 
 # Declare the simulation driver and run
-se = gce.StateEstimation(circuit=m_circuit)
+se = gce.StateEstimationDriver(circuit=m_circuit)
 se.run()
 
 print(se.results.get_bus_df())

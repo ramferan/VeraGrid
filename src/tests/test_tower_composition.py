@@ -58,10 +58,10 @@ def test_acha():
     print(f"R0: {R0}, X0: {X0}")
     print(f"R1: {R1}, X1: {X1}")
 
-    Z = tower.z_abcn
+    Z = tower.z_nabc
     print("Z [ohm/km] =\n", Z)
 
-    Ysh = tower.y_abcn * 1e6  # pass from S/km to uS/km
+    Ysh = tower.y_nabc * 1e6  # pass from S/km to uS/km
     print("Y [uS/km] =\n", Ysh)
 
     Z_expected = np.array([[0.08034301 + 0.53832056j, 0.04625667 + 0.27333481j, 0.04622869 + 0.22981391j],

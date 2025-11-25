@@ -29,7 +29,8 @@ from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
 from VeraGrid.Gui.Diagrams.Editors.line_editor import LineEditor
 from VeraGrid.Gui.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
-from VeraGrid.Gui.RmsModelEditor.rms_model_editor_dialogue import RmsModelEditorGUI
+from VeraGrid.Gui.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
+from VeraGrid.Gui.rms_events_editor_dialog import RmsEventEditor
 from VeraGrid.Gui.SystemScaler.system_scaler import SystemScaler
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget, make_diagram_from_substations
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget, make_diagram_from_buses
@@ -68,7 +69,7 @@ class DataBaseTableMain(DiagramsMain):
 
         # Buttons
         self.ui.filter_pushButton.clicked.connect(self.objects_smart_search)
-        self.ui.delete_selected_objects_pushButton.clicked.connect(self.delete_selected_objects)
+        self.ui.delete_selected_objects_pushButton.clicked.connect(self.delete_selected_db_table_objects)
         self.ui.add_object_pushButton.clicked.connect(self.add_objects)
         self.ui.structure_analysis_pushButton.clicked.connect(self.objects_histogram_analysis_plot)
 
@@ -150,15 +151,22 @@ class DataBaseTableMain(DiagramsMain):
             DeviceType.FluidP2XDevice.value: ":/Icons/icons/fluid_p2x.png",
 
             "Groups": ":/Icons/icons/groups.png",
+            DeviceType.BranchGroupDevice.value: ":/Icons/icons/branch_group.png",
+            DeviceType.ModellingAuthority.value: ":/Icons/icons/modelling_authority.png",
+            DeviceType.FacilityDevice.value: ":/Icons/icons/powerplant.png",
+
+            "Contingencies": ":/Icons/icons/contingency_group.png",
             DeviceType.ContingencyGroupDevice.value: ":/Icons/icons/contingency_group.png",
             DeviceType.ContingencyDevice.value: ":/Icons/icons/contingency.png",
             DeviceType.RemedialActionGroupDevice.value: ":/Icons/icons/remedial_action_group.png",
             DeviceType.RemedialActionDevice.value: ":/Icons/icons/remedial_action.png",
+            DeviceType.ShortCircuitEvent.value: ":/Icons/icons/contingency.png",
+
+            "Investments": ":/Icons/icons/investment_group.png",
             DeviceType.InvestmentsGroupDevice.value: ":/Icons/icons/investment_group.png",
             DeviceType.InvestmentDevice.value: ":/Icons/icons/investment_dev.png",
-            DeviceType.BranchGroupDevice.value: ":/Icons/icons/branch_group.png",
-            DeviceType.ModellingAuthority.value: ":/Icons/icons/modelling_authority.png",
-            DeviceType.FacilityDevice.value: ":/Icons/icons/powerplant.png",
+
+            "Dynamic": ":/Icons/icons/dyn_gray.png",
             DeviceType.RmsEventsGroupDevice.value: ":/Icons/icons/dyn_gray.png",
             DeviceType.RmsEventDevice.value: ":/Icons/icons/dyn_gray.png",
 
@@ -166,6 +174,20 @@ class DataBaseTableMain(DiagramsMain):
             DeviceType.Technology.value: ":/Icons/icons/technology.png",
             DeviceType.FuelDevice.value: ":/Icons/icons/fuel.png",
             DeviceType.EmissionGasDevice.value: ":/Icons/icons/emission.png",
+
+            "Measurements": ":/Icons/icons/measurement.png",
+            DeviceType.PMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.QMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.PfMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.QfMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.PtMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.QtMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.PgMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.QgMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.IfMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.ItMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.VmMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.VaMeasurementDevice.value: ":/Icons/icons/measurement.png",
 
             "Catalogue": ":/Icons/icons/Catalogue.png",
             DeviceType.WireDevice.value: ":/Icons/icons/ac_line.png",
@@ -406,7 +428,7 @@ class DataBaseTableMain(DiagramsMain):
         Get the substations matching the table selection
         :return:  set of substations, list of selected objects originating the substation set
         """
-        selected_objects = self.get_selected_table_objects()
+        selected_objects = self.get_selected_db_table_objects()
 
         elm2se: Dict[ALL_DEV_TYPES, List[dev.Substation]] = dict()
 
@@ -438,12 +460,12 @@ class DataBaseTableMain(DiagramsMain):
 
         return substations, selected_objects
 
-    def delete_selected_objects(self):
+    def delete_selected_db_table_objects(self):
         """
-        Delete selection
+        Delete selection from the database main table
         """
 
-        selected_objects = self.get_selected_table_objects()
+        selected_objects = self.get_selected_db_table_objects()
 
         if len(selected_objects):
 
@@ -465,12 +487,12 @@ class DataBaseTableMain(DiagramsMain):
 
                 self.show_info_toast(f"{len(selected_objects)} objects deleted")
 
-    def duplicate_selected_objects(self):
+    def duplicate_selected_db_table_objects(self):
         """
         Delete selection
         """
 
-        selected_objects = self.get_selected_table_objects()
+        selected_objects = self.get_selected_db_table_objects()
 
         if len(selected_objects):
 
@@ -487,12 +509,12 @@ class DataBaseTableMain(DiagramsMain):
                 self.update_from_to_list_views()
                 self.update_date_dependent_combos()
 
-    def fuse_selected(self):
+    def fuse_selected_db_table_objects(self):
         """
         Fuse selection
         """
 
-        selected_objects = self.get_selected_table_objects()
+        selected_objects = self.get_selected_db_table_objects()
 
         if len(selected_objects):
 
@@ -519,7 +541,7 @@ class DataBaseTableMain(DiagramsMain):
         Copy selected idtags
         """
 
-        selected_objects = self.get_selected_table_objects()
+        selected_objects = self.get_selected_db_table_objects()
 
         if len(selected_objects):
             # copy to clipboard
@@ -534,7 +556,7 @@ class DataBaseTableMain(DiagramsMain):
         Add selected DB objects to current diagram
         """
 
-        selected_objects = self.get_selected_table_objects()
+        selected_objects = self.get_selected_db_table_objects()
 
         if len(selected_objects):
 
@@ -873,7 +895,7 @@ class DataBaseTableMain(DiagramsMain):
 
             elif elm_type == DeviceType.RmsEventsGroupDevice.value:
 
-                name = f'RMS event grou{len(self.circuit.rms_events_groups)}'
+                name = f'RMS event group {len(self.circuit.rms_events_groups)}'
                 obj = dev.RmsEventsGroup(name=name)
                 self.circuit.add_rms_events_group(obj)
 
@@ -945,7 +967,8 @@ class DataBaseTableMain(DiagramsMain):
                         self.tower_builder_window.exec()
 
                     elif elm_type == DeviceType.DynamicModelHostDevice.value:
-                        self.rms_model_Editor_window = RmsModelEditorGUI(model_host=elm, )
+
+                        self.rms_model_Editor_window = RmsModelEditorGUI(self.circuit.rms_models, model_host=elm)
                         self.rms_model_Editor_window.resize(int(1.81 * 700.0), 700)
                         self.rms_model_Editor_window.show()
 
@@ -968,6 +991,27 @@ class DataBaseTableMain(DiagramsMain):
                         dlg = Transformer3WEditor(elm, Sbase, modify_on_accept=True)
                         if dlg.exec():
                             pass
+
+                    elif elm_type == DeviceType.RmsEventDevice.value:
+                        lines = []
+                        injections = []
+                        for line in self.circuit.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+                            lines.append(line)
+                        for injection in self.circuit.get_injection_devices_iter():
+                            injections.append(injection)
+
+                        all_devices = lines + injections
+
+                        self.rms_events_Editor_window = RmsEventEditor(devices=all_devices,
+                                                                       event=elm)
+                        self.rms_events_Editor_window.resize(int(1.81 * 700.0), 700)
+
+                        # TODO: check if we are actually editing the object directly
+                        # if self.rms_events_Editor_window.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                        #     # update event
+                        #     self.circuit.rms_events[idx] = self.rms_events_Editor_window.get_updated_event()
+
+
 
                     else:
 
@@ -1373,17 +1417,17 @@ class DataBaseTableMain(DiagramsMain):
             gf.add_menu_entry(menu=context_menu,
                               text="Delete",
                               icon_path=":/Icons/icons/minus.png",
-                              function_ptr=self.delete_selected_objects)
+                              function_ptr=self.delete_selected_db_table_objects)
 
             gf.add_menu_entry(menu=context_menu,
                               text="Duplicate object",
                               icon_path=":/Icons/icons/copy.png",
-                              function_ptr=self.duplicate_selected_objects)
+                              function_ptr=self.duplicate_selected_db_table_objects)
 
             gf.add_menu_entry(menu=context_menu,
                               text="Merge",
                               icon_path=":/Icons/icons/fusion.png",
-                              function_ptr=self.fuse_selected)
+                              function_ptr=self.fuse_selected_db_table_objects)
 
             gf.add_menu_entry(menu=context_menu,
                               text="Copy idtag",

@@ -158,7 +158,6 @@ class MultiCircuit(Assets):
         'user_name',
         'Sbase',
         'fBase',
-        'time',
         'logger',
     )
 
@@ -196,9 +195,6 @@ class MultiCircuit(Assets):
 
         # Base frequency in Hz
         self.fBase: float = fbase
-
-        # grid time
-        self.time: Var = Var("t")
 
         # logger of events
         self.logger: Logger = Logger()
@@ -362,7 +358,7 @@ class MultiCircuit(Assets):
                 'pf_measurements',
                 'qf_measurements',
                 'if_measurements',
-                'modelling_authorities'
+                'modelling_authorities',
                 ]
 
         for pr in ppts:
@@ -2823,6 +2819,8 @@ class MultiCircuit(Assets):
         self.underground_cable_types += data.underground_cable_types
         self.wire_types += data.wire_types
         self.sequence_line_types += data.sequence_line_types
+        self.rms_models += data.rms_models
+
 
     def set_opf_ts_results(self, results: OptimalPowerFlowTimeSeriesResults):
         """

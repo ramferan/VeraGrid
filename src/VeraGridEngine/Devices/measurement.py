@@ -2,10 +2,12 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
 
 from typing import Union
 import numpy as np
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, get_at
+from VeraGridEngine.Devices.Parents.editable_device import get_at
+from VeraGridEngine.Devices.Parents.pointer_device_parent import PointerDeviceParent
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Branches.dc_line import DcLine
@@ -34,7 +36,7 @@ SE_BRANCH_TYPES = Union[
 MEASURABLE_OBJECT = Union[Bus, SE_BRANCH_TYPES]
 
 
-class MeasurementTemplate(EditableDevice):
+class MeasurementTemplate(PointerDeviceParent):
     """
     Measurement class
     """
@@ -44,7 +46,6 @@ class MeasurementTemplate(EditableDevice):
         '_value_prof',
         'sigma',
         '_sigma_prof',
-        'api_object',
     )
 
     def __init__(self, value: float,
@@ -61,14 +62,17 @@ class MeasurementTemplate(EditableDevice):
         :param name:
         :param idtag:
         """
-        EditableDevice.__init__(self,
-                                name=name,
-                                idtag=idtag,
-                                code="",
-                                device_type=device_type)
+
+        PointerDeviceParent.__init__(self,
+                                     idtag=idtag,
+                                     device=api_obj,
+                                     code="",
+                                     name=name,
+                                     device_type=device_type,
+                                     comment="")
+
         self.value = float(value)
         self.sigma = float(uncertainty)
-        self.api_object: MEASURABLE_OBJECT = api_obj
 
         self._value_prof = Profile(default_value=self.value, data_type=float)
         self._sigma_prof = Profile(default_value=self.sigma, data_type=float)
@@ -77,8 +81,6 @@ class MeasurementTemplate(EditableDevice):
                       definition="Value of the measurement")
         self.register("sigma", tpe=float, profile_name="sigma_prof",
                       definition="Uncertainty of the measurement")
-
-        self.register("api_object", tpe=MEASURABLE_OBJECT, definition="Object where the measurement happens")
 
     @property
     def value_prof(self) -> Profile:
@@ -129,9 +131,21 @@ class MeasurementTemplate(EditableDevice):
         return get_at(self.sigma, self.sigma_prof, t)
 
     def get_value_pu_at(self, t: int | None, Sbase: float):
+        """
+        Get measurement per-unit value at a given point
+        :param t: None for snapshot, integer for time point
+        :param Sbase: Base power (100 MVA)
+        :return: value in p.u.
+        """
         return self.get_value_at(t) / Sbase
 
     def get_standard_deviation_pu_at(self, t: int | None, Sbase: float):
+        """
+        Get measurement per-unit standard deviation at a given point
+        :param t: None for snapshot, integer for time point
+        :param Sbase: Base power (100 MVA)
+        :return: value in p.u.
+        """
         return self.get_sigma_at(t) / Sbase
 
 
@@ -140,7 +154,11 @@ class PiMeasurement(MeasurementTemplate):
     Measurement class
     """
 
-    def __init__(self, value: float, uncertainty: float, api_obj: Bus, name="",
+    def __init__(self,
+                 value: float = 0.0,
+                 uncertainty: float = 0.0,
+                 api_obj: Bus | None = None,
+                 name="",
                  idtag: Union[str, None] = None):
         """
         Bus active power injection measurement
@@ -164,7 +182,11 @@ class QiMeasurement(MeasurementTemplate):
     Measurement class
     """
 
-    def __init__(self, value: float, uncertainty: float, api_obj: Bus, name="",
+    def __init__(self,
+                 value: float = 0.0,
+                 uncertainty: float = 0.0,
+                 api_obj: Bus | None = None,
+                 name="",
                  idtag: Union[str, None] = None):
         """
         Bus reactive power injection measurement
@@ -188,7 +210,11 @@ class PgMeasurement(MeasurementTemplate):
     Measurement class
     """
 
-    def __init__(self, value: float, uncertainty: float, api_obj: Generator, name="",
+    def __init__(self,
+                 value: float = 0.0,
+                 uncertainty: float = 0.0,
+                 api_obj: Generator | None = None,
+                 name="",
                  idtag: Union[str, None] = None):
         """
         Generator active power injection measurement
@@ -212,7 +238,11 @@ class QgMeasurement(MeasurementTemplate):
     Measurement class
     """
 
-    def __init__(self, value: float, uncertainty: float, api_obj: Generator, name="",
+    def __init__(self,
+                 value: float = 0.0,
+                 uncertainty: float = 0.0,
+                 api_obj: Generator | None = None,
+                 name="",
                  idtag: Union[str, None] = None):
         """
         Generator reactive power injection measurement
@@ -236,7 +266,11 @@ class VmMeasurement(MeasurementTemplate):
     Measurement class
     """
 
-    def __init__(self, value: float, uncertainty: float, api_obj: Bus, name="",
+    def __init__(self,
+                 value: float = 0.0,
+                 uncertainty: float = 0.0,
+                 api_obj: Bus | None = None,
+                 name="",
                  idtag: Union[str, None] = None):
         MeasurementTemplate.__init__(self,
                                      value=value,
@@ -252,7 +286,11 @@ class VaMeasurement(MeasurementTemplate):
     Measurement class
     """
 
-    def __init__(self, value: float, uncertainty: float, api_obj: Bus, name="",
+    def __init__(self,
+                 value: float = 0.0,
+                 uncertainty: float = 0.0,
+                 api_obj: Bus | None = None,
+                 name="",
                  idtag: Union[str, None] = None):
         MeasurementTemplate.__init__(self,
                                      value=value,
@@ -268,7 +306,11 @@ class PfMeasurement(MeasurementTemplate):
     Measurement class
     """
 
-    def __init__(self, value: float, uncertainty: float, api_obj: SE_BRANCH_TYPES, name="",
+    def __init__(self,
+                 value: float = 0.0,
+                 uncertainty: float = 0.0,
+                 api_obj: SE_BRANCH_TYPES | None = None,
+                 name="",
                  idtag: Union[str, None] = None):
         """
         PfMeasurement
@@ -292,7 +334,11 @@ class QfMeasurement(MeasurementTemplate):
     Measurement class
     """
 
-    def __init__(self, value: float, uncertainty: float, api_obj: SE_BRANCH_TYPES, name="",
+    def __init__(self,
+                 value: float = 0.0,
+                 uncertainty: float = 0.0,
+                 api_obj: SE_BRANCH_TYPES | None = None,
+                 name="",
                  idtag: Union[str, None] = None):
         """
         QfMeasurement
@@ -316,7 +362,11 @@ class PtMeasurement(MeasurementTemplate):
     Measurement class
     """
 
-    def __init__(self, value: float, uncertainty: float, api_obj: SE_BRANCH_TYPES, name="",
+    def __init__(self,
+                 value: float = 0.0,
+                 uncertainty: float = 0.0,
+                 api_obj: SE_BRANCH_TYPES | None = None,
+                 name="",
                  idtag: Union[str, None] = None):
         """
         PtMeasurement
@@ -340,7 +390,11 @@ class QtMeasurement(MeasurementTemplate):
     Measurement class
     """
 
-    def __init__(self, value: float, uncertainty: float, api_obj: SE_BRANCH_TYPES, name="",
+    def __init__(self,
+                 value: float = 0.0,
+                 uncertainty: float = 0.0,
+                 api_obj: SE_BRANCH_TYPES | None = None,
+                 name="",
                  idtag: Union[str, None] = None):
         """
         QtMeasurement
@@ -368,7 +422,11 @@ class IfMeasurement(MeasurementTemplate):
     Measurement class
     """
 
-    def __init__(self, value: float, uncertainty: float, api_obj: SE_BRANCH_TYPES, name="",
+    def __init__(self,
+                 value: float = 0.0,
+                 uncertainty: float = 0.0,
+                 api_obj: SE_BRANCH_TYPES | None = None,
+                 name="",
                  idtag: Union[str, None] = None):
         """
         IfMeasurement
@@ -398,7 +456,11 @@ class ItMeasurement(MeasurementTemplate):
     Measurement class
     """
 
-    def __init__(self, value: float, uncertainty: float, api_obj: SE_BRANCH_TYPES, name="",
+    def __init__(self,
+                 value: float = 0.0,
+                 uncertainty: float = 0.0,
+                 api_obj: SE_BRANCH_TYPES | None = None,
+                 name="",
                  idtag: Union[str, None] = None):
         """
         ItMeasurement
@@ -416,8 +478,16 @@ class ItMeasurement(MeasurementTemplate):
                                      idtag=idtag,
                                      device_type=DeviceType.ItMeasurementDevice)
 
+    @property
+    def device(self) -> SE_BRANCH_TYPES:
+        """
+        device getter
+        :return:
+        """
+        return self._device
+
     def get_value_pu_at(self, t: int | None, Sbase: float):
-        return self.value / get_i_base(Sbase, Vbase=self.api_object.bus_to.Vnom)
+        return self.value / get_i_base(Sbase, Vbase=self.device.bus_to.Vnom)
 
     def get_standard_deviation_pu_at(self, t: int | None, Sbase: float):
-        return self.sigma / get_i_base(Sbase, Vbase=self.api_object.bus_to.Vnom)
+        return self.sigma / get_i_base(Sbase, Vbase=self.device.bus_to.Vnom)

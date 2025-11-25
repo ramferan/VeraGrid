@@ -295,9 +295,8 @@ class BranchParentData:
         return self.nelm
 
     def get_3ph_names(self):
-        names3: StrVec = np.empty(self.nelm * 3, dtype=object)
+        names3: StrVec = np.empty(self.nelm, dtype=object)
         for i in range(self.nelm):
-            names3[3 * i + 0] = str(self.names[i]) + "_A"
-            names3[3 * i + 1] = str(self.names[i]) + "_B"
-            names3[3 * i + 2] = str(self.names[i]) + "_C"
+            names3[i] = self.names[i]
+
         return names3

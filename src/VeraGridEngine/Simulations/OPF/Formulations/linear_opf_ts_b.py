@@ -2005,7 +2005,6 @@ def run_linear_opf_ts(grid: MultiCircuit,
                       logger: Logger = Logger(),
                       progress_text: Union[None, Callable[[str], None]] = None,
                       progress_func: Union[None, Callable[[float], None]] = None,
-                      export_model_fname: Union[None, str] = None,
                       verbose: int = 0,
                       robust: bool = False,
                       mip_framework: MIPFramework = MIPFramework.PuLP) -> OpfVars:
@@ -2036,7 +2035,6 @@ def run_linear_opf_ts(grid: MultiCircuit,
     :param logger: logger instance
     :param progress_text: Text progress callback
     :param progress_func: Numerical progress callback
-    :param export_model_fname: Export the model into LP and MPS?
     :param verbose: verbosity level
     :param robust: Robust optimization?
     :return: OpfVars
@@ -2379,11 +2377,6 @@ def run_linear_opf_ts(grid: MultiCircuit,
 
     if progress_func is not None:
         progress_func(0)
-
-    if export_model_fname is not None:
-        lp_model.save_model(file_name=export_model_fname)
-        logger.add_info("LP model saved as", value=export_model_fname)
-        print('LP model saved as:', export_model_fname)
 
     status = lp_model.solve(robust=robust, show_logs=verbose > 0, progress_text=progress_text)
 

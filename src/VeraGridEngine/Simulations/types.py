@@ -43,6 +43,7 @@ from VeraGridEngine.Simulations.Reliability.reliability_driver import Reliabilit
 
 from VeraGridEngine.Simulations.Rms.rms_driver import RmsSimulationDriver
 from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import SmallSignalStabilityDriver
+from VeraGridEngine.Simulations.StateEstimation.state_stimation_driver import StateEstimationDriver
 
 DRIVER_OBJECTS = Union[
     AvailableTransferCapacityDriver,
@@ -56,6 +57,7 @@ DRIVER_OBJECTS = Union[
     OptimalPowerFlowTimeSeriesDriver,
     PowerFlowDriver,
     PowerFlowTimeSeriesDriver,
+    StateEstimationDriver,
     ShortCircuitDriver,
     StochasticPowerFlowDriver,
     ClusteringDriver,

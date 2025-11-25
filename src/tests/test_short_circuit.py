@@ -32,7 +32,17 @@ def test_short_circuit():
     ####################################################################################################################
     print('\n\n')
     print('Short Circuit')
-    sc_options = ShortCircuitOptions(bus_index=16)
+    sc_options = ShortCircuitOptions()
+
+    main_circuit.add_short_circuit_definition(
+        ShortCircuitEvent(
+            device=main_circuit.buses[16],
+            fault_type=FaultType.LLLG,
+            method=MethodShortCircuit.sequences,
+            phases=PhasesShortCircuit.abc
+        )
+    )
+
     # grid, options, pf_options:, pf_results:
     sc = ShortCircuitDriver(grid=main_circuit, options=sc_options, pf_options=pf_options, pf_results=power_flow.results)
     sc.run()

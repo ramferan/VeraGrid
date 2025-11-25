@@ -92,6 +92,7 @@ class Assets:
         '_contingency_groups',
         '_remedial_actions',
         '_remedial_action_groups',
+        '_short_circuit_definitions',
         '_investments',
         '_investments_groups',
         '_technologies',
@@ -243,6 +244,9 @@ class Assets:
         # remedial actions group
         self._remedial_action_groups: List[dev.RemedialActionGroup] = list()
 
+        # Short circuit definition
+        self._short_circuit_definitions: List[dev.ShortCircuitEvent] = list()
+
         # investments
         self._investments: List[dev.Investment] = list()
 
@@ -280,7 +284,7 @@ class Assets:
         self._p2xs: List[dev.FluidP2x] = list()
 
         # list of wire types
-        self._rms_models: List[dev.DynamicModelHost] = list()
+        self._rms_models: List[dev.RmsModelTemplate] = list()
 
         # list of declared diagrams
         self._diagrams: List[Union[dev.MapDiagram, dev.SchematicDiagram]] = list()
@@ -294,6 +298,11 @@ class Assets:
                 dev.Municipality(),
                 dev.Area(),
                 dev.Zone(),
+            ],
+            "Associations": [
+                dev.Technology(),
+                dev.Fuel(),
+                dev.EmissionGas(),
             ],
             "Substation": [
                 dev.Substation(),
@@ -331,22 +340,24 @@ class Assets:
                 dev.FluidP2x(),
             ],
             "Groups": [
+                dev.BranchGroup(),
+                dev.ModellingAuthority(),
+                dev.Facility(),
+            ],
+            "Contingencies": [
                 dev.ContingencyGroup(),
                 dev.Contingency(),
                 dev.RemedialActionGroup(),
                 dev.RemedialAction(),
+                dev.ShortCircuitEvent()
+            ],
+            "Investments": [
                 dev.InvestmentsGroup(),
                 dev.Investment(),
-                dev.BranchGroup(),
-                dev.ModellingAuthority(),
-                dev.Facility(),
+            ],
+            "Dynamic": [
                 dev.RmsEvent(),
                 dev.RmsEventsGroup()
-            ],
-            "Associations": [
-                dev.Technology(),
-                dev.Fuel(),
-                dev.EmissionGas(),
             ],
             "Catalogue": [
                 dev.Wire(),
@@ -354,7 +365,21 @@ class Assets:
                 dev.UndergroundLineType(),
                 dev.SequenceLineType(),
                 dev.TransformerType(),
-                dev.DynamicModelHost()
+                dev.RmsModelTemplate()
+            ],
+            "Measurements": [
+                dev.PiMeasurement(),
+                dev.QiMeasurement(),
+                dev.PfMeasurement(),
+                dev.QfMeasurement(),
+                dev.IfMeasurement(),
+                dev.PtMeasurement(),
+                dev.QtMeasurement(),
+                dev.ItMeasurement(),
+                dev.VmMeasurement(),
+                dev.VaMeasurement(),
+                dev.PgMeasurement(),
+                dev.QgMeasurement(),
             ]
 
         }
@@ -373,14 +398,17 @@ class Assets:
         """
         for key, elm_list in self.template_objects_dict.items():
             for elm in elm_list:
+
+                key = str(elm.device_type.value)
+
+                associated_props, indices = elm.get_association_properties()
+                self.device_type_name_dict[key] = elm.device_type
+                self.device_associations[key] = [prop.name for prop in associated_props]
+
                 if elm.properties_with_profile is not None:
-                    key = str(elm.device_type.value)
                     profile_attr = list(elm.properties_with_profile.keys())
                     profile_types = [elm.registered_properties[attr].tpe for attr in profile_attr]
-                    associated_props, indices = elm.get_association_properties()
                     self.profile_magnitudes[key] = (profile_attr, profile_types)
-                    self.device_type_name_dict[key] = elm.device_type
-                    self.device_associations[key] = [prop.name for prop in associated_props]
 
     # ------------------------------------------------------------------------------------------------------------------
     # Device iterators
@@ -1366,6 +1394,13 @@ class Assets:
         """
         return {b: i for i, b in enumerate(self._buses)}
 
+    def get_bus_idtag_index_dict(self) -> Dict[str, int]:
+        """
+        Return dictionary of buses
+        :return: dictionary of buses {name:object}
+        """
+        return {b.idtag: i for i, b in enumerate(self._buses)}
+
     def get_bus_actives(self, t_idx: int | None = None) -> IntVec:
         """
         get a vector of actives
@@ -1457,28 +1492,28 @@ class Assets:
 
         # Optimized branch removal by creating a set for faster lookups
         branches_to_delete_set = set(branches_to_delete)
-        
+
         # Remove branches directly from lists in one pass
         # This is more efficient than calling delete_branch for each
         for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True):
             # Use list comprehension to not consider branches to delete 
             # This is faster than the multiple remove() calls we had before
             branch_list[:] = [b for b in branch_list if b not in branches_to_delete_set]
-        
+
         # Batch process groupings, faster than calling delete_groupings_with_object for each branch
         if branches_to_delete:
             branch_idtags = {b.idtag for b in branches_to_delete}  # all idtags to consider
-            
+
             # Process contingencies in batch
             contingencies_to_delete = [elm for elm in self.contingencies if elm.device_idtag in branch_idtags]
             for elm in contingencies_to_delete:
                 self.delete_contingency(elm, del_group=True)
-            
+
             # Process remedial actions in batch
             remedial_actions_to_delete = [elm for elm in self.remedial_actions if elm.device_idtag in branch_idtags]
             for elm in remedial_actions_to_delete:
                 self.delete_remedial_action(elm, del_group=True)
-            
+
             # Process investments in batch
             investments_to_delete = [elm for elm in self.investments if elm.device_idtag in branch_idtags]
             for elm in investments_to_delete:
@@ -4229,7 +4264,7 @@ class Assets:
                 self.delete_investment_groups(grp)
 
     # ------------------------------------------------------------------------------------------------------------------
-    # Rms group
+    # Rms Events group
     # ------------------------------------------------------------------------------------------------------------------
 
     @property
@@ -4253,7 +4288,7 @@ class Assets:
 
     def add_rms_events_group(self, obj: dev.RmsEventsGroup):
         """
-        Add investments group
+        Add rms events group
         :param obj: InvestmentsGroup
         """
         self._rms_events_groups.append(obj)
@@ -4435,7 +4470,7 @@ class Assets:
     def remedial_action_groups(self, value: List[dev.RemedialActionGroup]):
         self._remedial_action_groups = value
 
-    def get_rmedial_action_groups(self) -> List[dev.RemedialActionGroup]:
+    def get_remedial_action_groups(self) -> List[dev.RemedialActionGroup]:
         """
         Get contingency_groups
         :return:List[dev.ContingencyGroup]
@@ -4574,6 +4609,65 @@ class Assets:
                             filtered_groups_idx.add(group_idx)
 
         return [self._remedial_action_groups[i] for i in sorted(filtered_groups_idx)]
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Short Circuit Definition
+    # ------------------------------------------------------------------------------------------------------------------
+
+    @property
+    def short_circuit_definitions(self) -> List[dev.ShortCircuitEvent]:
+        """
+        Get list of ShortCircuitDefinition
+        :return:
+        """
+        return self._short_circuit_definitions
+
+    @short_circuit_definitions.setter
+    def short_circuit_definitions(self, value: List[dev.ShortCircuitEvent]):
+        self._short_circuit_definitions = value
+
+    def add_short_circuit_definition(self, obj: dev.ShortCircuitEvent):
+        """
+        Add short_circuit_definitions
+        :param obj: ShortCircuitDefinition
+        """
+        self._short_circuit_definitions.append(obj)
+
+    def delete_short_circuit_definition(self, obj: dev.ShortCircuitEvent):
+        """
+        Delete ShortCircuitDefinition
+        :param obj: index
+        """
+
+        try:
+            self._short_circuit_definitions.remove(obj)
+        except ValueError:
+            pass
+
+    def get_short_circuit_definition_names(self) -> StrVec:
+        """
+        Get the short circuit definition names
+        :return: Names
+        """
+        return np.array([elm.name for elm in self._short_circuit_definitions])
+
+    def get_short_circuit_definition_number(self) -> int:
+        """
+        Get the short circuit definition names
+        :return: Names
+        """
+        return len(self._short_circuit_definitions)
+
+    def short_circuit_definition_exist(self, scd: dev.ShortCircuitEvent) -> bool:
+        """
+        Check if a short circuit definition has been added already
+        :param scd: ShortCircuitDefinition
+        :return: Bool
+        """
+        for elm in self._short_circuit_definitions:
+            if elm.device_idtag == scd.device_idtag and elm.fault_type == scd.fault_type:
+                return True
+        return False
 
     # ------------------------------------------------------------------------------------------------------------------
     # Technology
@@ -5272,7 +5366,7 @@ class Assets:
     # ------------------------------------------------------------------------------------------------------------------
 
     @property
-    def rms_models(self) -> List[dev.DynamicModelHost]:
+    def rms_models(self) -> List[dev.RmsModelTemplate]:
         """
         list of rms models
         :return:
@@ -5280,24 +5374,27 @@ class Assets:
         return self._rms_models
 
     @rms_models.setter
-    def rms_models(self, value: List[dev.DynamicModelHost]):
+    def rms_models(self, value: List[dev.RmsModelTemplate]):
         self._rms_models = value
 
     def get_rms_models_number(self) -> int:
+        """
+        Get number of RMS models
+        """
         return len(self._rms_models)
 
-    def add_rms_model(self, obj: dev.DynamicModelHost):
+    def add_rms_model(self, obj: dev.RmsModelTemplate):
         """
         Add rms model to the collection
         :param obj: DynamicModel instance
         """
         if obj is not None:
-            if isinstance(obj, dev.DynamicModelHost):
+            if isinstance(obj, dev.RmsModelTemplate):
                 self._rms_models.append(obj)
             else:
-                print('The template is not a DynamicModel!')
+                print('The template is not a RmsModelTemplate!')
 
-    def delete_rms_model(self, obj: dev.DynamicModelHost):
+    def delete_rms_model(self, obj: dev.RmsModelTemplate):
         """
         Delete RMS model from the collection
         :param obj: DynamicModel object
@@ -5513,6 +5610,20 @@ class Assets:
         return {b: i for i, b in enumerate(self.get_branches_iter(add_vsc=add_vsc,
                                                                   add_hvdc=add_hvdc,
                                                                   add_switch=add_switch))}
+
+    def get_branches_idtag_index_dict(self, add_vsc: bool = True,
+                                      add_hvdc: bool = True,
+                                      add_switch: bool = False) -> Dict[str, int]:
+        """
+        Get the branch to index dictionary
+        :param add_vsc: Include the list of VSC?
+        :param add_hvdc: Include the list of HvdcLine?
+        :param add_switch: Include the list of Switch?
+        :return: Branch object to index
+        """
+        return {b.idtag: i for i, b in enumerate(self.get_branches_iter(add_vsc=add_vsc,
+                                                                        add_hvdc=add_hvdc,
+                                                                        add_switch=add_switch))}
 
     def get_branches_index_dict2(self, add_vsc: bool = True,
                                  add_hvdc: bool = True,
@@ -5976,6 +6087,9 @@ class Assets:
         elif device_type == DeviceType.RemedialActionGroupDevice:
             return self._remedial_action_groups
 
+        elif device_type == DeviceType.ShortCircuitEvent:
+            return self._short_circuit_definitions
+
         elif device_type == DeviceType.Technology:
             return self._technologies
 
@@ -6069,7 +6183,7 @@ class Assets:
         elif device_type == DeviceType.LambdaDevice:
             return list()
 
-        elif device_type == DeviceType.DynamicModelHostDevice:
+        elif device_type == DeviceType.RmsModelTemplateDevice:
             return self.rms_models
 
         elif device_type == DeviceType.RmsEventDevice:
@@ -6209,6 +6323,9 @@ class Assets:
         elif device_type == DeviceType.RemedialActionGroupDevice:
             self._remedial_action_groups = devices
 
+        elif device_type == DeviceType.ShortCircuitEvent:
+            self._short_circuit_definitions = devices
+
         elif device_type == DeviceType.Technology:
             self._technologies = devices
 
@@ -6285,7 +6402,7 @@ class Assets:
         elif device_type == DeviceType.FacilityDevice:
             self._facilities = devices
 
-        elif device_type == DeviceType.DynamicModelHostDevice:
+        elif device_type == DeviceType.RmsModelTemplateDevice:
             self._rms_models = devices
 
         elif device_type == DeviceType.RmsEventDevice:
@@ -6487,7 +6604,7 @@ class Assets:
         elif obj.device_type == DeviceType.FacilityDevice:
             self.add_facility(obj=obj)
 
-        elif obj.device_type == DeviceType.DynamicModelHostDevice:
+        elif obj.device_type == DeviceType.RmsModelTemplateDevice:
             self.add_rms_model(obj=obj)
 
         elif obj.device_type == DeviceType.RmsEventDevice:
@@ -6697,7 +6814,7 @@ class Assets:
         elif obj.device_type == DeviceType.LineLocation:
             pass
 
-        elif obj.device_type == DeviceType.DynamicModelHostDevice:
+        elif obj.device_type == DeviceType.RmsModelTemplateDevice:
             self.delete_rms_model(obj=obj)
 
         elif obj.device_type == DeviceType.RmsEventDevice:
@@ -6814,7 +6931,7 @@ class Assets:
             self,
             add_locations: bool = False,
             string_keys: bool = True
-    ) -> dict[Union[str, DeviceType], Union[dict[str, ALL_DEV_TYPES], Any]]:
+    ) -> Dict[Union[str, DeviceType], Union[Dict[str, ALL_DEV_TYPES], Any]]:
         """
         Get a dictionary of all elements by type
         :param add_locations: Add locations to dict
@@ -7067,6 +7184,9 @@ class Assets:
         elif elm_type == DeviceType.ContingencyGroupDevice:
             elm = dev.ContingencyGroup()
 
+        elif elm_type == DeviceType.ShortCircuitEvent:
+            elm = dev.ShortCircuitEvent()
+
         elif elm_type == DeviceType.RemedialActionDevice:
             elm = dev.Contingency()
             dictionary_of_lists = {DeviceType.RemedialActionDevice: self.remedial_action_groups, }
@@ -7155,16 +7275,64 @@ class Assets:
             elm = dev.Facility()
             dictionary_of_lists = dict()
 
-        elif elm_type == DeviceType.DynamicModelHostDevice:
-            elm = dev.DynamicModelHost()
+        elif elm_type == DeviceType.RmsModelTemplateDevice:
+            elm = dev.RmsModelTemplate()
             dictionary_of_lists = dict()
 
         elif elm_type == DeviceType.RmsEventDevice:
             elm = dev.RmsEvent()
-            dictionary_of_lists = dict()
+            dictionary_of_lists = {DeviceType.RmsEventsGroupDevice: self.rms_events_groups}
 
         elif elm_type == DeviceType.RmsEventsGroupDevice:
             elm = dev.RmsEventsGroup()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.PMeasurementDevice:
+            elm = dev.PiMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.QMeasurementDevice:
+            elm = dev.QiMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.PgMeasurementDevice:
+            elm = dev.PgMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.QgMeasurementDevice:
+            elm = dev.QgMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.PfMeasurementDevice:
+            elm = dev.PfMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.QfMeasurementDevice:
+            elm = dev.QfMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.PtMeasurementDevice:
+            elm = dev.PtMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.QtMeasurementDevice:
+            elm = dev.QtMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.IfMeasurementDevice:
+            elm = dev.IfMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.ItMeasurementDevice:
+            elm = dev.ItMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.VmMeasurementDevice:
+            elm = dev.VmMeasurement()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.VaMeasurementDevice:
+            elm = dev.VaMeasurement()
             dictionary_of_lists = dict()
 
         else:

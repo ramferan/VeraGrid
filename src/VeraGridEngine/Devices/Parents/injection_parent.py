@@ -119,7 +119,7 @@ class InjectionParent(PhysicalDevice):
 
         self._use_kw: bool = False
 
-        self._conn: ShuntConnectionType = ShuntConnectionType.Star
+        self._conn: ShuntConnectionType = ShuntConnectionType.GroundedStar
 
         self._rms_model: DynamicModelHost = DynamicModelHost()
 

@@ -24,7 +24,7 @@ from VeraGridEngine.Simulations.Derivatives.csc_derivatives import dSf_dV_csc
 from VeraGridEngine.Utils.Sparse.csc import dense_to_csc
 import VeraGridEngine.Utils.Sparse.csc2 as csc
 from VeraGridEngine.Utils.MIP.selected_interface import lpDot1D_changes
-from VeraGridEngine.enumerations import ContingencyOperationTypes
+from VeraGridEngine.enumerations import ContingencyOperationTypes, ConverterControlType
 from VeraGridEngine.Topology.topology import find_different_states
 
 if TYPE_CHECKING:
@@ -225,7 +225,16 @@ def make_acdc_ptdf(nc: NumericalCircuit, logger: Logger,
     for k in range(nc.nvsc):
         f = nc.vsc_data.F[k]
         t = nc.vsc_data.T[k]
-        ys = 1e15
+
+        if nc.vsc_data.control1[k] == ConverterControlType.Pdc_angle_droop:
+            # P-MODE 3: The VSC behaves as a droop control
+            # P = P0 + k * (theta_f - theta_t)
+            # k is in MW/deg, we need it in p.u./rad
+            droop_mw_deg = nc.vsc_data.control1_val[k]
+            ys = droop_mw_deg * 57.295779513 / nc.Sbase
+        else:
+            ys = 1e15
+
         A[f, f] += ys
         A[f, t] -= ys
         A[t, f] -= ys

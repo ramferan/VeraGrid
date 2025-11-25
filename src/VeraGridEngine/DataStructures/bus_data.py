@@ -152,6 +152,13 @@ class BusData:
             int(val): idx for idx, val in enumerate(self.original_idx)
         }
 
+    def get_idtag_dict(self) -> Dict[str, int]:
+        """
+        Get dictionary of bus idtagd related to the island bus index
+        :return:
+        """
+        return {idtag_val: i for i, idtag_val in enumerate(self.idtag)}
+
     def set_bus_mode(self, idx: int, val: BusMode):
         """
         Set bus mode

@@ -129,27 +129,25 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
                 self.report_text('Formulating problem...')
 
             # DC optimal power flow
-            opf_vars = run_linear_opf_ts(
+            opf_vars, model = run_linear_opf_ts(
                 grid=self.grid,
                 time_indices=None,
+                dispatch_mode=self.options.dispatch_mode,
                 solver_type=self.options.mip_solver,
                 zonal_grouping=self.options.zonal_grouping,
                 skip_generation_limits=self.options.skip_generation_limits,
                 consider_contingencies=self.options.consider_contingencies,
                 contingency_groups_used=self.options.contingency_groups_used,
-                unit_commitment=self.options.unit_commitment,
                 ramp_constraints=False,
-                consider_time_up_down = False,
-                area_spinning_reserve = False,
+                consider_time_up_down=False,
+                area_spinning_reserve=False,
                 lodf_threshold=self.options.lodf_tolerance,
-                maximize_inter_area_flow=self.options.maximize_flows,
                 inter_aggregation_info=self.options.inter_aggregation_info,
                 energy_0=None,
                 fluid_level_0=None,
                 use_glsk_as_cost=self.options.use_glsk_as_cost,
                 add_losses_approximation=self.options.add_losses_approximation,
                 logger=self.logger,
-                export_model_fname=self.options.export_model_fname,
                 verbose=self.options.verbose,
                 robust=self.options.robust,
                 mip_framework=self.options.mip_framework
@@ -190,6 +188,9 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
             self.results.fluid_node_flow_out = opf_vars.fluid_node_vars.flow_out[0, :]
             self.results.fluid_path_flow = opf_vars.fluid_path_vars.flow[0, :]
             self.results.fluid_injection_flow = opf_vars.fluid_inject_vars.flow[0, :]
+
+            if self.options.report_formulation:
+                self.results.report_text = model.model_as_string()
 
         elif self.options.solver == SolverType.GREEDY_DISPATCH_OPF:
 

@@ -200,8 +200,16 @@ def short_circuit(grid: MultiCircuit,
         pf_results = power_flow(grid=grid,
                                 options=pf_options)
 
-    sc_options = ShortCircuitOptions(bus_index=fault_index,
-                                     fault_type=fault_type)
+    sc_options = ShortCircuitOptions()
+
+    grid.add_short_circuit_definition(
+        ShortCircuitEvent(
+            device=grid.buses[fault_index],
+            fault_type=fault_type,
+            method=MethodShortCircuit.sequences,
+            phases=PhasesShortCircuit.a
+        )
+    )
 
     sc = ShortCircuitDriver(grid=grid,
                             options=sc_options,

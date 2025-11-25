@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
 
 import numpy as np
 import pandas as pd
@@ -19,7 +20,6 @@ from VeraGridEngine.enumerations import EngineType, SimulationTypes, DynamicInte
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
-
 
 
 class RmsSimulationDriver(DriverTemplate):
@@ -51,13 +51,13 @@ class RmsSimulationDriver(DriverTemplate):
 
         self.options = options
 
-        self.results = RmsResults(values= np.empty(0),
-                 time_array=pd.DatetimeIndex(pd.to_datetime(np.empty(0))),
-                 stat_vars = list(),
-                 algeb_vars=list(),
-                 uid2idx= dict(),
-                 vars_glob_name2uid= dict(),
-                 devices = [])
+        self.results = RmsResults(values=np.empty(0),
+                                  time_array=pd.DatetimeIndex(pd.to_datetime(np.empty(0))),
+                                  stat_vars=list(),
+                                  algeb_vars=list(),
+                                  uid2idx=dict(),
+                                  vars_glob_name2uid=dict(),
+                                  devices=[])
 
     def run(self):
         """
@@ -94,9 +94,9 @@ class RmsSimulationDriver(DriverTemplate):
 
         params_mapping: Dict = dict()
 
-        ss, init_guess = initialize_rms(self.grid, self.pf_results)
+        sim_time, ss, init_guess = initialize_rms(self.grid, self.pf_results)
 
-        slv = BlockSolver(ss, self.grid.time)
+        slv = BlockSolver(ss, sim_time)
 
         params0 = slv.build_init_params_vector(params_mapping)
         x0 = slv.build_init_vars_vector_from_uid(init_guess)
@@ -111,12 +111,11 @@ class RmsSimulationDriver(DriverTemplate):
         )
 
         self.results = RmsResults(values=y,
-                                  time_array=pd.DatetimeIndex(pd.to_datetime(t)),
+                                  time_array=pd.DatetimeIndex(pd.to_datetime(t * 1e9)),
                                   stat_vars=slv._state_vars,
                                   algeb_vars=slv._algebraic_vars,
                                   uid2idx=slv.uid2idx_vars,
                                   vars_glob_name2uid=slv.v_glob_name2uid,
-                                  devices = devices)
+                                  devices=devices)
 
         self.toc()
-

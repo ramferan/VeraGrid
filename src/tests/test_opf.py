@@ -270,13 +270,13 @@ def test_opf_hvdc_controls():
                                           control_q=False,
                                           retry_with_other_methods=False)
 
-    opf_options = OptimalPowerFlowOptions(verbose=0,
-                                          solver=SolverType.LINEAR_OPF,
-                                          power_flow_options=power_flow_options,
-                                          mip_solver=MIPSolvers.HIGHS,
-                                          generate_report=True,
-                                          # export_model_fname="test_opf_hvdc_controls.lp"
-                                          )
+    opf_options = OptimalPowerFlowOptions(
+        verbose=0,
+        solver=SolverType.LINEAR_OPF,
+        power_flow_options=power_flow_options,
+        mip_solver=MIPSolvers.HIGHS,
+        generate_report=True,
+    )
 
     # HVDC free mode
     main_circuit.hvdc_lines[0].control_mode = HvdcControlType.type_0_free
@@ -384,7 +384,7 @@ def test_opf_generation_shedding():
     opf_options = OptimalPowerFlowOptions(verbose=0,
                                           solver=SolverType.LINEAR_OPF,
                                           zonal_grouping=ZonalGrouping.All,
-                                          export_model_fname=None  # "test_opf_gen_shedding_copper_plate.lp"
+                                          report_formulation=None  # "test_opf_gen_shedding_copper_plate.lp"
                                           )
 
     driver = OptimalPowerFlowTimeSeriesDriver(grid=grid, options=opf_options)
@@ -446,11 +446,11 @@ def test_opf_load_shedding():
 
     gen1 = grid.add_generator(bus=bus1, api_obj=Generator(name="gen1", enabled_dispatch=True, Cost=15.0, Pmax=10))
 
-    opf_options = OptimalPowerFlowOptions(verbose=0,
-                                          solver=SolverType.LINEAR_OPF,
-                                          zonal_grouping=ZonalGrouping.NoGrouping,
-                                          # export_model_fname="test_opf_load_shedding.lp"
-                                          )
+    opf_options = OptimalPowerFlowOptions(
+        verbose=0,
+        solver=SolverType.LINEAR_OPF,
+        zonal_grouping=ZonalGrouping.NoGrouping,
+    )
 
     driver = OptimalPowerFlowTimeSeriesDriver(grid=grid, options=opf_options)
     driver.run()
@@ -480,11 +480,11 @@ def test_opf_load_shedding_because_of_line():
     load1 = grid.add_load(bus=bus2, api_obj=Load(name="load1", Cost=10000.0))
     load1.P_prof = np.array([10, 12, 10, 12, 10, 12, 10, 12, 10, 12])
 
-    opf_options = OptimalPowerFlowOptions(verbose=0,
-                                          solver=SolverType.LINEAR_OPF,
-                                          zonal_grouping=ZonalGrouping.NoGrouping,
-                                          # export_model_fname="test_opf_load_shedding.lp"
-                                          )
+    opf_options = OptimalPowerFlowOptions(
+        verbose=0,
+        solver=SolverType.LINEAR_OPF,
+        zonal_grouping=ZonalGrouping.NoGrouping,
+    )
 
     driver = OptimalPowerFlowTimeSeriesDriver(grid=grid, options=opf_options)
     driver.run()
@@ -515,11 +515,11 @@ def test_opf_load_not_shedding_because_of_line():
     load1 = grid.add_load(bus=bus2, api_obj=Load(name="load1", Cost=10000.0))
     load1.P_prof = np.array([10, 12, 10, 12, 10, 12, 10, 12, 10, 12])
 
-    opf_options = OptimalPowerFlowOptions(verbose=0,
-                                          solver=SolverType.LINEAR_OPF,
-                                          zonal_grouping=ZonalGrouping.NoGrouping,
-                                          # export_model_fname="test_opf_load_shedding.lp"
-                                          )
+    opf_options = OptimalPowerFlowOptions(
+        verbose=0,
+        solver=SolverType.LINEAR_OPF,
+        zonal_grouping=ZonalGrouping.NoGrouping,
+    )
 
     driver = OptimalPowerFlowTimeSeriesDriver(grid=grid, options=opf_options)
     driver.run()
@@ -544,12 +544,12 @@ def test_opf_unit_commitment():
                                           retry_with_other_methods=False)
 
     opf_options = OptimalPowerFlowOptions(verbose=0,
+                                          dispatch_mode=OpfDispatchMode.UnitCommitment,
                                           solver=SolverType.LINEAR_OPF,
                                           power_flow_options=power_flow_options,
                                           time_grouping=TimeGrouping.Daily,
                                           mip_solver=MIPSolvers.HIGHS,
                                           mip_framework=MIPFramework.PuLP,
-                                          unit_commitment=True,
                                           generate_report=True)
 
     # run the opf time series

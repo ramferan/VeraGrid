@@ -18,8 +18,7 @@ pf_options = PowerFlowOptions()
 options = OptimalPowerFlowOptions(solver=solver,
                                   time_grouping=grouping,
                                   mip_solver=mip_solver,
-                                  power_flow_options=pf_options,
-                                  unit_commitment=False)
+                                  power_flow_options=pf_options)
 
 # create the OPF time series instance
 # if non_sequential:

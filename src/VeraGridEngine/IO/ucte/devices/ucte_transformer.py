@@ -2,11 +2,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from VeraGridEngine.IO.ucte.devices.ucte_base import sub_int, sub_str, sub_float
+from VeraGridEngine.IO.ucte.devices.ucte_base import sub_int, sub_str, sub_float, try_int, try_float
 from VeraGridEngine.basic_structures import Logger
 
 
 class UcteTransformer:
+    """
+    UcteTransformer
+    """
     def __init__(self):
         self.node1 = ""  # 0-7: Node 1 code (non-regulated winding)
         self.node2 = ""  # 9-16: Node 2 code (regulated winding)
@@ -66,17 +69,91 @@ class UcteTransformer:
         """
 
         device = "Transformer"
+        if len(line) >= 89:
 
-        self.node1 = sub_str(line, 0, 8, device, "node1", logger)
-        self.node2 = sub_str(line, 9, 17, device, "node2", logger)
-        self.order_code = sub_str(line, 18, 19, device, "order_code", logger)
-        self.status = sub_int(line, 20, 21, device, "status", logger)
-        self.rated_voltage1 = sub_float(line, 22, 27, device, "rated_voltage1", logger)
-        self.rated_voltage2 = sub_float(line, 28, 33, device, "rated_voltage2", logger)
-        self.nominal_power = sub_float(line, 34, 39, device, "nominal_power", logger)
-        self.resistance = sub_float(line, 40, 46, device, "resistance", logger)
-        self.reactance = sub_float(line, 47, 53, device, "reactance", logger)
-        self.susceptance = sub_float(line, 54, 62, device, "susceptance", logger)
-        self.conductance = sub_float(line, 63, 69, device, "conductance", logger)
-        self.current_limit = sub_int(line, 70, 76, device, "current_limit", logger)
-        self.name = sub_str(line, 77, 88, device, "name", logger)
+            self.node1 = sub_str(line, 0, 8, device, "node1", logger)
+            self.node2 = sub_str(line, 9, 17, device, "node2", logger)
+            self.order_code = sub_str(line, 18, 19, device, "order_code", logger)
+            self.status = sub_int(line, 20, 21, device, "status", logger)
+            self.rated_voltage1 = sub_float(line, 22, 27, device, "rated_voltage1", logger)
+            self.rated_voltage2 = sub_float(line, 28, 33, device, "rated_voltage2", logger)
+            self.nominal_power = sub_float(line, 34, 39, device, "nominal_power", logger)
+            self.resistance = sub_float(line, 40, 46, device, "resistance", logger)
+            self.reactance = sub_float(line, 47, 53, device, "reactance", logger)
+            self.susceptance = sub_float(line, 54, 62, device, "susceptance", logger)
+            self.conductance = sub_float(line, 63, 69, device, "conductance", logger)
+            self.current_limit = sub_int(line, 70, 76, device, "current_limit", logger)
+            self.name = sub_str(line, 77, 88, device, "name", logger)
+        else:
+            logger.add_warning(f"Non canonical line length ",
+                               device_class=device,
+                               value=len(line),
+                               expected_value=89)
+
+            chunks = line.split()
+
+            if len(chunks) >= 13:
+
+                self.node1 = chunks[0].strip()
+                self.node2 = chunks[1].strip()
+                self.order_code = chunks[2].strip()
+                self.status = try_int(chunks[3].strip(), device, "status", logger)
+                self.rated_voltage1 = try_float(chunks[4].strip(), device, "rated_voltage1", logger)
+                self.rated_voltage2 = try_float(chunks[5].strip(), device, "rated_voltage2", logger)
+                self.nominal_power = try_float(chunks[6].strip(), device, "nominal_power", logger)
+                self.resistance = try_float(chunks[7].strip(), device, "resistance", logger)
+                self.reactance = try_float(chunks[8].strip(), device, "reactance", logger)
+                self.susceptance = try_float(chunks[9].strip(), device, "susceptance", logger)
+                self.conductance = try_float(chunks[10].strip(), device, "conductance", logger)
+                self.current_limit = try_int(chunks[11].strip(), device, "current_limit", logger)
+                self.name = chunks[12].strip()
+
+            elif len(chunks) == 12:
+
+                self.node1 = chunks[0].strip()
+                self.node2 = chunks[1].strip()
+                self.order_code = chunks[2].strip()
+                self.status = try_int(chunks[3].strip(), device, "status", logger)
+                self.rated_voltage1 = try_float(chunks[4].strip(), device, "rated_voltage1", logger)
+                self.rated_voltage2 = try_float(chunks[5].strip(), device, "rated_voltage2", logger)
+                self.nominal_power = try_float(chunks[6].strip(), device, "nominal_power", logger)
+                self.resistance = try_float(chunks[7].strip(), device, "resistance", logger)
+                self.reactance = try_float(chunks[8].strip(), device, "reactance", logger)
+                self.susceptance = try_float(chunks[9].strip(), device, "susceptance", logger)
+                self.conductance = try_float(chunks[10].strip(), device, "conductance", logger)
+                self.current_limit = try_int(chunks[11].strip(), device, "current_limit", logger)
+                self.name = "No name provided"
+
+                logger.add_warning("Incorrect number of parameters",
+                                   device_class=device,
+                                   value=len(chunks),
+                                   expected_value=13)
+            elif len(chunks) == 11:
+
+                self.node1 = chunks[0].strip()
+                self.node2 = chunks[1].strip()
+                self.order_code = chunks[2].strip()
+                self.status = try_int(chunks[3].strip(), device, "status", logger)
+                self.rated_voltage1 = try_float(chunks[4].strip(), device, "rated_voltage1", logger)
+                self.rated_voltage2 = try_float(chunks[5].strip(), device, "rated_voltage2", logger)
+                self.nominal_power = 9999.0  # WTF!!!!
+                self.resistance = try_float(chunks[6].strip(), device, "resistance", logger)
+                self.reactance = try_float(chunks[7].strip(), device, "reactance", logger)
+                self.susceptance = try_float(chunks[8].strip(), device, "susceptance", logger)
+                self.conductance = try_float(chunks[9].strip(), device, "conductance", logger)
+                self.current_limit = try_int(chunks[10].strip(), device, "current_limit", logger)
+                self.name = "No name provided"
+
+                logger.add_warning("Incorrect number of parameters",
+                                   device_class=device,
+                                   value=len(chunks),
+                                   expected_value=13)
+
+            else:
+                logger.add_error("Incorrect number of parameters",
+                                 device_class=device,
+                                 value=len(chunks),
+                                 expected_value=13)
+
+        if self.current_limit < 0:
+            self.current_limit = 9999.0

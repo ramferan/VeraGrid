@@ -7,7 +7,7 @@ from __future__ import annotations
 import numpy as np
 from typing import Dict, List, Union, Any, Tuple, TYPE_CHECKING
 from PySide6 import QtCore, QtWidgets, QtGui
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 from VeraGridEngine.basic_structures import IntVec
 from VeraGridEngine.data_logger import DataLogger
@@ -634,6 +634,23 @@ def get_list_model(lst: List[Union[str, ALL_DEV_TYPES]], checks=False, check_val
     return list_model
 
 
+def enums_to_model(enums_lst: List[Any]) -> Tuple[Dict[str, Any], QtGui.QStandardItemModel]:
+    """
+    Get the model and dict from a list of Enum value
+    :param enums_lst:
+    :return: dictionary, model
+    """
+    d = OrderedDict()
+    val_list = list()
+    for e in enums_lst:
+        d[e.value] = e
+        val_list.append(e.value)
+
+    mdl = get_list_model(val_list)
+
+    return d, mdl
+
+
 class CustomFileSystemModel(QtWidgets.QFileSystemModel):
     """
     CustomFileSystemModel
@@ -988,7 +1005,6 @@ def add_sub_menu(menu: QtWidgets.QMenu,
                  text: str,
                  icon_path: str = "",
                  icon_pixmap: QtGui.QPixmap = None, ):
-
     entry = menu.addMenu(text)
 
     if icon_pixmap is None:
@@ -1001,7 +1017,6 @@ def add_sub_menu(menu: QtWidgets.QMenu,
         edit_icon = QtGui.QIcon()
         edit_icon.addPixmap(icon_pixmap)
         entry.setIcon(edit_icon)
-
 
     return entry
 

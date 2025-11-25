@@ -1038,8 +1038,16 @@ pf = gce.PowerFlowDriver(grid, pf_options)
 pf.run()
 
 fault_index = 2
-sc_options = gce.ShortCircuitOptions(bus_index=fault_index,
-                                     fault_type=gce.FaultType.LG)
+sc_options = gce.ShortCircuitOptions()
+
+grid.add_short_circuit_definition(
+    gce.ShortCircuitEvent(
+        device=grid.buses[fault_index],
+        fault_type=gce.FaultType.LG,
+        method=gce.MethodShortCircuit.sequences,
+        phases=gce.PhasesShortCircuit.a
+    )
+)
 
 sc = gce.ShortCircuitDriver(grid, options=sc_options,
                             pf_options=pf_options,
@@ -1303,7 +1311,7 @@ m_circuit.add_line(br2)
 m_circuit.add_line(br3)
 
 # Declare the simulation driver and run
-se = gce.StateEstimation(circuit=m_circuit)
+se = gce.StateEstimationDriver(circuit=m_circuit)
 se.run()
 
 print(se.results.get_bus_df())

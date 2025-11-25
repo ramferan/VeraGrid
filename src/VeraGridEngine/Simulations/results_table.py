@@ -20,7 +20,7 @@ class ResultsTable:
     def __init__(self,
                  data: Union[Mat, Vec],
                  columns: StrVec,
-                 index: StrVec,
+                 index: StrVec | pd.DatetimeIndex,
                  title: str,
                  cols_device_type: DeviceType,
                  idx_device_type: DeviceType,

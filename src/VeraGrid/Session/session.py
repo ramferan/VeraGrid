@@ -41,10 +41,14 @@ from VeraGridEngine.Simulations.InputsAnalysis.inputs_analysis_driver import Inp
 from VeraGridEngine.Simulations.InvestmentsEvaluation.investments_evaluation_driver import (InvestmentsEvaluationDriver,
                                                                                             InvestmentsEvaluationResults)
 from VeraGridEngine.Simulations.SigmaAnalysis.sigma_analysis_driver import SigmaAnalysisResults
-from VeraGridEngine.Simulations.NTC.ntc_driver import OptimalNetTransferCapacityResults, OptimalNetTransferCapacityDriver
+from VeraGridEngine.Simulations.NTC.ntc_driver import OptimalNetTransferCapacityResults, \
+    OptimalNetTransferCapacityDriver
 from VeraGridEngine.Simulations.NodalCapacity.nodal_capacity_ts_driver import (NodalCapacityTimeSeriesDriver,
                                                                                NodalCapacityTimeSeriesResults)
 from VeraGridEngine.Simulations.Reliability.reliability_driver import ReliabilityStudyDriver, ReliabilityResults
+from VeraGridEngine.Simulations.StateEstimation.state_stimation_driver import StateEstimationDriver, StateEstimationResults
+from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import (SmallSignalStabilityDriver,
+                                                                                 SmallSignalStabilityResults)
 from VeraGridEngine.Simulations.Rms.rms_driver import RmsSimulationDriver, RmsResults
 from VeraGridEngine.Simulations.Topology.node_groups_driver import NodeGroupsDriver
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
@@ -404,6 +408,15 @@ class SimulationSession:
         return drv, results
 
     @property
+    def state_estimation(self) -> Tuple[StateEstimationDriver, StateEstimationResults]:
+        """
+
+        :return:
+        """
+        drv, results = self.get_driver_results(SimulationTypes.StateEstimation_run)
+        return drv, results
+
+    @property
     def power_flow_ts(self) -> Tuple[PowerFlowTimeSeriesDriver, PowerFlowTimeSeriesResults]:
         """
 
@@ -605,7 +618,7 @@ class SimulationSession:
         return drv, None
 
     @property
-    def small_signal_stability_simulation(self) -> Tuple[SmallSignal_Stability_Driver, SmallSignal_Stability_Results]:
+    def small_signal_stability_simulation(self) -> Tuple[SmallSignalStabilityDriver, SmallSignalStabilityResults]:
         """
 
         :return:

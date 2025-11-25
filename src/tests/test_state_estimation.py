@@ -61,7 +61,7 @@ def test_3_node_abur_exposito() -> None:
             solver=solver
         )
 
-        se = StateEstimation(circuit=grid, options=se_options)
+        se = StateEstimationDriver(circuit=grid, options=se_options)
 
         se.run()
 
@@ -231,7 +231,7 @@ def test_14_bus_matpower():
             run_measurement_profiling=True
 
         )
-        se = StateEstimation(circuit=grid, options=se_options)
+        se = StateEstimationDriver(circuit=grid, options=se_options)
         se.run()
 
         print("Bus results:\n", se.results.get_bus_df())

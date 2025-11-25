@@ -420,7 +420,7 @@ def solve_se_lm(nc: NumericalCircuit,
         #                 z_tilde_imax = z[imax] - (sigma[imax] ** 2 / Pii[imax]) * r[imax]
         #
         #                 logger.add_info("Measurement corrected",
-        #                                 device=measurements[imax].api_object.name,
+        #                                 device=measurements[imax].device.name,
         #                                 device_class=measurements[imax].device_type.value,
         #                                 device_property="value",
         #                                 value=z[imax],
@@ -449,7 +449,7 @@ def solve_se_lm(nc: NumericalCircuit,
         #         else:
         #
         #             logger.add_info("Measurement deleted",
-        #                             device=measurements[imax].api_object.name,
+        #                             device=measurements[imax].device.name,
         #                             device_class=measurements[imax].device_type.value,
         #                             device_property="value",
         #                             value=z[imax],
@@ -710,7 +710,7 @@ def solve_se_nr(nc: NumericalCircuit,
         #                 z_tilde_imax = z[imax] - (sigma[imax] ** 2 / Pii[imax]) * r[imax]
         #
         #                 logger.add_info("Measurement corrected",
-        #                                 device=measurements[imax].api_object.name,
+        #                                 device=measurements[imax].device.name,
         #                                 device_class=measurements[imax].device_type.value,
         #                                 device_property="value",
         #                                 value=z[imax],
@@ -738,7 +738,7 @@ def solve_se_nr(nc: NumericalCircuit,
         #         else:
         #
         #             logger.add_info("Measurement deleted",
-        #                             device=measurements[imax].api_object.name,
+        #                             device=measurements[imax].device.name,
         #                             device_class=measurements[imax].device_type.value,
         #                             device_property="value",
         #                             value=z[imax],

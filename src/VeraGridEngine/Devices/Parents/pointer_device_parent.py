@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
 
 from typing import Union
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
@@ -16,11 +17,12 @@ class PointerDeviceParent(EditableDevice):
     __slots__ = (
         '_device_idtag',
         '_tpe',
+        '_device'
     )
 
     def __init__(self,
                  idtag: Union[str, None],
-                 device: EditableDevice,
+                 device: EditableDevice | None,
                  name: str,
                  code: str,
                  comment: str,
@@ -43,6 +45,7 @@ class PointerDeviceParent(EditableDevice):
 
         self._device_idtag: str = device.idtag if device is not None else ""
         self._tpe: DeviceType = device.device_type if device is not None else DeviceType.NoDevice
+        self._device = device
 
         self.register(key='device_idtag', units='', tpe=str, definition='Unique ID', editable=False)
         self.register(key='tpe', units='', tpe=DeviceType, definition='Device type', editable=False)
@@ -77,6 +80,23 @@ class PointerDeviceParent(EditableDevice):
         else:
             raise ValueError(f"tpe must be a string not {val}")
 
+    @property
+    def device(self) -> EditableDevice:
+        """
+        device getter
+        :return:
+        """
+        return self._device
+
+    @device.setter
+    def device(self, val: EditableDevice):
+        if isinstance(val, EditableDevice):
+            self._tpe = val.device_type
+            self._device_idtag = val.idtag
+            self._device = val
+        else:
+            raise ValueError(f"tpe must be a EditableDevice not {val}")
+
     def set_device(self, elm: EditableDevice):
         """
         Set the device
@@ -84,3 +104,4 @@ class PointerDeviceParent(EditableDevice):
         """
         self._tpe = elm.device_type
         self._device_idtag = elm.idtag
+        self._device = elm

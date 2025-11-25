@@ -6,7 +6,7 @@
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.enumerations import BuildStatus
 from VeraGridEngine.Devices.Parents.shunt_parent import ShuntParent
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, DynamicVarType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
 
 
 class Shunt(ShuntParent):
@@ -81,7 +81,7 @@ class Shunt(ShuntParent):
             Pshunt = Var("Pshunt")
             Qshunt = Var("Qshunt")
 
-            Vm = self.bus.rms_model.model.E(DynamicVarType.Vm)
+            Vm = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
 
             # Assign Block
             self.rms_model.model = Block(
@@ -97,7 +97,7 @@ class Shunt(ShuntParent):
                 init_vars=[Pshunt, Qshunt],
                 parameters=[],
                 external_mapping={
-                    DynamicVarType.P: Pshunt,
-                    DynamicVarType.Q: Qshunt
+                    VarPowerFlowRefferenceType.P: Pshunt,
+                    VarPowerFlowRefferenceType.Q: Qshunt
                 }
             )

@@ -370,7 +370,7 @@ class SchematicWidget(BaseDiagramWidget):
         Creates the Diagram Editor (DiagramEditorWidget)
         :param circuit: Circuit that is handling
         :param diagram: SchematicDiagram to use (optional)
-        :param default_bus_voltage: Default bus voltages (KV)
+        :param default_bus_voltage: Default bus voltages (kV)
         :param time_index: time index to represent
         """
 
@@ -398,7 +398,7 @@ class SchematicWidget(BaseDiagramWidget):
         self.setStretchFactor(0, 0)
         self.setStretchFactor(1, 2000)
 
-        # default_bus_voltage (KV)
+        # default_bus_voltage (kV)
         self.default_bus_voltage = default_bus_voltage
 
         # nodes distance "explosion" factor

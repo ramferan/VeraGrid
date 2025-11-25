@@ -81,8 +81,8 @@ def get_allowed_sheets() -> Dict[str, Any]:
 
             if profile_property not in allowed_data_sheets.keys():
                 # create the profile
-                allowed_data_sheets[object_type_name + '_' + profile_property] = object_sample.registered_properties[
-                    main_property].tpe
+                key = object_type_name + '_' + profile_property
+                allowed_data_sheets[key] = object_sample.registered_properties[main_property].tpe
 
         # declare the DataFrames for the normal data
         allowed_data_sheets[object_type_name] = None

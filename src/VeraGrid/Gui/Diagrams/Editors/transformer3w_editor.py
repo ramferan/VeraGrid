@@ -50,7 +50,7 @@ class WindingWidget(QFrame):
         # add all to the GUI
         self.layout.addWidget(QLabel(f"Winding {self.i}"))
 
-        v_str = f"{bus_to.Vnom} KV" if bus_to is not None else 'Not connected'
+        v_str = f"{bus_to.Vnom} kV" if bus_to is not None else 'Not connected'
         self.layout.addWidget(QLabel(f"Bus voltage: {v_str}"))
 
         if i == 1:
@@ -65,7 +65,7 @@ class WindingWidget(QFrame):
         # spacer
         self.layout.addWidget(QLabel(""))
 
-        self.layout.addWidget(QLabel(f"V{i}: Nominal voltage [KV]"))
+        self.layout.addWidget(QLabel(f"V{i}: Nominal voltage [kV]"))
         self.layout.addWidget(self.vn_spinner)
 
         self.layout.addWidget(QLabel(f"Sn{i}: Nominal power [MVA]"))

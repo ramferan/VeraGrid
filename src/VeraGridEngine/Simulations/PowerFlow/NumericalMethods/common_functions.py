@@ -48,6 +48,18 @@ def compute_zip_power(S0: CxVec, I0: CxVec, Y0: CxVec, Vm: CxVec) -> CxVec:
     return S0 + np.conj(I0 + Y0 * Vm) * Vm
 
 
+def compute_zip_current(S0: CxVec, I0: CxVec, Y0: CxVec, Vm: CxVec) -> CxVec:
+    """
+    Compute the equivalent current injection
+    :param S0: Base power (P + jQ)
+    :param I0: Base current (Ir + jIi)
+    :param Y0: Base admittance (G + jB)
+    :param Vm: voltage module, for the 3ph power flow the complete voltage phasor is used (Vm + Va)
+    :return: complex current injection
+    """
+    return I0 + np.conj(S0 / Vm) + Y0 * Vm
+
+
 def compute_power(Ybus: csc_matrix, V: CxVec) -> CxVec:
     """
     Compute the power from the admittance matrix and the voltage
@@ -56,6 +68,16 @@ def compute_power(Ybus: csc_matrix, V: CxVec) -> CxVec:
     :return: Calculated power injections
     """
     return V * np.conj(Ybus @ V)
+
+
+def compute_current(Ybus: csc_matrix, V: CxVec) -> CxVec:
+    """
+    Compute the current from the admittance matrix and the voltage
+    :param Ybus: Admittance matrix
+    :param V: Voltage vector
+    :return: Calculated current injections
+    """
+    return Ybus @ V
 
 
 def fortescue_012_to_abc(z0: complex, z1: complex, z2: complex) -> CxMat:
@@ -208,11 +230,116 @@ def expand_magnitudes(magnitude: CxVec, lookup: IntVec):
     return magnitude_expanded
 
 
+def floating_star_currents(Va, Vb, Vc, Istar_a, Istar_b, Istar_c, Vn0):
+    """
+
+    :param Va:
+    :param Vb:
+    :param Vc:
+    :param Istar_a:
+    :param Istar_b:
+    :param Istar_c:
+    :param Vn0:
+    :return:
+    """
+    # unknown: Vn (complex). Start from last-iter Vn0 or center of Va,Vb,Vc
+    Vn = Vn0
+
+    def Iphase(U, Istar):
+        Umag = abs(U)
+        if Umag < 1e-12:  # guard
+            return 0j
+        return np.conj(Istar) * (U / Umag)
+
+    for _ in range(10):  # few Newton steps are usually enough
+        Ua, Ub, Uc = Va - Vn, Vb - Vn, Vc - Vn
+        Ia = Iphase(Ua, Istar_a)
+        Ib = Iphase(Ub, Istar_b)
+        Ic = Iphase(Uc, Istar_c)
+        F = Ia + Ib + Ic  # complex residual
+        if abs(F) < 1e-9:
+            break
+
+        # Jacobian dF/dVn (complex), derived from d/dVn [U/|U|] = -(1/|U|)(I - U U*/|U|^2)
+        # A simple, very stable approximation is to use a secant-like step:
+        eps = 1e-6
+        dV = eps * (1.0 + 1.0j)
+        Uad, Ubd, Ucd = Va - (Vn + dV), Vb - (Vn + dV), Vc - (Vn + dV)
+        Iad = Iphase(Uad, Istar_a)
+        Ibd = Iphase(Ubd, Istar_b)
+        Icd = Iphase(Ucd, Istar_c)
+        Fd = Iad + Ibd + Icd
+        Jsec = (Fd - F) / dV if dV != 0 else 1.0
+        if Jsec == 0:
+            break
+        # damped update
+        Vn = Vn - 0.7 * F / Jsec
+
+    # final phase currents to inject (load consumes → subtract at phases)
+    Ua, Ub, Uc = Va - Vn, Vb - Vn, Vc - Vn
+    Ia = Iphase(Ua, Istar_a)
+    Ib = Iphase(Ub, Istar_b)
+    Ic = Iphase(Uc, Istar_c)
+
+    # print('In =', Ia + Ib + Ic)
+
+    return Ia, Ib, Ic, Vn
+
+
+def floating_star_powers(Ua,
+                         Ub,
+                         Uc,
+                         Sa,
+                         Sb,
+                         Sc):
+    """
+
+    :param Ua:
+    :param Ub:
+    :param Uc:
+    :param Sa:
+    :param Sb:
+    :param Sc:
+    :return:
+    """
+    # A·x2 + B·x + c = 0
+    # x = (-B +- sqrt(B2 - 4·A·C)) / 2·A
+
+    A = Sa + Sb + Sc
+    B = -(Sa * (Ub + Uc) + Sb * (Ua + Uc) + Sc * (Ua + Ub))
+    C = Sa * Ub * Uc + Sb * Ua * Uc + Sc * Ua * Ub
+
+    Un_p = (-B + np.sqrt(B ** 2 - 4 * A * C)) / (2 * A)
+    Un_n = (-B - np.sqrt(B ** 2 - 4 * A * C)) / (2 * A)
+
+    if abs(Un_p) < abs(Un_n):
+        Un = Un_p
+    else:
+        Un = Un_n
+
+    Ia = np.conj(Sa / (Ua - Un))
+    Ib = np.conj(Sb / (Ub - Un))
+    Ic = np.conj(Sc / (Uc - Un))
+
+    # print('\nUn_p = ', abs(Un_p), '<', np.angle(Un_p, deg=True), 'º')
+    # print('\nUn_n = ', abs(Un_n), '<', np.angle(Un_n, deg=True), 'º')
+    # print('\nIn = ', Ia + Ib + Ic)
+
+    Un_abs = abs(Un)
+
+    return Ia, Ib, Ic, Un
+
+
 def power_flow_post_process_nonlinear_3ph(Sbus: CxVec,
                                           V: CxVec,
-                                          F: IntVec, T: IntVec,
-                                          pv: IntVec, vd: IntVec,
-                                          Ybus: CscMat, Yf: CscMat, Yt: CscMat,
+                                          Vn_floating: CxVec,
+                                          F: IntVec,
+                                          T: IntVec,
+                                          pv: IntVec,
+                                          vd: IntVec,
+                                          Ybus: CscMat,
+                                          Yf: CscMat,
+                                          Yt: CscMat,
                                           Yshunt_bus: CxVec,
                                           branch_rates: Vec,
                                           Sbase: float,
@@ -220,8 +347,10 @@ def power_flow_post_process_nonlinear_3ph(Sbus: CxVec,
                                           branch_lookup: IntVec):
     """
 
+
     :param Sbus:
     :param V:
+    :param Vn_floating:
     :param F:
     :param T:
     :param pv:
@@ -236,33 +365,41 @@ def power_flow_post_process_nonlinear_3ph(Sbus: CxVec,
     :param branch_lookup:
     :return:
     """
-
     V_expanded = expand_magnitudes(V, bus_lookup)
-
-    # power at the slack nodes
-    Sbus[vd] = V[vd] * np.conj(Ybus[vd, :] @ V)
-
-    # Reactive power at the pv nodes
-    P_pv = Sbus[pv].real
-    Q_pv = (V[pv] * np.conj(Ybus[pv, :] @ V)).imag
-    Sbus[pv] = P_pv + 1j * Q_pv  # keep the original P injection and set the calculated reactive power for PV nodes
+    Vn_floating_expanded = expand_magnitudes(Vn_floating, bus_lookup)
 
     # Add the shunt power V^2 x Y^*
-    Vm = np.abs(V_expanded)
+    Vm = np.abs(V)
     Sbus = np.conj(Yshunt_bus) @ (Vm * Vm)
+
+    # power at the slack nodes
+    if len(vd) > 0:
+        Sbus[vd] = V[vd] * np.conj(Ybus[vd, :] @ V)
+
+    # Reactive power at the pv nodes
+    if len(pv) > 0:
+        P_pv = Sbus[pv].real
+        Q_pv = (V[pv] * np.conj(Ybus[pv, :] @ V)).imag
+        Sbus[pv] = P_pv + 1j * Q_pv  # keep the original P injection and set the calculated reactive power for PV nodes
+
     Sbus_expanded = expand_magnitudes(Sbus, bus_lookup)
 
     # Branches current, loading, etc
     Vf_expanded = V_expanded[F]
     Vt_expanded = V_expanded[T]
+    Vf_floating_expanded = Vn_floating_expanded[F]
+    Vt_floating_expanded = Vn_floating_expanded[T]
 
     If = Yf @ V
     It = Yt @ V
     If_expanded = expand_magnitudes(If, branch_lookup)
     It_expanded = expand_magnitudes(It, branch_lookup)
 
-    Sf_expanded = Vf_expanded * np.conj(If_expanded) * Sbase
-    St_expanded = Vt_expanded * np.conj(It_expanded) * Sbase
+    Sf_expanded = Vf_expanded * np.conj(If_expanded) * (Sbase / 3)
+    St_expanded = Vt_expanded * np.conj(It_expanded) * (Sbase / 3)
+
+    Sf_load_expanded = (Vf_expanded - Vf_floating_expanded) * np.conj(If_expanded) * (Sbase / 3)
+    St_load_expanded = (Vt_expanded - Vt_floating_expanded) * np.conj(It_expanded) * (Sbase / 3)
 
     # Branch losses in MVA
     losses = (Sf_expanded + St_expanded)
@@ -276,9 +413,16 @@ def power_flow_post_process_nonlinear_3ph(Sbus: CxVec,
     return Sf_expanded, St_expanded, If_expanded, It_expanded, Vbranch, loading, losses, Sbus_expanded, V_expanded
 
 
-def power_flow_post_process_nonlinear(Sbus: CxVec, V: CxVec, F: IntVec, T: IntVec,
-                                      pv: IntVec, vd: IntVec,
-                                      Ybus: CscMat, Yf: CscMat, Yt: CscMat, Yshunt_bus: CxVec,
+def power_flow_post_process_nonlinear(Sbus: CxVec,
+                                      V: CxVec,
+                                      F: IntVec,
+                                      T: IntVec,
+                                      pv: IntVec,
+                                      vd: IntVec,
+                                      Ybus: CscMat,
+                                      Yf: CscMat,
+                                      Yt: CscMat,
+                                      Yshunt_bus: CxVec,
                                       branch_rates: Vec,
                                       Sbase: float):
     """

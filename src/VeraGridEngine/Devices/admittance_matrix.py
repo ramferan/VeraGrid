@@ -47,9 +47,21 @@ class AdmittanceMatrix:
 
         self.__values: CxMat = np.zeros((size, size), dtype=complex)
 
+        self._phN: int = 0
         self._phA: int = 0
         self._phB: int = 0
         self._phC: int = 0
+
+    @property
+    def phN(self):
+        return self._phN
+
+    @phN.setter
+    def phN(self, val: int):
+        if isinstance(val, int):
+            self._phN = val
+        else:
+            raise ValueError(f'{val} is not an int')
 
     @property
     def phA(self):
@@ -117,6 +129,7 @@ class AdmittanceMatrix:
             "size": self.__size,
             "values_r": self.__values.real.tolist(),
             "values_i": self.__values.imag.tolist(),
+            "phase_n": self._phN,
             "phase_a": self._phA,
             "phase_b": self._phB,
             "phase_c": self._phC,
@@ -132,6 +145,7 @@ class AdmittanceMatrix:
 
         data_r = list_to_matrix(data.get("values_r", None), self.__size)
         data_i = list_to_matrix(data.get("values_i", None), self.__size)
+        self.phN = data.get("phase_n", 0)
         self.phA = data.get("phase_a", 0)
         self.phB = data.get("phase_b", 0)
         self.phC = data.get("phase_c", 0)
