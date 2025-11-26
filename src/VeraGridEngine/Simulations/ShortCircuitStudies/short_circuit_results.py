@@ -1478,11 +1478,11 @@ class ShortCircuitResults(ResultsTemplate):
         :param sc_idx:
         :return:
         """
-        return pd.DataFrame(data={'Um A [p.u.]': np.abs(self.voltageA[:, sc_idx]).round(4),
+        return pd.DataFrame(data={'Um A [p.u.]': np.abs(self.voltageA[:, sc_idx]).round(5),
                                   'Ua A [º]': np.angle(self.voltageA[:, sc_idx], deg=True).round(1),
-                                  'Um B [p.u.]': np.abs(self.voltageB[:, sc_idx]).round(4),
+                                  'Um B [p.u.]': np.abs(self.voltageB[:, sc_idx]).round(5),
                                   'Ua B [º]': np.angle(self.voltageB[:, sc_idx], deg=True).round(1),
-                                  'Um C [p.u.]': np.abs(self.voltageC[:, sc_idx]).round(4),
+                                  'Um C [p.u.]': np.abs(self.voltageC[:, sc_idx]).round(5),
                                   'Ua C [º]': np.angle(self.voltageC[:, sc_idx], deg=True).round(1)},
                             index=self.bus_names)
 

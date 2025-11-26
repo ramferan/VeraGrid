@@ -15,7 +15,6 @@ def test_three_phase_to_ground_fault():
     :return:
     """
     logger = gce.Logger()
-
     grid = gce.MultiCircuit()
     grid.fBase = 60
 

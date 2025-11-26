@@ -469,7 +469,6 @@ def ptdf_reduction_ree_less_bad(grid: MultiCircuit,
     return grid, logger
 
 
-
 def ptdf_reduction_projected(grid: MultiCircuit,
                              reduction_bus_indices: IntVec,
                              tol=1e-8,
@@ -522,13 +521,27 @@ def ptdf_reduction_projected(grid: MultiCircuit,
         Flows0_gen_ts = None
         Flows0_gen_srap_ts = None
 
-    # move the external injection to the boundary like in the Di-Shi method
-    relocate_injections(grid=grid, reduction_bus_indices=reduction_bus_indices)
-
-    # Eliminate the external buses
+    # Identify boundary buses (internal buses connected to external buses)
+    bus_idx_dict = grid.get_bus_index_dict()
+    external_set = set(e_buses)
+    boundary_set = set()
+    
+    for branch in grid.get_branches(add_vsc=True, add_hvdc=True, add_switch=False):
+        f = bus_idx_dict[branch.bus_from]
+        t = bus_idx_dict[branch.bus_to]
+        
+        if f in external_set and t not in external_set:
+            boundary_set.add(t)
+        elif t in external_set and f not in external_set:
+            boundary_set.add(f)
+            
+    boundary_buses = np.sort(np.array(list(boundary_set)))
+    
+    # Eliminate the external buses (but not relocating injections)
+    # We rely on solving for the necessary compensation on the boundary buses
     grid.delete_buses(lst=[grid.buses[e] for e in e_buses], delete_associated=True)
 
-    # Injections that remain
+    # Injections that remain (internal only, since external are gone)
     Pload2 = get_Pload(grid)
     Pgen2, Pgen_srap2 = get_Pgen(grid)
 
@@ -540,10 +553,10 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     # We want to find dP such that: PTDF @ (Pbus2 + dP) = Flow0
     # So: PTDF @ dP = Flow0 - PTDF @ Pbus2
     
-    # Total injections in the reduced grid (relocated)
+    # Total injections in the reduced grid (existing internal)
     Pbus2_total = Pload2 + Pgen2 + Pgen_srap2
     
-    # Flows caused by the relocated injections
+    # Flows caused by the existing internal injections
     Flow2 = lin2.PTDF @ Pbus2_total
     
     # Target flows (as in the original grid)
@@ -552,15 +565,19 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     # Residual flow to compensate
     residual_flow = Flow0_total[i_branches] - Flow2
     
-    # Solve for dP
-    dP, _, _, _ = np.linalg.lstsq(lin2.PTDF, residual_flow, rcond=None)
+    # Solve for dP, but ONLY for boundary buses
+    boundary_indices_new = np.searchsorted(i_buses, boundary_buses)
+    PTDF_boundary = lin2.PTDF[:, boundary_indices_new]
+    
+    # Solve: PTDF_boundary @ dP_boundary = residual_flow
+    dP_boundary, _, _, _ = np.linalg.lstsq(PTDF_boundary, residual_flow, rcond=None)
+    
+    # Create full dP vector for all new buses (initialized to 0)
+    dP = np.zeros(grid.get_bus_number())
+    dP[boundary_indices_new] = dP_boundary
 
-    # Mask dP for buses that do not affect flows (zero PTDF column)
-    # This is to handle the slack bus if non-distributed
     ptdf_col_norms = np.linalg.norm(lin2.PTDF, axis=0)
     zero_influence_mask = ptdf_col_norms < tol
-
-    dP[zero_influence_mask] = 0.0
 
     if grid.has_time_series:
 
@@ -591,30 +608,54 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     else:
         dP_ts = None
 
+    # Original totals
+    total_gen_orig = np.sum(Pgen) + np.sum(Pgen_srap)
+    total_load_orig = np.sum(Pload)  # Pload is negative, so sum is total load (negative)
+    
+    # Calculate what the totals would be if we only added net compensation
+    total_gen_new = np.sum(Pgen2) + np.sum(Pgen_srap2) + np.sum(dP[dP > 0])
+    total_load_new = np.sum(Pload2) + np.sum(dP[dP < 0])
+    
+    # Calculate deficits
+    gen_deficit = total_gen_orig - total_gen_new
+    load_deficit = total_load_orig - total_load_new  # both are negative
+    
+    extra_power = max(0.0, gen_deficit)
+    
+    # Distribute uniformly this extra power among boundary buses
+    if len(boundary_indices_new) > 0:
+        extra_per_bus = extra_power / len(boundary_indices_new)
+    else:
+        extra_per_bus = 0.0
+
     n2 = grid.get_bus_number()
     for i in range(n2):
 
         bus = grid.buses[i]
-
-        # --------- NEW BLOCK -----------
-        # Instead of adding both generators and loads, we add only what is needed
-        power_balance = dP[i]
-
-        if power_balance > tol:
-
-            # Compute the proportion of SRAP generation to move
-            # The ratio is 1.0 if everything is SRAP based, 0.0 if fully non-SRAP
-            # We base this on the EXISTING generation at the bus (Pgen2, Pgen_srap2)
-            total_gen = Pgen2[i] + Pgen_srap2[i]
-            if total_gen > tol:
-                ratio_gen_srap = Pgen_srap2[i] / total_gen
+        
+        # Net compensation required for flows
+        net_comp = dP[i]
+        
+        # Check if the bus is part of the boundary
+        is_boundary = i in boundary_indices_new
+        
+        extra_gen = extra_per_bus if is_boundary else 0.0
+        extra_load = -extra_per_bus if is_boundary else 0.0
+        
+        gen_to_add = max(0.0, net_comp) + extra_gen
+        load_to_add = min(0.0, net_comp) + extra_load
+        
+        if gen_to_add > tol:
+            # Split this into SRAP/Non-SRAP
+            total_gen_existing = Pgen2[i] + Pgen_srap2[i]
+            if total_gen_existing > tol:
+                ratio_gen_srap = Pgen_srap2[i] / total_gen_existing
             else:
-                ratio_gen_srap = 0.0 # Default to non-SRAP if no gen exists
+                ratio_gen_srap = 0.0
 
-            # Add the SRAP generator if there is any SRAP generation
             if ratio_gen_srap > tol:
                 elm_srap = Generator(name=f"compensated gen {i}", 
-                                P=power_balance * ratio_gen_srap, 
+                                P=gen_to_add * ratio_gen_srap, 
                                 srap_enabled=True)
 
                 if dP_ts is not None:
@@ -622,14 +663,9 @@ def ptdf_reduction_projected(grid: MultiCircuit,
 
                 grid.add_generator(bus=bus, api_obj=elm_srap)
 
-            else:
-                # no need to add an SRAP generator
-                pass
-        
-            # Add the non-SRAP generator if there is any non-SRAP generation
             if (1 - ratio_gen_srap) > tol:
                 elm_gen = Generator(name=f"compensated gen {i}", 
-                                P=power_balance * (1 - ratio_gen_srap), 
+                                P=gen_to_add * (1 - ratio_gen_srap), 
                                 srap_enabled=False)
 
                 if dP_ts is not None:
@@ -637,53 +673,13 @@ def ptdf_reduction_projected(grid: MultiCircuit,
 
                 grid.add_generator(bus=bus, api_obj=elm_gen)
 
-            else:
-                # no need to add a non SRAP generator
-                pass
-
-        elif power_balance < -tol:
-            elm = Load(name=f"compensated load {i}", P=-power_balance)
+        if abs(load_to_add) > tol:
+            elm = Load(name=f"compensated load {i}", P=-load_to_add)
 
             if dP_ts is not None:
                 elm.P_prof = -dP_ts[:, i]
 
             grid.add_load(bus=bus, api_obj=elm)
-
-        else:
-            # nothing to add
-            pass
-            
-
-        # --------- OLD BLOCK -----------
-        # if abs(dPload[i]) > tol:
-        #     elm = Load(name=f"compensated load {i}", P=-dPload[i])
-
-        #     if dPbus_load_ts is not None:
-        #         elm.P_prof = dPbus_load_ts[:, i]
-
-        #     grid.add_load(bus=bus, api_obj=elm)
-
-        # if abs(dPgen[i]) > tol:
-        #     elm = Generator(name=f"compensated gen {i}", P=dPgen[i], srap_enabled=False)
-
-        #     if dPbus_gen_ts is not None:
-        #         elm.P_prof = -dPbus_gen_ts[:, i]
-
-        #     grid.add_generator(bus=bus, api_obj=elm)
-
-        # if abs(dPgen_srap[i]) > tol:
-        #     elm = Generator(name=f"compensated gen {i}", P=dPgen_srap[i], srap_enabled=True)
-
-        #     if dPbus_gen_srap_ts is not None:
-        #         elm.P_prof = -dPbus_gen_srap_ts[:, i]
-
-        #     grid.add_generator(bus=bus, api_obj=elm)
-
-    # proof that the flows are actually the same
-    # Pbus4 = grid.get_Pbus(apply_active=True)
-    # Flows0 = lin.PTDF @ Pbus0
-    # Flows4 = lin2.PTDF @ Pbus4
-    # diff = Flows0[i_branches] - Flows4
 
     return grid, logger
 

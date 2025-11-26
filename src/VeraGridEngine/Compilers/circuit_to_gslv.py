@@ -2434,11 +2434,13 @@ def translate_gslv_pf_results(grid: MultiCircuit, res: "pg.PowerFlowResults", lo
 
 
 def gslv_contingencies_snapshot(circuit: MultiCircuit,
-                                con_opt: ContingencyAnalysisOptions) -> "pg.ContingencyResultsSnapshot":
+                                con_opt: ContingencyAnalysisOptions,
+                                opf_results: Union[None, OptimalPowerFlowResults] = None,) -> "pg.ContingencyResultsSnapshot":
     """
     GSLV power flow
     :param circuit: MultiCircuit instance
     :param con_opt: ContingencyAnalysisOptions
+    :param opf_results: OptimalPowerFlowResults (optional)
     :return: GSLV Power flow results object
     """
     override_branch_controls = not (con_opt.pf_options.control_taps_modules and con_opt.pf_options.control_taps_phase)
@@ -2447,7 +2449,7 @@ def gslv_contingencies_snapshot(circuit: MultiCircuit,
                            use_time_series=False,
                            time_indices=None,
                            override_branch_controls=override_branch_controls,
-                           opf_results=None)
+                           opf_results=opf_results)
 
     con_opt_gslv = pg.ContingencyAnalysisOptions(
         use_provided_flows=con_opt.use_provided_flows,

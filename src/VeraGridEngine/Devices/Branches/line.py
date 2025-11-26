@@ -338,6 +338,10 @@ class Line(BranchParent):
 
     @property
     def circuit_idx(self):
+        """
+
+        :return:
+        """
         return self._circuit_idx
 
     @circuit_idx.setter
@@ -448,7 +452,7 @@ class Line(BranchParent):
 
         :return:
         """
-        if self._ys.size == 0:
+        if self._ys.size != 4:
             self.fill_3_phase_from_sequence()
 
         return self._ys
@@ -466,7 +470,7 @@ class Line(BranchParent):
 
         :return:
         """
-        if self._ysh.size == 0:
+        if self._ysh.size != 4:
             self.fill_3_phase_from_sequence()
 
         return self._ysh
@@ -706,7 +710,7 @@ class Line(BranchParent):
         self.ys = obj.get_ys_nabc()
         self.ysh = obj.get_ysh_nabc()
 
-    def initialize_rms(self):
+    def initialize_rms(self) -> None:
         """
 
         :return:

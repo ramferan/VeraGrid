@@ -179,6 +179,8 @@ def make_ptdf(Bpqpv: sp.csc_matrix,
     # Bf is a sparse matrix
     H = Bf @ dTheta
 
+    # PTDF = Bf x (B^-1 x P)
+
     return H
 
 

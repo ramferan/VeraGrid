@@ -449,7 +449,7 @@ def pmode3_formulation2(prob, t_idx, m, rate, P0, droop, theta_f, theta_t, base_
 
     return flow
 
-    
+
 def pmode3_formulation3(prob, t_idx, m, rate, P0, droop, theta_f, theta_t, base_name: str = "hvdc"):
     """
     Formulation
@@ -586,7 +586,7 @@ def pmode3_formulation_impr(prob, t_idx, m, rate, P0, droop, theta_f, theta_t, b
 
     return flow
 
-    
+
 def pmode3_formulation_convex_hull(prob, t_idx, m, rate, P0, droop, theta_f, theta_t, f_obj,
                                    dtheta_max=1.57, base_name: str = "hvdc"):
     """
@@ -629,11 +629,11 @@ def pmode3_formulation_convex_hull(prob, t_idx, m, rate, P0, droop, theta_f, the
     """
 
     tag = f"{t_idx}_{m}"
-    nm  = lambda s: f"{base_name}_{s}_{tag}"
+    nm = lambda s: f"{base_name}_{s}_{tag}"
 
     # Vars
     flow = prob.add_var(lb=-rate, ub=rate, name=nm("flow"))
-    g    = prob.add_var(lb=-prob.INFINITY, ub=prob.INFINITY, name=nm("g"))
+    g = prob.add_var(lb=-prob.INFINITY, ub=prob.INFINITY, name=nm("g"))
 
     lam_d = prob.add_int(lb=0, ub=1, name=nm("lam_d"))  # droop region
     lam_u = prob.add_int(lb=0, ub=1, name=nm("lam_u"))  # upper saturation
@@ -649,14 +649,14 @@ def pmode3_formulation_convex_hull(prob, t_idx, m, rate, P0, droop, theta_f, the
     prob.add_cst(lam_d + lam_u + lam_l == 1, name=nm("region_sum_eq"))
 
     # New vars
-    phi = prob.add_var(lb=-dtheta_max, ub=dtheta_max, name=nm("phi"))   # control angle
-    s   = prob.add_var(lb=0.0,        ub=prob.INFINITY, name=nm("phi_slack_abs"))
+    phi = prob.add_var(lb=-dtheta_max, ub=dtheta_max, name=nm("phi"))  # control angle
+    s = prob.add_var(lb=0.0, ub=prob.INFINITY, name=nm("phi_slack_abs"))
 
     # Use phi in droop law (replace your droop_affine_eq)
     prob.add_cst(g == P0 + droop * phi, name=nm("droop_affine_eq_phi"))
 
     # Softly tie phi to actual angle difference (absolute value with linear slacks)
-    prob.add_cst(s >=  phi - (theta_f - theta_t), name=nm("phi_couple_pos"))
+    prob.add_cst(s >= phi - (theta_f - theta_t), name=nm("phi_couple_pos"))
     prob.add_cst(s >= -(phi - (theta_f - theta_t)), name=nm("phi_couple_neg"))
 
     f_obj += 1.0 * s
@@ -668,7 +668,7 @@ def pmode3_formulation_convex_hull(prob, t_idx, m, rate, P0, droop, theta_f, the
     prob.add_cst(flow == f_d + f_u + f_l, name=nm("flow_decomp_eq"))
 
     # Saturation regimes (exact, so we avoid Big-M)
-    prob.add_cst(f_u ==  rate * lam_u, name=nm("upper_sat_eq"))
+    prob.add_cst(f_u == rate * lam_u, name=nm("upper_sat_eq"))
     prob.add_cst(f_l == -rate * lam_l, name=nm("lower_sat_eq"))
 
     # Droop regime: f_d equals disaggregated droop variable g_d (maybe could be removed?)
@@ -684,11 +684,11 @@ def pmode3_formulation_convex_hull(prob, t_idx, m, rate, P0, droop, theta_f, the
 
     # Convex hull linking g_d to g when lam_d = 1
     # Avoid indicators because hard to code into OrTools or PuLP
-    prob.add_cst(g_d - g <=  gU * (1 - lam_d), name=nm("droop_link_hull_le"))
-    prob.add_cst(g_d - g >=  gL * (1 - lam_d), name=nm("droop_link_hull_ge"))
+    prob.add_cst(g_d - g <= gU * (1 - lam_d), name=nm("droop_link_hull_le"))
+    prob.add_cst(g_d - g >= gL * (1 - lam_d), name=nm("droop_link_hull_ge"))
 
     # Consistency so we saturate only if g beyond the limit
-    prob.add_cst(g >=  rate * lam_u + gL * (1 - lam_u), name=nm("upper_sat_consistency_ge"))
+    prob.add_cst(g >= rate * lam_u + gL * (1 - lam_u), name=nm("upper_sat_consistency_ge"))
     prob.add_cst(g <= -rate * lam_l + gU * (1 - lam_l), name=nm("lower_sat_consistency_le"))
 
     return flow, f_obj
@@ -1510,7 +1510,7 @@ def add_linear_injections_formulation(t: Union[int, None],
     # minimize the power at area 2 (receiving area), maximize at area 1 (sending area)
     # minimize the slacks
     # f_obj += ntc_vars.delta_2[t] - ntc_vars.delta_1[t] + ntc_vars.delta_sl_1[t] + ntc_vars.delta_sl_2[t]
-    f_obj +=  - ntc_vars.delta_1[t]
+    f_obj += - ntc_vars.delta_1[t]
 
     return f_obj, base_power
 
@@ -1857,7 +1857,7 @@ def add_linear_branches_formulation(t_idx: int,
 
     # add the inter-area flows to the objective function with the correct sign
     # for k, sense in branch_vars.inter_space_branches:
-        # f_obj += -branch_vars.flows[t_idx, k] * sense
+    # f_obj += -branch_vars.flows[t_idx, k] * sense
 
     f_obj += 0.0
 
@@ -1999,7 +1999,8 @@ def add_linear_hvdc_formulation(t_idx: int,
                                 hvdc_vars: HvdcNtcVars,
                                 vars_bus: BusNtcVars,
                                 prob: LpModel,
-                                saturate: bool = True):
+                                logger: Logger,
+                                saturate: bool = True,):
     """
 
     :param t_idx:
@@ -2008,6 +2009,7 @@ def add_linear_hvdc_formulation(t_idx: int,
     :param hvdc_vars:
     :param vars_bus:
     :param prob:
+    :param logger:
     :param saturate:
     :return:
     """
@@ -2029,6 +2031,10 @@ def add_linear_hvdc_formulation(t_idx: int,
 
                 # convert MW/deg to pu/rad
                 droop = hvdc_data_t.get_angle_droop_in_pu_rad_at(m, Sbase)
+                if droop == 0.0:
+                    logger.add_warning("Zero HVDC droop",
+                                       device=hvdc_data_t.names[m], value=droop, expected_value=">0")
+                    droop = 1e-20
 
                 if saturate:
                     # hvdc_vars.flows[t_idx, m] = pmode3_formulation(prob=prob,
@@ -2061,14 +2067,14 @@ def add_linear_hvdc_formulation(t_idx: int,
                     #                                                 base_name="hvdc")
 
                     hvdc_vars.flows[t_idx, m] = pmode3_formulation_impr(prob=prob,
-                                                                       t_idx=t_idx,
-                                                                       m=m,
-                                                                       rate=hvdc_data_t.rates[m] / Sbase,
-                                                                       P0=P0,
-                                                                       droop=droop,
-                                                                       theta_f=vars_bus.Va[t_idx, fr],
-                                                                       theta_t=vars_bus.Va[t_idx, to],
-                                                                       base_name="hvdc")
+                                                                        t_idx=t_idx,
+                                                                        m=m,
+                                                                        rate=hvdc_data_t.rates[m] / Sbase,
+                                                                        P0=P0,
+                                                                        droop=droop,
+                                                                        theta_f=vars_bus.Va[t_idx, fr],
+                                                                        theta_t=vars_bus.Va[t_idx, to],
+                                                                        base_name="hvdc")
 
                     # hvdc_vars.flows[t_idx, m], f_obj = pmode3_formulation_convex_hull(prob=prob,
                     #                                                    t_idx=t_idx,
@@ -2158,7 +2164,7 @@ def add_linear_hvdc_formulation(t_idx: int,
 
     # add the flows to the objective function
     # for k, sense in hvdc_vars.inter_space_hvdc:
-        # f_obj += -hvdc_vars.flows[t_idx, k] * sense
+    #   f_obj += -hvdc_vars.flows[t_idx, k] * sense
     f_obj += 0.0
 
     return f_obj
@@ -2591,6 +2597,8 @@ def run_linear_ntc_opf(grid: MultiCircuit,
         hvdc_vars=mip_vars.hvdc_vars,
         vars_bus=mip_vars.bus_vars,
         prob=lp_model,
+        logger=logger,
+        saturate=True
     )
 
     # formulate vsc -------------------------------------------------------------------------------------------

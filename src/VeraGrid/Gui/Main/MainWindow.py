@@ -3315,21 +3315,28 @@ class Ui_mainWindow(object):
         self.groupBox_2.setFont(font7)
         self.gridLayout_26 = QGridLayout(self.groupBox_2)
         self.gridLayout_26.setObjectName(u"gridLayout_26")
+        self.ips_verbose_spinBox = QSpinBox(self.groupBox_2)
+        self.ips_verbose_spinBox.setObjectName(u"ips_verbose_spinBox")
+        self.ips_verbose_spinBox.setFont(font8)
+
+        self.gridLayout_26.addWidget(self.ips_verbose_spinBox, 1, 1, 1, 1)
+
+        self.skipOpfGenerationLimitsCheckBox = QCheckBox(self.groupBox_2)
+        self.skipOpfGenerationLimitsCheckBox.setObjectName(u"skipOpfGenerationLimitsCheckBox")
+        self.skipOpfGenerationLimitsCheckBox.setFont(font8)
+
+        self.gridLayout_26.addWidget(self.skipOpfGenerationLimitsCheckBox, 3, 0, 1, 2)
+
         self.label_128 = QLabel(self.groupBox_2)
         self.label_128.setObjectName(u"label_128")
         self.label_128.setFont(font8)
 
         self.gridLayout_26.addWidget(self.label_128, 1, 0, 1, 1)
 
-        self.label_42 = QLabel(self.groupBox_2)
-        self.label_42.setObjectName(u"label_42")
-        self.label_42.setFont(font8)
+        self.label_133 = QLabel(self.groupBox_2)
+        self.label_133.setObjectName(u"label_133")
 
-        self.gridLayout_26.addWidget(self.label_42, 0, 0, 1, 1)
-
-        self.verticalSpacer_5 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-
-        self.gridLayout_26.addItem(self.verticalSpacer_5, 7, 0, 1, 1)
+        self.gridLayout_26.addWidget(self.label_133, 2, 0, 1, 1)
 
         self.lpf_solver_comboBox = QComboBox(self.groupBox_2)
         self.lpf_solver_comboBox.setObjectName(u"lpf_solver_comboBox")
@@ -3337,34 +3344,21 @@ class Ui_mainWindow(object):
 
         self.gridLayout_26.addWidget(self.lpf_solver_comboBox, 0, 1, 1, 1)
 
-        self.ips_verbose_spinBox = QSpinBox(self.groupBox_2)
-        self.ips_verbose_spinBox.setObjectName(u"ips_verbose_spinBox")
-        self.ips_verbose_spinBox.setFont(font8)
+        self.label_42 = QLabel(self.groupBox_2)
+        self.label_42.setObjectName(u"label_42")
+        self.label_42.setFont(font8)
 
-        self.gridLayout_26.addWidget(self.ips_verbose_spinBox, 1, 1, 1, 1)
+        self.gridLayout_26.addWidget(self.label_42, 0, 0, 1, 1)
 
         self.addOptimalPowerFlowReportCheckBox = QCheckBox(self.groupBox_2)
         self.addOptimalPowerFlowReportCheckBox.setObjectName(u"addOptimalPowerFlowReportCheckBox")
         self.addOptimalPowerFlowReportCheckBox.setFont(font8)
 
-        self.gridLayout_26.addWidget(self.addOptimalPowerFlowReportCheckBox, 6, 0, 1, 2)
+        self.gridLayout_26.addWidget(self.addOptimalPowerFlowReportCheckBox, 5, 0, 1, 2)
 
-        self.label_133 = QLabel(self.groupBox_2)
-        self.label_133.setObjectName(u"label_133")
+        self.verticalSpacer_5 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
-        self.gridLayout_26.addWidget(self.label_133, 2, 0, 1, 1)
-
-        self.opfMaximizeExcahngeCheckBox = QCheckBox(self.groupBox_2)
-        self.opfMaximizeExcahngeCheckBox.setObjectName(u"opfMaximizeExcahngeCheckBox")
-        self.opfMaximizeExcahngeCheckBox.setFont(font8)
-
-        self.gridLayout_26.addWidget(self.opfMaximizeExcahngeCheckBox, 5, 0, 1, 2)
-
-        self.skipOpfGenerationLimitsCheckBox = QCheckBox(self.groupBox_2)
-        self.skipOpfGenerationLimitsCheckBox.setObjectName(u"skipOpfGenerationLimitsCheckBox")
-        self.skipOpfGenerationLimitsCheckBox.setFont(font8)
-
-        self.gridLayout_26.addWidget(self.skipOpfGenerationLimitsCheckBox, 3, 0, 1, 2)
+        self.gridLayout_26.addItem(self.verticalSpacer_5, 6, 0, 1, 1)
 
 
         self.gridLayout_10.addWidget(self.groupBox_2, 3, 0, 1, 3)
@@ -5425,13 +5419,13 @@ class Ui_mainWindow(object):
 
         self.retranslateUi(mainWindow)
 
-        self.mainTabWidget.setCurrentIndex(0)
+        self.mainTabWidget.setCurrentIndex(3)
         self.modelTabWidget.setCurrentIndex(0)
         self.tabWidget_6.setCurrentIndex(0)
         self.tabWidget_5.setCurrentIndex(0)
         self.resultsTabWidget.setCurrentIndex(2)
         self.tabWidget_2.setCurrentIndex(0)
-        self.settingsTabWidget.setCurrentIndex(2)
+        self.settingsTabWidget.setCurrentIndex(3)
 
 
         QMetaObject.connectSlotsByName(mainWindow)
@@ -6409,21 +6403,20 @@ class Ui_mainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.ips_control_Qlimits_checkBox.setText(QCoreApplication.translate("mainWindow", u"Control Q limits", None))
         self.groupBox_2.setTitle(QCoreApplication.translate("mainWindow", u"General settings", None))
-        self.label_128.setText(QCoreApplication.translate("mainWindow", u"Verbose", None))
-        self.label_42.setText(QCoreApplication.translate("mainWindow", u"Method", None))
-#if QT_CONFIG(tooltip)
-        self.lpf_solver_comboBox.setToolTip(QCoreApplication.translate("mainWindow", u"Choose the optimal power flow method", None))
-#endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.ips_verbose_spinBox.setToolTip(QCoreApplication.translate("mainWindow", u"Verbosity level", None))
 #endif // QT_CONFIG(tooltip)
+        self.skipOpfGenerationLimitsCheckBox.setText(QCoreApplication.translate("mainWindow", u"Skip generation limits", None))
+        self.label_128.setText(QCoreApplication.translate("mainWindow", u"Verbose", None))
+        self.label_133.setText("")
+#if QT_CONFIG(tooltip)
+        self.lpf_solver_comboBox.setToolTip(QCoreApplication.translate("mainWindow", u"Choose the optimal power flow method", None))
+#endif // QT_CONFIG(tooltip)
+        self.label_42.setText(QCoreApplication.translate("mainWindow", u"Method", None))
 #if QT_CONFIG(tooltip)
         self.addOptimalPowerFlowReportCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"Add a results report in the logs", None))
 #endif // QT_CONFIG(tooltip)
         self.addOptimalPowerFlowReportCheckBox.setText(QCoreApplication.translate("mainWindow", u"Add report", None))
-        self.label_133.setText("")
-        self.opfMaximizeExcahngeCheckBox.setText(QCoreApplication.translate("mainWindow", u"Maximize area exchange", None))
-        self.skipOpfGenerationLimitsCheckBox.setText(QCoreApplication.translate("mainWindow", u"Skip generation limits", None))
         self.label_72.setText("")
         self.label_73.setText(QCoreApplication.translate("mainWindow", u"Optimal Power Flow", None))
         self.settingsTabWidget.setTabText(self.settingsTabWidget.indexOf(self.opf_tab), QCoreApplication.translate("mainWindow", u"Opf", None))

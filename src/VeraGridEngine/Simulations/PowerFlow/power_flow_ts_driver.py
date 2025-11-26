@@ -50,7 +50,9 @@ class PowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
         self.options = PowerFlowOptions() if options is None else options
 
         self.opf_time_series_results = opf_time_series_results
+
         n = grid.get_bus_number()
+
         self.results = PowerFlowTimeSeriesResults(
             n=n,
             m=grid.get_branch_number(add_hvdc=False, add_vsc=False, add_switch=True),

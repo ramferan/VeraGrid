@@ -269,7 +269,6 @@ class ConfigurationMain(ResultsMain):
                 "contingency_tolerance": self.ui.opfContingencyToleranceSpinBox,
                 "skip_generation_limits": self.ui.skipOpfGenerationLimitsCheckBox,
                 "consider_contingencies": self.ui.considerContingenciesOpfCheckBox,
-                "maximize_area_exchange": self.ui.opfMaximizeExcahngeCheckBox,
                 "dispatch_mode": self.ui.opfDispatchModeComboBox,
                 "consider_ramps": self.ui.opfConsiderRampsCheckBox,
                 "consider_time_up_down": self.ui.opfConsiderUpDownTimeCheckBox,

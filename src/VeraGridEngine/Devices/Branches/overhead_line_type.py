@@ -310,6 +310,10 @@ class OverheadLineType(EditableDevice):
 
     @property
     def Vnom(self) -> float:
+        """
+
+        :return:
+        """
         return self._Vnom
 
     @Vnom.setter
@@ -335,14 +339,26 @@ class OverheadLineType(EditableDevice):
 
     @property
     def z_nabc(self) -> CxMat | None:
+        """
+
+        :return:
+        """
         return self._z_nabc
 
     @property
     def z_phases_nabc(self) -> CxMat | None:
+        """
+
+        :return:
+        """
         return self._z_phases_nabc
 
     @property
     def z_abc(self) -> CxMat:
+        """
+
+        :return:
+        """
         return self._z_abc
 
     @z_abc.setter
@@ -354,26 +370,50 @@ class OverheadLineType(EditableDevice):
 
     @property
     def z_phases_abc(self) -> CxMat | None:
+        """
+
+        :return:
+        """
         return self._z_phases_abc
 
     @property
     def z_seq(self) -> CxMat | None:
+        """
+
+        :return:
+        """
         return self._z_seq
 
     @property
     def z_0123(self) -> CxMat | None:
+        """
+
+        :return:
+        """
         return self._z_0123
 
     @property
     def y_nabc(self) -> CxMat | None:
+        """
+
+        :return:
+        """
         return self._y_nabc
 
     @property
     def y_phases_nabc(self) -> CxMat | None:
+        """
+
+        :return:
+        """
         return self._y_phases_nabc
 
     @property
     def y_abc(self) -> CxMat | None:
+        """
+
+        :return:
+        """
         return self._y_abc
 
     @y_abc.setter
@@ -385,17 +425,33 @@ class OverheadLineType(EditableDevice):
 
     @property
     def y_phases_abc(self) -> CxMat | None:
+        """
+
+        :return:
+        """
         return self._y_phases_abc
 
     @property
     def y_seq(self) -> CxMat | None:
+        """
+
+        :return:
+        """
         return self._y_seq
 
     @property
     def y_0123(self) -> CxMat | None:
+        """
+
+        :return:
+        """
         return self._y_0123
 
     def get_phN(self):
+        """
+
+        :return:
+        """
         phases = self.y_phases_nabc
         phN = 0
         if 0 in phases:
@@ -403,6 +459,10 @@ class OverheadLineType(EditableDevice):
         return phN
 
     def get_phA(self):
+        """
+
+        :return:
+        """
         phases = self.y_phases_nabc
         phA = 0
         if 1 in phases:
@@ -410,6 +470,10 @@ class OverheadLineType(EditableDevice):
         return phA
 
     def get_phB(self):
+        """
+
+        :return:
+        """
         phases = self.y_phases_nabc
         phB = 0
         if 2 in phases:
@@ -417,6 +481,10 @@ class OverheadLineType(EditableDevice):
         return phB
 
     def get_phC(self):
+        """
+
+        :return:
+        """
         phases = self.y_phases_nabc
         phC = 0
         if 3 in phases:
@@ -434,7 +502,7 @@ class OverheadLineType(EditableDevice):
         """
         Zbase = (Vnom * Vnom) / Sbase
         rows, columns = self.z_nabc.shape
-        adm = AdmittanceMatrix(size=3)
+        adm = AdmittanceMatrix(size=4)
 
         if rows % 4 == 0 and columns % 4 == 0:
             k = (4 * (circuit_idx - 1)) + np.array([0, 1, 2, 3])
@@ -449,14 +517,14 @@ class OverheadLineType(EditableDevice):
 
         elif rows < 4 and columns < 4:
             phases = self.z_phases_nabc
-            phases = phases[phases > 4*(circuit_idx - 1)]
+            phases = phases[phases > 4 * (circuit_idx - 1)]
             phases = phases[phases <= 4 * circuit_idx]
             phases = phases - 4 * (circuit_idx - 1)
 
             z = self.z_nabc * length / Zbase
             y = np.linalg.inv(z)
-            y_4x4 = np.zeros((4,4), dtype=complex)
-            y_4x4[np.ix_(phases,phases)] = y
+            y_4x4 = np.zeros((4, 4), dtype=complex)
+            y_4x4[np.ix_(phases, phases)] = y
 
             adm.values = y_4x4
             if 0 in self.y_phases_nabc:
@@ -486,7 +554,7 @@ class OverheadLineType(EditableDevice):
         if circuit_idx == 0:
             circuit_idx = 1
 
-        Zbase = (Vnom * Vnom) / (Sbase)
+        Zbase = (Vnom * Vnom) / Sbase
         Ybase = 1 / Zbase
 
         rows, columns = self.y_nabc.shape
@@ -733,7 +801,7 @@ class OverheadLineType(EditableDevice):
             I_kA = self.Imax[circuit_idx - 1]
             return R1, X1, Bsh1, I_kA
         else:
-            #warn(f"{self.name} tower is incorrect :(")
+            # warn(f"{self.name} tower is incorrect :(")
             I_kA = self.Imax[circuit_idx - 1]
             return 0.0, 1e-20, 0.0, I_kA
 

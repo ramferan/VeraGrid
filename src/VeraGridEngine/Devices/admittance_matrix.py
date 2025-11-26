@@ -52,8 +52,18 @@ class AdmittanceMatrix:
         self._phB: int = 0
         self._phC: int = 0
 
+    def __str__(self):
+        return f"size {self.__size}: {self._phN}, {self._phA}, {self._phB}, {self._phC}"
+
+    def __repr__(self):
+        return self.__str__()
+
     @property
     def phN(self):
+        """
+
+        :return:
+        """
         return self._phN
 
     @phN.setter
@@ -65,6 +75,10 @@ class AdmittanceMatrix:
 
     @property
     def phA(self):
+        """
+
+        :return:
+        """
         return self._phA
 
     @phA.setter
@@ -141,7 +155,7 @@ class AdmittanceMatrix:
         :param data: dictionary representation of the tap
         """
 
-        self.__size: int = data.get("size", 3)
+        self.size: int = data.get("size", 3)
 
         data_r = list_to_matrix(data.get("values_r", None), self.__size)
         data_i = list_to_matrix(data.get("values_i", None), self.__size)
@@ -150,7 +164,7 @@ class AdmittanceMatrix:
         self.phB = data.get("phase_b", 0)
         self.phC = data.get("phase_c", 0)
 
-        self.__values = data_r + 1j * data_i
+        self.values = data_r + 1j * data_i
 
     def __eq__(self, other: "AdmittanceMatrix") -> bool:
 

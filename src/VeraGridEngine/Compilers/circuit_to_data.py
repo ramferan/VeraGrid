@@ -1063,6 +1063,8 @@ def fill_generator_parent(
             bus_data.q_fixed[i] += data.get_q_at(k)
 
 
+
+
 def get_generator_data(
         data: GeneratorData,
         circuit: MultiCircuit,

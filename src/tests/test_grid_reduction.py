@@ -213,10 +213,115 @@ def test_reduction_flows():
     assert np.allclose(abs(pf_reduced_res.voltage), Vabs_ptdf, atol=1e-4)
 
 
+def test_ptdf_projected_balances():
+    """
+    Test to check the reduction flows and check 3 things:
+    1. Flows that match in the before and after reduction
+    2. Generation being added and load being added is as close as 0 as possible
+    3. Total generation and demand are roughly the same
+    :return:
+    """
+
+    fname = os.path.join('data', 'grids', 'ptdf_red_many_buses.veragrid')
+    # fname = os.path.join('src', 'tests', 'data', 'grids', 'ptdf_red_many_buses.veragrid')
+    grid = gce.open_file(filename=fname)
+
+    P_original_gen = 0.0
+    for gen in grid.generators:
+        P_original_gen += gen.P
+
+    P_original_load = 0.0
+    for load in grid.loads:
+        P_original_load += load.P
+
+    # First run basic linear analysis
+    flows_dr = gce.LinearAnalysisDriver(grid=grid, options=gce.LinearAnalysisOptions(distribute_slack=False))
+    flows_dr.run()
+    flows_branches = flows_dr.results.Sf
+
+    # Then reduce the network
+    bus_to_remove = np.array([6, 8])
+    red_grid, logger = ptdf_reduction_projected(grid=grid, reduction_bus_indices=bus_to_remove, distribute_slack=False)
+    flows_dr_red = gce.LinearAnalysisDriver(grid=red_grid, options=gce.LinearAnalysisOptions(distribute_slack=False))
+    flows_dr_red.run()
+    flows_branches_red = flows_dr_red.results.Sf
+
+    P_reduced_gen = 0.0
+    for gen in red_grid.generators:
+        P_reduced_gen += gen.P
+
+    P_reduced_load = 0.0
+    for load in red_grid.loads:
+        P_reduced_load += load.P
+
+    # Check net balance instead of gross balance, as reduction adds compensation power
+    net_original = P_original_gen - P_original_load
+    net_reduced = P_reduced_gen - P_reduced_load
+    
+    assert np.allclose(flows_branches[[0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 13]], flows_branches_red, atol=1e-4)
+    
+    assert abs(net_reduced) < 1e-4
+    assert abs(P_original_gen - P_reduced_gen) < 1e-4
+    assert abs(P_original_load - P_reduced_load) < 1e-4
+
+
+def test_ptdf_projected_antena():
+    """
+    Test to check if only the necessary injection is added
+    :return:
+    """
+
+    fname = os.path.join('data', 'grids', '6bus_antena.veragrid')
+    # fname = os.path.join('src', 'tests', 'data', 'grids', '6bus_antena.veragrid')
+    grid = gce.open_file(filename=fname)
+
+    P_original_gen = 0.0
+    for gen in grid.generators:
+        P_original_gen += gen.P
+
+    P_original_load = 0.0
+    for load in grid.loads:
+        P_original_load += load.P
+
+    # First run basic linear analysis
+    flows_dr = gce.LinearAnalysisDriver(grid=grid, options=gce.LinearAnalysisOptions(distribute_slack=False))
+    flows_dr.run()
+    flows_branches = flows_dr.results.Sf
+
+    # Then reduce the network
+    bus_to_remove = np.array([1])
+    red_grid, logger = ptdf_reduction_projected(grid=grid, reduction_bus_indices=bus_to_remove, distribute_slack=False)
+    flows_dr_red = gce.LinearAnalysisDriver(grid=red_grid, options=gce.LinearAnalysisOptions(distribute_slack=False))
+    flows_dr_red.run()
+    flows_branches_red = flows_dr_red.results.Sf
+
+    P_reduced_gen = 0.0
+    for gen in red_grid.generators:
+        P_reduced_gen += gen.P
+
+    P_reduced_load = 0.0
+    for load in red_grid.loads:
+        P_reduced_load += load.P
+
+    # Check net balance instead of gross balance, as reduction adds compensation power
+    net_original = P_original_gen - P_original_load
+    net_reduced = P_reduced_gen - P_reduced_load
+    
+    assert np.allclose(flows_branches[[1, 2, 3, 4, 5]], flows_branches_red, atol=1e-4)
+    
+    assert abs(net_reduced) < 1e-4
+    assert abs(P_original_gen - P_reduced_gen) < 1e-4
+    assert abs(P_original_load - P_reduced_load) < 1e-4
+
+    assert abs(red_grid.loads[3].P - 10.0) < 1e-4
+
+
 if __name__ == '__main__':
     # test_ward_reduction()
     # test_ptdf_projected_14_reduction()
     # test_ptdf_projected_14_complex_reduction()
     # test_ptdf_projected_14_complex_inactive_reduction()
     # test_reduction_flows()
-    test_ptdf_projected()
+    # test_ptdf_projected()
+    # test_ptdf_projected_balances()
+    test_ptdf_projected_antena()

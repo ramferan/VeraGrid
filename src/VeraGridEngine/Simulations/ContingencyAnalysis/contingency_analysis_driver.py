@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import numpy as np
-from typing import Union, List
+from typing import Union, List, TYPE_CHECKING
 
 from VeraGridEngine.Compilers.circuit_to_gslv import gslv_contingencies_snapshot
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -26,6 +26,9 @@ from VeraGridEngine.Compilers.circuit_to_newton_pa import (NEWTON_PA_AVAILABLE, 
                                                            translate_newton_pa_contingencies)
 from VeraGridEngine.Compilers.circuit_to_pgm import PGM_AVAILABLE
 
+if TYPE_CHECKING:  # Only imports the below statements during type checking
+    from VeraGridEngine.Simulations.OPF.opf_results import OptimalPowerFlowResults
+
 
 class ContingencyAnalysisDriver(DriverTemplate):
     """
@@ -38,6 +41,7 @@ class ContingencyAnalysisDriver(DriverTemplate):
                  grid: MultiCircuit,
                  options: ContingencyAnalysisOptions | None,
                  linear_multiple_contingencies: Union[LinearMultiContingencies, None] = None,
+                 opf_results: Union[OptimalPowerFlowResults, None] = None,
                  engine: EngineType = EngineType.VeraGrid):
         """
         ContingencyAnalysisDriver constructor
@@ -50,6 +54,8 @@ class ContingencyAnalysisDriver(DriverTemplate):
 
         # Options to use
         self.options = options
+
+        self.opf_results: Union[OptimalPowerFlowResults, None] = opf_results
 
         # Set or create the LinearMultiContingencies
         if linear_multiple_contingencies is None:
@@ -113,7 +119,9 @@ class ContingencyAnalysisDriver(DriverTemplate):
                 area_names, bus_area_indices, F, T, hvdc_F, hvdc_T = self.grid.get_branch_areas_info()
 
                 # set the numerical circuit
-                nc = compile_numerical_circuit_at(self.grid, t_idx=t_idx)
+                nc = compile_numerical_circuit_at(self.grid,
+                                                  opf_results=self.opf_results,
+                                                  t_idx=t_idx)
 
                 self.results = nonlinear_contingency_analysis(
                     nc=nc,
@@ -136,7 +144,9 @@ class ContingencyAnalysisDriver(DriverTemplate):
                 area_names, bus_area_indices, F, T, hvdc_F, hvdc_T = self.grid.get_branch_areas_info()
 
                 # set the numerical circuit
-                nc = compile_numerical_circuit_at(self.grid, t_idx=t_idx)
+                nc = compile_numerical_circuit_at(self.grid,
+                                                  opf_results=self.opf_results,
+                                                  t_idx=t_idx)
 
                 self.results = linear_contingency_analysis(
                     nc=nc,
@@ -155,10 +165,12 @@ class ContingencyAnalysisDriver(DriverTemplate):
                 )
 
             elif self.options.contingency_method == ContingencyMethod.HELM:
+
                 self.results = helm_contingency_analysis(
                     grid=self.grid,
                     options=self.options,
                     calling_class=self,
+                    opf_results=self.opf_results,
                     t=t_idx,
                     t_prob=t_prob
                 )
@@ -191,7 +203,9 @@ class ContingencyAnalysisDriver(DriverTemplate):
         elif self.engine == EngineType.GSLV:
 
             self.report_text("Running contingencies in gslv...")
-            con_res = gslv_contingencies_snapshot(circuit=self.grid, con_opt=self.options)
+            con_res = gslv_contingencies_snapshot(circuit=self.grid,
+                                                  con_opt=self.options,
+                                                  opf_results=self.opf_results)
 
             self.results = ContingencyAnalysisResults(
                 ncon=self.grid.get_contingency_groups_number(),
