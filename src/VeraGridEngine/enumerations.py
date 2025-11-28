@@ -2115,10 +2115,11 @@ class ContingencyFilteringMethods(Enum):
     """
     Contingency filtering methods
     """
-    All = "All contingencies"
+    AllActive = "All active contingencies"
     Country = "Country"
     Zone = "Zone"
     Area = "Area"
+    SensitiveToMonitored = "Sensitive to monitored"
 
     def __str__(self):
         return self.value

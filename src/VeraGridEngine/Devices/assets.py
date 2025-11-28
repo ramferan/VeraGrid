@@ -2,14 +2,15 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
+
 import warnings
 import numpy as np
 import pandas as pd
 from typing import List, Dict, Tuple, Union, Any, Set, Generator, Sequence
 import datetime as dateslib
 
-from VeraGridEngine.Devices.Dynamic.events import RmsEvent
-from VeraGridEngine.basic_structures import IntVec, StrVec, Vec
+from VeraGridEngine.basic_structures import IntVec, StrVec, Vec, Mat
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, BRANCH_TYPES, INJECTION_DEVICE_TYPES, FLUID_TYPES
 from VeraGridEngine.Devices.Parents.editable_device import GCPROP_TYPES
@@ -1345,7 +1346,7 @@ class Assets:
 
     @buses.setter
     def buses(self, value: List[dev.Bus]):
-        self._buses = value
+        self._buses = ListSet(value)
 
     def get_bus_number(self) -> int:
         """
@@ -1460,10 +1461,8 @@ class Assets:
                         inj_list[i].bus = None
 
         # delete the bus itself
-        try:
-            self._buses.remove(obj)
-        except ValueError:
-            print(f"Could not delete {obj.name}")
+        # Use list comprehension for faster removal (avoids ValueError if already removed)
+        self._buses = ListSet([b for b in self._buses if b != obj])
 
     def delete_branches_with_sets(self, buses_to_remove: Set[dev.Bus], delete_associated: bool = False):
         """
@@ -1504,24 +1503,41 @@ class Assets:
         if branches_to_delete:
             branch_idtags = {b.idtag for b in branches_to_delete}  # all idtags to consider
 
-            # Process contingencies in batch
+            # Process contingencies in batch. Remove all at once, then check for empty groups
             contingencies_to_delete = [elm for elm in self.contingencies if elm.device_idtag in branch_idtags]
-            for elm in contingencies_to_delete:
-                self.delete_contingency(elm, del_group=True)
+            if contingencies_to_delete:
+                contingencies_to_delete_set = set(contingencies_to_delete)
+                # Remove all contingencies in one pass
+                self._contingencies = [c for c in self._contingencies if c not in contingencies_to_delete_set]
+                # Check which groups are now empty (only check once, not per deletion)
+                groups_in_use = {c.group for c in self._contingencies}
+                groups_to_delete = [g for g in self._contingency_groups if g not in groups_in_use]
+                for grp in groups_to_delete:
+                    self.delete_contingency_group(grp)
 
-            # Process remedial actions in batch
+            # Process remedial actions in batch. Remove all at once, then check for empty groups
             remedial_actions_to_delete = [elm for elm in self.remedial_actions if elm.device_idtag in branch_idtags]
-            for elm in remedial_actions_to_delete:
-                self.delete_remedial_action(elm, del_group=True)
+            if remedial_actions_to_delete:
+                remedial_actions_to_delete_set = set(remedial_actions_to_delete)
+                # Remove all remedial actions in one pass
+                self._remedial_actions = [r for r in self._remedial_actions if r not in remedial_actions_to_delete_set]
+                # Check which groups are now empty (only check once, not per deletion)
+                groups_in_use = {r.group for r in self._remedial_actions}
+                groups_to_delete = [g for g in self._remedial_action_groups if g not in groups_in_use]
+                for grp in groups_to_delete:
+                    self.delete_remedial_action_group(grp)
 
-            # Process investments in batch
+            # Process investments in batch. Remove all at once, then check for empty groups
             investments_to_delete = [elm for elm in self.investments if elm.device_idtag in branch_idtags]
-            for elm in investments_to_delete:
-                self.delete_investment(elm, del_group=True)
-
-        else:
-            # No branches to delete, so nothing to be done
-            pass
+            if investments_to_delete:
+                investments_to_delete_set = set(investments_to_delete)
+                # Remove all investments in one pass
+                self._investments = [i for i in self._investments if i not in investments_to_delete_set]
+                # Check which groups are now empty (only check once, not per deletion)
+                groups_in_use = {i.group for i in self._investments}
+                groups_to_delete = [g for g in self._investments_groups if g not in groups_in_use]
+                for grp in groups_to_delete:
+                    self.delete_investment_groups(grp)
 
         return None
 
@@ -1557,12 +1573,9 @@ class Assets:
             pass
 
         # delete the bus itself - use set difference for faster removal
-        buses_to_remove_list = list(buses_to_remove)
-        for elm in buses_to_remove_list:
-            try:
-                self._buses.remove(elm)
-            except ValueError:
-                print(f"Could not delete {elm.name}")
+        # Remove all buses in one pass using list comprehension (faster and avoids ValueError)
+        buses_to_remove_set = buses_to_remove
+        self._buses = ListSet([b for b in self._buses if b not in buses_to_remove_set])
 
     def get_buses_by(self, filter_elements: List[Union[dev.Area, dev.Country, dev.Zone]]) -> List[dev.Bus]:
         """
@@ -3950,6 +3963,55 @@ class Assets:
             for grp in to_del:
                 self.delete_contingency_group(grp)
 
+    def get_contingencies_by_group(self) -> Dict[dev.ContingencyGroup, List[dev.Contingency]]:
+        """
+        Get a dictionary of contingency groups as keys and a list of contingencies as value
+        :return: dict[contingency group] -> [contingencies list]
+        """
+        d: Dict[dev.ContingencyGroup, List[dev.Contingency]] = dict()
+
+        for con in self.contingencies:
+            lst = d.get(con.group, None)
+
+            if lst is None:
+                d[con.group] = [con]
+            else:
+                lst.append(con)
+
+        return d
+
+    def get_contingency_branch_indices_by_group(
+            self,
+            add_vsc: bool = True,
+            add_hvdc: bool = True,
+            add_switch: bool = False) -> Dict[dev.ContingencyGroup, List[int]]:
+        """
+        Get a dictionary of contingency groups as keys and a list of contingencies as value
+        :param add_vsc: Include the list of VSC?
+        :param add_hvdc: Include the list of HvdcLine?
+        :param add_switch: Include the list of Switch?
+        :return: dict[contingency group] -> [contingencies list]
+        """
+        d: Dict[dev.ContingencyGroup, List[int]] = dict()
+
+        br_idtag_dict = self.get_branches_idtag_index_dict(add_vsc=add_vsc,
+                                                           add_hvdc=add_hvdc,
+                                                           add_switch=add_switch)
+
+        for con in self.contingencies:
+
+            idx = br_idtag_dict.get(con.device_idtag, None)
+
+            if idx is not None:
+                lst = d.get(con.group, None)
+
+                if lst is None:
+                    d[con.group] = [idx]
+                else:
+                    lst.append(idx)
+
+        return d
+
     # ------------------------------------------------------------------------------------------------------------------
     # Contingency group
     # ------------------------------------------------------------------------------------------------------------------
@@ -3972,6 +4034,13 @@ class Assets:
         :return:List[dev.ContingencyGroup]
         """
         return self._contingency_groups
+
+    def get_contingency_groups_active(self) -> List[dev.ContingencyGroup]:
+        """
+        Get contingency_groups
+        :return:List[dev.ContingencyGroup]
+        """
+        return [e for e in self._contingency_groups if e.active]
 
     def get_contingency_groups_number(self) -> int:
         """
@@ -4108,6 +4177,40 @@ class Assets:
                             filtered_groups_idx.add(group_idx)
 
         return [self._contingency_groups[i] for i in sorted(filtered_groups_idx)]
+
+    def get_contingency_groups_sensitive_to_moitoring(self, LODF: Mat, threshold: float) -> IntVec:
+        """
+        Get a list of contingency groups that are sensitive to the monitoring rule
+        :param LODF: LODF matrix (nbr, nbr)
+        :param threshold: LODF threshold
+        :return: vector of sensitive status
+        """
+
+        d = self.get_contingency_branch_indices_by_group()
+        sensitive = np.zeros(self.get_contingency_groups_number(), dtype=bool)
+
+        for cg_idx, con_group in enumerate(self.contingency_groups):  # for every contingency group
+
+            # get the branch indices of this contingency group
+            branch_indices = d[con_group]
+
+            sensitive[cg_idx] = False
+
+            if con_group.active:
+                i = 0
+                for elm in self.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True):  # for every branch
+
+                    if elm.monitor_loading:  # if monitored
+
+                        # check if any contingency branch is sensitive to the monitored branch
+
+                        for j in branch_indices:
+                            if abs(LODF[i, j]) >= threshold:
+                                sensitive[cg_idx] = True
+
+                    i += 1
+
+        return sensitive
 
     # ------------------------------------------------------------------------------------------------------------------
     # Investment group
@@ -5673,6 +5776,26 @@ class Assets:
             T[i] = bus_dict[elm.bus_to]
         return F, T
 
+    def get_branches_monitored_indices(self,
+                                       add_vsc: bool = True,
+                                       add_hvdc: bool = True,
+                                       add_switch: bool = False) -> IntVec:
+        """
+         Get the indices of the monitored branche
+        :param add_vsc: Include the list of VSC?
+        :param add_hvdc: Include the list of HvdcLine?
+        :param add_switch: Include the list of Switch?
+        :return: numpy array with the indices of the branches
+        """
+        lst = list()
+        i = 0
+        for elm in self.get_branches_iter(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch):
+            if elm.monitor_loading:
+                lst.append(i)
+            i += 1
+
+        return np.array(lst, dtype=int)
+
     def delete_groupings_with_object(self, obj: BRANCH_TYPES, delete_groups: bool = True):
         """
         Delete the dependencies that may come with a branch
@@ -5682,6 +5805,7 @@ class Assets:
         """
         for elm in self.contingencies:
             if elm.device_idtag == obj.idtag:
+                print(elm)
                 self.delete_contingency(elm, del_group=delete_groups)
 
         for elm in self.remedial_actions:

@@ -151,14 +151,14 @@ def test_ptdf_projected():
     grid = gce.open_file(filename=fname)
 
     # First run basic linear analysis
-    flows_dr = gce.LinearAnalysisDriver(grid=grid, options=gce.LinearAnalysisOptions(distribute_slack=True))
+    flows_dr = gce.LinearAnalysisDriver(grid=grid, options=gce.LinearAnalysisOptions(distribute_slack=False))
     flows_dr.run()
     flows_branches = flows_dr.results.Sf
 
     # Then reduce the network
     bus_to_remove = np.array([1])
-    red_grid, logger = ptdf_reduction_projected(grid=grid, reduction_bus_indices=bus_to_remove)
-    flows_dr_red = gce.LinearAnalysisDriver(grid=red_grid, options=gce.LinearAnalysisOptions(distribute_slack=True))
+    red_grid, logger = ptdf_reduction_projected(grid=grid, reduction_bus_indices=bus_to_remove, distribute_slack=False)
+    flows_dr_red = gce.LinearAnalysisDriver(grid=red_grid, options=gce.LinearAnalysisOptions(distribute_slack=False))
     flows_dr_red.run()
     flows_branches_red = flows_dr_red.results.Sf
 
@@ -316,12 +316,74 @@ def test_ptdf_projected_antena():
     assert abs(red_grid.loads[3].P - 10.0) < 1e-4
 
 
+def test_ptdf_projected_gb():
+    """
+    Test to check if only the necessary injection is added
+    :return:
+    """
+
+    fname = os.path.join('data', 'grids', 'gb_t0.veragrid')
+    # fname = os.path.join('src', 'tests', 'data', 'grids', 'gb_t0.veragrid')
+    grid = gce.open_file(filename=fname)
+
+    P_original_gen = 0.0
+    for gen in grid.generators:
+        P_original_gen += gen.P
+
+    P_original_load = 0.0
+    for load in grid.loads:
+        P_original_load += load.P
+
+    # First run basic linear analysis
+    flows_dr = gce.LinearAnalysisDriver(grid=grid, options=gce.LinearAnalysisOptions(distribute_slack=False))
+    flows_dr.run()
+    flows_branches = flows_dr.results.Sf
+
+    # Then reduce the network
+    bus_to_remove = []
+    bus_idx_dict = grid.get_bus_index_dict()
+    for bus in grid.buses:
+        if bus.Vnom < 400:
+            bus_remove_idx = bus_idx_dict[bus]
+            bus_to_remove.append(bus_remove_idx)
+
+    bus_to_remove = np.array(bus_to_remove)
+
+    # Determine internal branches before reduction
+    external, boundary, internal, boundary_branches, internal_branches = grid.get_reduction_sets(reduction_bus_indices=bus_to_remove)
+
+    red_grid, logger = ptdf_reduction_projected(grid=grid, reduction_bus_indices=bus_to_remove, distribute_slack=False)
+    flows_dr_red = gce.LinearAnalysisDriver(grid=red_grid, options=gce.LinearAnalysisOptions(distribute_slack=False))
+    flows_dr_red.run()
+    flows_branches_red = flows_dr_red.results.Sf
+
+    P_reduced_gen = 0.0
+    for gen in red_grid.generators:
+        P_reduced_gen += gen.P
+
+    P_reduced_load = 0.0
+    for load in red_grid.loads:
+        P_reduced_load += load.P
+
+    # Check net balance instead of gross balance, as reduction adds compensation power
+    net_original = P_original_gen - P_original_load
+    net_reduced = P_reduced_gen - P_reduced_load
+    
+    # Check that flows on remaining branches match
+    assert np.allclose(flows_branches[internal_branches], flows_branches_red, atol=1e-4)
+
+    assert abs(net_reduced) < 1e-4
+    assert abs(P_original_gen - P_reduced_gen) < 1e-4
+    assert abs(P_original_load - P_reduced_load) < 1e-4
+
+
 if __name__ == '__main__':
     # test_ward_reduction()
     # test_ptdf_projected_14_reduction()
     # test_ptdf_projected_14_complex_reduction()
     # test_ptdf_projected_14_complex_inactive_reduction()
     # test_reduction_flows()
-    # test_ptdf_projected()
+    test_ptdf_projected()
     # test_ptdf_projected_balances()
-    test_ptdf_projected_antena()
+    # test_ptdf_projected_antena()
+    test_ptdf_projected_gb()

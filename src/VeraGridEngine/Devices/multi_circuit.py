@@ -2370,7 +2370,7 @@ class MultiCircuit(Assets):
                                         device_property="bus_to")
 
                 # if the element is topologically isolated, delete_with_dialogue it
-                if (elm.bus_from is None and elm.bus_to is None):
+                if elm.bus_from is None and elm.bus_to is None:
                     elements_to_delete.append(elm)
 
         for elm in elements_to_delete:

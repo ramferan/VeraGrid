@@ -16,6 +16,7 @@ class PointerDeviceParent(EditableDevice):
 
     __slots__ = (
         '_device_idtag',
+        '_device_name',
         '_tpe',
         '_device'
     )
@@ -45,10 +46,12 @@ class PointerDeviceParent(EditableDevice):
 
         self._device_idtag: str = device.idtag if device is not None else ""
         self._tpe: DeviceType = device.device_type if device is not None else DeviceType.NoDevice
+        self._device_name: str = device.name if device is not None else "No device"
         self._device = device
 
         self.register(key='device_idtag', units='', tpe=str, definition='Unique ID', editable=False)
         self.register(key='tpe', units='', tpe=DeviceType, definition='Device type', editable=False)
+        self.register(key='device_name', units='', tpe=str, definition='Device name', editable=False)
 
     @property
     def device_idtag(self) -> str:
@@ -64,6 +67,21 @@ class PointerDeviceParent(EditableDevice):
             self._device_idtag = val
         else:
             raise ValueError(f"device_idtag must be a string not {val}")
+
+    @property
+    def device_name(self) -> str:
+        """
+
+        :return:
+        """
+        return self._device.name if self._device is not None else "No device"
+
+    @device_name.setter
+    def device_name(self, val: str):
+        if isinstance(val, str):
+            self._device_name = val
+        else:
+            raise ValueError(f"tpe must be a string not {val}")
 
     @property
     def tpe(self) -> DeviceType:
@@ -91,9 +109,13 @@ class PointerDeviceParent(EditableDevice):
     @device.setter
     def device(self, val: EditableDevice):
         if isinstance(val, EditableDevice):
-            self._tpe = val.device_type
-            self._device_idtag = val.idtag
-            self._device = val
+            if val is not None:
+                self._tpe = val.device_type
+                self._device_idtag = val.idtag
+                self.device_name = val.name
+                self._device = val
+            else:
+                raise ValueError(f"device cannot be None")
         else:
             raise ValueError(f"tpe must be a EditableDevice not {val}")
 
@@ -102,6 +124,4 @@ class PointerDeviceParent(EditableDevice):
         Set the device
         :param elm: Device to be pointed
         """
-        self._tpe = elm.device_type
-        self._device_idtag = elm.idtag
-        self._device = elm
+        self.device = elm

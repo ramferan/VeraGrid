@@ -494,7 +494,6 @@ def ptdf_reduction_projected(grid: MultiCircuit,
         logger.add_info(msg="Nothing to keep (null grid as a result)")
         return grid, logger
 
-    print('Distribute slack: ', distribute_slack)
     nc = compile_numerical_circuit_at(circuit=grid, t_idx=None)
     lin = LinearAnalysis(nc=nc, distributed_slack=distribute_slack)
 
@@ -552,18 +551,23 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     # reconstruct injections that should be to keep the flows the same
     # We want to find dP such that: PTDF @ (Pbus2 + dP) = Flow0
     # So: PTDF @ dP = Flow0 - PTDF @ Pbus2
-    
-    # Total injections in the reduced grid (existing internal)
-    Pbus2_total = Pload2 + Pgen2 + Pgen_srap2
-    
-    # Flows caused by the existing internal injections
-    Flow2 = lin2.PTDF @ Pbus2_total
-    
-    # Target flows (as in the original grid)
+
+    # Target flows in the original grid
     Flow0_total = Flow0_load + Flow0_gen + Flow0_gen_srap
     
+    # Total injections and flows in the reduced grid
+    Pbus2_total = Pload2 + Pgen2 + Pgen_srap2
+    Flow2 = lin2.PTDF @ Pbus2_total
+
+    Flow2_load = lin2.get_flows(Pload2)
+    Flow2_gen = lin2.get_flows(Pgen2)
+    Flow2_gen_srap = lin2.get_flows(Pgen_srap2)
+   
     # Residual flow to compensate
     residual_flow = Flow0_total[i_branches] - Flow2
+    residual_flow_load = Flow0_load[i_branches] - Flow2_load
+    residual_flow_gen = Flow0_gen[i_branches] - Flow2_gen
+    residual_flow_gen_srap = Flow0_gen_srap[i_branches] - Flow2_gen_srap
     
     # Solve for dP, but ONLY for boundary buses
     boundary_indices_new = np.searchsorted(i_buses, boundary_buses)
@@ -571,10 +575,21 @@ def ptdf_reduction_projected(grid: MultiCircuit,
     
     # Solve: PTDF_boundary @ dP_boundary = residual_flow
     dP_boundary, _, _, _ = np.linalg.lstsq(PTDF_boundary, residual_flow, rcond=None)
+    dP_boundary_load, _, _, _ = np.linalg.lstsq(PTDF_boundary, residual_flow_load, rcond=None)
+    dP_boundary_gen, _, _, _ = np.linalg.lstsq(PTDF_boundary, residual_flow_gen, rcond=None)
+    dP_boundary_gen_srap, _, _, _ = np.linalg.lstsq(PTDF_boundary, residual_flow_gen_srap, rcond=None)
     
     # Create full dP vector for all new buses (initialized to 0)
-    dP = np.zeros(grid.get_bus_number())
+    n_i_buses = grid.get_bus_number()
+    dP = np.zeros(n_i_buses)
+    dP_load = np.zeros(n_i_buses)
+    dP_gen = np.zeros(n_i_buses)
+    dP_gen_srap = np.zeros(n_i_buses)
+
     dP[boundary_indices_new] = dP_boundary
+    dP_load[boundary_indices_new] = dP_boundary_load
+    dP_gen[boundary_indices_new] = dP_boundary_gen
+    dP_gen_srap[boundary_indices_new] = dP_boundary_gen_srap
 
     ptdf_col_norms = np.linalg.norm(lin2.PTDF, axis=0)
     zero_influence_mask = ptdf_col_norms < tol
@@ -609,78 +624,89 @@ def ptdf_reduction_projected(grid: MultiCircuit,
         dP_ts = None
 
     # Original totals
-    total_gen_orig = np.sum(Pgen) + np.sum(Pgen_srap)
-    total_load_orig = np.sum(Pload)  # Pload is negative, so sum is total load (negative)
+    total_gen_no_srap_orig = np.sum(Pgen)
+    total_gen_yes_srap_orig = np.sum(Pgen_srap)
+    total_load_orig = np.sum(Pload)  # Pload is negative in principle
     
     # Calculate what the totals would be if we only added net compensation
-    total_gen_new = np.sum(Pgen2) + np.sum(Pgen_srap2) + np.sum(dP[dP > 0])
-    total_load_new = np.sum(Pload2) + np.sum(dP[dP < 0])
+    total_gen_no_srap_new = np.sum(Pgen2) + np.sum(dP_gen)
+    total_gen_yes_srap_new = np.sum(Pgen_srap2) + np.sum(dP_gen_srap)
+    total_load_new = np.sum(Pload2) + np.sum(dP_load)
     
     # Calculate deficits
-    gen_deficit = total_gen_orig - total_gen_new
-    load_deficit = total_load_orig - total_load_new  # both are negative
+    APgen_no_srap = total_gen_no_srap_orig - total_gen_no_srap_new
+    APgen_yes_srap = total_gen_yes_srap_orig - total_gen_yes_srap_new
+    APload = total_load_orig - total_load_new  # both are probably negative
     
-    extra_power = max(0.0, gen_deficit)
-    
-    # Distribute uniformly this extra power among boundary buses
-    if len(boundary_indices_new) > 0:
-        extra_per_bus = extra_power / len(boundary_indices_new)
-    else:
-        extra_per_bus = 0.0
-
+    # Determine where to put the extra power
     n2 = grid.get_bus_number()
+    extra_power_allocation = np.zeros(n2, dtype=bool) 
+
+    if not distribute_slack:
+        # Find slack bus index
+        slack_idx = -1
+        for i in range(n2):
+            if grid.buses[i].is_slack:
+                slack_idx = i
+                break
+        
+        if slack_idx != -1:
+            # Put everything on slack bus
+            extra_power_allocation[slack_idx] = True
+            denom = 1.0
+        else:
+            # Fallback to boundary if no slack bus found (weird but possible)
+            extra_power_allocation[boundary_indices_new] = True
+            denom = float(len(boundary_indices_new))
+    else:
+        # Distribute uniformly among boundary buses
+        if len(boundary_indices_new) > 0:
+            extra_power_allocation[boundary_indices_new] = True
+            denom = float(len(boundary_indices_new))
+        else:
+            denom = 0.0 
+
+    if denom > 0:
+        extra_Pgen_no_srap_per_bus = APgen_no_srap / denom
+        extra_Pgen_yes_srap_per_bus = APgen_yes_srap / denom
+        extra_Pload_per_bus = APload / denom
+    else:
+        extra_Pgen_no_srap_per_bus = 0.0
+        extra_Pgen_yes_srap_per_bus = 0.0
+        extra_Pload_per_bus = 0.0
+
     for i in range(n2):
 
         bus = grid.buses[i]
         
-        # Net compensation required for flows
-        net_comp = dP[i]
+        # Check allocation
+        alloc = extra_power_allocation[i]
         
-        # Check if the bus is part of the boundary
-        is_boundary = i in boundary_indices_new
+        extra_gen = extra_Pgen_no_srap_per_bus if alloc else 0.0
+        extra_gen_srap = extra_Pgen_yes_srap_per_bus if alloc else 0.0
+        extra_load = -extra_Pload_per_bus if alloc else 0.0
+
+        P_gen_no_srap_to_add = dP_gen[i] + extra_gen
+        P_gen_yes_srap_to_add = dP_gen_srap[i] + extra_gen_srap
+        P_load_to_add = dP_load[i] - extra_load
         
-        extra_gen = extra_per_bus if is_boundary else 0.0
-        extra_load = -extra_per_bus if is_boundary else 0.0
-        
-        gen_to_add = max(0.0, net_comp) + extra_gen
-        load_to_add = min(0.0, net_comp) + extra_load
-        
-        if gen_to_add > tol:
-            # Split this into SRAP/Non-SRAP
-            total_gen_existing = Pgen2[i] + Pgen_srap2[i]
-            if total_gen_existing > tol:
-                ratio_gen_srap = Pgen_srap2[i] / total_gen_existing
-            else:
-                ratio_gen_srap = 0.0
-
-            if ratio_gen_srap > tol:
-                elm_srap = Generator(name=f"compensated gen {i}", 
-                                P=gen_to_add * ratio_gen_srap, 
-                                srap_enabled=True)
-
-                if dP_ts is not None:
-                    elm_srap.P_prof = dP_ts[:, i] * ratio_gen_srap
-
-                grid.add_generator(bus=bus, api_obj=elm_srap)
-
-            if (1 - ratio_gen_srap) > tol:
-                elm_gen = Generator(name=f"compensated gen {i}", 
-                                P=gen_to_add * (1 - ratio_gen_srap), 
+        if abs(P_gen_no_srap_to_add) > tol:
+            elm_gen = Generator(name=f"compensated gen {i}", 
+                                P=P_gen_no_srap_to_add, 
                                 srap_enabled=False)
+            grid.add_generator(bus=bus, api_obj=elm_gen)
 
-                if dP_ts is not None:
-                    elm_gen.P_prof = dP_ts[:, i] * (1 - ratio_gen_srap)
+        if abs(P_gen_yes_srap_to_add) > tol:
+            elm_gen = Generator(name=f"compensated gen {i}", 
+                                P=P_gen_yes_srap_to_add, 
+                                srap_enabled=True)
+            grid.add_generator(bus=bus, api_obj=elm_gen)
 
-                grid.add_generator(bus=bus, api_obj=elm_gen)
-
-        if abs(load_to_add) > tol:
-            elm = Load(name=f"compensated load {i}", P=-load_to_add)
-
-            if dP_ts is not None:
-                elm.P_prof = -dP_ts[:, i]
-
-            grid.add_load(bus=bus, api_obj=elm)
-
+        if abs(P_load_to_add) > tol:
+            elm_load = Load(name=f"compensated load {i}", 
+                            P=-P_load_to_add)
+            grid.add_load(bus=bus, api_obj=elm_load)
+       
     return grid, logger
 
 

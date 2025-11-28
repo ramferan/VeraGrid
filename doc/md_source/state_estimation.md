@@ -1,8 +1,10 @@
 # 🌀 State estimation
 
-VeraGrid has the ability to run state estimation simulations, however not 
-from the interface since VeraGrid is not (yet) made to be coupled to SCADA measurements.
-Hence, the state estimation calculations will only be available through the API.
+VeraGrid has the ability to run state estimation simulations.
+For this to work you will have to fill in the apropriate measurements 
+in the database and run the State Estimation simulation.
+
+![se_settings.png](figures/se_settings.png)
 
 ## API
 

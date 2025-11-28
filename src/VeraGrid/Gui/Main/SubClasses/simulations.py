@@ -201,10 +201,11 @@ class SimulationsMain(TimeEventsMain):
         self.ui.investment_evaluation_method_ComboBox.setModel(gf.get_list_model(lst))
 
         # contingency filtering modes
-        con_filters = [ContingencyFilteringMethods.All,
+        con_filters = [ContingencyFilteringMethods.AllActive,
                        ContingencyFilteringMethods.Country,
                        ContingencyFilteringMethods.Area,
-                       ContingencyFilteringMethods.Zone]
+                       ContingencyFilteringMethods.Zone,
+                       ContingencyFilteringMethods.SensitiveToMonitored]
         self.contingency_filter_modes_dict = OrderedDict()
         con_filter_vals = list()
         for con_filter in con_filters:
@@ -237,6 +238,7 @@ class SimulationsMain(TimeEventsMain):
         self.ui.actionVoltage_stability.triggered.connect(self.run_continuation_power_flow)
         self.ui.actionPower_Flow_Time_series.triggered.connect(self.run_power_flow_time_series)
         self.ui.actionPower_flow_Stochastic.triggered.connect(self.run_stochastic)
+        self.ui.actionState_estimation.triggered.connect(self.run_state_estimation)
         self.ui.actionOPF.triggered.connect(self.optimal_power_flow_dispatcher)
         self.ui.actionOPF_time_series.triggered.connect(self.run_opf_time_series)
         self.ui.actionOptimal_Net_Transfer_Capacity.triggered.connect(self.optimal_ntc_opf_dispatcher)
@@ -447,7 +449,7 @@ class SimulationsMain(TimeEventsMain):
         """
         filter_mode = self.contingency_filter_modes_dict[self.ui.contingency_filter_by_comboBox.currentText()]
 
-        if filter_mode == ContingencyFilteringMethods.All:
+        if filter_mode == ContingencyFilteringMethods.AllActive:
             mdl = None
 
         elif filter_mode == ContingencyFilteringMethods.Country:
@@ -465,6 +467,18 @@ class SimulationsMain(TimeEventsMain):
                                     checks=True,
                                     check_value=True)
 
+        elif filter_mode == ContingencyFilteringMethods.SensitiveToMonitored:
+
+            drv, res = self.session.linear_power_flow
+            if res is None:
+                self.show_warning_toast("Run a linear analysis to enable filter contingencies by sensitivity")
+                mdl = None
+                self.ui.contingency_filter_by_comboBox.setCurrentIndex(0)
+            else:
+                threshold = self.ui.lodf_threshold_doubleSpinBox.value()
+                sensitive_idx = self.circuit.get_contingency_groups_sensitive_to_moitoring(LODF=res.LODF,
+                                                                                           threshold=threshold)
+                mdl = gf.get_elm_chck_list_model(self.circuit.contingency_groups, sensitive_idx)
         else:
             raise Exception('Unsupported ContingencyFilteringMethod ' + str(filter_mode.value))
 
@@ -479,9 +493,9 @@ class SimulationsMain(TimeEventsMain):
         # get the filter mode
         filter_mode = self.contingency_filter_modes_dict[self.ui.contingency_filter_by_comboBox.currentText()]
 
-        if filter_mode == ContingencyFilteringMethods.All:
+        if filter_mode == ContingencyFilteringMethods.AllActive:
             # no filtering, we're safe
-            return self.circuit.get_contingency_groups()
+            return self.circuit.get_contingency_groups_active()
 
         elif filter_mode == ContingencyFilteringMethods.Country:
 
@@ -514,6 +528,9 @@ class SimulationsMain(TimeEventsMain):
                 # default to returning all groups, since it's safer
                 return self.circuit.get_contingency_groups()
 
+        elif filter_mode == ContingencyFilteringMethods.SensitiveToMonitored:
+            idx = gf.get_checked_indices(self.ui.contingency_group_filter_listView.model())
+            return [self.circuit.contingency_groups[i] for i in idx]
         else:
             raise Exception('Unsupported ContingencyFilteringMethod ' + str(filter_mode.value))
 
@@ -2154,16 +2171,20 @@ class SimulationsMain(TimeEventsMain):
 
         report_formulation = self.ui.save_mip_checkBox.isChecked()
 
-        # available transfer capacity inter areas
-        inter_aggregation_info: dev.InterAggregationInfo = self.get_compatible_from_to_buses_and_inter_branches()
+        if dispatch_mode == OpfDispatchMode.InterAreaRedispatch:
 
-        if len(inter_aggregation_info.lst_from) == 0:
-            self.show_error_toast('The area "from" has no buses!', 5000)
-            return None
+            # available transfer capacity inter areas
+            inter_aggregation_info: dev.InterAggregationInfo = self.get_compatible_from_to_buses_and_inter_branches()
 
-        if len(inter_aggregation_info.lst_to) == 0:
-            self.show_error_toast('The area "to" has no buses!', 5000)
-            return None
+            if len(inter_aggregation_info.lst_from) == 0:
+                self.show_error_toast('The area "from" has no buses!', 5000)
+                return None
+
+            if len(inter_aggregation_info.lst_to) == 0:
+                self.show_error_toast('The area "to" has no buses!', 5000)
+                return None
+        else:
+            inter_aggregation_info = None
 
         ips_method = self.ips_solvers_dict[self.ui.ips_method_comboBox.currentText()]
         ips_tolerance = 1.0 / (10.0 ** self.ui.ips_tolerance_spinBox.value())

@@ -498,21 +498,11 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                        function_ptr=self.enable_disable_label_drawing,
                        checkeable=True,
                        checked_value=self.draw_labels)
-        #
-        # sc = add_sub_menu(menu=menu,
-        #                   text="Short circuit",
-        #                   icon_path=":/Icons/icons/short_circuit.png")
 
         add_menu_entry(menu=menu,
                        text="add Short circuit",
-                       icon_path=":/Icons/icons/short_circuit.png",
+                       icon_path=":/Icons/icons/short_circuit_plus.png",
                        function_ptr=self.add_short_circuit)
-
-        # types
-        # ph3 = '3x'
-        # LG = 'LG'
-        # LL = 'LL'
-        # LLG = 'LLG'
 
         add_menu_entry(menu=menu,
                        text="Is a DC bus",

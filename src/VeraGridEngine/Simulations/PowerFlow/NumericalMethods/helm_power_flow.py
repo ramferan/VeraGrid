@@ -281,7 +281,8 @@ def helm_coefficients_josep(Ybus: CscMat, Yseries: CscMat, V0: CxVec, S0: CxVec,
     Q = np.zeros((max_coeff + 1, n_no_slack), dtype=complex)  # unknown reactive powers
 
     if n < 2:
-        return U, X, Q, 0
+        # U, X, Q, V, iter_, converged
+        return U, X, Q, V0, 0, False
 
     if verbose:
         logger.add_debug('Yseries', Yseries.toarray())
@@ -321,6 +322,7 @@ def helm_coefficients_josep(Ybus: CscMat, Yseries: CscMat, V0: CxVec, S0: CxVec,
     else:
         U[0, :] = spsolve(Yred, Yslack)
 
+    # if U[0, :].real != 0.0 and U[0, :].imag != 0.0:
     X[0, :] = 1 / np.conj(U[0, :])
 
     # .......................CALCULATION OF TERMS [1] ------------------------------------------------------------------

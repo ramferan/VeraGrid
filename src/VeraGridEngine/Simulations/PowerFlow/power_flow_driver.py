@@ -85,41 +85,71 @@ class PowerFlowDriver(DriverTemplate):
         """
         Add a report of the results (in-place)
         """
-        vm = np.abs(self.results.voltage)
-        for i, bus in enumerate(self.grid.buses):
-            if vm[i] > bus.Vmax:
-                self.logger.add_warning("Overvoltage",
-                                        device=bus.name,
-                                        value=vm[i],
-                                        expected_value=bus.Vmax)
-            elif vm[i] < bus.Vmin:
-                self.logger.add_warning("Undervoltage",
-                                        device=bus.name,
-                                        value=vm[i],
-                                        expected_value=bus.Vmin)
+        if isinstance(self.results, PowerFlowResults):
+            vm = np.abs(self.results.voltage)
+            for i, bus in enumerate(self.grid.buses):
+                if vm[i] > bus.Vmax:
+                    self.logger.add_warning("Overvoltage",
+                                            device=bus.name,
+                                            value=vm[i],
+                                            expected_value=bus.Vmax)
+                elif vm[i] < bus.Vmin:
+                    self.logger.add_warning("Undervoltage",
+                                            device=bus.name,
+                                            value=vm[i],
+                                            expected_value=bus.Vmin)
 
-        loading = np.abs(self.results.loading)
-        branches = self.grid.get_branches(add_vsc=False, add_hvdc=False, add_switch=True)
-        for i, branch in enumerate(branches):
-            if loading[i] > 1.0:
-                self.logger.add_warning("Overload",
-                                        device=branch.name,
-                                        value=loading[i] * 100.0,
-                                        expected_value=100.0)
+            loading = np.abs(self.results.loading)
+            branches = self.grid.get_branches(add_vsc=False, add_hvdc=False, add_switch=True)
+            for i, branch in enumerate(branches):
+                if loading[i] > 1.0:
+                    self.logger.add_warning("Overload",
+                                            device=branch.name,
+                                            value=loading[i] * 100.0,
+                                            expected_value=100.0)
 
-        for i, elm in enumerate(self.grid.generators):
-            if not (elm.Qmin <= self.results.gen_q[i] <= elm.Qmax):
-                self.logger.add_warning("Generator Q out of bounds",
-                                        device=elm.name,
-                                        value=self.results.gen_q[i],
-                                        expected_value=f"[{elm.Qmin}, {elm.Qmax}]", )
+            for i, elm in enumerate(self.grid.generators):
+                if not (elm.Qmin <= self.results.gen_q[i] <= elm.Qmax):
+                    self.logger.add_warning("Generator Q out of bounds",
+                                            device=elm.name,
+                                            value=self.results.gen_q[i],
+                                            expected_value=f"[{elm.Qmin}, {elm.Qmax}]", )
 
-        for i, elm in enumerate(self.grid.batteries):
-            if not (elm.Qmin <= self.results.battery_q[i] <= elm.Qmax):
-                self.logger.add_warning("Battery Q out of bounds",
-                                        device=elm.name,
-                                        value=self.results.battery_q[i],
-                                        expected_value=f"[{elm.Qmin}, {elm.Qmax}]", )
+            for i, elm in enumerate(self.grid.batteries):
+                if not (elm.Qmin <= self.results.battery_q[i] <= elm.Qmax):
+                    self.logger.add_warning("Battery Q out of bounds",
+                                            device=elm.name,
+                                            value=self.results.battery_q[i],
+                                            expected_value=f"[{elm.Qmin}, {elm.Qmax}]", )
+
+        elif isinstance(self.results, PowerFlowResults3Ph):
+            for vm, phase in [(np.abs(self.results.voltage_A), "A"),
+                              (np.abs(self.results.voltage_B), "B"),
+                              (np.abs(self.results.voltage_C), "C")]:
+
+                for i, bus in enumerate(self.grid.buses):
+                    if vm[i] > bus.Vmax:
+                        self.logger.add_warning("Overvoltage",
+                                                device=f"{bus.name} - {phase}",
+                                                value=vm[i],
+                                                expected_value=bus.Vmax)
+                    elif vm[i] < bus.Vmin:
+                        self.logger.add_warning("Undervoltage",
+                                                device=f"{bus.name} - {phase}",
+                                                value=vm[i],
+                                                expected_value=bus.Vmin)
+
+            for loading, phase in [(np.abs(self.results.loading_A), "A"),
+                                   (np.abs(self.results.loading_B), "B"),
+                                   (np.abs(self.results.loading_C), "C")]:
+
+                branches = self.grid.get_branches(add_vsc=False, add_hvdc=False, add_switch=True)
+                for i, branch in enumerate(branches):
+                    if loading[i] > 1.0:
+                        self.logger.add_warning("Overload",
+                                                device=f"{branch.name} - {phase}",
+                                                value=loading[i] * 100.0,
+                                                expected_value=100.0)
 
     def run(self) -> None:
         """

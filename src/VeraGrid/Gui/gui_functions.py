@@ -634,6 +634,23 @@ def get_list_model(lst: List[Union[str, ALL_DEV_TYPES]], checks=False, check_val
     return list_model
 
 
+def get_elm_chck_list_model(lst: List[ALL_DEV_TYPES], check_status: IntVec) -> QtGui.QStandardItemModel:
+    """
+    Pass a list to a list model
+    """
+    list_model = QtGui.QStandardItemModel()
+    for elm, val in zip(lst, check_status):
+        # for the list model
+        item = QtGui.QStandardItem(str(elm.name))
+        item.setEditable(False)
+        item.setCheckable(True)
+        if val:
+            item.setCheckState(QtCore.Qt.CheckState.Checked)
+        list_model.appendRow(item)
+
+    return list_model
+
+
 def enums_to_model(enums_lst: List[Any]) -> Tuple[Dict[str, Any], QtGui.QStandardItemModel]:
     """
     Get the model and dict from a list of Enum value

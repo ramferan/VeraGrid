@@ -849,7 +849,7 @@ class ListSet(list):
         if iterable:
             self.extend(iterable)
 
-    def append(self, value):
+    def append(self, value: "Bus") -> None:
         """Append an item to the list if it's not already present."""
         if value not in self._set:
             super().append(value)

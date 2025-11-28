@@ -368,7 +368,8 @@ class EditableDevice:
 
     def __hash__(self) -> int:
         # alternatively, return hash(repr(self))
-        return int(self.idtag, 16)  # hex string to int
+        # return int(self.idtag, 16)  # hex string to int
+        return hash(repr(self))
 
     def __lt__(self, other) -> bool:
         return self.__hash__() < other.__hash__()
