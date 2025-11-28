@@ -66,7 +66,7 @@
 |X0                      |float                   |p.u.   |False    |         |Total zero sequence reactance.                                            |False      |       |
 |R2                      |float                   |p.u.   |False    |         |Total negative sequence resistance.                                       |False      |       |
 |X2                      |float                   |p.u.   |False    |         |Total negative sequence reactance.                                        |False      |       |
-|Cost2                   |float                   |e/MWÂ²/h|False    |         |Generation quadratic cost. Used in OPF.                                   |True       |       |
+|Cost2                   |float                   |e/MW²/h|False    |         |Generation quadratic cost. Used in OPF.                                   |True       |       |
 |Cost0                   |float                   |e/h    |False    |         |Generation constant cost. Used in OPF.                                    |True       |       |
 |StartupCost             |float                   |e/h    |False    |         |Generation start-up cost. Used in OPF.                                    |False      |       |
 |ShutdownCost            |float                   |e/h    |False    |         |Generation shut-down cost. Used in OPF.                                   |False      |       |
@@ -119,9 +119,9 @@
 |rms_model               |DynamicModuleHost  |     |False    |         |RMS dynamic model                                                                                                                                                                                                                        |False      |       |
 |bus_from_pos            |int                |     |False    |         |Aid to locate devices on a busbar                                                                                                                                                                                                        |False      |       |
 |bus_to_pos              |int                |     |False    |         |Aid to locate devices on a busbar                                                                                                                                                                                                        |False      |       |
-|temp_base               |float              |ÂºC   |False    |         |Base temperature at which R was measured.                                                                                                                                                                                                |False      |       |
-|temp_oper               |float              |ÂºC   |False    |         |Operation temperature to modify R.                                                                                                                                                                                                       |True       |       |
-|alpha                   |float              |1/ÂºC |False    |         |Thermal coefficient to modify R,around a reference temperature using a linear approximation.For example:Copper @ 20ÂºC: 0.004041,Copper @ 75ÂºC: 0.00323,Annealed copper @ 20ÂºC: 0.00393,Aluminum @ 20ÂºC: 0.004308,Aluminum @ 75ÂºC: 0.00330|False      |       |
+|temp_base               |float              |ºC   |False    |         |Base temperature at which R was measured.                                                                                                                                                                                                |False      |       |
+|temp_oper               |float              |ºC   |False    |         |Operation temperature to modify R.                                                                                                                                                                                                       |True       |       |
+|alpha                   |float              |1/ºC |False    |         |Thermal coefficient to modify R,around a reference temperature using a linear approximation.For example:Copper @ 20ºC: 0.004041,Copper @ 75ºC: 0.00323,Annealed copper @ 20ºC: 0.00393,Aluminum @ 20ºC: 0.004308,Aluminum @ 75ºC: 0.00330|False      |       |
 |R                       |float              |p.u. |False    |         |Total positive sequence resistance.                                                                                                                                                                                                      |False      |       |
 |X                       |float              |p.u. |False    |         |Total positive sequence reactance.                                                                                                                                                                                                       |False      |       |
 |B                       |float              |p.u. |False    |         |Total positive sequence shunt susceptance.                                                                                                                                                                                               |False      |       |
@@ -245,6 +245,7 @@
 |comment     |str                           |    |False    |         |User comment                                          |False      |       |
 |device_idtag|str                           |    |False    |         |Unique ID                                             |False      |       |
 |tpe         |enum DeviceType               |    |False    |         |Device type                                           |False      |       |
+|device_name |str                           |    |False    |         |Device name                                           |False      |       |
 |prop        |enum ContingencyOperationTypes|    |False    |         |Object property to change                             |False      |       |
 |value       |float                         |    |False    |         |Property value                                        |False      |       |
 |group       |Contingency Group             |    |False    |         |Contingency group                                     |False      |       |
@@ -261,6 +262,7 @@
 |action  |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
 |comment |str            |    |False    |         |User comment                                          |False      |       |
 |category|str            |    |False    |         |Some tag to category the contingency group            |False      |       |
+|active  |bool           |    |False    |         |Is the contingency group active for consideration?    |False      |       |
 
 
 ### ControllableShunt
@@ -406,9 +408,9 @@
 |rms_model               |DynamicModuleHost  |     |False    |         |RMS dynamic model                                                                                                                                                                                                                        |False      |       |
 |bus_from_pos            |int                |     |False    |         |Aid to locate devices on a busbar                                                                                                                                                                                                        |False      |       |
 |bus_to_pos              |int                |     |False    |         |Aid to locate devices on a busbar                                                                                                                                                                                                        |False      |       |
-|temp_base               |float              |ÂºC   |False    |         |Base temperature at which R was measured.                                                                                                                                                                                                |False      |       |
-|temp_oper               |float              |ÂºC   |False    |         |Operation temperature to modify R.                                                                                                                                                                                                       |True       |       |
-|alpha                   |float              |1/ÂºC |False    |         |Thermal coefficient to modify R,around a reference temperature using a linear approximation.For example:Copper @ 20ÂºC: 0.004041,Copper @ 75ÂºC: 0.00323,Annealed copper @ 20ÂºC: 0.00393,Aluminum @ 20ÂºC: 0.004308,Aluminum @ 75ÂºC: 0.00330|False      |       |
+|temp_base               |float              |ºC   |False    |         |Base temperature at which R was measured.                                                                                                                                                                                                |False      |       |
+|temp_oper               |float              |ºC   |False    |         |Operation temperature to modify R.                                                                                                                                                                                                       |True       |       |
+|alpha                   |float              |1/ºC |False    |         |Thermal coefficient to modify R,around a reference temperature using a linear approximation.For example:Copper @ 20ºC: 0.004041,Copper @ 75ºC: 0.00323,Annealed copper @ 20ºC: 0.00393,Aluminum @ 20ºC: 0.004308,Aluminum @ 75ºC: 0.00330|False      |       |
 |R                       |float              |p.u. |False    |         |Total positive sequence resistance.                                                                                                                                                                                                      |False      |       |
 |length                  |float              |km   |False    |         |Length of the line (not used for calculation)                                                                                                                                                                                            |False      |       |
 |r_fault                 |float              |p.u. |False    |         |Resistance of the mid-line fault.Used in short circuit studies.                                                                                                                                                                          |False      |       |
@@ -668,7 +670,7 @@
 |X0                      |float                   |p.u.   |False    |         |Total zero sequence reactance.                                            |False      |       |
 |R2                      |float                   |p.u.   |False    |         |Total negative sequence resistance.                                       |False      |       |
 |X2                      |float                   |p.u.   |False    |         |Total negative sequence reactance.                                        |False      |       |
-|Cost2                   |float                   |e/MWÂ²/h|False    |         |Generation quadratic cost. Used in OPF.                                   |True       |       |
+|Cost2                   |float                   |e/MW²/h|False    |         |Generation quadratic cost. Used in OPF.                                   |True       |       |
 |Cost0                   |float                   |e/h    |False    |         |Generation constant cost. Used in OPF.                                    |True       |       |
 |StartupCost             |float                   |e/h    |False    |         |Generation start-up cost. Used in OPF.                                    |False      |       |
 |ShutdownCost            |float                   |e/h    |False    |         |Generation shut-down cost. Used in OPF.                                   |False      |       |
@@ -714,9 +716,9 @@
 |rms_model               |DynamicModuleHost   |      |False    |         |RMS dynamic model                                                                                                                                                                                                                        |False      |       |
 |bus_from_pos            |int                 |      |False    |         |Aid to locate devices on a busbar                                                                                                                                                                                                        |False      |       |
 |bus_to_pos              |int                 |      |False    |         |Aid to locate devices on a busbar                                                                                                                                                                                                        |False      |       |
-|temp_base               |float               |ÂºC    |False    |         |Base temperature at which R was measured.                                                                                                                                                                                                |False      |       |
-|temp_oper               |float               |ÂºC    |False    |         |Operation temperature to modify R.                                                                                                                                                                                                       |True       |       |
-|alpha                   |float               |1/ÂºC  |False    |         |Thermal coefficient to modify R,around a reference temperature using a linear approximation.For example:Copper @ 20ÂºC: 0.004041,Copper @ 75ÂºC: 0.00323,Annealed copper @ 20ÂºC: 0.00393,Aluminum @ 20ÂºC: 0.004308,Aluminum @ 75ÂºC: 0.00330|False      |       |
+|temp_base               |float               |ºC    |False    |         |Base temperature at which R was measured.                                                                                                                                                                                                |False      |       |
+|temp_oper               |float               |ºC    |False    |         |Operation temperature to modify R.                                                                                                                                                                                                       |True       |       |
+|alpha                   |float               |1/ºC  |False    |         |Thermal coefficient to modify R,around a reference temperature using a linear approximation.For example:Copper @ 20ºC: 0.004041,Copper @ 75ºC: 0.00323,Annealed copper @ 20ºC: 0.00393,Aluminum @ 20ºC: 0.004308,Aluminum @ 75ºC: 0.00330|False      |       |
 |dispatchable            |bool                |      |False    |         |Is the line power optimizable?                                                                                                                                                                                                           |False      |       |
 |control_mode            |enum HvdcControlType|-     |False    |         |Control type.                                                                                                                                                                                                                            |False      |       |
 |Pset                    |float               |MW    |False    |         |Set power flow.                                                                                                                                                                                                                          |True       |       |
@@ -733,6 +735,23 @@
 |locations               |Line locations      |      |False    |         |                                                                                                                                                                                                                                         |False      |       |
 
 
+### IfMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
+
+
 ### Investment
 
 |    name    |   class_type    |unit|mandatory|max_chars|                                               descriptions                                                |has_profile|comment|
@@ -745,7 +764,8 @@
 |comment     |str              |    |False    |         |User comment                                                                                               |False      |       |
 |device_idtag|str              |    |False    |         |Unique ID                                                                                                  |False      |       |
 |tpe         |enum DeviceType  |    |False    |         |Device type                                                                                                |False      |       |
-|CAPEX       |float            |Mâ‚¬  |False    |         |Capital expenditures. This is the investment value, it overrides the CAPEX value of the device if it exits.|False      |       |
+|device_name |str              |    |False    |         |Device name                                                                                                |False      |       |
+|CAPEX       |float            |M€  |False    |         |Capital expenditures. This is the investment value, it overrides the CAPEX value of the device if it exits.|False      |       |
 |status      |bool             |    |False    |         |If true the investment activates when applied, otherwise is deactivated.                                   |False      |       |
 |group       |Investments Group|    |False    |         |Investment group                                                                                           |False      |       |
 
@@ -762,7 +782,24 @@
 |comment      |str            |    |False    |         |User comment                                                                 |False      |       |
 |category     |str            |    |False    |         |Some tag to category the investment group                                    |False      |       |
 |discount_rate|float          |%   |False    |         |Investment group discount rate                                               |False      |       |
-|CAPEX        |float          |â‚¬   |False    |         |Capital Expenditure of the group (added to the individual investments' capex)|False      |       |
+|CAPEX        |float          |€   |False    |         |Capital Expenditure of the group (added to the individual investments' capex)|False      |       |
+
+
+### ItMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
 
 
 ### Line
@@ -797,9 +834,9 @@
 |rms_model                      |DynamicModuleHost  |     |False    |         |RMS dynamic model                                                                                                                                                                                                                        |False      |       |
 |bus_from_pos                   |int                |     |False    |         |Aid to locate devices on a busbar                                                                                                                                                                                                        |False      |       |
 |bus_to_pos                     |int                |     |False    |         |Aid to locate devices on a busbar                                                                                                                                                                                                        |False      |       |
-|temp_base                      |float              |ÂºC   |False    |         |Base temperature at which R was measured.                                                                                                                                                                                                |False      |       |
-|temp_oper                      |float              |ÂºC   |False    |         |Operation temperature to modify R.                                                                                                                                                                                                       |True       |       |
-|alpha                          |float              |1/ÂºC |False    |         |Thermal coefficient to modify R,around a reference temperature using a linear approximation.For example:Copper @ 20ÂºC: 0.004041,Copper @ 75ÂºC: 0.00323,Annealed copper @ 20ÂºC: 0.00393,Aluminum @ 20ÂºC: 0.004308,Aluminum @ 75ÂºC: 0.00330|False      |       |
+|temp_base                      |float              |ºC   |False    |         |Base temperature at which R was measured.                                                                                                                                                                                                |False      |       |
+|temp_oper                      |float              |ºC   |False    |         |Operation temperature to modify R.                                                                                                                                                                                                       |True       |       |
+|alpha                          |float              |1/ºC |False    |         |Thermal coefficient to modify R,around a reference temperature using a linear approximation.For example:Copper @ 20ºC: 0.004041,Copper @ 75ºC: 0.00323,Annealed copper @ 20ºC: 0.00393,Aluminum @ 20ºC: 0.004308,Aluminum @ 75ºC: 0.00330|False      |       |
 |R                              |float              |p.u. |False    |         |Total positive sequence resistance.                                                                                                                                                                                                      |False      |       |
 |X                              |float              |p.u. |False    |         |Total positive sequence reactance.                                                                                                                                                                                                       |False      |       |
 |B                              |float              |p.u. |False    |         |Total positive sequence shunt susceptance.                                                                                                                                                                                               |False      |       |
@@ -927,6 +964,142 @@
 |wires_in_tower   |ListOfWires    |      |False    |         |List of wires                                         |False      |       |
 
 
+### PfMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
+
+
+### PgMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
+
+
+### PiMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
+
+
+### PtMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
+
+
+### QfMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
+
+
+### QgMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
+
+
+### QiMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
+
+
+### QtMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
+
+
 ### Region
 
 |  name   |  class_type   |unit|mandatory|max_chars|                              descriptions                              |has_profile|comment|
@@ -955,6 +1128,7 @@
 |comment     |str                           |    |False    |         |User comment                                          |False      |       |
 |device_idtag|str                           |    |False    |         |Unique ID                                             |False      |       |
 |tpe         |enum DeviceType               |    |False    |         |Device type                                           |False      |       |
+|device_name |str                           |    |False    |         |Device name                                           |False      |       |
 |prop        |enum ContingencyOperationTypes|    |False    |         |Object property to change                             |False      |       |
 |value       |float                         |    |False    |         |Property value                                        |False      |       |
 |group       |Remedial action Group         |    |False    |         |Remedial action group                                 |False      |       |
@@ -986,6 +1160,7 @@
 |comment     |str            |    |False    |         |User comment                                          |False      |       |
 |device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
 |tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
 |block       |DaeBlock       |p.u.|False    |         |DAE block                                             |False      |       |
 
 
@@ -1045,9 +1220,9 @@
 |rms_model               |DynamicModuleHost  |     |False    |         |RMS dynamic model                                                                                                                                                                                                                        |False      |       |
 |bus_from_pos            |int                |     |False    |         |Aid to locate devices on a busbar                                                                                                                                                                                                        |False      |       |
 |bus_to_pos              |int                |     |False    |         |Aid to locate devices on a busbar                                                                                                                                                                                                        |False      |       |
-|temp_base               |float              |ÂºC   |False    |         |Base temperature at which R was measured.                                                                                                                                                                                                |False      |       |
-|temp_oper               |float              |ÂºC   |False    |         |Operation temperature to modify R.                                                                                                                                                                                                       |True       |       |
-|alpha                   |float              |1/ÂºC |False    |         |Thermal coefficient to modify R,around a reference temperature using a linear approximation.For example:Copper @ 20ÂºC: 0.004041,Copper @ 75ÂºC: 0.00323,Annealed copper @ 20ÂºC: 0.00393,Aluminum @ 20ÂºC: 0.004308,Aluminum @ 75ÂºC: 0.00330|False      |       |
+|temp_base               |float              |ºC   |False    |         |Base temperature at which R was measured.                                                                                                                                                                                                |False      |       |
+|temp_oper               |float              |ºC   |False    |         |Operation temperature to modify R.                                                                                                                                                                                                       |True       |       |
+|alpha                   |float              |1/ºC |False    |         |Thermal coefficient to modify R,around a reference temperature using a linear approximation.For example:Copper @ 20ºC: 0.004041,Copper @ 75ºC: 0.00323,Annealed copper @ 20ºC: 0.00393,Aluminum @ 20ºC: 0.004308,Aluminum @ 75ºC: 0.00330|False      |       |
 |R                       |float              |p.u. |False    |         |Total positive sequence resistance.                                                                                                                                                                                                      |False      |       |
 |X                       |float              |p.u. |False    |         |Total positive sequence reactance.                                                                                                                                                                                                       |False      |       |
 |R0                      |float              |p.u. |False    |         |Total zero sequence resistance.                                                                                                                                                                                                          |False      |       |
@@ -1058,6 +1233,25 @@
 |r_fault                 |float              |p.u. |False    |         |Resistance of the mid-line fault.Used in short circuit studies.                                                                                                                                                                          |False      |       |
 |x_fault                 |float              |p.u. |False    |         |Reactance of the mid-line fault.Used in short circuit studies.                                                                                                                                                                           |False      |       |
 |fault_pos               |float              |p.u. |False    |         |Per-unit positioning of the fault:0 would be at the "from" side,1 would be at the "to" side,therefore 0.5 is at the middle.                                                                                                              |False      |       |
+
+
+### ShortCircuitEvent
+
+|    name    |      class_type       |unit|mandatory|max_chars|                                 descriptions                                 |has_profile|comment|
+|------------|-----------------------|----|---------|---------|------------------------------------------------------------------------------|-----------|-------|
+|idtag       |str                    |    |False    |         |Unique ID                                                                     |False      |       |
+|name        |str                    |    |False    |         |Name of the device.                                                           |False      |       |
+|code        |str                    |    |False    |         |Secondary ID                                                                  |False      |       |
+|rdfid       |str                    |    |False    |         |RDF ID for further compatibility                                              |False      |       |
+|action      |enum ActionType        |    |False    |         |Object action to perform. Only used for model merging.                        |False      |       |
+|comment     |str                    |    |False    |         |User comment                                                                  |False      |       |
+|device_idtag|str                    |    |False    |         |Unique ID                                                                     |False      |       |
+|tpe         |enum DeviceType        |    |False    |         |Device type                                                                   |False      |       |
+|device_name |str                    |    |False    |         |Device name                                                                   |False      |       |
+|fault_type  |enum FaultType         |    |False    |         |Type of short circuit                                                         |False      |       |
+|method      |enum MethodShortCircuit|    |False    |         |Method of short circuit                                                       |False      |       |
+|phases      |enum PhasesShortCircuit|    |False    |         |Phases involved                                                               |False      |       |
+|active      |bool                   |    |False    |         |If true the short-circuit activates when calculated, otherwise is deactivated.|False      |       |
 
 
 ### Shunt
@@ -1170,7 +1364,7 @@
 |municipality       |Municipality       |     |False    |         |Substation municipality                                                                                                                                                                                                       |False      |       |
 |address            |str                |     |False    |         |Substation address                                                                                                                                                                                                            |False      |       |
 |irradiation        |float              |W/m^2|False    |         |Substation solar irradiation                                                                                                                                                                                                  |True       |       |
-|temperature        |float              |ÂºC   |False    |         |Substation temperature                                                                                                                                                                                                        |True       |       |
+|temperature        |float              |ºC   |False    |         |Substation temperature                                                                                                                                                                                                        |True       |       |
 |wind_speed         |float              |m/s  |False    |         |Substation wind speed at 80m above the ground                                                                                                                                                                                 |True       |       |
 |terrain_roughness  |float              |     |False    |         |This value is ised for wind speed extrapolation. Typical values: Not rough (sand, snow, sea): 0~0.02 Slightly rough (grass, cereal field): 0.02~0.2 Rough (forest, small houses): 1.0~1.5 Very rough (Large buildings):1.0~4.0|False      |       |
 
@@ -1207,9 +1401,9 @@
 |rms_model               |DynamicModuleHost     |     |False    |         |RMS dynamic model                                                                                                                                                                                                                        |False      |       |
 |bus_from_pos            |int                   |     |False    |         |Aid to locate devices on a busbar                                                                                                                                                                                                        |False      |       |
 |bus_to_pos              |int                   |     |False    |         |Aid to locate devices on a busbar                                                                                                                                                                                                        |False      |       |
-|temp_base               |float                 |ÂºC   |False    |         |Base temperature at which R was measured.                                                                                                                                                                                                |False      |       |
-|temp_oper               |float                 |ÂºC   |False    |         |Operation temperature to modify R.                                                                                                                                                                                                       |True       |       |
-|alpha                   |float                 |1/ÂºC |False    |         |Thermal coefficient to modify R,around a reference temperature using a linear approximation.For example:Copper @ 20ÂºC: 0.004041,Copper @ 75ÂºC: 0.00323,Annealed copper @ 20ÂºC: 0.00393,Aluminum @ 20ÂºC: 0.004308,Aluminum @ 75ÂºC: 0.00330|False      |       |
+|temp_base               |float                 |ºC   |False    |         |Base temperature at which R was measured.                                                                                                                                                                                                |False      |       |
+|temp_oper               |float                 |ºC   |False    |         |Operation temperature to modify R.                                                                                                                                                                                                       |True       |       |
+|alpha                   |float                 |1/ºC |False    |         |Thermal coefficient to modify R,around a reference temperature using a linear approximation.For example:Copper @ 20ºC: 0.004041,Copper @ 75ºC: 0.00323,Annealed copper @ 20ºC: 0.00393,Aluminum @ 20ºC: 0.004308,Aluminum @ 75ºC: 0.00330|False      |       |
 |R                       |float                 |pu   |False    |         |Positive-sequence resistance                                                                                                                                                                                                             |False      |       |
 |X                       |float                 |pu   |False    |         |Positive-sequence reactance                                                                                                                                                                                                              |False      |       |
 |retained                |bool                  |     |False    |         |Switch is retained                                                                                                                                                                                                                       |False      |       |
@@ -1266,9 +1460,9 @@
 |rms_model               |DynamicModuleHost      |     |False    |         |RMS dynamic model                                                                                                                                                                                                                        |False      |       |
 |bus_from_pos            |int                    |     |False    |         |Aid to locate devices on a busbar                                                                                                                                                                                                        |False      |       |
 |bus_to_pos              |int                    |     |False    |         |Aid to locate devices on a busbar                                                                                                                                                                                                        |False      |       |
-|temp_base               |float                  |ÂºC   |False    |         |Base temperature at which R was measured.                                                                                                                                                                                                |False      |       |
-|temp_oper               |float                  |ÂºC   |False    |         |Operation temperature to modify R.                                                                                                                                                                                                       |True       |       |
-|alpha                   |float                  |1/ÂºC |False    |         |Thermal coefficient to modify R,around a reference temperature using a linear approximation.For example:Copper @ 20ÂºC: 0.004041,Copper @ 75ÂºC: 0.00323,Annealed copper @ 20ÂºC: 0.00393,Aluminum @ 20ÂºC: 0.004308,Aluminum @ 75ÂºC: 0.00330|False      |       |
+|temp_base               |float                  |ºC   |False    |         |Base temperature at which R was measured.                                                                                                                                                                                                |False      |       |
+|temp_oper               |float                  |ºC   |False    |         |Operation temperature to modify R.                                                                                                                                                                                                       |True       |       |
+|alpha                   |float                  |1/ºC |False    |         |Thermal coefficient to modify R,around a reference temperature using a linear approximation.For example:Copper @ 20ºC: 0.004041,Copper @ 75ºC: 0.00323,Annealed copper @ 20ºC: 0.00393,Aluminum @ 20ºC: 0.004308,Aluminum @ 75ºC: 0.00330|False      |       |
 |R                       |float                  |p.u. |False    |         |Total positive sequence resistance.                                                                                                                                                                                                      |False      |       |
 |X                       |float                  |p.u. |False    |         |Total positive sequence reactance.                                                                                                                                                                                                       |False      |       |
 |G                       |float                  |p.u. |False    |         |Total positive sequence shunt conductance.                                                                                                                                                                                               |False      |       |
@@ -1305,7 +1499,7 @@
 |conn                    |enum WindingsConnection|     |False    |         |Windings connection (from, to):G: grounded starS: ungrounded starD: delta                                                                                                                                                                |False      |       |
 |conn_f                  |enum WindingType       |     |False    |         |Winding 3 phase connection at the from side                                                                                                                                                                                              |False      |       |
 |conn_t                  |enum WindingType       |     |False    |         |Winding 3 phase connection at the to side                                                                                                                                                                                                |False      |       |
-|vector_group_number     |int                    |     |False    |         |Vector group number. It indicates the structural phase:phase = vector_group_number Â· 30Âº                                                                                                                                                 |False      |       |
+|vector_group_number     |int                    |     |False    |         |Vector group number. It indicates the structural phase:phase = vector_group_number · 30º                                                                                                                                                 |False      |       |
 |template                |Transformer type       |     |False    |         |                                                                                                                                                                                                                                         |False      |       |
 
 
@@ -1379,7 +1573,7 @@
 |asymmetry_angle    |float               |deg |False    |         |Asymmetry_angle                                                                         |False      |       |
 |conn_hv            |enum WindingType    |    |False    |         |Winding 3 phase connection at the from side                                             |False      |       |
 |conn_lv            |enum WindingType    |    |False    |         |Winding 3 phase connection at the to side                                               |False      |       |
-|vector_group_number|int                 |    |False    |         |Vector group number. It indicates the structural phase:phase = vector_group_number Â· 30Âº|False      |       |
+|vector_group_number|int                 |    |False    |         |Vector group number. It indicates the structural phase:phase = vector_group_number · 30º|False      |       |
 |tap_module_min     |float               |p.u.|False    |         |Min tap module                                                                          |False      |       |
 |tap_module_max     |float               |p.u.|False    |         |Max tap module                                                                          |False      |       |
 |tap_phase_min      |float               |rad |False    |         |Min tap phase                                                                           |False      |       |
@@ -1418,9 +1612,9 @@
 |rms_model               |DynamicModuleHost  |     |False    |         |RMS dynamic model                                                                                                                                                                                                                        |False      |       |
 |bus_from_pos            |int                |     |False    |         |Aid to locate devices on a busbar                                                                                                                                                                                                        |False      |       |
 |bus_to_pos              |int                |     |False    |         |Aid to locate devices on a busbar                                                                                                                                                                                                        |False      |       |
-|temp_base               |float              |ÂºC   |False    |         |Base temperature at which R was measured.                                                                                                                                                                                                |False      |       |
-|temp_oper               |float              |ÂºC   |False    |         |Operation temperature to modify R.                                                                                                                                                                                                       |True       |       |
-|alpha                   |float              |1/ÂºC |False    |         |Thermal coefficient to modify R,around a reference temperature using a linear approximation.For example:Copper @ 20ÂºC: 0.004041,Copper @ 75ÂºC: 0.00323,Annealed copper @ 20ÂºC: 0.00393,Aluminum @ 20ÂºC: 0.004308,Aluminum @ 75ÂºC: 0.00330|False      |       |
+|temp_base               |float              |ºC   |False    |         |Base temperature at which R was measured.                                                                                                                                                                                                |False      |       |
+|temp_oper               |float              |ºC   |False    |         |Operation temperature to modify R.                                                                                                                                                                                                       |True       |       |
+|alpha                   |float              |1/ºC |False    |         |Thermal coefficient to modify R,around a reference temperature using a linear approximation.For example:Copper @ 20ºC: 0.004041,Copper @ 75ºC: 0.00323,Annealed copper @ 20ºC: 0.00393,Aluminum @ 20ºC: 0.004308,Aluminum @ 75ºC: 0.00330|False      |       |
 |R                       |float              |p.u. |False    |         |Series positive sequence resistance.                                                                                                                                                                                                     |False      |       |
 |X                       |float              |p.u. |False    |         |Series positive sequence reactance.                                                                                                                                                                                                      |False      |       |
 |Rsh                     |float              |p.u. |False    |         |Shunt positive sequence resistance.                                                                                                                                                                                                      |False      |       |
@@ -1494,9 +1688,9 @@
 |rms_model               |DynamicModuleHost        |         |False    |         |RMS dynamic model                                                                                                                                                                                                                        |False      |       |
 |bus_from_pos            |int                      |         |False    |         |Aid to locate devices on a busbar                                                                                                                                                                                                        |False      |       |
 |bus_to_pos              |int                      |         |False    |         |Aid to locate devices on a busbar                                                                                                                                                                                                        |False      |       |
-|temp_base               |float                    |ÂºC       |False    |         |Base temperature at which R was measured.                                                                                                                                                                                                |False      |       |
-|temp_oper               |float                    |ÂºC       |False    |         |Operation temperature to modify R.                                                                                                                                                                                                       |True       |       |
-|alpha                   |float                    |1/ÂºC     |False    |         |Thermal coefficient to modify R,around a reference temperature using a linear approximation.For example:Copper @ 20ÂºC: 0.004041,Copper @ 75ÂºC: 0.00323,Annealed copper @ 20ÂºC: 0.00393,Aluminum @ 20ÂºC: 0.004308,Aluminum @ 75ÂºC: 0.00330|False      |       |
+|temp_base               |float                    |ºC       |False    |         |Base temperature at which R was measured.                                                                                                                                                                                                |False      |       |
+|temp_oper               |float                    |ºC       |False    |         |Operation temperature to modify R.                                                                                                                                                                                                       |True       |       |
+|alpha                   |float                    |1/ºC     |False    |         |Thermal coefficient to modify R,around a reference temperature using a linear approximation.For example:Copper @ 20ºC: 0.004041,Copper @ 75ºC: 0.00323,Annealed copper @ 20ºC: 0.00393,Aluminum @ 20ºC: 0.004308,Aluminum @ 75ºC: 0.00330|False      |       |
 |bus_dc_n                |Bus                      |         |False    |         |DC negative bus                                                                                                                                                                                                                          |False      |       |
 |alpha1                  |float                    |         |False    |         |Losses constant parameter (IEC 62751-2 loss Correction).                                                                                                                                                                                 |False      |       |
 |alpha2                  |float                    |         |False    |         |Losses linear parameter (IEC 62751-2 loss Correction).                                                                                                                                                                                   |False      |       |
@@ -1510,6 +1704,40 @@
 |control2_dev            |BusOrBranch              |         |False    |         |Controlled device, None to apply to this converter                                                                                                                                                                                       |True       |       |
 |x                       |float                    |px       |False    |         |x position                                                                                                                                                                                                                               |False      |       |
 |y                       |float                    |px       |False    |         |y position                                                                                                                                                                                                                               |False      |       |
+
+
+### VaMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
+
+
+### VmMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
 
 
 ### VoltageLevel
@@ -1526,7 +1754,7 @@
 |commissioned_date  |int                |    |False    |         |Commissioned date of the asset                        |False      |       |
 |decommissioned_date|int                |    |False    |         |Decommissioned date of the asset                      |False      |       |
 |build_status       |enum BuildStatus   |    |False    |         |Device build status. Used in expansion planning.      |False      |       |
-|Vnom               |float              |KV  |False    |         |Nominal voltage                                       |False      |       |
+|Vnom               |float              |kV  |False    |         |Nominal voltage                                       |False      |       |
 |substation         |Substation         |    |False    |         |Substation of this Voltage level (optional)           |False      |       |
 
 
@@ -1562,9 +1790,9 @@
 |rms_model               |DynamicModuleHost      |     |False    |         |RMS dynamic model                                                                                                                                                                                                                        |False      |       |
 |bus_from_pos            |int                    |     |False    |         |Aid to locate devices on a busbar                                                                                                                                                                                                        |False      |       |
 |bus_to_pos              |int                    |     |False    |         |Aid to locate devices on a busbar                                                                                                                                                                                                        |False      |       |
-|temp_base               |float                  |ÂºC   |False    |         |Base temperature at which R was measured.                                                                                                                                                                                                |False      |       |
-|temp_oper               |float                  |ÂºC   |False    |         |Operation temperature to modify R.                                                                                                                                                                                                       |True       |       |
-|alpha                   |float                  |1/ÂºC |False    |         |Thermal coefficient to modify R,around a reference temperature using a linear approximation.For example:Copper @ 20ÂºC: 0.004041,Copper @ 75ÂºC: 0.00323,Annealed copper @ 20ÂºC: 0.00393,Aluminum @ 20ÂºC: 0.004308,Aluminum @ 75ÂºC: 0.00330|False      |       |
+|temp_base               |float                  |ºC   |False    |         |Base temperature at which R was measured.                                                                                                                                                                                                |False      |       |
+|temp_oper               |float                  |ºC   |False    |         |Operation temperature to modify R.                                                                                                                                                                                                       |True       |       |
+|alpha                   |float                  |1/ºC |False    |         |Thermal coefficient to modify R,around a reference temperature using a linear approximation.For example:Copper @ 20ºC: 0.004041,Copper @ 75ºC: 0.00323,Annealed copper @ 20ºC: 0.00393,Aluminum @ 20ºC: 0.004308,Aluminum @ 75ºC: 0.00330|False      |       |
 |R                       |float                  |p.u. |False    |         |Total positive sequence resistance.                                                                                                                                                                                                      |False      |       |
 |X                       |float                  |p.u. |False    |         |Total positive sequence reactance.                                                                                                                                                                                                       |False      |       |
 |G                       |float                  |p.u. |False    |         |Total positive sequence shunt conductance.                                                                                                                                                                                               |False      |       |
@@ -1601,7 +1829,7 @@
 |conn                    |enum WindingsConnection|     |False    |         |Windings connection (from, to):G: grounded starS: ungrounded starD: delta                                                                                                                                                                |False      |       |
 |conn_f                  |enum WindingType       |     |False    |         |Winding 3 phase connection at the from side                                                                                                                                                                                              |False      |       |
 |conn_t                  |enum WindingType       |     |False    |         |Winding 3 phase connection at the to side                                                                                                                                                                                                |False      |       |
-|vector_group_number     |int                    |     |False    |         |Vector group number. It indicates the structural phase:phase = vector_group_number Â· 30Âº                                                                                                                                                 |False      |       |
+|vector_group_number     |int                    |     |False    |         |Vector group number. It indicates the structural phase:phase = vector_group_number · 30º                                                                                                                                                 |False      |       |
 |template                |Transformer type       |     |False    |         |                                                                                                                                                                                                                                         |False      |       |
 
 
