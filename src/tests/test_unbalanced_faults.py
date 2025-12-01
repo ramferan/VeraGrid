@@ -43,7 +43,8 @@ def test_unbalanced_short_circuit():
         grid,
         options=sc_options,
         pf_options=pf_options,
-        pf_results=pf.results
+        pf_results=pf.results,
+        pf_results3ph=None
     )
     sc.run()
 

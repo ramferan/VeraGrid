@@ -10,8 +10,8 @@ import numpy as np
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.basic_structures import CxVec
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowResults3Ph, \
-    PowerFlowOptions
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Simulations.OPF.opf_results import OptimalPowerFlowResults
 from VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_worker import (short_circuit_ph3,
                                                                                  short_circuit_unbalanced,
@@ -34,6 +34,7 @@ class ShortCircuitDriver(DriverTemplate):
                  options: ShortCircuitOptions | None,
                  pf_options: PowerFlowOptions | None,
                  pf_results: PowerFlowResults | None,
+                 pf_results3ph: PowerFlowResults3Ph | None,
                  opf_results: OptimalPowerFlowResults | None = None):
         """
         ShortCircuitDriver class constructor
@@ -46,7 +47,8 @@ class ShortCircuitDriver(DriverTemplate):
         # assert isinstance(pf_results, PowerFlowResults)
         DriverTemplate.__init__(self, grid=grid)
 
-        self.pf_results: PowerFlowResults | PowerFlowResults3Ph | None = pf_results
+        self.pf_results: PowerFlowResults | None = pf_results
+        self.pf_results3ph: PowerFlowResults3Ph = pf_results3ph
         self.pf_options: PowerFlowOptions | None = pf_options
         self.opf_results: OptimalPowerFlowResults | None = opf_results
 
@@ -453,41 +455,55 @@ class ShortCircuitDriver(DriverTemplate):
                 if island_bus_index is not None:
 
                     if sc_definition.method == MethodShortCircuit.sequences:
-                        res = self.single_short_circuit_sequences(
-                            nc=island,
-                            Vpf=self.pf_results.voltage[island.bus_data.original_idx],
-                            Zf=Zf[island.bus_data.original_idx],
-                            island_bus_index=island_bus_index,
-                            fault_type=sc_definition.fault_type
-                        )
+
+                        if self.pf_results is not None:
+                            res = self.single_short_circuit_sequences(
+                                nc=island,
+                                Vpf=self.pf_results.voltage[island.bus_data.original_idx],
+                                Zf=Zf[island.bus_data.original_idx],
+                                island_bus_index=island_bus_index,
+                                fault_type=sc_definition.fault_type
+                            )
+
+                            # merge results
+                            results.apply_from_island(k_sc,
+                                                      res,
+                                                      island.bus_data.original_idx,
+                                                      island.passive_branch_data.original_idx)
+                        else:
+                            self.logger.add_error("Sequence power flow results missing")
 
                     elif sc_definition.method == MethodShortCircuit.phases:
 
-                        res = self.single_short_circuit_phases(
-                            nc=island,
-                            voltage_N=self.pf_results.voltage_N[island.bus_data.original_idx],
-                            voltage_A=self.pf_results.voltage_A[island.bus_data.original_idx],
-                            voltage_B=self.pf_results.voltage_B[island.bus_data.original_idx],
-                            voltage_C=self.pf_results.voltage_C[island.bus_data.original_idx],
-                            Zf=Zf[island.bus_data.original_idx],
-                            island_bus_index=island_bus_index,
-                            fault_type=sc_definition.fault_type,
-                            phases=sc_definition.phases,
-                            Sbus_N=self.pf_results.Sbus_N[island.bus_data.original_idx],
-                            Sbus_A=self.pf_results.Sbus_A[island.bus_data.original_idx],
-                            Sbus_B=self.pf_results.Sbus_B[island.bus_data.original_idx],
-                            Sbus_C=self.pf_results.Sbus_C[island.bus_data.original_idx],
-                            logger=self.logger
-                        )
+                        if self.pf_results3ph is not None:
+
+                            res = self.single_short_circuit_phases(
+                                nc=island,
+                                voltage_N=self.pf_results3ph.voltage_N[island.bus_data.original_idx],
+                                voltage_A=self.pf_results3ph.voltage_A[island.bus_data.original_idx],
+                                voltage_B=self.pf_results3ph.voltage_B[island.bus_data.original_idx],
+                                voltage_C=self.pf_results3ph.voltage_C[island.bus_data.original_idx],
+                                Zf=Zf[island.bus_data.original_idx],
+                                island_bus_index=island_bus_index,
+                                fault_type=sc_definition.fault_type,
+                                phases=sc_definition.phases,
+                                Sbus_N=self.pf_results3ph.Sbus_N[island.bus_data.original_idx],
+                                Sbus_A=self.pf_results3ph.Sbus_A[island.bus_data.original_idx],
+                                Sbus_B=self.pf_results3ph.Sbus_B[island.bus_data.original_idx],
+                                Sbus_C=self.pf_results3ph.Sbus_C[island.bus_data.original_idx],
+                                logger=self.logger
+                            )
+
+                            # merge results
+                            results.apply_from_island(k_sc,
+                                                      res,
+                                                      island.bus_data.original_idx,
+                                                      island.passive_branch_data.original_idx)
+                        else:
+                            self.logger.add_error("3ph power flow results missing")
 
                     else:
                         raise Exception(f"unknown short circuit method: {sc_definition.method}")
-
-                    # merge results
-                    results.apply_from_island(k_sc,
-                                              res,
-                                              island.bus_data.original_idx,
-                                              island.passive_branch_data.original_idx)
 
         # expand voltages if there was a bus topology reduction
         if nc.topology_performed:

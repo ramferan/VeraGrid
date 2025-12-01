@@ -262,6 +262,7 @@ def test_opf_hvdc_controls():
     :return:
     """
     fname = os.path.join('data', 'grids', 'IEEE39_hvdc.gridcal')
+    # fname = os.path.join('src', 'tests', 'data', 'grids', 'IEEE39_hvdc.gridcal')
 
     main_circuit = FileOpen(fname).open()
 
@@ -563,5 +564,6 @@ def test_opf_unit_commitment():
 
 if __name__ == '__main__':
     # test_opf()
-    test_opf_generation_shedding()
-    test_opf_battery_shedding()
+    # test_opf_generation_shedding()
+    # test_opf_battery_shedding()
+    test_opf_hvdc_controls()

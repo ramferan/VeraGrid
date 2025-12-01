@@ -3,120 +3,110 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import List
 import numpy as np
 
-from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, Expr, VarPowerFlowRefferenceType
-from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
+from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, exp, log, abs, UndefinedConst
 
 
-class Generator_0_RmsTemplate(RmsModelTemplate):
 
-    def __init__(self, name: str = "rms_generator_0_template"):
-        super().__init__(name=name)
+def get_generator_rms_template() -> RmsModelTemplate():
+    """
+    Get the RMS template of a grnerator
+    :return: RmsModelTemplate
+    """
 
+    templ = RmsModelTemplate()
 
-        self.tpe: DeviceType = DeviceType.GeneratorDevice
+    Vm: Var = Var('Vm_placeholder')
+    Va: Var = Var('Va_placeholder')
 
+    P_g: Var = Var('P_g')
+    Q_g: Var = Var('Q_g')
 
-        self.Vm: Var = Var('Vm_placeholder')
-        self.Va: Var = Var('Va_placeholder')
+    delta = Var("delta")
+    omega = Var("omega")
+    psid = Var("psid")
+    psiq = Var("psiq")
+    i_d = Var("i_d")
+    i_q = Var("i_q")
+    v_d = Var("v_d")
+    v_q = Var("v_q")
+    te = Var("te")
+    et = Var("et")
+    tm = Var("tm")
 
-        self.P_g: Var = Var('P_g')
-        self.Q_g: Var = Var('Q_g')
+    R1 = Var("R1")
+    X1 = Var("X1")
+    freq = Var("frequ")
+    M = Var("M")
+    D = Var("D")
+    omega_ref = Var("omega_ref")
+    Kp = Var("Kp")
+    Ki = Var("Ki")
 
-        self.delta = Var("delta")
-        self.omega = Var("omega")
-        self.psid = Var("psid")
-        self.psiq = Var("psiq")
-        self.i_d = Var("i_d")
-        self.i_q = Var("i_q")
-        self.v_d = Var("v_d")
-        self.v_q = Var("v_q")
-        self.te = Var("te")
-        self.et = Var("et")
-        self.tm = Var("tm")
+    vf = UndefinedConst()  # this will disappear when the generator and the exciter model are decoupled
+    tm0 = UndefinedConst()
 
-        self.R1 = Var("R1")
-        self.X1 = Var("X1")
-        self.freq = Var("frequ")
-        self.M = Var("M")
-        self.D = Var("D")
-        self.omega_ref = Var("omega_ref")
-        self.Kp = Var("Kp")
-        self.Ki = Var("Ki")
+    templ.block = Block(
+        state_vars=[delta, omega],
+        state_eqs=[
+            (2 * np.pi * freq) * (omega - omega_ref),
+            (tm - te - D * (omega - omega_ref)) / M,
+        ],
+        algebraic_vars=[P_g, Q_g, v_d, v_q, i_d, i_q, psid, psiq, te,
+                        tm, et],
+        algebraic_eqs=[
+            psid - (R1 * i_q + v_q),
+            psiq + (R1 * i_d + v_d),
+            0 - (psid + X1 * i_d - vf),
+            0 - (psiq + X1 * i_q),
+            v_d - (Vm * sin(delta - Va)),
+            v_q - (Vm * cos(delta - Va)),
+            te - (psid * i_q - psiq * i_d),
+            P_g - (v_d * i_d + v_q * i_q),
+            Q_g - (v_q * i_d - v_d * i_q),
+            tm - (tm0 + Kp * (omega - omega_ref) + Ki * et),
+            2 * np.pi * freq * et - delta,  #
+        ],
 
-        self.event_dict = {self.R1: Const(0.0),
-                      self.X1: Const(0.3),
-                      self.freq: Const(60.0),
-                      self.M: Const(4.0),
-                      self.D: Const(1.0),
-                      self.omega_ref: Const(1.0),
-                      self.Kp: Const(0.0),
-                      self.Ki: Const(0.0)}
+        init_eqs={
+            delta: imag(
+                log((Vm * exp(1j * Va) + (R1 + 1j * X1) * (
+                    conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))))) / (
+                        abs(Vm * exp(1j * Va) + (R1 + 1j * X1) * (
+                            conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va)))))))),
+            omega: omega_ref,
+            v_d: real((Vm * exp(1j * Va)) * exp(-1j * (delta - np.pi / 2))),
+            v_q: imag((Vm * exp(1j * Va)) * exp(-1j * (delta - np.pi / 2))),
+            i_d: real(
+                conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))) * exp(-1j * (delta - np.pi / 2))),
+            i_q: imag(
+                conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))) * exp(-1j * (delta - np.pi / 2))),
+            psid: R1 * i_q + v_q,
+            psiq: -R1 * i_d - v_d,
+            te: psid * i_q - psiq * i_d,
+            tm: te,
+            et: Const(0),
+        })
 
+    templ.block.fix_vars = [tm0, vf]
+    templ.block.fix_vars_eqs = {tm0.uid: tm,
+                                vf.uid: psid + X1 * i_d}
 
-        self.vf = UndefinedConst() # this will disappear when the generator and the exciter model are decoupled
-        self.tm0 = UndefinedConst()
+    templ.block.external_mapping = {
+        VarPowerFlowRefferenceType.P: P_g,
+        VarPowerFlowRefferenceType.Q: Q_g
+    }
 
+    templ.block.event_dict = {R1: Const(0.0),
+                              X1: Const(0.3),
+                              freq: Const(60.0),
+                              M: Const(4.0),
+                              D: Const(1.0),
+                              omega_ref: Const(1.0),
+                              Kp: Const(0.0),
+                              Ki: Const(0.0)}
 
-    def get_block(self):
-        """
-
-        :return:
-        """
-        block = Block(
-            state_vars=[self.delta, self.omega],
-            state_eqs=[
-                (2 * np.pi * self.freq) * (self.omega - self.omega_ref),
-                (self.tm - self.te - self.D * (self.omega - self.omega_ref)) / self.M,
-            ],
-            algebraic_vars=[self.P_g, self.Q_g, self.v_d, self.v_q, self.i_d, self.i_q, self.psid, self.psiq, self.te, self.tm, self.et],
-            algebraic_eqs=[
-                self.psid - (self.R1 * self.i_q +self. v_q),
-                self.psiq + (self.R1 * self.i_d + self.v_d),
-                0 - (self.psid + self.X1 * self.i_d - self.vf),
-                0 - (self.psiq + self.X1 * self.i_q),
-                self.v_d - (self.Vm * sin(self.delta - self.Va)),
-                self.v_q - (self.Vm * cos(self.delta - self.Va)),
-                self.te - (self.psid * self.i_q - self.psiq * self.i_d),
-                self.P_g - (self.v_d * self.i_d + self.v_q * self.i_q),
-                self.Q_g - (self.v_q * self.i_d - self.v_d * self.i_q),
-                self.tm - (self.tm0 + self.Kp * (self.omega - self.omega_ref) + self.Ki * self.et),
-                2 * np.pi * self.freq * self.et - self.delta,  #
-            ],
-
-            init_eqs={
-                self.delta: imag(
-                    log((self.Vm * exp(1j * self.Va) + (self.R1 + 1j * self.X1) * (
-                        conj((self.P_g + 1j * self.Q_g) / (self.Vm * exp(1j * self.Va))))) / (
-                            abs(self.Vm * exp(1j * self.Va) + (self.R1 + 1j * self.X1) * (
-                                conj((self.P_g + 1j * self.Q_g) / (self.Vm * exp(1j * self.Va)))))))),
-                self.omega: self.omega_ref,
-                self.v_d: real((self.Vm * exp(1j * self.Va)) * exp(-1j * (self.delta - np.pi / 2))),
-                self.v_q: imag((self.Vm * exp(1j * self.Va)) * exp(-1j * (self.delta - np.pi / 2))),
-                self.i_d: real(
-                    conj((self.P_g + 1j * self.Q_g) / (self.Vm * exp(1j * self.Va))) * exp(-1j * (self.delta - np.pi / 2))),
-                self.i_q: imag(
-                    conj((self.P_g + 1j * self.Q_g) / (self.Vm * exp(1j * self.Va))) * exp(-1j * (self.delta - np.pi / 2))),
-                self.psid: self.R1 * self.i_q + self.v_q,
-                self.psiq: -self.R1 * self.i_d - self.v_d,
-                self.te: self.psid * self.i_q - self.psiq * self.i_d,
-                self.tm: self.te,
-                self.et: Const(0),
-            })
-
-        block.fix_vars = [self.tm0, self.vf]
-        block.fix_vars_eqs = {self.tm0.uid: self.tm,
-                        self.vf.uid: self.psid + self.X1 * self.i_d}
-
-        block.external_mapping = {
-            VarPowerFlowRefferenceType.P: self.P_g,
-            VarPowerFlowRefferenceType.Q: self.Q_g
-        }
-
-        block.event_dict = self.event_dict
-
-        return block
+    return templ

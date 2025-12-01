@@ -726,9 +726,10 @@ grid.add_short_circuit_definition(
 )
 
 sc_driver = gce.ShortCircuitDriver(grid=grid,
-                                   options=sc_options,
+                                   options=gce.ShortCircuitOptions(),
                                    pf_options=gce.PowerFlowOptions(three_phase_unbalanced=True),
-                                   pf_results=res_pf)
+                                   pf_results=res_pf,
+                                   pf_results3ph=None)
 sc_driver.run()
 
 res_sc = sc_driver.results

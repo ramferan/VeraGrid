@@ -14,17 +14,7 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.basic_structures import Logger
 
-
-
-from VeraGridEngine.Devices.types import ALL_RMS_TEMPLATES_TYPE
 from VeraGridEngine.enumerations import DeviceType
-
-from VeraGridEngine.Templates.Rms.bus_rms_template import BusRmsTemplate
-from VeraGridEngine.Templates.Rms.generator_0_rms_template import Generator_0_RmsTemplate
-from VeraGridEngine.Templates.Rms.generator_1_rms_template import Generator_1_RmsTemplate
-from VeraGridEngine.Templates.Rms.line_0_rms_template import Line_0_RmsTemplate
-from VeraGridEngine.Templates.Rms.line_1_rms_template import Line_1_RmsTemplate
-from VeraGridEngine.Templates.Rms.load_rms_template import LoadRmsTemplate
 
 
 
@@ -88,7 +78,7 @@ def get_wires_catalogue_df(grid: MultiCircuit):
             'Name': elm.name,
             'Stranding': elm.stranding,
             'Material': elm.material,
-            'Diameter [cm]': elm.diameter / 10.0, # mm to cm
+            'Diameter [cm]': elm.diameter / 10.0,  # mm to cm
             'R [Ohm/km]': elm.R,
             'Rating [kA]': elm.max_current
         })
@@ -127,16 +117,16 @@ def parse_transformer_types(df: pd.DataFrame) -> List[TransformerType]:
     """
     lst = list()
     for i, item in df.iterrows():
-        tpe = TransformerType(hv_nominal_voltage=item.get('HV (kV)',0.0),
-                              lv_nominal_voltage=item.get('LV (kV)',0.0),
-                              nominal_power=item.get('Rate (MVA)',0.001),
-                              copper_losses=item.get('Copper losses (kW)',0.0),
-                              iron_losses=item.get('No load losses (kW)',0.0),
-                              no_load_current=item.get('No load current (%)',0.0),
-                              short_circuit_voltage=item.get('V short circuit (%)',0.0),
-                              gr_hv1=item.get("gr_hv1",0.5),
-                              gx_hv1=item.get("gx_hv1",0.5),
-                              name=item.get('Name',"TransformerType_{}".format(i)))
+        tpe = TransformerType(hv_nominal_voltage=item.get('HV (kV)', 0.0),
+                              lv_nominal_voltage=item.get('LV (kV)', 0.0),
+                              nominal_power=item.get('Rate (MVA)', 0.001),
+                              copper_losses=item.get('Copper losses (kW)', 0.0),
+                              iron_losses=item.get('No load losses (kW)', 0.0),
+                              no_load_current=item.get('No load current (%)', 0.0),
+                              short_circuit_voltage=item.get('V short circuit (%)', 0.0),
+                              gr_hv1=item.get("gr_hv1", 0.5),
+                              gx_hv1=item.get("gx_hv1", 0.5),
+                              name=item.get('Name', "TransformerType_{}".format(i)))
         lst.append(tpe)
 
     return lst
@@ -150,15 +140,15 @@ def parse_cable_types(df: pd.DataFrame) -> List[UndergroundLineType]:
     """
     lst = list()
     for i, item in df.iterrows():
-        tpe = UndergroundLineType(name=item.get('Name',"UndergroundLine_{}".format(i)),
-                                  Imax=item.get('Rated current [kA]',1.0),
-                                  Vnom=item.get('Rated voltage [kV]',1.0),
-                                  R=item.get('R [Ohm/km AC@20°C]',0.0),
-                                  X=item.get('X [Ohm/km]',0.0),
+        tpe = UndergroundLineType(name=item.get('Name', "UndergroundLine_{}".format(i)),
+                                  Imax=item.get('Rated current [kA]', 1.0),
+                                  Vnom=item.get('Rated voltage [kV]', 1.0),
+                                  R=item.get('R [Ohm/km AC@20°C]', 0.0),
+                                  X=item.get('X [Ohm/km]', 0.0),
                                   B=item.get('B [uS/km]', 0.0),
-                                  R0=item.get('R0 (AC) [Ohm/km]',0.0),
-                                  X0=item.get('X0  [Ohm/km]',0.0),
-                                  B0=item.get('B0 [uS/km]',0.0))
+                                  R0=item.get('R0 (AC) [Ohm/km]', 0.0),
+                                  X0=item.get('X0  [Ohm/km]', 0.0),
+                                  B0=item.get('B0 [uS/km]', 0.0))
         lst.append(tpe)
 
     return lst
@@ -173,11 +163,11 @@ def parse_wire_types(df: pd.DataFrame) -> List[Wire]:
     lst = list()
     for i, item in df.iterrows():
         tpe = Wire(name=str(item['Stranding']) + '_' + str(item['Material']) + '_' + str(item['Diameter [cm]']),
-                   stranding=item.get('Stranding',""),
-                   material=item.get('Material',""),
-                   diameter=item.get('Diameter [cm]',0.0) * 10.0,  # cm to mm
-                   r=item.get('R [Ohm/km]',0.01),
-                   max_current=item.get('Rating [kA]',1.0))
+                   stranding=item.get('Stranding', ""),
+                   material=item.get('Material', ""),
+                   diameter=item.get('Diameter [cm]', 0.0) * 10.0,  # cm to mm
+                   r=item.get('R [Ohm/km]', 0.01),
+                   max_current=item.get('Rating [kA]', 1.0))
         lst.append(tpe)
 
     return lst
@@ -191,31 +181,18 @@ def parse_sequence_line_types(df: pd.DataFrame) -> List[SequenceLineType]:
     """
     lst = list()
     for i, item in df.iterrows():
-        tpe = SequenceLineType(name=item.get('Name','SequenceLine_{}'.format(i)),
-                               Vnom=item.get('Vnom (kV)',1),
-                               Imax=item.get('Imax (kA)',1),
-                               R=item.get('r (ohm/km)',0),
-                               X=item.get('x (ohm/km)',0),
-                               B=item.get('b (uS/km)',0),
-                               R0=item.get('r0 (ohm/km)',0),
-                               X0=item.get('x0 (ohm/km)',0),
-                               B0=item.get('b0 (uS/km)',0))
+        tpe = SequenceLineType(name=item.get('Name', 'SequenceLine_{}'.format(i)),
+                               Vnom=item.get('Vnom (kV)', 1),
+                               Imax=item.get('Imax (kA)', 1),
+                               R=item.get('r (ohm/km)', 0),
+                               X=item.get('x (ohm/km)', 0),
+                               B=item.get('b (uS/km)', 0),
+                               R0=item.get('r0 (ohm/km)', 0),
+                               X0=item.get('x0 (ohm/km)', 0),
+                               B0=item.get('b0 (uS/km)', 0))
         lst.append(tpe)
 
     return lst
-
-def parse_rms_model_catalogue() -> List[ALL_RMS_TEMPLATES_TYPE]:
-
-    templ_bus = BusRmsTemplate()
-    templ_gen_0 = Generator_0_RmsTemplate()
-    templ_gen_1 = Generator_1_RmsTemplate()
-    templ_line_0 = Line_0_RmsTemplate()
-    templ_line_1 = Line_1_RmsTemplate()
-    templ_load = LoadRmsTemplate()
-    templates: List[ALL_RMS_TEMPLATES_TYPE] = [templ_bus, templ_gen_0, templ_gen_1, templ_line_0, templ_line_1,
-                                               templ_load]
-
-    return templates
 
 
 def save_catalogue(fname: str, grid: MultiCircuit):

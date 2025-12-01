@@ -3,58 +3,53 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import List
 import numpy as np
-
-from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, Expr, VarPowerFlowRefferenceType
-from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst
+from VeraGridEngine.Utils.Symbolic.block import Var, Const, VarPowerFlowRefferenceType
+from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin
 
 
-class Line_0_RmsTemplate(RmsModelTemplate):
+def get_line_rms_template() -> RmsModelTemplate:
+    """
+    Get the RMS template model of the Line
+    :return: RmsModelTemplate
+    """
+    templ = RmsModelTemplate()
 
-    def __init__(self, name: str = "rms_line_0_template"):
-        super().__init__(name=name)
+    Vmf: Var = Var('Vmf')
+    Vaf: Var = Var('Vaf')
+    Vmt: Var = Var('Vmt')
+    Vat: Var = Var('Vat')
 
-        self.tpe: DeviceType = DeviceType.LineDevice
+    Qf = Var("Qf")
+    Qt = Var("Qt")
+    Pf = Var("Pf")
+    Pt = Var("Pt")
 
-        self.Vmf: Var = Var('')
-        self.Vaf: Var = Var('')
-        self.Vmt: Var = Var('')
-        self.Vat: Var = Var('')
+    g = Var("g")
+    b = Var("b")
+    bsh = Var("bsh")
 
-        self.Qf = Var("Qf")
-        self.Qt = Var("Qt")
-        self.Pf = Var("Pf")
-        self.Pt = Var("Pt")
+    templ.block.event_dict[g] = Const(0.0)
+    templ.block.event_dict[b] = Const(0.0)
+    templ.block.event_dict[bsh] = Const(0.0)
 
-        self.R = Const(1)
-        self.X = Const(1)
-        self.B = Const(1)
+    templ.block.algebraic_vars = [Pf, Pt, Qf, Qt]
 
-        self.g =  Const((1.0 / complex(self.R.value, self.X.value)).real)
-        self.b = Const((1.0 / complex(self.R.value, self.X.value)).imag)
-        self.bsh = self.B
+    pi2 = np.pi / 2
 
+    templ.block.algebraic_eqs = [
+        Pf - ((Vmf ** 2 * g) - g * Vmf * Vmt * cos(Vaf - Vat) + b * Vmf * Vmt * cos(Vaf - Vat + pi2)),
+        Qf - (Vmf ** 2 * (-bsh / 2 - b) - g * Vmf * Vmt * sin(Vaf - Vat) + b * Vmf * Vmt * sin(Vaf - Vat + pi2)),
+        Pt - ((Vmt ** 2 * g) - g * Vmt * Vmf * cos(Vat - Vaf) + b * Vmt * Vmf * cos(Vat - Vaf + pi2)),
+        Qt - (Vmt ** 2 * (-bsh / 2 - b) - g * Vmt * Vmf * sin(Vat - Vaf) + b * Vmt * Vmf * sin(Vat - Vaf + pi2)),
+    ]
 
-    def get_block(self):
-        block = Block(
-            algebraic_vars=[self.Pf, self.Pt, self.Qf, self.Qt],
-            algebraic_eqs=[
-                self.Pf - ((self.Vmf ** 2 * self.g) - self.g * self.Vmf * self.Vmt * cos(self.Vaf - self.Vat) + self.b * self.Vmf * self.Vmt * cos(self.Vaf - self.Vat + np.pi / 2)),
-                self.Qf - (self.Vmf ** 2 * (-self.bsh / 2 - self.b) - self.g * self.Vmf * self.Vmt * sin(self.Vaf - self.Vat) + self.b * self.Vmf * self.Vmt * sin(
-                    self.Vaf - self.Vat + np.pi / 2)),
-                self.Pt - ((self.Vmt ** 2 * self.g) - self.g * self.Vmt * self.Vmf * cos(self.Vat - self.Vaf) + self.b * self.Vmt * self.Vmf * cos(self.Vat - self.Vaf + np.pi / 2)),
-                self.Qt - (self.Vmt ** 2 * (-self.bsh / 2 - self.b) - self.g * self.Vmt * self.Vmf * sin(self.Vat - self.Vaf) + self.b * self.Vmt * self.Vmf * sin(
-                    self.Vat - self.Vaf + np.pi / 2)),
-            ])
+    templ.block.external_mapping = {
+        VarPowerFlowRefferenceType.Pf: Pf,
+        VarPowerFlowRefferenceType.Pt: Pt,
+        VarPowerFlowRefferenceType.Qf: Qf,
+        VarPowerFlowRefferenceType.Qt: Qt,
+    }
 
-        block.external_mapping={
-                VarPowerFlowRefferenceType.Pf: self.Pf,
-                VarPowerFlowRefferenceType.Pt: self.Pt,
-                VarPowerFlowRefferenceType.Qf: self.Qf,
-                VarPowerFlowRefferenceType.Qt: self.Qt,
-            }
-
-        return block
+    return templ

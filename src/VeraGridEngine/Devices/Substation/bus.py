@@ -472,7 +472,7 @@ class Bus(PhysicalDevice):
         if show_fig:
             plt.show()
 
-    def get_fault_impedance(self):
+    def get_fault_impedance(self) -> complex:
         """
         Get the fault impedance
         :return: complex value of fault impedance

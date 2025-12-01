@@ -12,7 +12,8 @@ from typing import Tuple, Sequence, List, Dict, Any, Optional
 
 from VeraGridEngine.Devices.Dynamic.events import RmsEvent
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, LagVar, Const, Expr, make_symbolic, UndefinedConst, cos, sin, real, sqrt, atan, \
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, LagVar, Const, Expr, make_symbolic, UndefinedConst, cos, sin, \
+    real, sqrt, atan, \
     imag, conj, angle, exp, log, abs, piecewise, DiffVar, hard_sat, f_exc
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
@@ -101,7 +102,7 @@ def block2diffblock(block: Block):
     return diff_block
 
 
-def tf_to_diffblock(num: np.ndarray, den: np.ndarray, x: Var| Expr, y: Var = None, name: Optional[str] = ''):
+def tf_to_diffblock(num: np.ndarray, den: np.ndarray, x: Var | Expr, y: Var = None, name: Optional[str] = ''):
     """
     num: list of numerator coefficients [b0, b1, ..., bm]
     den: list of denominator coefficients [a0, a1, ..., an]
@@ -150,10 +151,9 @@ def tf_to_diffblock(num: np.ndarray, den: np.ndarray, x: Var| Expr, y: Var = Non
     lhs = np.array(diff_vars_y) @ np.array(den)
 
     block = DiffBlock()
-    block.algebraic_vars=[y] + aux_vars
-    block.algebraic_eqs=[lhs - rhs] + aux_eqs
-    block.diff_vars=diff_vars
-
+    block.algebraic_vars = [y] + aux_vars
+    block.algebraic_eqs = [lhs - rhs] + aux_eqs
+    block.diff_vars = diff_vars
 
     return block, y
 
@@ -220,7 +220,7 @@ def tf_to_diffblock_with_states(num: np.ndarray, den: np.ndarray, x, y: Var = No
         algebraic_vars=y_states + x_states[1:] + aux_vars,
         algebraic_eqs=diff_eqs + aux_eqs,
     )
-    block.diff_vars=diff_vars
+    block.diff_vars = diff_vars
     block.name = 'TF'
     return block, y_states[0]
 
@@ -342,10 +342,9 @@ class Block:
         # fix vars will disappear when the exciter and governor models are decoupled from generator
         self.fix_vars: List[UndefinedConst] = list()
         self.fix_vars_eqs: Dict[Any, Expr] = dict()
-        ##########################################################################################3
+
+        # ---------------------------------------------------------------------------------------------------------------
         self.var_mapping = {v.name: v for v in self.algebraic_vars}
-
-
 
         # Dictionary of Variables and their Expressions that appear due to an event
         # this is the dictionary of "parameters" that may change and their equations
@@ -440,7 +439,7 @@ class Block:
             ],
             "name": self.name,
             "children": [child.to_dict() for child in self.children],
-            "in_vars":  [{"number": number, "var": var.to_dict()} for number, var in self.in_vars.items()],
+            "in_vars": [{"number": number, "var": var.to_dict()} for number, var in self.in_vars.items()],
             "out_vars": [{"number": number, "var": var.to_dict()} for number, var in self.out_vars.items()]
         }
 
@@ -539,14 +538,13 @@ class Block:
         else:
             return False
 
+
 class DiffBlock(Block):
     diff_vars: List[DiffVar]
     lag_vars: List[LagVar]
     reformulated_vars: List[DiffVar]
     differential_eqs: List[Expr]
     pseudo_transient: bool = False
-
-
 
     @classmethod
     def from_block(cls, block: Block, **kwargs):
@@ -567,12 +565,11 @@ class DiffBlock(Block):
         return obj
 
 
-
 # ----------------------------------------------------------------------------------------------------------------------
 # Pre defined blocks
 # ----------------------------------------------------------------------------------------------------------------------
 
-def constant(item_name:str = "") -> Block:
+def constant(item_name: str = "") -> Block:
     name: str = "const_"
     y = Var(name + item_name)
     param = Var("param_" + item_name)
@@ -584,7 +581,8 @@ def constant(item_name:str = "") -> Block:
     blk.name = "const"
     return blk
 
-def gain(item_name:str = "") -> Block:
+
+def gain(item_name: str = "") -> Block:
     inputs = [Var("inp_num_" + item_name)]
     name: str = "gain"
     y = Var(name + item_name)
@@ -595,11 +593,10 @@ def gain(item_name:str = "") -> Block:
     expr: Expr = gain_param * inputs[0]
     blk = Block(algebraic_vars=[y], algebraic_eqs=[y - expr])
     blk.event_dict[gain_param] = Const(0.0)
-    blk.in_vars=in_vars_dict
+    blk.in_vars = in_vars_dict
     blk.out_vars[str(0)] = y
     blk.name = "gain"
     return blk
-
 
 
 def variable(name: str = "variable_", vartype: str = "vartype_") -> Tuple[Var, Block]:
@@ -619,24 +616,24 @@ def equation(expr: str = 'expression', etype: str = "etype") -> Block:
     return blk
 
 
-
-
-def adder(item_name:str = "") -> Block:
-    inputs = [Var("sum_in_1_" + item_name), Var("sum_in_2_" + item_name)] # will not be specified if inputs can be more than 2
+def adder(item_name: str = "") -> Block:
+    inputs = [Var("sum_in_1_" + item_name),
+              Var("sum_in_2_" + item_name)]  # will not be specified if inputs can be more than 2
     y = Var("sum_out_" + item_name)
     in_vars_dict: Dict[str, Var] = dict()
     expr: Expr = inputs[0]
     for i, inpt in enumerate(inputs):
         in_vars_dict[str(i)] = inpt
-        if i>0:
+        if i > 0:
             expr += inpt
     blk = Block(algebraic_vars=[y], algebraic_eqs=[y - expr])
-    blk.in_vars=in_vars_dict
+    blk.in_vars = in_vars_dict
     blk.out_vars[str(0)] = y
     blk.name = "sum"
     return blk
 
-def substract(item_name:str = "") -> Block:
+
+def substract(item_name: str = "") -> Block:
     inputs = [Var("minuend_" + item_name), Var("subtrahend_" + item_name)]
     y = Var("difference_" + item_name)
     in_vars_dict: Dict[str, Var] = dict()
@@ -649,41 +646,46 @@ def substract(item_name:str = "") -> Block:
     blk.name = "substraction"
     return blk
 
-def product(item_name:str = "") -> Block:
-    inputs = [Var("factor1_" + item_name), Var("factor2_" + item_name)] # will not be specified if inputs can be more than 2
+
+def product(item_name: str = "") -> Block:
+    inputs = [Var("factor1_" + item_name),
+              Var("factor2_" + item_name)]  # will not be specified if inputs can be more than 2
     y = Var("product_out_" + item_name)
     in_vars_dict: Dict[str, Var] = dict()
     expr: Expr = inputs[0] * inputs[1]
     for i, inpt in enumerate(inputs):
         in_vars_dict[str(i)] = inpt
     blk = Block(algebraic_vars=[y], algebraic_eqs=[y - expr])
-    blk.in_vars=in_vars_dict
+    blk.in_vars = in_vars_dict
     blk.out_vars[str(0)] = y
     blk.name = "product"
     return blk
 
-def divide(item_name:str = "") -> Block:
-    inputs = [Var("divident_" + item_name), Var("divisor_" + item_name)] # will not be specified if inputs can be more than 2
+
+def divide(item_name: str = "") -> Block:
+    inputs = [Var("divident_" + item_name),
+              Var("divisor_" + item_name)]  # will not be specified if inputs can be more than 2
     y = Var("quotient_" + item_name)
     in_vars_dict: Dict[str, Var] = dict()
-    expr: Expr = inputs[0]/inputs[1]
+    expr: Expr = inputs[0] / inputs[1]
     for i, inpt in enumerate(inputs):
         in_vars_dict[str(i)] = inpt
     blk = Block(algebraic_vars=[y], algebraic_eqs=[y - expr])
-    blk.in_vars=in_vars_dict
+    blk.in_vars = in_vars_dict
     blk.out_vars[str(0)] = y
     blk.name = "divide"
     return blk
 
-def absolut(item_name:str = "") -> Block:
-    inputs = [Var("inp_num_" + item_name)] # will not be specified if inputs can be more than 2
+
+def absolut(item_name: str = "") -> Block:
+    inputs = [Var("inp_num_" + item_name)]  # will not be specified if inputs can be more than 2
     y = Var("absolut_" + item_name)
     in_vars_dict: Dict[str, Var] = dict()
     expr: Expr = abs(inputs[0])
     for i, inpt in enumerate(inputs):
         in_vars_dict[str(i)] = inpt
     blk = Block(algebraic_vars=[y], algebraic_eqs=[y - expr])
-    blk.in_vars=in_vars_dict
+    blk.in_vars = in_vars_dict
     blk.out_vars[str(0)] = y
     blk.name = "abs"
     return blk
@@ -705,10 +707,11 @@ def pi_controller(err: Var, kp: float, ki: float, name: str = "pi") -> Block:
                  in_vars=[err],
                  out_vars=[u])
 
+
 class GenqecBuild:
     def __init__(self, name: str = ""):
-
         self.name: str = name
+
     def genqec(self) -> Block:
         """
          generator with quadratic saturation
@@ -719,7 +722,8 @@ class GenqecBuild:
         # Tm: mechanical torque (from governor)
         # Vf: excitation voltage (from exciter)
 
-        inputs: List[Var] = [Var("Vm_" + self.name), Var("Va" + self.name), Var("Tm_" + self.name), Var("Vf_" + self.name)]
+        inputs: List[Var] = [Var("Vm_" + self.name), Var("Va" + self.name), Var("Tm_" + self.name),
+                             Var("Vf_" + self.name)]
 
         in_vars_dict: Dict[str, Var] = dict()
         for i, inpt in enumerate(inputs):
@@ -734,51 +738,51 @@ class GenqecBuild:
         Sat_q = Var('Sat_q' + self.name)
 
         # States
-        delta = Var("delta"+ self.name)  # rotor angle
-        omega = Var("omega"+ self.name)  # rotor electrical speed
-        Eq1 = Var("Eq1"+ self.name)  # internal emf behind Xd'
-        Ed1 = Var("Ed1"+ self.name)
-        Eq2 = Var("Eq2"+ self.name)
-        Ed2 = Var("Ed2"+ self.name)
-        Eq_prime = Var("Eq_prime"+ self.name)  # transient voltage q-axis
-        Ed_prime = Var("Ed_prime"+ self.name)  # transient voltage d-axis
-        Eq_2prime = Var("Eq_2prime"+ self.name)  # subtransient voltage q-axis
-        Ed_2prime = Var("Ed_2prime"+ self.name)  # subtransient voltage d-axis
+        delta = Var("delta" + self.name)  # rotor angle
+        omega = Var("omega" + self.name)  # rotor electrical speed
+        Eq1 = Var("Eq1" + self.name)  # internal emf behind Xd'
+        Ed1 = Var("Ed1" + self.name)
+        Eq2 = Var("Eq2" + self.name)
+        Ed2 = Var("Ed2" + self.name)
+        Eq_prime = Var("Eq_prime" + self.name)  # transient voltage q-axis
+        Ed_prime = Var("Ed_prime" + self.name)  # transient voltage d-axis
+        Eq_2prime = Var("Eq_2prime" + self.name)  # subtransient voltage q-axis
+        Ed_2prime = Var("Ed_2prime" + self.name)  # subtransient voltage d-axis
 
         # Algebraic variables
-        Id = Var("Id"+ self.name)
-        Iq = Var("Iq"+ self.name)
-        Vd = Var("Vd"+ self.name)
-        Vq = Var("Vq"+ self.name)
-        Psid = Var("Psid"+ self.name)
-        Psiq = Var("Psiq"+ self.name)
-        Te = Var("Te"+ self.name)
+        Id = Var("Id" + self.name)
+        Iq = Var("Iq" + self.name)
+        Vd = Var("Vd" + self.name)
+        Vq = Var("Vq" + self.name)
+        Psid = Var("Psid" + self.name)
+        Psiq = Var("Psiq" + self.name)
+        Te = Var("Te" + self.name)
 
         IRPu = Var("IRPu")
 
         # Saturated resistances
-        Xd_sat = Var('Xd_sat'+ self.name)
-        Xq_sat = Var('Xq_sat'+ self.name)
-        Xd_prime_sat = Var('Xd_prime_sat'+ self.name)
-        Xq_prime_sat = Var('Xq_prime_sat'+ self.name)
-        Xd_2prime_sat = Var('Xd_2prime_sat'+ self.name)
-        Xq_2prime_sat = Var('Xq_2prime_sat'+ self.name)
-        Ed2_coef = Var('Ed2_coef'+ self.name)
-        Eq2_coef = Var('Eq2_coef'+ self.name)
+        Xd_sat = Var('Xd_sat' + self.name)
+        Xq_sat = Var('Xq_sat' + self.name)
+        Xd_prime_sat = Var('Xd_prime_sat' + self.name)
+        Xq_prime_sat = Var('Xq_prime_sat' + self.name)
+        Xd_2prime_sat = Var('Xd_2prime_sat' + self.name)
+        Xq_2prime_sat = Var('Xq_2prime_sat' + self.name)
+        Ed2_coef = Var('Ed2_coef' + self.name)
+        Eq2_coef = Var('Eq2_coef' + self.name)
 
         # Vg = Var('Vg')
         # dg = Var('dg')
-        Pg = Var('Pg'+ self.name)
-        Qg = Var('Qg'+ self.name)
+        Pg = Var('Pg' + self.name)
+        Qg = Var('Qg' + self.name)
 
         Sa = Var('Sa')
         V_qag = Var('V_qag')
         V_dag = Var('V_dag')
         Psi_ag = Var('Psi_ag')
 
-        #______________________________________________________________________________________
+        # ______________________________________________________________________________________
         #                                    parameters
-        #______________________________________________________________________________________
+        # ______________________________________________________________________________________
         fn = Var('fn')  # system frequency [Hz]
         ws = Var('ws')  # synchronous speed [rad/s]
         M = Var('M')  # inertia constant
@@ -801,10 +805,8 @@ class GenqecBuild:
         Td0_2prime = Var('Td0_2prime')
         Tq0_2prime = Var('Tq0_2prime')
 
-
         A = Var('A')
         B = Var("B")
-
 
         event_dict = {
             fn: Const(50.0),
@@ -844,26 +846,26 @@ class GenqecBuild:
             ],
             state_vars=[delta, omega, Eq_prime, Ed_prime, Eq_2prime, Ed_2prime],
             algebraic_eqs=[
-                Vd - (-inputs[2] * sin(inputs[3] - delta)), # from input block
-                Vq - (inputs[2] * cos(inputs[3] - delta)), # from input block
-                Pg - (Vd * Id + Vq * Iq), # from input block
-                Qg - (Vq * Id - Vd * Iq), # from input block
+                Vd - (-inputs[2] * sin(inputs[3] - delta)),  # from input block
+                Vq - (inputs[2] * cos(inputs[3] - delta)),  # from input block
+                Pg - (Vd * Id + Vq * Iq),  # from input block
+                Qg - (Vq * Id - Vd * Iq),  # from input block
                 Vd - (omega * Ed_2prime + Iq * Xq_2prime_sat - Id * Ra),
                 Vq - (omega * Eq_2prime - Id * Xd_2prime_sat - Iq * Ra),
                 Psid - (Eq_prime - Id * Xd_2prime_sat),
                 Psiq - (-Ed_prime - Iq * Xq_2prime_sat),
                 Te - (Psid * Iq - Psiq * Id),
                 (Xd_sat - Xd_prime_sat) * Eq1 - (
-                            (Xd_sat - Xd_prime_sat) * Eq_2prime + (Eq_prime - Eq_2prime) * (Xd_sat - Xd_2prime_sat)),
+                        (Xd_sat - Xd_prime_sat) * Eq_2prime + (Eq_prime - Eq_2prime) * (Xd_sat - Xd_2prime_sat)),
                 # Eq1 definition
                 (Xq_sat - Xq_prime_sat) * Ed1 - (
-                            (Xq_sat - Xq_prime_sat) * Ed_2prime + (Ed_prime - Ed_2prime) * (Xq_sat - Xq_2prime_sat)),
+                        (Xq_sat - Xq_prime_sat) * Ed_2prime + (Ed_prime - Ed_2prime) * (Xq_sat - Xq_2prime_sat)),
                 # Ed1 definition
                 (Xd_sat - Xd_2prime_sat) * Eq2 - (-1) * (
-                            (Eq_prime - Eq_2prime) * (Xd_sat - Xd_prime_sat) + Id * (Xd_sat - Xd_2prime_sat) ** 2),
+                        (Eq_prime - Eq_2prime) * (Xd_sat - Xd_prime_sat) + Id * (Xd_sat - Xd_2prime_sat) ** 2),
                 # Ed2 definition
                 (Xq_sat - Xq_2prime_sat) * Ed2 - (-1) * (
-                            (Ed_prime - Ed_2prime) * (Xq_sat - Xq_prime_sat) + Iq * (Xq_sat - Xq_2prime_sat) ** 2),
+                        (Ed_prime - Ed_2prime) * (Xq_sat - Xq_prime_sat) + Iq * (Xq_sat - Xq_2prime_sat) ** 2),
                 # Eq2 definition
                 Eq2_coef * (Tq0_2prime * (Xq_sat - Xq_2prime_sat)) - (Xq_prime_sat - Xq_2prime_sat) * Sat_q,
                 Ed2_coef * (Td0_2prime * (Xd_sat - Xd_2prime_sat)) - (Xd_prime_sat - Xd_2prime_sat) * Sat_d,
@@ -883,59 +885,62 @@ class GenqecBuild:
                 # saturations (quadratic)
                 Sa - A * ((Psi_ag - B) + sqrt((Psi_ag - B) ** 2 + Const(1e-4))),
                 IRPu - Eq1 * (1 + Sa)
-                ],
-            algebraic_vars=[Vd, Vq, Psid, Psiq, Ed2_coef, Eq2_coef, Te, Ed1, Eq1, Ed2, Eq2, Id , Iq,
-                            #saturated resistance
-                           Xq_sat, Xd_sat, Xq_prime_sat, Xd_prime_sat, Xq_2prime_sat, Xd_2prime_sat,
-                            #flux
+            ],
+            algebraic_vars=[Vd, Vq, Psid, Psiq, Ed2_coef, Eq2_coef, Te, Ed1, Eq1, Ed2, Eq2, Id, Iq,
+                            # saturated resistance
+                            Xq_sat, Xd_sat, Xq_prime_sat, Xd_prime_sat, Xq_2prime_sat, Xd_2prime_sat,
+                            # flux
                             Sa, V_dag, V_qag, Sat_d, Sat_q, Psi_ag,
                             IRPu],
-            init_eqs = {
-            omega:Const(0),
-            V_dag: inputs[0] * sin(inputs[1]) + imag(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
-            V_qag: inputs[0] * cos(inputs[1]) + real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
-            Psi_ag: sqrt(V_dag ** 2 + V_qag ** 2),
-            Sa: A * (Psi_ag - B) ** 2,
-            delta: atan(
-                (inputs[0] * sin(inputs[1]) + imag(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
-                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
-                 ((Xq - Xl) / (Const(1) + Sa) + Xl)) /
-                (inputs[0] * cos(inputs[1]) + real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
-                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
-                 ((Xq - Xl) / (Const(1) + Sa) + Xl))),
-            Vd: (inputs[0] * sin(delta - inputs[1])),
-            Vq: (inputs[0] * cos(delta - inputs[1])),
-            Id: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta) - real(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta),
-            Iq: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta) + real(
-                conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta),
-            Ed_prime: (Xq - Xq_prime) * Iq / (Const(1) + Sa),
-            Eq_prime: Ed_prime + (Xq_prime - Xl) * (Iq / (Const(1) + Sa)) + (Xq_prime - Xl) * (Iq / (Const(1) + Sa)),
-            Eq_2prime: Vd,
-            Ed_2prime: Vq,
+            init_eqs={
+                omega: Const(0),
+                V_dag: inputs[0] * sin(inputs[1]) + imag(
+                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
+                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
+                V_qag: inputs[0] * cos(inputs[1]) + real(
+                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
+                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
+                Psi_ag: sqrt(V_dag ** 2 + V_qag ** 2),
+                Sa: A * (Psi_ag - B) ** 2,
+                delta: atan(
+                    (inputs[0] * sin(inputs[1]) + imag(
+                        conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
+                        conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
+                     ((Xq - Xl) / (Const(1) + Sa) + Xl)) /
+                    (inputs[0] * cos(inputs[1]) + real(
+                        conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
+                        conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
+                     ((Xq - Xl) / (Const(1) + Sa) + Xl))),
+                Vd: (inputs[0] * sin(delta - inputs[1])),
+                Vq: (inputs[0] * cos(delta - inputs[1])),
+                Id: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta) - real(
+                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta),
+                Iq: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta) + real(
+                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta),
+                Ed_prime: (Xq - Xq_prime) * Iq / (Const(1) + Sa),
+                Eq_prime: Ed_prime + (Xq_prime - Xl) * (Iq / (Const(1) + Sa)) + (Xq_prime - Xl) * (
+                        Iq / (Const(1) + Sa)),
+                Eq_2prime: Vd,
+                Ed_2prime: Vq,
             })
 
-
-        generator_block.external_mapping={
-                VarPowerFlowRefferenceType.P: Pg,
-                VarPowerFlowRefferenceType.Q: Qg,
-            }
-        generator_block.name= "genqec"
+        generator_block.external_mapping = {
+            VarPowerFlowRefferenceType.P: Pg,
+            VarPowerFlowRefferenceType.Q: Qg,
+        }
+        generator_block.name = "genqec"
         generator_block.event_dict = event_dict
-        generator_block.in_vars=in_vars_dict
+        generator_block.in_vars = in_vars_dict
         generator_block.out_vars[str(0)] = Pg
         generator_block.out_vars[str(1)] = Qg
         generator_block.out_vars[str(2)] = omega
         generator_block.out_vars[str(3)] = IRPu
 
-
         return generator_block
+
 
 class GovernorBuild:
     def __init__(self, name: str = ""):
-
         self.name: str = name
 
         self.parameters = {
@@ -960,7 +965,6 @@ class GovernorBuild:
         }
 
     def governor(self) -> Block:
-
         """
             governor model with no load control and with no free reference
         """
@@ -973,7 +977,6 @@ class GovernorBuild:
         in_vars_dict: Dict[str, Var] = dict()
         for i, inpt in enumerate(inputs):
             in_vars_dict[str(i)] = inpt
-
 
         # ______________________________________________________________________________________
         #                                    variables
@@ -1041,7 +1044,6 @@ class GovernorBuild:
             Uo: Const(0.1),  # max valve opening rate (pu/s)
             T_aux: Const(0.0),
 
-
             # reference
             Pm_ref: Const(0.0963287180659294)
         }
@@ -1107,7 +1109,8 @@ class GovernorBuild:
             name='gov5',
         )
 
-        u = self.parameters["K1"] * y3_1 + self.parameters["K2"] * y3_2 + self.parameters["K3"] * y3_3 + self.parameters["K4"] * y3_4 + T_aux
+        u = self.parameters["K1"] * y3_1 + self.parameters["K2"] * y3_2 + self.parameters["K3"] * y3_3 + \
+            self.parameters["K4"] * y3_4 + T_aux
         aux_block = Block(
             algebraic_eqs=[u - Tm] + algebraic_eqs,
             algebraic_vars=[Tm] + algebraic_vars,
@@ -1129,9 +1132,9 @@ class GovernorBuild:
 
         return governor_block
 
+
 class StabilizerBuild:
     def __init__(self, name: str = ""):
-
         self.name: str = name
 
         self.parameters = {
@@ -1144,7 +1147,7 @@ class StabilizerBuild:
             "t4": Const(0.1),  # second lag time constant
             "t5": Const(10.0),  # washout time constant
             "t6": Const(0.02),  # transducer time constant
-            }
+        }
 
     def stabilizer(self):
         """
@@ -1234,9 +1237,9 @@ class StabilizerBuild:
 
         return stabilizer_block
 
+
 class ExciterBuild:
     def __init__(self, name: str = ""):
-
         self.name: str = name
 
         self.parameters = {
@@ -1252,13 +1255,12 @@ class ExciterBuild:
             "tF": Const(1.0),  # rate feedback time constant (s)
             "tR": Const(0.02),  # stator voltage filter time constant (s)
 
-           # Exciter submodel parameters
+            # Exciter submodel parameters
             "Kc": Const(0.2),  # rectifier loading factor
             "Kd": Const(0.1),  # demagnetizing factor
             "Ke": Const(1.0),  # field resistance constant
 
         }
-
 
     def exciter(self):
         """
@@ -1376,7 +1378,6 @@ class ExciterBuild:
 
         y5 = hard_sat(y4, VaMinPu, VaMaxPu)
 
-
         min_const = Const(max(events_dict[VaMinPu], events_dict[EfeMinPu]))
         max_const = Const(min(events_dict[VaMaxPu], events_dict[EfeMaxPu]))
         y6 = hard_sat(y4, min_const, max_const)
@@ -1396,12 +1397,10 @@ class ExciterBuild:
             name='subexciter1',
         )
 
-
         Ve = hard_sat(Ve_presat, VeMinPu, Const(1000))
         aux_expr = self.parameters["Ke"] * Ve + AEx * Ve * exp(BEx * Ve)
         algebraic_eqs_submodel.append(u_aux - aux_expr)
         algebraic_eqs_submodel.append(VeMaxPu * u_aux - x1)
-
 
         f_input = Var('f_input')
         f_output = f_exc(f_input)
@@ -1430,8 +1429,7 @@ class ExciterBuild:
         return exciter_model
 
 
-def exciter(item_name:str = "") -> Block:
-
+def exciter(item_name: str = "") -> Block:
     vf = Var("vf" + item_name)
     blk = Block()
     blk.in_vars = dict()
@@ -1440,9 +1438,7 @@ def exciter(item_name:str = "") -> Block:
     return blk
 
 
-
 def generator(name: str = "") -> Block:
-
     inputs = [Var("Vm_" + name), Var("Va_" + name)]
 
     in_vars_dict: Dict[str, Var] = dict()
@@ -1480,14 +1476,13 @@ def generator(name: str = "") -> Block:
     vf = Var("Vf")
     tm0 = Var("tm0")
     event_dict = {R1: Const(0.0),
-                       X1: Const(0.3),
-                       freq: Const(60.0),
-                       M: Const(4.0),
-                       D: Const(1.0),
-                       omega_ref: Const(1.0),
-                       Kp: Const(0.0),
-                       Ki: Const(0.0)}
-
+                  X1: Const(0.3),
+                  freq: Const(60.0),
+                  M: Const(4.0),
+                  D: Const(1.0),
+                  omega_ref: Const(1.0),
+                  Kp: Const(0.0),
+                  Ki: Const(0.0)}
 
     gen_block = Block(
         state_eqs=[
@@ -1555,10 +1550,10 @@ def load(name: str = "load") -> Block:
         algebraic_vars=[Pl, Ql],
         init_eqs={})
 
-    load_block.external_mapping={
-            VarPowerFlowRefferenceType.P: Pl,
-            VarPowerFlowRefferenceType.Q: Ql
-        }
+    load_block.external_mapping = {
+        VarPowerFlowRefferenceType.P: Pl,
+        VarPowerFlowRefferenceType.Q: Ql
+    }
     return load_block
 
 
@@ -1569,8 +1564,8 @@ def line(item_name: str, api_object: Any) -> Block:
     Pf = Var("Pf_" + item_name)
     Pt = Var("Pt_" + item_name)
 
-    g = Const( 1.0 / complex(line_object.R, line_object.X).real)
-    b = Const( 1.0 / complex(line_object.R, line_object.X).imag)
+    g = Const(1.0 / complex(line_object.R, line_object.X).real)
+    b = Const(1.0 / complex(line_object.R, line_object.X).imag)
     bsh = Const(line_object.B)
 
     Vmf = line_object.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
@@ -1590,12 +1585,12 @@ def line(item_name: str, api_object: Any) -> Block:
         algebraic_vars=[Pf, Pt, Qf, Qt],
         init_eqs={},
         parameters=[])
-    line_block.external_mapping={
-            VarPowerFlowRefferenceType.Pf: Pf,
-            VarPowerFlowRefferenceType.Pt: Pt,
-            VarPowerFlowRefferenceType.Qf: Qf,
-            VarPowerFlowRefferenceType.Qt: Qt,
-        }
+    line_block.external_mapping = {
+        VarPowerFlowRefferenceType.Pf: Pf,
+        VarPowerFlowRefferenceType.Pt: Pt,
+        VarPowerFlowRefferenceType.Qf: Qf,
+        VarPowerFlowRefferenceType.Qt: Qt,
+    }
     return line_block
 
 

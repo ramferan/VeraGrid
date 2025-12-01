@@ -5938,6 +5938,17 @@ class Assets:
 
         return n
 
+    def get_load_like_devices_names(self) -> StrVec:
+        """
+        Get a list of names of the load like devices
+        :return: array of str
+        """
+        elms = list()
+        for lst in self.get_load_like_devices_lists():
+            for elm in lst:
+                elms.append(elm.name)
+        return np.array(elms)
+
     # ------------------------------------------------------------------------------------------------------------------
     # Shunt-like devices
     # ------------------------------------------------------------------------------------------------------------------

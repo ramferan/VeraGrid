@@ -44,7 +44,11 @@ def test_short_circuit():
     )
 
     # grid, options, pf_options:, pf_results:
-    sc = ShortCircuitDriver(grid=main_circuit, options=sc_options, pf_options=pf_options, pf_results=power_flow.results)
+    sc = ShortCircuitDriver(grid=main_circuit,
+                            options=sc_options,
+                            pf_options=pf_options,
+                            pf_results=power_flow.results,
+                            pf_results3ph=None)
     sc.run()
     print('\n\n', main_circuit.name)
     print('\t|V|:', abs(sc.results.voltage1))

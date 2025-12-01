@@ -20,7 +20,6 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, VERAGRID_FILE_TYPE
 from VeraGridEngine.enumerations import (DiagramType, DeviceType, SubObjectType, TapPhaseControl, TapModuleControl,
                                          ContingencyOperationTypes)
-# from VeraGridEngine.Devices.all_dev_dict import get_objects_dictionary
 
 
 def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:

@@ -55,6 +55,7 @@ from VeraGrid.Gui.SyncDialogue.sync_dialogue import SyncDialogueWindow
 from VeraGrid.Gui.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
 from VeraGrid.Gui.GridReduce.grid_reduce import GridReduceDialogue
 from VeraGrid.Gui.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
+from VeraGrid.Gui.Diagrams.SchematicWidget.diagram_bus_selection_dialogue import DiagramBusSelectorDialogue
 from VeraGrid.Gui.rms_events_editor_dialog import RmsEventEditor
 from VeraGrid.Gui.Diagrams.generic_graphics import IS_DARK
 from VeraGrid.Gui.python_console import PythonConsole
@@ -186,10 +187,12 @@ class BaseMainGui(QMainWindow):
         self.rms_model_Editor_window: Union[RmsModelEditorGUI, None] = None
         self.rms_events_Editor_window: Union[RmsEventEditor, None] = None
         self.investment_checks_diag: Union[CheckListDialogue, None] = None
+        self.new_se_dlg: Union[CheckListDialogue, None] = None
         self.contingency_checks_diag: Union[CheckListDialogue, None] = None
         self.ra_checks_diag: Union[CheckListDialogue, None] = None
         self.start_end_dialogue_window: Union[StartEndSelectionDialogue, None] = None
         self.grid_reduction_dialogue: GridReduceDialogue | None = None
+        self.select_bus_dlg: DiagramBusSelectorDialogue | None = None
 
         # available engines --------------------------------------------------------------------------------------------
         engine_lst = [EngineType.VeraGrid]

@@ -125,6 +125,7 @@ def create_driver(grid: MultiCircuit,
                                  options=None,
                                  pf_options=None,
                                  pf_results=None,
+                                 pf_results3ph=None,
                                  opf_results=None)
 
     elif driver_tpe == SimulationTypes.StochasticPowerFlow:

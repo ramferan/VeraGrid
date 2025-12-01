@@ -2152,6 +2152,61 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
     return f_obj
 
 
+def pmode3_formulation_impr(prob, t_idx, m, rate, P0, droop, theta_f, theta_t, base_name: str = "hvdc"):
+    """
+    Formulation for HVDC link with three operating regions using big-M and binary variables.
+    """
+    # Ensure droop is not zero or too small to avoid division issues
+    if abs(droop) < 1e-10:
+        droop = 1e-20
+    
+    # Variables
+    flow = prob.add_var(
+        lb=-rate,
+        ub=rate,
+        name=f"{base_name}_flow_{t_idx}_{m}"
+    )
+    z1 = prob.add_int(lb=0, ub=1, name=f"{base_name}_z1_{t_idx}_{m}")
+    z2 = prob.add_int(lb=0, ub=1, name=f"{base_name}_z2_{t_idx}_{m}")
+    z3 = prob.add_int(lb=0, ub=1, name=f"{base_name}_z3_{t_idx}_{m}")
+
+    # Constants
+    delta = theta_f - theta_t
+    delta_low = (-rate - P0) / droop
+    delta_high = (rate - P0) / droop
+    M = 20 * rate  # Big-M as per note; may need adjustment for angle constraints
+
+    # Exactly one region active
+    prob.add_cst(z1 + z2 + z3 >= 1, name=f"one_region_ge_{t_idx}_{m}")
+    prob.add_cst(z1 + z2 + z3 <= 1, name=f"one_region_le_{t_idx}_{m}")
+
+    # Region constraints
+    # Region 1 (z1=1): saturated at -rate, delta <= delta_low
+    prob.add_cst(delta <= delta_low + M * (1 - z1), name=f"region1_le_{t_idx}_{m}")
+
+    # Region 2 (z2=1): droop, delta_low <= delta <= delta_high
+    prob.add_cst(delta >= delta_low - M * (1 - z2), name=f"region2_ge_{t_idx}_{m}")
+    prob.add_cst(delta <= delta_high + M * (1 - z2), name=f"region2_le_{t_idx}_{m}")
+
+    # Region 3 (z3=1): saturated at +rate, delta >= delta_high
+    prob.add_cst(delta >= delta_high - M * (1 - z3), name=f"region3_ge_{t_idx}_{m}")
+
+    # Power constraints
+    # Region 1: flow = -rate when z1=1
+    prob.add_cst(flow >= -rate - M * (1 - z1), name=f"power1_ge_{t_idx}_{m}")
+    prob.add_cst(flow <= -rate + M * (1 - z1), name=f"power1_le_{t_idx}_{m}")
+
+    # Region 2: flow = P0 + droop * (theta_f - theta_t) when z2=1
+    prob.add_cst(flow - (P0 + droop * delta) >= -M * (1 - z2), name=f"power2_ge_{t_idx}_{m}")
+    prob.add_cst(flow - (P0 + droop * delta) <= M * (1 - z2), name=f"power2_le_{t_idx}_{m}")
+
+    # Region 3: flow = rate when z3=1
+    prob.add_cst(flow >= rate - M * (1 - z3), name=f"power3_ge_{t_idx}_{m}")
+    prob.add_cst(flow <= rate + M * (1 - z3), name=f"power3_le_{t_idx}_{m}")
+
+    return flow
+
+
 def add_linear_hvdc_formulation(t: int,
                                 Sbase: float,
                                 hvdc_data_t: HvdcData,
@@ -2179,10 +2234,28 @@ def add_linear_hvdc_formulation(t: int,
 
             if hvdc_data_t.control_mode[m] == HvdcControlType.type_0_free:
 
-                # set the flow based on the angular difference
+                # use improved pmode3 formulation with three operating regions
                 P0 = hvdc_data_t.Pset[m] / Sbase
-                k = hvdc_data_t.angle_droop[m]
-                hvdc_vars.flows[t, m] = (P0 + k * (bus_vars.Va[t, fr] - bus_vars.Va[t, to]))
+                
+                # convert MW/deg to pu/rad
+                droop = hvdc_data_t.get_angle_droop_in_pu_rad_at(m, Sbase)
+                if droop == 0.0:
+                    # avoid division by zero in pmode3_formulation_impr
+                    droop = 1e-20
+                
+                rate = hvdc_data_t.rates[m] / Sbase
+                
+                hvdc_vars.flows[t, m] = pmode3_formulation_impr(
+                    prob=prob,
+                    t_idx=t,
+                    m=m,
+                    rate=rate,
+                    P0=P0,
+                    droop=droop,
+                    theta_f=bus_vars.Va[t, fr],
+                    theta_t=bus_vars.Va[t, to],
+                    base_name="hvdc"
+                )
 
                 # add the injections matching the flow
                 bus_vars.Pbalance[t, fr] += - hvdc_vars.flows[t, m]

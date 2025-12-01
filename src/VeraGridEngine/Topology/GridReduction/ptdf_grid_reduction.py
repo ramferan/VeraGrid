@@ -58,9 +58,9 @@ def get_Pgen_ts(grid: MultiCircuit) -> Tuple[Mat, Mat]:
         if elm.bus is not None:
             k = bus_dict[elm.bus]
             if elm.srap_enabled:
-                val_srap[:, k] += elm.Pf_prof.toarray() * elm.active_prof.toarray()
+                val_srap[:, k] += elm.P_prof.toarray() * elm.active_prof.toarray()
             else:
-                val[:, k] += elm.Pf_prof.toarray() * elm.active_prof.toarray()
+                val[:, k] += elm.P_prof.toarray() * elm.active_prof.toarray()
 
     return val, val_srap
 
@@ -598,30 +598,36 @@ def ptdf_reduction_projected(grid: MultiCircuit,
 
         Pload2_ts = get_Pload_ts(grid)
         Pgen2_ts, Pgen2_srap_ts = get_Pgen_ts(grid)
-        
-        Pbus2_ts_total = Pload2_ts + Pgen2_ts + Pgen2_srap_ts
 
         lin_ts2 = LinearAnalysisTs(grid=grid, distributed_slack=distribute_slack)
-        
-        # Flows caused by relocated injections (TS)
-        Flow2_ts = lin_ts2.get_flows_ts(P=Pbus2_ts_total)
-        
-        # Target flows (TS)
-        Flow0_ts_total = Flows0_load_ts + Flows0_gen_ts + Flows0_gen_srap_ts
-        
-        # Residual flow (TS)
-        residual_flow_ts = Flow0_ts_total[:, i_branches] - Flow2_ts
-        
-        # Solve for dP (TS)
-        # We need to solve for each time step? Or use get_injections_ts logic?
-        # get_injections_ts solves PTDF @ P = Flow.
-        # We want PTDF @ dP = residual.
-        dP_ts = lin_ts2.get_injections_ts(flows_ts=residual_flow_ts)
 
-        dP_ts[:, zero_influence_mask] = 0.0
+        # Reconstruct injections that should be to keep the flows the same (TS)
+        # We use the same logic as for the static case but for each time step (vectorized)
+        # The target flows on internal branches must be preserved
+        
+        # Target flows (TS) on internal branches
+        Flows0_load_ts_i = Flows0_load_ts[:, i_branches]
+        Flows0_gen_ts_i = Flows0_gen_ts[:, i_branches]
+        Flows0_gen_srap_ts_i = Flows0_gen_srap_ts[:, i_branches]
+
+        # Get the equivalent injections that would produce these flows in the reduced grid
+        Pbus3_load_ts = lin_ts2.get_injections_ts(flows_ts=Flows0_load_ts_i)
+        Pbus3_gen_ts = lin_ts2.get_injections_ts(flows_ts=Flows0_gen_ts_i)
+        Pbus3_gen_srap_ts = lin_ts2.get_injections_ts(flows_ts=Flows0_gen_srap_ts_i)
+
+        dPbus_load_ts = Pload2_ts - Pbus3_load_ts
+        dPbus_gen_ts = Pgen2_ts - Pbus3_gen_ts
+        dPbus_gen_srap_ts = Pgen2_srap_ts - Pbus3_gen_srap_ts
+
+        # Zero out small values
+        dPbus_load_ts[:, zero_influence_mask] = 0.0
+        dPbus_gen_ts[:, zero_influence_mask] = 0.0
+        dPbus_gen_srap_ts[:, zero_influence_mask] = 0.0
 
     else:
-        dP_ts = None
+        dPbus_load_ts = None
+        dPbus_gen_ts = None
+        dPbus_gen_srap_ts = None
 
     # Original totals
     total_gen_no_srap_orig = np.sum(Pgen)
@@ -694,17 +700,33 @@ def ptdf_reduction_projected(grid: MultiCircuit,
             elm_gen = Generator(name=f"compensated gen {i}", 
                                 P=P_gen_no_srap_to_add, 
                                 srap_enabled=False)
+            
+            if dPbus_gen_ts is not None:
+                elm_gen.P_prof = -dPbus_gen_ts[:, i]
+                # Enforce active true to avoid the issues I had
+                elm_gen.active_prof = np.ones(grid.get_time_number())
+
             grid.add_generator(bus=bus, api_obj=elm_gen)
 
         if abs(P_gen_yes_srap_to_add) > tol:
             elm_gen = Generator(name=f"compensated gen {i}", 
                                 P=P_gen_yes_srap_to_add, 
                                 srap_enabled=True)
+            
+            if dPbus_gen_srap_ts is not None:
+                elm_gen.P_prof = -dPbus_gen_srap_ts[:, i]
+                elm_gen.active_prof = np.ones(grid.get_time_number())
+
             grid.add_generator(bus=bus, api_obj=elm_gen)
 
         if abs(P_load_to_add) > tol:
             elm_load = Load(name=f"compensated load {i}", 
                             P=-P_load_to_add)
+            
+            if dPbus_load_ts is not None:
+                elm_load.P_prof = dPbus_load_ts[:, i]
+                elm_load.active_prof = np.ones(grid.get_time_number())
+
             grid.add_load(bus=bus, api_obj=elm_load)
        
     return grid, logger

@@ -384,7 +384,7 @@ def test_three_phase_to_ground_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Power Flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res_pf = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True))
+    res_pf = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions())
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Short-Circuit
@@ -402,8 +402,9 @@ def test_three_phase_to_ground_fault():
 
     sc_driver = gce.ShortCircuitDriver(grid=grid,
                                        options=sc_options,
-                                       pf_options=gce.PowerFlowOptions(three_phase_unbalanced=True),
-                                       pf_results=res_pf)
+                                       pf_options=gce.PowerFlowOptions(),
+                                       pf_results=None,
+                                       pf_results3ph=res_pf)
     sc_driver.run()
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -793,7 +794,7 @@ def test_single_line_to_ground_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Power Flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res_pf = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True))
+    res_pf = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions())
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Short-Circuit
@@ -811,8 +812,9 @@ def test_single_line_to_ground_fault():
 
     sc_driver = gce.ShortCircuitDriver(grid=grid,
                                        options=sc_options,
-                                       pf_options=gce.PowerFlowOptions(three_phase_unbalanced=True),
-                                       pf_results=res_pf)
+                                       pf_options=gce.PowerFlowOptions(),
+                                       pf_results=None,
+                                       pf_results3ph=res_pf)
     sc_driver.run()
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -1202,7 +1204,7 @@ def test_double_line_to_ground_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Power Flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res_pf = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True))
+    res_pf = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions())
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Short-Circuit
@@ -1220,8 +1222,9 @@ def test_double_line_to_ground_fault():
 
     sc_driver = gce.ShortCircuitDriver(grid=grid,
                                        options=sc_options,
-                                       pf_options=gce.PowerFlowOptions(three_phase_unbalanced=True),
-                                       pf_results=res_pf)
+                                       pf_options=gce.PowerFlowOptions(),
+                                       pf_results=None,
+                                       pf_results3ph=res_pf)
     sc_driver.run()
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -1611,7 +1614,7 @@ def test_line_to_line_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Power Flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res_pf = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True))
+    res_pf = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions())
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Short-Circuit
@@ -1629,8 +1632,9 @@ def test_line_to_line_fault():
 
     sc_driver = gce.ShortCircuitDriver(grid=grid,
                                        options=sc_options,
-                                       pf_options=gce.PowerFlowOptions(three_phase_unbalanced=True),
-                                       pf_results=res_pf)
+                                       pf_options=gce.PowerFlowOptions(),
+                                       pf_results=None,
+                                       pf_results3ph=res_pf)
     sc_driver.run()
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -2020,7 +2024,7 @@ def test_three_phase_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Power Flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res_pf = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True))
+    res_pf = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions())
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Short-Circuit
@@ -2038,8 +2042,9 @@ def test_three_phase_fault():
 
     sc_driver = gce.ShortCircuitDriver(grid=grid,
                                        options=sc_options,
-                                       pf_options=gce.PowerFlowOptions(three_phase_unbalanced=True),
-                                       pf_results=res_pf)
+                                       pf_options=gce.PowerFlowOptions(),
+                                       pf_results=None,
+                                       pf_results3ph=res_pf)
     sc_driver.run()
 
     # ----------------------------------------------------------------------------------------------------------------------

@@ -2,11 +2,13 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
+
 import sys
 import io
 import numpy as np
 import pandas as pd
-from typing import List, Union, Any
+from typing import List, Union, Any, Dict
 from datetime import datetime
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtWidgets import (QApplication, QDialog, QTableView, QVBoxLayout, QPushButton, QHBoxLayout,
@@ -15,12 +17,34 @@ from PySide6.QtWidgets import (QApplication, QDialog, QTableView, QVBoxLayout, Q
 from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGrid.Gui.gui_functions import get_list_model, get_checked_indices
+from VeraGrid.Gui.gui_functions import get_list_model, get_checked_indices, get_chck_list_model
 from VeraGrid.Gui.object_model import ObjectsModel
 from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, PhasesShortCircuit
 
 
-class NewProfilesStructureDialogue(QtWidgets.QDialog):
+class CenteredDialog(QDialog):
+    """
+    Class to make the dialogues centered
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+    def showEvent(self, event):
+        """
+
+        :param event:
+        :return:
+        """
+        super().showEvent(event)
+        if self.parent():
+            parent_geo = self.parent().geometry()
+            self.move(
+                parent_geo.center().x() - self.width() // 2,
+                parent_geo.center().y() - self.height() // 2
+            )
+
+
+class NewProfilesStructureDialogue(CenteredDialog):
     """
     New profile dialogue window
     """
@@ -185,7 +209,7 @@ class MTreeExpandHook(QtCore.QObject):
         return super(MTreeExpandHook, self).eventFilter(self.tree, event)
 
 
-class LogsDialogue(QtWidgets.QDialog):
+class LogsDialogue(CenteredDialog):
     """
     New profile dialogue window
     """
@@ -284,7 +308,7 @@ class LogsDialogue(QtWidgets.QDialog):
         cb.setText(txt)
 
 
-class ElementsDialogue(QtWidgets.QDialog):
+class ElementsDialogue(CenteredDialog):
     """
     Selected elements dialogue window
     """
@@ -350,7 +374,7 @@ class ElementsDialogue(QtWidgets.QDialog):
         pass
 
 
-class TimeReIndexDialogue(QtWidgets.QDialog):
+class TimeReIndexDialogue(CenteredDialog):
     """
     New profile dialogue window
     """
@@ -410,7 +434,7 @@ class TimeReIndexDialogue(QtWidgets.QDialog):
         self.accept()
 
 
-class CorrectInconsistenciesDialogue(QtWidgets.QDialog):
+class CorrectInconsistenciesDialogue(CenteredDialog):
     """
     New profile dialogue window
     """
@@ -490,7 +514,7 @@ def clear_qt_layout(layout):
         layout.itemAt(i).widget().deleteLater()
 
 
-class CheckListDialogue(QtWidgets.QDialog):
+class CheckListDialogue(CenteredDialog):
     """
     New profile dialogue window
     """
@@ -500,7 +524,9 @@ class CheckListDialogue(QtWidgets.QDialog):
                  title='Select objects',
                  ask_for_group_name: bool = False,
                  group_label: str = "",
-                 group_text: str = ""):
+                 group_text: str = "",
+                 default: List[bool] | None = None,
+                 default_val: bool = True):
         """
 
         :param objects_list: List of names to display
@@ -509,13 +535,18 @@ class CheckListDialogue(QtWidgets.QDialog):
         :param group_label: Name of the property
         :param group_text: Tentative group name
         """
-        QtWidgets.QDialog.__init__(self)
+        CenteredDialog.__init__(self)
+
+        self.objects_list = objects_list
+        self.default_vals = default if default is not None else [default_val for e in objects_list]
+
         self.setObjectName("self")
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.NoContextMenu)
         self.main_layout = QtWidgets.QVBoxLayout(self)
 
         self.is_accepted: bool = False
         self.selected_indices: List[int] = list()
+        self.status_dict: Dict[str, bool] = dict()
 
         self.label1 = QtWidgets.QLabel()
         self.label1.setText("Selected objects")
@@ -528,7 +559,15 @@ class CheckListDialogue(QtWidgets.QDialog):
 
         # list
         self.list_view = QtWidgets.QListView()
-        self.mdl = get_list_model(objects_list, checks=True, check_value=True)
+        # self.mdl = get_list_model(lst=objects_list,
+        #                           checks=True,
+        #                           check_value=default_val)
+
+        self.mdl = get_chck_list_model(
+            lst=objects_list,
+            check_status=self.default_vals
+        )
+
         self.list_view.setModel(self.mdl)
 
         # accept button
@@ -559,6 +598,14 @@ class CheckListDialogue(QtWidgets.QDialog):
         """
         return self.group_name_text.toPlainText()
 
+    def selected(self, val: str) -> bool:
+        """
+        Check if the value was selected
+        :param val:
+        :return:
+        """
+        return self.status_dict.get(val, False)
+
     def accept_click(self):
         """
         Accept and close
@@ -566,10 +613,18 @@ class CheckListDialogue(QtWidgets.QDialog):
         self.is_accepted = True
 
         self.selected_indices = get_checked_indices(self.mdl)
+
+        for row in range(self.mdl.rowCount()):
+            item = self.mdl.item(row)
+            if item.checkState() == QtCore.Qt.CheckState.Checked:
+                self.status_dict[self.objects_list[row]] = True
+            else:
+                self.status_dict[self.objects_list[row]] = False
+
         self.accept()
 
 
-class DeleteDialogue(QtWidgets.QDialog):
+class DeleteDialogue(CenteredDialog):
     """
     New profile dialogue window
     """
@@ -591,7 +646,7 @@ class DeleteDialogue(QtWidgets.QDialog):
         :param group_label: Name of the property
         :param group_text: Tentative group name
         """
-        QtWidgets.QDialog.__init__(self)
+        CenteredDialog.__init__(self)
         self.setObjectName("self")
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.NoContextMenu)
         self.main_layout = QtWidgets.QVBoxLayout(self)
@@ -661,7 +716,7 @@ class DeleteDialogue(QtWidgets.QDialog):
         self.accept()
 
 
-class InputNumberDialogue(QtWidgets.QDialog):
+class InputNumberDialogue(CenteredDialog):
     """
     New InputNumberDialogue window
     """
@@ -680,7 +735,7 @@ class InputNumberDialogue(QtWidgets.QDialog):
         :param h:
         :param w:
         """
-        QtWidgets.QDialog.__init__(self)
+        CenteredDialog.__init__(self)
         self.setObjectName("self")
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.NoContextMenu)
         self.main_layout = QtWidgets.QVBoxLayout(self)
@@ -727,7 +782,7 @@ class InputNumberDialogue(QtWidgets.QDialog):
         self.accept()
 
 
-class InputSearchDialogue(QtWidgets.QDialog):
+class InputSearchDialogue(CenteredDialog):
     """
     New InputNumberDialogue window
     """
@@ -742,7 +797,7 @@ class InputSearchDialogue(QtWidgets.QDialog):
         """
 
         self.searchText = ""
-        QtWidgets.QDialog.__init__(self)
+        CenteredDialog.__init__(self)
         self.setObjectName("self")
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.NoContextMenu)
         self.main_layout = QtWidgets.QVBoxLayout(self)
@@ -781,7 +836,7 @@ class InputSearchDialogue(QtWidgets.QDialog):
         self.accept()
 
 
-class StartEndSelectionDialogue(QtWidgets.QDialog):
+class StartEndSelectionDialogue(CenteredDialog):
     """
     New StartEndSelectionDialogue window
     """
@@ -797,7 +852,7 @@ class StartEndSelectionDialogue(QtWidgets.QDialog):
         :param h:
         :param w:
         """
-        QtWidgets.QDialog.__init__(self)
+        CenteredDialog.__init__(self)
         self.setObjectName("self")
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.NoContextMenu)
         self.main_layout = QtWidgets.QVBoxLayout(self)
@@ -873,7 +928,7 @@ class StartEndSelectionDialogue(QtWidgets.QDialog):
         self.accept()
 
 
-class CustomQuestionDialogue(QtWidgets.QDialog):
+class CustomQuestionDialogue(CenteredDialog):
     """
     Custom question dialogue
     """
@@ -1061,13 +1116,13 @@ class ArrayTableModel(QAbstractTableModel):
         return True
 
 
-class ArrayEditor(QDialog):
+class ArrayEditor(CenteredDialog):
     """
     ArrayEditor
     """
 
     def __init__(self):
-        QDialog.__init__(self)
+        CenteredDialog.__init__(self)
 
         self.setWindowTitle("Array Editor")
 
@@ -1145,12 +1200,12 @@ def valid_phases_for_fault(fault: FaultType):
     return []
 
 
-class ShortCircuitSelector(QtWidgets.QDialog):
+class ShortCircuitSelector(CenteredDialog):
     """
     ShortCircuitSelector
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("Short Circuit Configuration")
 

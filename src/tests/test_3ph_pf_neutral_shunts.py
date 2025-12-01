@@ -54,8 +54,7 @@ def test_shunt_groundedstar_3ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run power flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                                 solver_type=SolverType.NR,
+    res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
                                                                  retry_with_other_methods=False))
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -126,8 +125,7 @@ def test_shunt_floatingstar_3ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run power flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                                 solver_type=SolverType.NR,
+    res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
                                                                  retry_with_other_methods=False))
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -217,8 +215,7 @@ def test_shunt_neutralstar_3ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run power flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                                 solver_type=SolverType.NR,
+    res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
                                                                  retry_with_other_methods=False))
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -289,8 +286,7 @@ def test_shunt_delta_3ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run power flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                                 solver_type=SolverType.NR,
+    res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
                                                                  retry_with_other_methods=False))
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -359,8 +355,7 @@ def test_shunt_delta_2ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run power flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                                 solver_type=SolverType.NR,
+    res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
                                                                  retry_with_other_methods=False))
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -429,8 +424,7 @@ def test_shunt_groundedstar_1ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run power flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                                 solver_type=SolverType.NR,
+    res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
                                                                  retry_with_other_methods=False))
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -513,8 +507,7 @@ def test_shunt_neutralstar_1ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run power flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                                 solver_type=SolverType.NR,
+    res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
                                                                  retry_with_other_methods=False))
 
     # ----------------------------------------------------------------------------------------------------------------------

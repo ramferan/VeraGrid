@@ -811,7 +811,6 @@ class SimulationsMain(TimeEventsMain):
             use_stored_guess=self.ui.use_voltage_guess_checkBox.isChecked(),
             initialize_angles=self.ui.initialize_pf_angles_checkBox.isChecked(),
             generate_report=self.ui.addPowerFlowReportCheckBox.isChecked(),
-            three_phase_unbalanced=self.ui.pf_three_phase_checkBox.isChecked()
         )
 
         return ops
@@ -927,10 +926,16 @@ class SimulationsMain(TimeEventsMain):
             self.run_remote(instruction=instruction)
 
         else:
-            if self.ts_flag():
-                self.run_power_flow_time_series()
+            if self.ui.pf_three_phase_checkBox.isChecked():
+                if self.ts_flag():
+                    self.show_warning_toast("Time series not available yer for 3-phase formulation :/")
+                else:
+                    self.run_power_flow3ph()
             else:
-                self.run_power_flow()
+                if self.ts_flag():
+                    self.run_power_flow_time_series()
+                else:
+                    self.run_power_flow()
 
     def optimal_power_flow_dispatcher(self):
         """
@@ -1085,10 +1090,16 @@ class SimulationsMain(TimeEventsMain):
 
                 # set power flow object instance
                 engine = self.get_preferred_engine()
-                drv = sim.PowerFlowDriver(grid=self.circuit,
-                                          options=options,
-                                          opf_results=opf_results,
-                                          engine=engine)
+                if self.ui.pf_three_phase_checkBox.isChecked():
+                    drv = sim.PowerFlowDriver3Ph(grid=self.circuit,
+                                                 options=options,
+                                                 opf_results=opf_results,
+                                                 engine=engine)
+                else:
+                    drv = sim.PowerFlowDriver(grid=self.circuit,
+                                              options=options,
+                                              opf_results=opf_results,
+                                              engine=engine)
 
                 self.session.run(drv,
                                  post_func=self.post_power_flow,
@@ -1123,6 +1134,76 @@ class SimulationsMain(TimeEventsMain):
 
         else:
             warning_msg('There are no power flow results.\nIs there any slack bus or generator?', 'Power flow')
+
+        if not self.session.is_anything_running():
+            self.UNLOCK()
+
+
+    def run_power_flow3ph(self):
+        """
+        Run a power flow simulation
+        :return:
+        """
+        if self.circuit.valid_for_simulation():
+
+            if not self.session.is_this_running(SimulationTypes.PowerFlow3ph_run):
+
+                self.LOCK()
+
+                self.add_simulation(SimulationTypes.PowerFlow3ph_run)
+
+                self.ui.progress_label.setText('Compiling the grid...')
+                QtGui.QGuiApplication.processEvents()
+
+                # get the power flow options from the GUI
+                options = self.get_selected_power_flow_options()
+
+                opf_results = self.get_opf_results(use_opf=self.ui.actionOpf_to_Power_flow.isChecked())
+
+                self.ui.progress_label.setText('Running power flow...')
+                QtGui.QGuiApplication.processEvents()
+
+                # set power flow object instance
+                engine = self.get_preferred_engine()
+                drv = sim.PowerFlowDriver3Ph(grid=self.circuit,
+                                             options=options,
+                                             opf_results=opf_results,
+                                             engine=engine)
+
+                self.session.run(drv,
+                                 post_func=self.post_power_flow3ph,
+                                 prog_func=self.ui.progressBar.setValue,
+                                 text_func=self.ui.progress_label.setText)
+
+            else:
+                self.show_warning_toast('Another simulation of the same type is running...')
+        else:
+            pass
+
+    def post_power_flow3ph(self):
+        """
+        Action performed after the power flow.
+        Returns:
+
+        """
+        # update the results in the circuit structures
+
+        _, results = self.session.power_flow_3ph
+
+        if results is not None:
+            self.ui.progress_label.setText('Colouring power flow results in the grid...')
+            self.remove_simulation(SimulationTypes.PowerFlow3ph_run)
+            self.update_available_results()
+            self.colour_diagrams()
+
+            if results.converged:
+                self.show_info_toast("Power flow 3ph converged :)")
+            else:
+                self.show_warning_toast("Power flow 3ph not converged :/")
+
+        else:
+            warning_msg('There are no power flow results.\nIs there any slack bus or generator?',
+                        'Power flow')
 
         if not self.session.is_anything_running():
             self.UNLOCK()
@@ -1220,6 +1301,7 @@ class SimulationsMain(TimeEventsMain):
             if not self.session.is_this_running(SimulationTypes.ShortCircuit_run):
 
                 _, pf_results = self.session.power_flow
+                _, pf_results3ph = self.session.power_flow_3ph
 
                 if pf_results is not None:
 
@@ -1244,7 +1326,8 @@ class SimulationsMain(TimeEventsMain):
                         drv = sim.ShortCircuitDriver(grid=self.circuit,
                                                      options=sc_options,
                                                      pf_options=pf_options,
-                                                     pf_results=pf_results)
+                                                     pf_results=pf_results,
+                                                     pf_results3ph=pf_results3ph)
                         self.session.run(drv,
                                          post_func=self.post_short_circuit,
                                          prog_func=self.ui.progressBar.setValue,

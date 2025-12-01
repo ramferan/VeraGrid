@@ -122,4 +122,4 @@ ASSOCIATION_TYPES = Union[Fuel, Technology, EmissionGas]
 # this is the data type of the VeraGrid Json
 VERAGRID_FILE_TYPE = Dict[str, Union[str, float, pd.DataFrame, Dict[str, Any], List[Dict[str, Any]]]]
 
-ALL_RMS_TEMPLATES_TYPE = Union[BusRmsTemplate, LoadRmsTemplate, Line_1_RmsTemplate, Generator_1_RmsTemplate, Line_0_RmsTemplate, Generator_0_RmsTemplate]
+# ALL_RMS_TEMPLATES_TYPE = Union[BusRmsTemplate, LoadRmsTemplate, Line_1_RmsTemplate, Generator_1_RmsTemplate, Line_0_RmsTemplate, Generator_0_RmsTemplate]

@@ -295,7 +295,7 @@ def create_breaker_and_a_half(
                        country=country,
                        graphic_type=BusGraphicType.BusBar)
         grid.add_bus(bar2)
-        all_buses.append(bar1)
+        all_buses.append(bar2)
         l_x_pos.append(bar2.x)
         l_y_pos.append(bar2.y)
     else:

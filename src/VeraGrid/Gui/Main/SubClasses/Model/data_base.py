@@ -1512,6 +1512,10 @@ class DataBaseTableMain(DiagramsMain):
         :return:
         """
 
+        # Get selected buses from the current diagram if any
+        selected_buses_tuples = self.get_selected_buses()
+        buses_to_replace = [bus for _, bus, _ in selected_buses_tuples] if selected_buses_tuples else None
+
         kv = self.get_default_voltage()
         dlg = SubstationDesigner(grid=self.circuit, default_voltage=kv)
         dlg.exec()
@@ -1523,7 +1527,8 @@ class DataBaseTableMain(DiagramsMain):
                 se_code=dlg.get_code(),
                 lat=dlg.get_latitude(),
                 lon=dlg.get_longitude(),
-                vl_templates=dlg.get_voltage_levels()
+                vl_templates=dlg.get_voltage_levels(),
+                buses_to_replace=buses_to_replace
             )
 
             dlg3 = CustomQuestionDialogue(title="New substation",

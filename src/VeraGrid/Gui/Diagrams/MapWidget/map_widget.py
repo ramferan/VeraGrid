@@ -287,13 +287,13 @@ class MapView(QGraphicsView):
 
             if val:
                 if event.angleDelta().y() > 0:
-                    self.schema_zoom = self.schema_zoom * self.map_widget.zoom_factor
+                    self.schema_zoom *= self.map_widget.zoom_factor
                     self.scale(
                         self.map_widget.zoom_factor,
                         self.map_widget.zoom_factor
                     )
                 else:
-                    self.schema_zoom = self.schema_zoom / self.map_widget.zoom_factor
+                    self.schema_zoom /= self.map_widget.zoom_factor
                     self.scale(
                         1.0 / self.map_widget.zoom_factor,
                         1.0 / self.map_widget.zoom_factor
@@ -345,7 +345,7 @@ class MapView(QGraphicsView):
         super().resizeEvent(event)
         self.map_widget.resizeEvent(event=event)
 
-    def update_label_position(self):
+    def update_label_position(self) -> None:
         """
         Updates the position of the label to the bottom-left corner of the viewport.
         """
@@ -1894,10 +1894,13 @@ class MapWidget(QWidget):
             self.key_tile_top = 0
             self.key_tile_y_offset = (self.view_height - self.map_height) // 2
 
+        self.position_callback(latitude, longitude, x_tile, y_tile)
+
+        self.view.center_schema()
+        self.view.update_label_position()
+
         # redraw the display
         self.update()
-
-        self.position_callback(latitude, longitude, x_tile, y_tile)
 
     def go_to_level_and_position(self, level: int, longitude: float, latitude: float):
         """

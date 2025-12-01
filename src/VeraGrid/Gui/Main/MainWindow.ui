@@ -341,6 +341,44 @@ QProgressBar::chunk{
                         <number>1</number>
                        </property>
                        <item>
+                        <widget class="QFrame" name="frame_36">
+                         <property name="frameShape">
+                          <enum>QFrame::Shape::NoFrame</enum>
+                         </property>
+                         <property name="frameShadow">
+                          <enum>QFrame::Shadow::Raised</enum>
+                         </property>
+                         <layout class="QHBoxLayout" name="horizontalLayout_26">
+                          <property name="leftMargin">
+                           <number>0</number>
+                          </property>
+                          <property name="topMargin">
+                           <number>3</number>
+                          </property>
+                          <property name="rightMargin">
+                           <number>4</number>
+                          </property>
+                          <property name="bottomMargin">
+                           <number>3</number>
+                          </property>
+                          <item>
+                           <widget class="QLineEdit" name="diagramSearchLineEdit"/>
+                          </item>
+                          <item>
+                           <widget class="QPushButton" name="diagramSearchButton">
+                            <property name="text">
+                             <string/>
+                            </property>
+                            <property name="icon">
+                             <iconset resource="icons.qrc">
+                              <normaloff>:/Icons/icons/magnifying_glass2.png</normaloff>:/Icons/icons/magnifying_glass2.png</iconset>
+                            </property>
+                           </widget>
+                          </item>
+                         </layout>
+                        </widget>
+                       </item>
+                       <item>
                         <widget class="QListView" name="diagramsListView">
                          <property name="font">
                           <font>
@@ -1386,40 +1424,7 @@ QProgressBar::chunk{
                       <property name="bottomMargin">
                        <number>0</number>
                       </property>
-                      <item row="2" column="0" colspan="3">
-                       <widget class="QLabel" name="schematic_step_label">
-                        <property name="font">
-                         <font>
-                          <pointsize>9</pointsize>
-                         </font>
-                        </property>
-                        <property name="text">
-                         <string>Snapshot</string>
-                        </property>
-                        <property name="alignment">
-                         <set>Qt::AlignmentFlag::AlignCenter</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="0" rowspan="2" colspan="2">
-                       <widget class="QComboBox" name="available_results_to_color_comboBox">
-                        <property name="minimumSize">
-                         <size>
-                          <width>164</width>
-                          <height>0</height>
-                         </size>
-                        </property>
-                        <property name="font">
-                         <font>
-                          <pointsize>9</pointsize>
-                         </font>
-                        </property>
-                        <property name="toolTip">
-                         <string>Available results</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="2" rowspan="2">
+                      <item row="2" column="2" rowspan="2">
                        <widget class="QPushButton" name="colour_results_pushButton">
                         <property name="maximumSize">
                          <size>
@@ -1439,13 +1444,46 @@ QProgressBar::chunk{
                         </property>
                        </widget>
                       </item>
-                      <item row="3" column="0" colspan="3">
+                      <item row="4" column="0" colspan="3">
+                       <widget class="QLabel" name="schematic_step_label">
+                        <property name="font">
+                         <font>
+                          <pointsize>9</pointsize>
+                         </font>
+                        </property>
+                        <property name="text">
+                         <string>Snapshot</string>
+                        </property>
+                        <property name="alignment">
+                         <set>Qt::AlignmentFlag::AlignCenter</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="0" colspan="3">
                        <widget class="QSlider" name="diagram_step_slider">
                         <property name="toolTip">
                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Time slider&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Move this time slider to select the appropriate time slot to view.&lt;/p&gt;&lt;p&gt;The first position sets the snapshot values, the rest attend to the time series values.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                         </property>
                         <property name="orientation">
                          <enum>Qt::Orientation::Horizontal</enum>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="0" rowspan="2" colspan="2">
+                       <widget class="QComboBox" name="available_results_to_color_comboBox">
+                        <property name="minimumSize">
+                         <size>
+                          <width>164</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="font">
+                         <font>
+                          <pointsize>9</pointsize>
+                         </font>
+                        </property>
+                        <property name="toolTip">
+                         <string>Available results</string>
                         </property>
                        </widget>
                       </item>
@@ -11679,7 +11717,6 @@ QProgressBar::chunk{
     <addaction name="actionZoom_out"/>
     <addaction name="actionCenter_view"/>
     <addaction name="actionConsolidate_diagram_coordinates"/>
-    <addaction name="actionSearchDiagram"/>
     <addaction name="actionDelete_selected"/>
     <addaction name="separator"/>
     <addaction name="actionTakePicture"/>

@@ -22,7 +22,7 @@ grid.add_short_circuit_definition(
     )
 )
 
-sc = gce.ShortCircuitDriver(grid, options=sc_options, pf_options=pf_options, pf_results=pf.results)
+sc = gce.ShortCircuitDriver(grid, options=sc_options, pf_options=pf_options, pf_results=pf.results, pf_results3ph=None)
 sc.run()
 
 print("Short circuit power: ", sc.results.SCpower[fault_index])

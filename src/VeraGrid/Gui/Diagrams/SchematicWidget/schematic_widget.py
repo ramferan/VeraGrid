@@ -20,12 +20,14 @@ from PySide6.QtCore import (Qt, QPoint, QSize, QPointF, QRect, QRectF, QMimeData
 from PySide6.QtGui import (QIcon, QPixmap, QImage, QPainter, QStandardItemModel, QStandardItem, QColor, QPen, QBrush,
                            QDragEnterEvent, QDragMoveEvent, QDropEvent, QWheelEvent, QKeyEvent, QMouseEvent,
                            QContextMenuEvent)
-from PySide6.QtWidgets import (QGraphicsView, QGraphicsScene, QGraphicsSceneMouseEvent, QGraphicsItem)
+from PySide6.QtWidgets import (QGraphicsView, QGraphicsScene, QGraphicsSceneMouseEvent, QGraphicsItem, QDialog,
+                               QPushButton)
 from PySide6.QtSvg import QSvgGenerator
 
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, INJECTION_DEVICE_TYPES, FLUID_TYPES, BRANCH_TYPES
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Substation.bus import Bus
+from VeraGridEngine.Devices.Substation.substation import Substation
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Branches.dc_line import DcLine
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
@@ -87,7 +89,6 @@ BRANCH_GRAPHICS = Union[
     SeriesReactanceGraphicItem,
     SwitchGraphicItem
 ]
-
 
 OPTIONAL_PORT = Union[BarTerminalItem, RoundTerminalItem, None]
 
@@ -4652,7 +4653,6 @@ class SchematicWidget(BaseDiagramWidget):
                 title='Change bus')
 
             if ok:
-
                 # set the API object new bus
                 injection_graphics.api_object.bus = new_bus
 

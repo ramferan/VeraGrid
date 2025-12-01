@@ -90,24 +90,23 @@ def test_yy_impedance_neutralstar_3ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run power flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                                 solver_type=SolverType.NR,
-                                                                 retry_with_other_methods=False))
+    res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
+                                                                    retry_with_other_methods=False))
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Results
     # ----------------------------------------------------------------------------------------------------------------------
     Un_reference = np.array(
-        [0.0+0.j, 0.0+0.0j, 0.03367965-0.00745322j])
+        [0.0 + 0.j, 0.0 + 0.0j, 0.03367965 - 0.00745322j])
 
     Ua_reference = np.array(
-        [1 + 0j, 0.95218447-0.01265888j, 0.88472009-0.02766787j])
+        [1 + 0j, 0.95218447 - 0.01265888j, 0.88472009 - 0.02766787j])
 
     Ub_reference = np.array(
-        [-0.5 - 0.8660254j, -0.48833169-0.83113485j, -0.50673344-0.78847722j])
+        [-0.5 - 0.8660254j, -0.48833169 - 0.83113485j, -0.50673344 - 0.78847722j])
 
     Uc_reference = np.array(
-        [-0.5 + 0.8660254j, -0.48579392+0.85298809j, -0.48303905+0.84349284j])
+        [-0.5 + 0.8660254j, -0.48579392 + 0.85298809j, -0.48303905 + 0.84349284j])
 
     assert np.allclose(res.voltage_N, Un_reference, atol=1e-4)
     assert np.allclose(res.voltage_A, Ua_reference, atol=1e-4)
@@ -198,8 +197,7 @@ def test_yy_impedance_neutralstar_1ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run power flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                                 solver_type=SolverType.NR,
+    res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
                                                                  retry_with_other_methods=False))
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -209,13 +207,13 @@ def test_yy_impedance_neutralstar_1ph():
         [0.0 + 0.j, 0.0 + 0.0j, 0.06355538 + 0.02535082j])
 
     Ua_reference = np.array(
-        [1 + 0j, 0.95375511-0.00939879j, 0.8729928 - 0.04120997j])
+        [1 + 0j, 0.95375511 - 0.00939879j, 0.8729928 - 0.04120997j])
 
     Ub_reference = np.array(
-        [-0.5 - 0.8660254j, -0.5-0.8660254j, -0.53683847 - 0.88181239j])
+        [-0.5 - 0.8660254j, -0.5 - 0.8660254j, -0.53683847 - 0.88181239j])
 
     Uc_reference = np.array(
-        [-0.5 + 0.8660254j, -0.5+0.86602541j, -0.53188686 + 0.85466038j])
+        [-0.5 + 0.8660254j, -0.5 + 0.86602541j, -0.53188686 + 0.85466038j])
 
     assert np.allclose(res.voltage_N, Un_reference, atol=1e-4)
     assert np.allclose(res.voltage_A, Ua_reference, atol=1e-4)
@@ -310,24 +308,23 @@ def test_yy_current_neutralstar_3ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run power flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                                 solver_type=SolverType.NR,
+    res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
                                                                  retry_with_other_methods=False))
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Results
     # ----------------------------------------------------------------------------------------------------------------------
     Un_reference = np.array(
-        [0.0+0.j, 0.0+0.0j, 0.04394597-0.00583965j])
+        [0.0 + 0.j, 0.0 + 0.0j, 0.04394597 - 0.00583965j])
 
     Ua_reference = np.array(
-        [1 + 0j, 0.94368741-0.01431683j, 0.86213519-0.0333338j])
+        [1 + 0j, 0.94368741 - 0.01431683j, 0.86213519 - 0.0333338j])
 
     Ub_reference = np.array(
-        [-0.5 - 0.8660254j, -0.48724257-0.82945044j, -0.51086938-0.78601869j])
+        [-0.5 - 0.8660254j, -0.48724257 - 0.82945044j, -0.51086938 - 0.78601869j])
 
     Uc_reference = np.array(
-        [-0.5 + 0.8660254j, -0.48555138+0.85312744j, -0.48768898+0.84309991j])
+        [-0.5 + 0.8660254j, -0.48555138 + 0.85312744j, -0.48768898 + 0.84309991j])
 
     assert np.allclose(res.voltage_N, Un_reference, atol=1e-4)
     assert np.allclose(res.voltage_A, Ua_reference, atol=1e-4)
@@ -418,24 +415,23 @@ def test_yy_current_neutralstar_1ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run power flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                                 solver_type=SolverType.NR,
+    res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
                                                                  retry_with_other_methods=False))
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Results
     # ----------------------------------------------------------------------------------------------------------------------
     Un_reference = np.array(
-        [0.0+0.j, 0.0+0.0j, 0.07883374+0.02971871j])
+        [0.0 + 0.j, 0.0 + 0.0j, 0.07883374 + 0.02971871j])
 
     Ua_reference = np.array(
-        [1 + 0j, 0.94285011-0.01048665j, 0.84268244-0.04775512j])
+        [1 + 0j, 0.94285011 - 0.01048665j, 0.84268244 - 0.04775512j])
 
     Ub_reference = np.array(
-        [-0.5 - 0.8660254j, -0.5-0.8660254j, -0.54571984-0.88459665j])
+        [-0.5 - 0.8660254j, -0.5 - 0.8660254j, -0.54571984 - 0.88459665j])
 
     Uc_reference = np.array(
-        [-0.5 + 0.8660254j, -0.5+0.86602541j, -0.53952055+0.85278177j])
+        [-0.5 + 0.8660254j, -0.5 + 0.86602541j, -0.53952055 + 0.85278177j])
 
     assert np.allclose(res.voltage_N, Un_reference, atol=1e-4)
     assert np.allclose(res.voltage_A, Ua_reference, atol=1e-4)
@@ -530,24 +526,23 @@ def test_yy_power_neutralstar_3ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run power flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                                 solver_type=SolverType.NR,
+    res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
                                                                  retry_with_other_methods=False))
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Results
     # ----------------------------------------------------------------------------------------------------------------------
     Un_reference = np.array(
-        [0.0+0.j, 0.0+0.0j, 0.0712553+0.00193702j])
+        [0.0 + 0.j, 0.0 + 0.0j, 0.0712553 + 0.00193702j])
 
     Ua_reference = np.array(
-        [1 + 0j, 0.92287771-0.01695593j, 0.80547372-0.04669537j])
+        [1 + 0j, 0.92287771 - 0.01695593j, 0.80547372 - 0.04669537j])
 
     Ub_reference = np.array(
-        [-0.5 - 0.8660254j, -0.48617629-0.82950043j, -0.52455549-0.79104599j])
+        [-0.5 - 0.8660254j, -0.48617629 - 0.82950043j, -0.52455549 - 0.79104599j])
 
     Uc_reference = np.array(
-        [-0.5 + 0.8660254j, -0.48529631+0.85389286j, -0.50104669+0.84141899j])
+        [-0.5 + 0.8660254j, -0.48529631 + 0.85389286j, -0.50104669 + 0.84141899j])
 
     assert np.allclose(res.voltage_N, Un_reference, atol=1e-4)
     assert np.allclose(res.voltage_A, Ua_reference, atol=1e-4)
@@ -638,24 +633,23 @@ def test_yy_power_neutralstar_1ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run power flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                                 solver_type=SolverType.NR,
+    res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
                                                                  retry_with_other_methods=False))
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Results
     # ----------------------------------------------------------------------------------------------------------------------
     Un_reference = np.array(
-        [0.0+0.j, 0.0+0.0j, 0.08964536+0.03243423j])
+        [0.0 + 0.j, 0.0 + 0.0j, 0.08964536 + 0.03243423j])
 
     Ua_reference = np.array(
-        [1 + 0j, 0.93517937-0.01100169j, 0.82128169-0.05165573j])
+        [1 + 0j, 0.93517937 - 0.01100169j, 0.82128169 - 0.05165573j])
 
     Ub_reference = np.array(
-        [-0.5 - 0.8660254j, -0.5-0.8660254j, -0.55201025-0.8863471j])
+        [-0.5 - 0.8660254j, -0.5 - 0.8660254j, -0.55201025 - 0.8863471j])
 
     Uc_reference = np.array(
-        [-0.5 + 0.8660254j, -0.5+0.86602541j, -0.54491559+0.85163798j])
+        [-0.5 + 0.8660254j, -0.5 + 0.86602541j, -0.54491559 + 0.85163798j])
 
     assert np.allclose(res.voltage_N, Un_reference, atol=1e-4)
     assert np.allclose(res.voltage_A, Ua_reference, atol=1e-4)
@@ -750,24 +744,23 @@ def test_dy_impedance_neutralstar_3ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run power flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                                 solver_type=SolverType.NR,
+    res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
                                                                  retry_with_other_methods=False))
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Results
     # ----------------------------------------------------------------------------------------------------------------------
     Un_reference = np.array(
-        [0.0+0.j, 0.0+0.0j, 0.03367965-0.00745322j])
+        [0.0 + 0.j, 0.0 + 0.0j, 0.03367965 - 0.00745322j])
 
     Ua_reference = np.array(
-        [1 + 0j, 0.95218447-0.01265888j, 0.88472009-0.02766787j])
+        [1 + 0j, 0.95218447 - 0.01265888j, 0.88472009 - 0.02766787j])
 
     Ub_reference = np.array(
-        [-0.5 - 0.8660254j, -0.48833169-0.83113485j, -0.50673344-0.78847722j])
+        [-0.5 - 0.8660254j, -0.48833169 - 0.83113485j, -0.50673344 - 0.78847722j])
 
     Uc_reference = np.array(
-        [-0.5 + 0.8660254j, -0.48579392+0.85298809j, -0.48303905+0.84349284j])
+        [-0.5 + 0.8660254j, -0.48579392 + 0.85298809j, -0.48303905 + 0.84349284j])
 
     assert np.allclose(abs(res.voltage_N), abs(Un_reference), atol=1e-4)
     assert np.allclose(abs(res.voltage_A), abs(Ua_reference), atol=1e-4)
@@ -858,8 +851,7 @@ def test_dy_impedance_neutralstar_1ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run power flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                                 solver_type=SolverType.NR,
+    res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
                                                                  retry_with_other_methods=False))
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -869,13 +861,13 @@ def test_dy_impedance_neutralstar_1ph():
         [0.0 + 0.j, 0.0 + 0.0j, 0.06355538 + 0.02535082j])
 
     Ua_reference = np.array(
-        [1 + 0j, 0.95375511-0.00939879j, 0.8729928 - 0.04120997j])
+        [1 + 0j, 0.95375511 - 0.00939879j, 0.8729928 - 0.04120997j])
 
     Ub_reference = np.array(
-        [-0.5 - 0.8660254j, -0.5-0.8660254j, -0.53683847 - 0.88181239j])
+        [-0.5 - 0.8660254j, -0.5 - 0.8660254j, -0.53683847 - 0.88181239j])
 
     Uc_reference = np.array(
-        [-0.5 + 0.8660254j, -0.5+0.86602541j, -0.53188686 + 0.85466038j])
+        [-0.5 + 0.8660254j, -0.5 + 0.86602541j, -0.53188686 + 0.85466038j])
 
     assert np.allclose(abs(res.voltage_N), abs(Un_reference), atol=1e-4)
     assert np.allclose(abs(res.voltage_A), abs(Ua_reference), atol=1e-4)
@@ -970,24 +962,23 @@ def test_dy_current_neutralstar_3ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run power flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                                 solver_type=SolverType.NR,
+    res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
                                                                  retry_with_other_methods=False))
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Results
     # ----------------------------------------------------------------------------------------------------------------------
     Un_reference = np.array(
-        [0.0+0.j, 0.0+0.0j, 0.04394597-0.00583965j])
+        [0.0 + 0.j, 0.0 + 0.0j, 0.04394597 - 0.00583965j])
 
     Ua_reference = np.array(
-        [1 + 0j, 0.94368741-0.01431683j, 0.86213519-0.0333338j])
+        [1 + 0j, 0.94368741 - 0.01431683j, 0.86213519 - 0.0333338j])
 
     Ub_reference = np.array(
-        [-0.5 - 0.8660254j, -0.48724257-0.82945044j, -0.51086938-0.78601869j])
+        [-0.5 - 0.8660254j, -0.48724257 - 0.82945044j, -0.51086938 - 0.78601869j])
 
     Uc_reference = np.array(
-        [-0.5 + 0.8660254j, -0.48555138+0.85312744j, -0.48768898+0.84309991j])
+        [-0.5 + 0.8660254j, -0.48555138 + 0.85312744j, -0.48768898 + 0.84309991j])
 
     assert np.allclose(abs(res.voltage_N), abs(Un_reference), atol=1e-4)
     assert np.allclose(abs(res.voltage_A), abs(Ua_reference), atol=1e-4)
@@ -1078,24 +1069,23 @@ def test_dy_current_neutralstar_1ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run power flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                                 solver_type=SolverType.NR,
+    res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
                                                                  retry_with_other_methods=False))
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Results
     # ----------------------------------------------------------------------------------------------------------------------
     Un_reference = np.array(
-        [0.0+0.j, 0.0+0.0j, 0.07883374+0.02971871j])
+        [0.0 + 0.j, 0.0 + 0.0j, 0.07883374 + 0.02971871j])
 
     Ua_reference = np.array(
-        [1 + 0j, 0.94285011-0.01048665j, 0.84268244-0.04775512j])
+        [1 + 0j, 0.94285011 - 0.01048665j, 0.84268244 - 0.04775512j])
 
     Ub_reference = np.array(
-        [-0.5 - 0.8660254j, -0.5-0.8660254j, -0.54571984-0.88459665j])
+        [-0.5 - 0.8660254j, -0.5 - 0.8660254j, -0.54571984 - 0.88459665j])
 
     Uc_reference = np.array(
-        [-0.5 + 0.8660254j, -0.5+0.86602541j, -0.53952055+0.85278177j])
+        [-0.5 + 0.8660254j, -0.5 + 0.86602541j, -0.53952055 + 0.85278177j])
 
     assert np.allclose(abs(res.voltage_N), abs(Un_reference), atol=1e-4)
     assert np.allclose(abs(res.voltage_A), abs(Ua_reference), atol=1e-4)
@@ -1190,24 +1180,23 @@ def test_dy_power_neutralstar_3ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run power flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                                 solver_type=SolverType.NR,
+    res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
                                                                  retry_with_other_methods=False))
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Results
     # ----------------------------------------------------------------------------------------------------------------------
     Un_reference = np.array(
-        [0.0+0.j, 0.0+0.0j, 0.0712553+0.00193702j])
+        [0.0 + 0.j, 0.0 + 0.0j, 0.0712553 + 0.00193702j])
 
     Ua_reference = np.array(
-        [1 + 0j, 0.92287771-0.01695593j, 0.80547372-0.04669537j])
+        [1 + 0j, 0.92287771 - 0.01695593j, 0.80547372 - 0.04669537j])
 
     Ub_reference = np.array(
-        [-0.5 - 0.8660254j, -0.48617629-0.82950043j, -0.52455549-0.79104599j])
+        [-0.5 - 0.8660254j, -0.48617629 - 0.82950043j, -0.52455549 - 0.79104599j])
 
     Uc_reference = np.array(
-        [-0.5 + 0.8660254j, -0.48529631+0.85389286j, -0.50104669+0.84141899j])
+        [-0.5 + 0.8660254j, -0.48529631 + 0.85389286j, -0.50104669 + 0.84141899j])
 
     assert np.allclose(abs(res.voltage_N), abs(Un_reference), atol=1e-4)
     assert np.allclose(abs(res.voltage_A), abs(Ua_reference), atol=1e-4)
@@ -1298,24 +1287,23 @@ def test_dy_power_neutralstar_1ph():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run power flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True,
-                                                                 solver_type=SolverType.NR,
+    res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
                                                                  retry_with_other_methods=False))
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Results
     # ----------------------------------------------------------------------------------------------------------------------
     Un_reference = np.array(
-        [0.0+0.j, 0.0+0.0j, 0.08964536+0.03243423j])
+        [0.0 + 0.j, 0.0 + 0.0j, 0.08964536 + 0.03243423j])
 
     Ua_reference = np.array(
-        [1 + 0j, 0.93517937-0.01100169j, 0.82128169-0.05165573j])
+        [1 + 0j, 0.93517937 - 0.01100169j, 0.82128169 - 0.05165573j])
 
     Ub_reference = np.array(
-        [-0.5 - 0.8660254j, -0.5-0.8660254j, -0.55201025-0.8863471j])
+        [-0.5 - 0.8660254j, -0.5 - 0.8660254j, -0.55201025 - 0.8863471j])
 
     Uc_reference = np.array(
-        [-0.5 + 0.8660254j, -0.5+0.86602541j, -0.54491559+0.85163798j])
+        [-0.5 + 0.8660254j, -0.5 + 0.86602541j, -0.54491559 + 0.85163798j])
 
     assert np.allclose(abs(res.voltage_N), abs(Un_reference), atol=1e-4)
     assert np.allclose(abs(res.voltage_A), abs(Ua_reference), atol=1e-4)
