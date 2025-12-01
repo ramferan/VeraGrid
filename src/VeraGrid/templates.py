@@ -11,10 +11,8 @@ from VeraGridEngine.Devices.Branches.line import SequenceLineType, UndergroundLi
 from VeraGridEngine.Devices.Branches.transformer import TransformerType
 from VeraGridEngine.Devices.Branches.wire import Wire
 from VeraGridEngine.Templates.Rms.bus_rms_template import BusRmsTemplate
-from VeraGridEngine.Templates.Rms.generator_0_rms_template import get_generator_rms_template
-from VeraGridEngine.Templates.Rms.generator_1_rms_template import Generator_1_RmsTemplate
-from VeraGridEngine.Templates.Rms.line_0_rms_template import get_line_rms_template
-from VeraGridEngine.Templates.Rms.line_1_rms_template import Line_1_RmsTemplate
+from VeraGridEngine.Templates.Rms.generator_rms_template import get_generator_rms_template
+from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import LoadRmsTemplate
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.IO.veragrid.catalogue import (parse_transformer_types, parse_cable_types, parse_wire_types,
@@ -90,9 +88,6 @@ def get_rms_model_catalogue() -> List[RmsModelTemplate]:
     Here the list of all rms templates must be returned in a list
     :return:
     """
-    return [BusRmsTemplate(),
-            get_generator_rms_template(),
-            Generator_1_RmsTemplate(),
+    return [get_generator_rms_template(),
             get_line_rms_template(),
-            Line_1_RmsTemplate(),
             LoadRmsTemplate()]

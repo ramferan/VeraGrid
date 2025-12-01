@@ -5,31 +5,36 @@
 
 from typing import List, Dict
 
-from VeraGridEngine.Devices.types import ALL_RMS_TEMPLATES_TYPE
 from VeraGridEngine.enumerations import DeviceType
 
+from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Templates.Rms.bus_rms_template import BusRmsTemplate
-from VeraGridEngine.Templates.Rms.generator_0_rms_template import Generator_0_RmsTemplate
-from VeraGridEngine.Templates.Rms.generator_1_rms_template import Generator_1_RmsTemplate
-from VeraGridEngine.Templates.Rms.line_0_rms_template import Line_0_RmsTemplate
-from VeraGridEngine.Templates.Rms.line_1_rms_template import Line_1_RmsTemplate
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import GenqecExcGovSat
+from VeraGridEngine.Templates.Rms.generator_rms_template import get_generator_rms_template
+from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import LoadRmsTemplate
 
 templ_bus = BusRmsTemplate()
 
-templ_gen_0 = Generator_0_RmsTemplate()
-templ_gen_1 = Generator_1_RmsTemplate()
+templ_genqec = GenqecExcGovSat()
 
-templ_line_0 = Line_0_RmsTemplate()
-templ_line_1 = Line_1_RmsTemplate()
+templ_gen_0 = get_generator_rms_template()
+templ_gen_1 = get_generator_rms_template()
+
+templ_line_0 = get_line_rms_template()
+templ_line_1 = get_line_rms_template()
 
 templ_load = LoadRmsTemplate()
 
-Templates: List[ALL_RMS_TEMPLATES_TYPE] = [templ_bus, templ_gen_0, templ_gen_1, templ_line_0, templ_line_1,
-                                           templ_load]
+Templates: List[RmsModelTemplate] = [templ_bus, templ_genqec, templ_gen_0, templ_gen_1, templ_line_0, templ_line_1,
+                                     templ_load]
 
 
-def get_generator_catalogue() -> tuple[List[str], Dict[str, ALL_RMS_TEMPLATES_TYPE]]:
+def get_generator_catalogue() -> tuple[List[str], Dict[str, RmsModelTemplate]]:
+    """
+
+    :return:
+    """
     generator_templ_catalogue = dict()
     generator_templ_list = []
     for templ in Templates:
@@ -40,7 +45,7 @@ def get_generator_catalogue() -> tuple[List[str], Dict[str, ALL_RMS_TEMPLATES_TY
     return generator_templ_list, generator_templ_catalogue
 
 
-def get_bus_catalogue() -> tuple[List[str], Dict[str, ALL_RMS_TEMPLATES_TYPE]]:
+def get_bus_catalogue() -> tuple[List[str], Dict[str, RmsModelTemplate]]:
     bus_templ_catalogue = dict()
     bus_templ_list = []
     for templ in Templates:
@@ -51,7 +56,7 @@ def get_bus_catalogue() -> tuple[List[str], Dict[str, ALL_RMS_TEMPLATES_TYPE]]:
     return bus_templ_list, bus_templ_catalogue
 
 
-def get_line_catalogue() -> tuple[List[str], Dict[str, ALL_RMS_TEMPLATES_TYPE]]:
+def get_line_catalogue() -> tuple[List[str], Dict[str, RmsModelTemplate]]:
     line_templ_catalogue = dict()
     line_templ_list = []
     for templ in Templates:
@@ -62,7 +67,7 @@ def get_line_catalogue() -> tuple[List[str], Dict[str, ALL_RMS_TEMPLATES_TYPE]]:
     return line_templ_list, line_templ_catalogue
 
 
-def get_load_catalogue() -> tuple[List[str], Dict[str, ALL_RMS_TEMPLATES_TYPE]]:
+def get_load_catalogue() -> tuple[List[str], Dict[str, RmsModelTemplate]]:
     load_templ_catalogue = dict()
     load_templ_list = []
     for templ in Templates:

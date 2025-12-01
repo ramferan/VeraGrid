@@ -824,7 +824,8 @@ class SimulationsMain(TimeEventsMain):
             time_step=self.ui.h_spinBox.value(),
             simulation_time=self.ui.sim_time_spinBox.value(),
             tolerance=self.ui.tolerance_rms_spinBox.value(),
-            integration_method=self.ui.rms_int_method_comboBox.currentText()
+            integration_method=self.ui.rms_int_method_comboBox.currentText(),
+            use_init_values=self.ui.rms_use_init_values_checkBox.isChecked()
         )
 
         return ops

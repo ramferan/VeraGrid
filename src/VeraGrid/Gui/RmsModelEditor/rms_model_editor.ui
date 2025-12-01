@@ -125,18 +125,13 @@
        <enum>QFrame::Shadow::Raised</enum>
       </property>
       <layout class="QHBoxLayout" name="horizontalLayout_2">
-       <property name="leftMargin">
-        <number>0</number>
-       </property>
-       <property name="topMargin">
-        <number>0</number>
-       </property>
-       <property name="rightMargin">
-        <number>0</number>
-       </property>
-       <property name="bottomMargin">
-        <number>0</number>
-       </property>
+       <item>
+        <widget class="QPushButton" name="InitGuessButton">
+         <property name="text">
+          <string>Add Initial Values</string>
+         </property>
+        </widget>
+       </item>
        <item>
         <spacer name="horizontalSpacer_3">
          <property name="orientation">

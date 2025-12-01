@@ -17,7 +17,8 @@ class RmsOptions(OptionsTemplate):
                  time_step: float = 0.01,
                  simulation_time: float = 5,
                  tolerance: float = 1e-6,
-                 integration_method: DynamicIntegrationMethod = DynamicIntegrationMethod.BackEuler):
+                 integration_method: DynamicIntegrationMethod = DynamicIntegrationMethod.BackEuler,
+                 use_init_values: bool = False):
         """
         RmsOptions
         :param time_step: time step of the simulations (s)
@@ -33,6 +34,7 @@ class RmsOptions(OptionsTemplate):
         self.time_step: float = time_step
         self.simulation_time: float = simulation_time
         self.tolerance: float = tolerance
+        self.use_init_values: bool = use_init_values
 
 
 
@@ -40,4 +42,5 @@ class RmsOptions(OptionsTemplate):
         self.register(key="time_step", tpe=float)
         self.register(key="simulation_time", tpe=float)
         self.register(key="tolerance", tpe=float)
+        self.register(key="use_init_values", tpe=bool)
 

@@ -2386,6 +2386,10 @@ class VarPowerFlowRefferenceType(Enum):
     NOTHING = "nothing"
     Vm = "Vm"  # Bus voltage module in p.u.
     Va = "Va"  # Bus voltage angle in rad
+    Vmf = "Vm"  # Bus voltage module in p.u.
+    Vaf = "Va"  # Bus voltage angle in rad
+    Vmt = "Vm"  # Bus voltage module in p.u.
+    Vat = "Va"  # Bus voltage angle in rad
     P = "P"  # Bus active power in p.u.
     Q = "Q"  # Bus reactive power in p.u.
     Pf = "Pf"  # Branch active power from in p.u.

@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'rms_model_editor.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.2
+## Created by: Qt User Interface Compiler version 6.7.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -82,7 +82,11 @@ class Ui_MainWindow(object):
         self.frame_2.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout_2 = QHBoxLayout(self.frame_2)
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
-        self.horizontalLayout_2.setContentsMargins(0, 0, 0, 0)
+        self.InitGuessButton = QPushButton(self.frame_2)
+        self.InitGuessButton.setObjectName(u"InitGuessButton")
+
+        self.horizontalLayout_2.addWidget(self.InitGuessButton)
+
         self.horizontalSpacer_3 = QSpacerItem(859, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout_2.addItem(self.horizontalSpacer_3)
@@ -112,6 +116,7 @@ class Ui_MainWindow(object):
         self.model_selector_comboBox.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Select model to apply", None))
         self.currently_editing_block_label.setText(QCoreApplication.translate("MainWindow", u"Submodel:", None))
         self.currently_editing_object_label.setText(QCoreApplication.translate("MainWindow", u"Device:", None))
+        self.InitGuessButton.setText(QCoreApplication.translate("MainWindow", u"Add Initial Values", None))
         self.doItButton.setText(QCoreApplication.translate("MainWindow", u"Do it!", None))
     # retranslateUi
 

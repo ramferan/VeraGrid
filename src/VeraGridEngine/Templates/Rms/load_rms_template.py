@@ -3,52 +3,37 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-import numpy as np
-
-from typing import List
-
-from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, Expr, VarPowerFlowRefferenceType
-from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
 
 
-class LoadRmsTemplate(RmsModelTemplate):
+def LoadRmsTemplate(name: str = "rms_load_template") -> RmsModelTemplate:
+    """
 
-    def __init__(self, name: str = "rms_load_template"):
-        super().__init__(name=name)
+    :param name:
+    :return:
+    """
+    templ = RmsModelTemplate()
 
-        self.tpe: DeviceType = DeviceType.LoadDevice
+    Pl0 = Var("Pl0")
+    Ql0 = Var("Ql0")
 
-        self.Vm: Var = Var('')
-        self.Va: Var = Var('')
+    Ql = Var("Ql")
+    Pl = Var("Pl")
 
-        self.Pl0 = Var("Pl0")
-        self.Ql0 = Var("Ql0")
+    templ.block = Block(
+        algebraic_vars=[Pl, Ql],
+        algebraic_eqs=[
+            Pl - Pl0,
+            Ql - Ql0
+        ],
+        event_dict={Pl0: Const(-0.075000000001172),
+                    Ql0: Const(-0.009999999862208533)},
+        external_mapping={
+            VarPowerFlowRefferenceType.P: Pl,
+            VarPowerFlowRefferenceType.Q: Ql
+        },
+        name=name
+    )
 
-        self.Ql = Var("Ql")
-        self.Pl = Var("Pl")
-
-        self.event_dict = {self.Pl0: Const(-0.075000000001172),
-                                  self.Ql0: Const(-0.009999999862208533)}
-
-    def get_block(self):
-        """
-
-        :return:
-        """
-        block = Block(
-            algebraic_vars=[self.Pl, self.Ql],
-            algebraic_eqs=[
-                self.Pl - self.Pl0,
-                self.Ql - self.Ql0
-            ]
-        )
-
-        block.event_dict = self.event_dict
-        block.external_mapping={
-                VarPowerFlowRefferenceType.P: self.Pl,
-                VarPowerFlowRefferenceType.Q: self.Ql
-            }
-
-        return block
+    return templ

@@ -294,11 +294,11 @@ class Block:
                  parameters: Dict[str, Const] | None = None,
                  init_eqs: Dict[Var, Expr] | None = None,
                  children: List["Block"] | None = None,
-                 in_vars: Dict[str, Var] | None = None,
-                 out_vars: Dict[str, Var] | None = None):
-
-        # ,
-        # external_mapping: Dict[VarPowerFlowRefferenceType, Var] | None = None
+                 in_vars: List[Var] | None = None,
+                 out_vars: List[Var] | None = None,
+                 event_dict: Dict[Var, Expr] | None = None,
+                 external_mapping: Dict[VarPowerFlowRefferenceType, Var] | None = None,
+                 name: str = ""):
         """
         This represents a group of equations or a group of blocks
 
@@ -310,19 +310,20 @@ class Block:
         :param in_vars: List of variables from other blocks that we use here
         :param out_vars: List of variables that already exist in algebraic_vars or state_vars that we want to expose
         :param init_eqs: List of equations that help initializing the block variables (algebraic and state)
+        :param event_dict: Dictionary of parameters that can change during the simulations
+        :param external_mapping: Dictionary of vars that are related to the Power flow initialization
+        :param name: name of the block
         """
 
-        self.name: str = ""
+        self.name: str = name
 
         self.uid: int = _new_uid()
         self.vars2device: Dict[int, PhysicalDevice] = dict()
         self.vars_glob_name2uid: Dict[str, int] = dict()
 
-        # TODO: Change to dictionary of Var : Expr
         self.state_vars: List[Var] = list() if state_vars is None else state_vars
         self.state_eqs: List[Expr] = list() if state_eqs is None else state_eqs
 
-        # TODO: Change to dictionary of Var : Expr
         self.algebraic_vars: List[Var] = list() if algebraic_vars is None else algebraic_vars
         self.algebraic_eqs: List[Expr] = list() if algebraic_eqs is None else algebraic_eqs
 
@@ -332,30 +333,52 @@ class Block:
         # vars to make this recursive
         self.children: List["Block"] = list() if children is None else children
 
-        self.in_vars: Dict[str, Var] = dict() if in_vars is None else in_vars
-        self.out_vars: Dict[str, Var] = dict() if out_vars is None else out_vars
+        self.in_vars: List[Var] = list() if in_vars is None else in_vars
+        self.out_vars: List[Var] = list() if out_vars is None else out_vars
 
         self.parameters: Dict[str, Const] = dict() if parameters is None else parameters
 
-        self.external_mapping: Dict[VarPowerFlowRefferenceType, Var] = dict()
+        self.external_mapping: Dict[
+            VarPowerFlowRefferenceType, Var] = dict() if external_mapping is None else external_mapping
+
+        # initialization
+        self.init_values: Dict[Var, Const] = dict()
 
         # fix vars will disappear when the exciter and governor models are decoupled from generator
         self.fix_vars: List[UndefinedConst] = list()
         self.fix_vars_eqs: Dict[Any, Expr] = dict()
 
-        # ---------------------------------------------------------------------------------------------------------------
         self.var_mapping = {v.name: v for v in self.algebraic_vars}
 
         # Dictionary of Variables and their Expressions that appear due to an event
         # this is the dictionary of "parameters" that may change and their equations
-        self.event_dict: Dict[Var, Expr] = dict()
+        self.event_dict: Dict[Var, Expr] = dict() if event_dict is None else event_dict
+
+    def check_empty(self) -> bool:
+        """
+
+        :return:
+        """
+        return (len(self.state_vars) + len(self.algebraic_vars)) == 0
 
     def empty(self) -> bool:
         """
 
         :return:
         """
-        return (len(self.state_vars) + len(self.algebraic_vars)) == 0
+        if not self.children:
+            empty = self.check_empty()
+            if empty:
+                return empty
+        else:
+            empty = self.check_empty()
+            if not empty:
+                return empty
+
+            for child in self.children:
+                child.empty()
+
+        return False
 
     def E(self, d: VarPowerFlowRefferenceType) -> Var:
         """
@@ -414,10 +437,25 @@ class Block:
         """
         return self.algebraic_vars + self.state_vars
 
+    def get_all_vars(self):
+        """
+
+        :return:
+        """
+        variables: List[Var] = list()
+        all_blocks = self.get_all_blocks()
+        for blk in all_blocks:
+            variables.extend(blk.get_vars())
+        return variables
+
     def to_dict(self) -> Dict[str, Any]:
+        """
+
+        :return:
+        """
         return {
             "uid": self.uid,
-            "vars2device": {var_uid: dev.uid for var_uid, dev in self.vars2device.items()},
+            "vars2device": {var_uid: dev.idtag for var_uid, dev in self.vars2device.items()},
             "vars_glob_name2uid": self.vars_glob_name2uid,
             "state_vars": _serialize_var_list(self.state_vars),
             "state_eqs": _serialize_expr_list(self.state_eqs),
@@ -426,6 +464,14 @@ class Block:
             "init_eqs": [
                 {"var": var.to_dict(), "expr": expr.to_dict()}
                 for var, expr in self.init_eqs.items()
+            ],
+            "init_values": [
+                {"var": var.to_dict(), "value": value.value}
+                for var, value in self.init_values.items()
+            ],
+            "parameters": [
+                {"name": name, "value": value.value}
+                for name, value in self.parameters.items()
             ],
             "fix_vars": _serialize_undefinedconst_list(self.fix_vars),
             "fix_vars_eqs": [
@@ -439,17 +485,24 @@ class Block:
             ],
             "name": self.name,
             "children": [child.to_dict() for child in self.children],
-            "in_vars": [{"number": number, "var": var.to_dict()} for number, var in self.in_vars.items()],
-            "out_vars": [{"number": number, "var": var.to_dict()} for number, var in self.out_vars.items()]
+            "in_vars": [var.to_dict() for var in self.in_vars],
+            "out_vars": [var.uid for var in self.out_vars]
         }
 
     @staticmethod
     def parse(data: Dict[str, Any]) -> "Block":
+        """
+
+        :param data:
+        :return:
+        """
         state_vars = _deserialize_var_list(data.get("state_vars", []))
         state_eqs = _deserialize_expr_list(data.get("state_eqs", []))
         algebraic_vars = _deserialize_var_list(data.get("algebraic_vars", []))
         algebraic_eqs = _deserialize_expr_list(data.get("algebraic_eqs", []))
         children = [Block.parse(child) for child in data.get("children", [])]
+
+        algebraic_vars_dict = {v.uid: v for v in algebraic_vars}
 
         block = Block(
             state_vars=state_vars,
@@ -458,14 +511,13 @@ class Block:
             algebraic_eqs=algebraic_eqs,
             init_eqs={},
             children=children,
+            name=data.get("name", "")
         )
 
         block.uid = int(data.get("uid", block.uid))
-        block.name = data.get("name", "")
         block.vars_glob_name2uid = data.get("vars_glob_name2uid", {})
         block.vars2device = {int(k): v for k, v in data.get("vars2device", {}).items()}
 
-        block.init_eqs = {}
         for pair in data.get("init_eqs", []):
             var_dict = pair["var"]
             expr_dict = pair["expr"]
@@ -473,10 +525,22 @@ class Block:
             expr = Expr.from_dict(expr_dict)
             block.init_eqs[var] = expr
 
+        for pair in data.get("init_values", []):
+            var_dict = pair["var"]
+            value = pair["value"]
+            var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
+            const_value = Const(value)
+            block.init_values[var] = const_value
+
+        for pair in data.get("parameters", []):
+            name = pair["name"]
+            value = pair["value"]
+            const_value = Const(value)
+            block.init_values[name] = const_value
+
         fv_list = _deserialize_var_list(data.get("fix_vars", []))
         block.fix_vars = [v for v in fv_list if isinstance(v, UndefinedConst)]
 
-        block.fix_vars_eqs = {}
         undef_by_uid = {getattr(u, "uid", None): u for u in block.fix_vars}
         for item in data.get("fix_vars_eqs", []):
             uid = item.get("uid")
@@ -489,18 +553,11 @@ class Block:
                 block.fix_vars_eqs[new_undef] = expr
                 block.fix_vars.append(new_undef)
 
-        block.external_mapping = {}
         for key_str, var_dict in data.get("external_mapping", {}).items():
-            try:
-                key = VarPowerFlowRefferenceType[
-                    key_str] if key_str in VarPowerFlowRefferenceType.__members__ else VarPowerFlowRefferenceType(
-                    key_str)
-            except Exception:
-                key = key_str
+            key = VarPowerFlowRefferenceType(key_str)
             var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
             block.external_mapping[key] = var
 
-        block.event_dict = {}
         for pair in data.get("event_dict", []):
             var_dict = pair["var"]
             expr_dict = pair["expr"]
@@ -508,19 +565,16 @@ class Block:
             expr = Expr.from_dict(expr_dict)
             block.event_dict[var] = expr
 
-        block.in_vars = {}
         for pair in data.get("in_vars", []):
-            number = pair["number"]
-            var_dict = pair["var"]
-            var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
-            block.in_vars[number] = var
 
-        block.out_vars = {}
-        for pair in data.get("out_vars", []):
-            number = pair["number"]
             var_dict = pair["var"]
             var = Var(name=var_dict["name"], uid=var_dict.get("uid"))
-            block.out_vars[number] = var
+            block.in_vars.append(var)
+
+        for pair in data.get("out_vars", []):
+            var_dict = pair["var"]
+            uid = var_dict.get("uid")
+            block.out_vars.append(algebraic_vars_dict[uid])
 
         block.var_mapping = {v.name: v for v in block.algebraic_vars}
         return block
@@ -532,7 +586,12 @@ class Block:
         """
         return Block.parse(data=self.to_dict())
 
-    def __eq__(self, other):
+    def __eq__(self, other: "Block") -> bool:
+        """
+        Equality check
+        :param other: another block
+        :return: True / False
+        """
         if isinstance(other, Block):
             return self.to_dict() == other.to_dict()
         else:
@@ -540,11 +599,13 @@ class Block:
 
 
 class DiffBlock(Block):
-    diff_vars: List[DiffVar]
-    lag_vars: List[LagVar]
-    reformulated_vars: List[DiffVar]
-    differential_eqs: List[Expr]
-    pseudo_transient: bool = False
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.diff_vars: List[DiffVar] = []
+        self.lag_vars: List[LagVar] = []
+        self.reformulated_vars: List[DiffVar] = []
+        self.differential_eqs: List[Expr] = []
 
     @classmethod
     def from_block(cls, block: Block, **kwargs):
@@ -570,32 +631,46 @@ class DiffBlock(Block):
 # ----------------------------------------------------------------------------------------------------------------------
 
 def constant(item_name: str = "") -> Block:
+    """
+
+    :param item_name:
+    :return:
+    """
     name: str = "const_"
     y = Var(name + item_name)
     param = Var("param_" + item_name)
 
-    blk = Block(algebraic_vars=[y], algebraic_eqs=[y - param])
-    blk.event_dict[param] = Const(0.0)
-    blk.in_vars = dict()
-    blk.out_vars[str(0)] = y
-    blk.name = "const"
+    blk = Block(
+        algebraic_vars=[y],
+        algebraic_eqs=[y - param],
+        out_vars=[y],
+        event_dict={param: Const(0.0)},
+        name="const"
+    )
+
     return blk
 
 
 def gain(item_name: str = "") -> Block:
+    """
+
+    :param item_name:
+    :return:
+    """
     inputs = [Var("inp_num_" + item_name)]
     name: str = "gain"
     y = Var(name + item_name)
     gain_param = Var("gain_param_" + item_name)
-    in_vars_dict: Dict[str, Var] = dict()
-    for i, inpt in enumerate(inputs):
-        in_vars_dict[str(i)] = inpt
+
     expr: Expr = gain_param * inputs[0]
-    blk = Block(algebraic_vars=[y], algebraic_eqs=[y - expr])
-    blk.event_dict[gain_param] = Const(0.0)
-    blk.in_vars = in_vars_dict
-    blk.out_vars[str(0)] = y
-    blk.name = "gain"
+    blk = Block(
+        algebraic_vars=[y],
+        algebraic_eqs=[y - expr],
+        out_vars=[y],
+        in_vars=inputs,
+        event_dict={gain_param: Const(0.0)},
+        name="gain"
+    )
     return blk
 
 
@@ -617,77 +692,118 @@ def equation(expr: str = 'expression', etype: str = "etype") -> Block:
 
 
 def adder(item_name: str = "") -> Block:
+    """
+
+    :param item_name:
+    :return:
+    """
     inputs = [Var("sum_in_1_" + item_name),
               Var("sum_in_2_" + item_name)]  # will not be specified if inputs can be more than 2
     y = Var("sum_out_" + item_name)
-    in_vars_dict: Dict[str, Var] = dict()
+
     expr: Expr = inputs[0]
     for i, inpt in enumerate(inputs):
-        in_vars_dict[str(i)] = inpt
         if i > 0:
             expr += inpt
-    blk = Block(algebraic_vars=[y], algebraic_eqs=[y - expr])
-    blk.in_vars = in_vars_dict
-    blk.out_vars[str(0)] = y
-    blk.name = "sum"
+
+    blk = Block(
+        algebraic_vars=[y],
+        algebraic_eqs=[y - expr],
+        in_vars=inputs,
+        out_vars=[y],
+        name="sum"
+    )
+
     return blk
 
 
 def substract(item_name: str = "") -> Block:
+    """
+
+    :param item_name:
+    :return:
+    """
     inputs = [Var("minuend_" + item_name), Var("subtrahend_" + item_name)]
     y = Var("difference_" + item_name)
-    in_vars_dict: Dict[str, Var] = dict()
+
     expr: Expr = inputs[0] - inputs[1]
-    for i, inpt in enumerate(inputs):
-        in_vars_dict[str(i)] = inpt
-    blk = Block(algebraic_vars=[y], algebraic_eqs=[y - expr])
-    blk.in_vars = in_vars_dict
-    blk.out_vars[str(0)] = y
-    blk.name = "substraction"
+
+    blk = Block(
+        algebraic_vars=[y],
+        algebraic_eqs=[y - expr],
+        in_vars=inputs,
+        out_vars=[y],
+        name="substraction"
+    )
+
     return blk
 
 
 def product(item_name: str = "") -> Block:
+    """
+
+    :param item_name:
+    :return:
+    """
     inputs = [Var("factor1_" + item_name),
               Var("factor2_" + item_name)]  # will not be specified if inputs can be more than 2
     y = Var("product_out_" + item_name)
-    in_vars_dict: Dict[str, Var] = dict()
+
     expr: Expr = inputs[0] * inputs[1]
-    for i, inpt in enumerate(inputs):
-        in_vars_dict[str(i)] = inpt
-    blk = Block(algebraic_vars=[y], algebraic_eqs=[y - expr])
-    blk.in_vars = in_vars_dict
-    blk.out_vars[str(0)] = y
-    blk.name = "product"
+
+    blk = Block(
+        algebraic_vars=[y],
+        algebraic_eqs=[y - expr],
+        in_vars=inputs,
+        out_vars=[y],
+        name="product"
+    )
+
     return blk
 
 
 def divide(item_name: str = "") -> Block:
+    """
+
+    :param item_name:
+    :return:
+    """
     inputs = [Var("divident_" + item_name),
               Var("divisor_" + item_name)]  # will not be specified if inputs can be more than 2
     y = Var("quotient_" + item_name)
-    in_vars_dict: Dict[str, Var] = dict()
+
     expr: Expr = inputs[0] / inputs[1]
-    for i, inpt in enumerate(inputs):
-        in_vars_dict[str(i)] = inpt
-    blk = Block(algebraic_vars=[y], algebraic_eqs=[y - expr])
-    blk.in_vars = in_vars_dict
-    blk.out_vars[str(0)] = y
-    blk.name = "divide"
+
+    blk = Block(
+        algebraic_vars=[y],
+        algebraic_eqs=[y - expr],
+        in_vars=inputs,
+        out_vars=[y],
+        name="divide"
+    )
+
     return blk
 
 
 def absolut(item_name: str = "") -> Block:
+    """
+
+    :param item_name:
+    :return:
+    """
     inputs = [Var("inp_num_" + item_name)]  # will not be specified if inputs can be more than 2
     y = Var("absolut_" + item_name)
-    in_vars_dict: Dict[str, Var] = dict()
+
     expr: Expr = abs(inputs[0])
-    for i, inpt in enumerate(inputs):
-        in_vars_dict[str(i)] = inpt
-    blk = Block(algebraic_vars=[y], algebraic_eqs=[y - expr])
-    blk.in_vars = in_vars_dict
-    blk.out_vars[str(0)] = y
-    blk.name = "abs"
+
+    blk = Block(
+        algebraic_vars=[y],
+        algebraic_eqs=[y - expr],
+        in_vars=inputs,
+        out_vars=[y],
+        name="abs"
+    )
+
     return blk
 
 
@@ -708,742 +824,51 @@ def pi_controller(err: Var, kp: float, ki: float, name: str = "pi") -> Block:
                  out_vars=[u])
 
 
-class GenqecBuild:
-    def __init__(self, name: str = ""):
-        self.name: str = name
-
-    def genqec(self) -> Block:
-        """
-         generator with quadratic saturation
-        """
-        # Inputs
-        # Vm: Bus voltage module
-        # Va: Bus voltage angle
-        # Tm: mechanical torque (from governor)
-        # Vf: excitation voltage (from exciter)
-
-        inputs: List[Var] = [Var("Vm_" + self.name), Var("Va" + self.name), Var("Tm_" + self.name),
-                             Var("Vf_" + self.name)]
-
-        in_vars_dict: Dict[str, Var] = dict()
-        for i, inpt in enumerate(inputs):
-            in_vars_dict[str(i)] = inpt
-
-        # ______________________________________________________________________________________
-        #                                    variables
-        # ______________________________________________________________________________________
-
-        # Saturation factors
-        Sat_d = Var('Sat_d' + self.name)
-        Sat_q = Var('Sat_q' + self.name)
-
-        # States
-        delta = Var("delta" + self.name)  # rotor angle
-        omega = Var("omega" + self.name)  # rotor electrical speed
-        Eq1 = Var("Eq1" + self.name)  # internal emf behind Xd'
-        Ed1 = Var("Ed1" + self.name)
-        Eq2 = Var("Eq2" + self.name)
-        Ed2 = Var("Ed2" + self.name)
-        Eq_prime = Var("Eq_prime" + self.name)  # transient voltage q-axis
-        Ed_prime = Var("Ed_prime" + self.name)  # transient voltage d-axis
-        Eq_2prime = Var("Eq_2prime" + self.name)  # subtransient voltage q-axis
-        Ed_2prime = Var("Ed_2prime" + self.name)  # subtransient voltage d-axis
-
-        # Algebraic variables
-        Id = Var("Id" + self.name)
-        Iq = Var("Iq" + self.name)
-        Vd = Var("Vd" + self.name)
-        Vq = Var("Vq" + self.name)
-        Psid = Var("Psid" + self.name)
-        Psiq = Var("Psiq" + self.name)
-        Te = Var("Te" + self.name)
-
-        IRPu = Var("IRPu")
-
-        # Saturated resistances
-        Xd_sat = Var('Xd_sat' + self.name)
-        Xq_sat = Var('Xq_sat' + self.name)
-        Xd_prime_sat = Var('Xd_prime_sat' + self.name)
-        Xq_prime_sat = Var('Xq_prime_sat' + self.name)
-        Xd_2prime_sat = Var('Xd_2prime_sat' + self.name)
-        Xq_2prime_sat = Var('Xq_2prime_sat' + self.name)
-        Ed2_coef = Var('Ed2_coef' + self.name)
-        Eq2_coef = Var('Eq2_coef' + self.name)
-
-        # Vg = Var('Vg')
-        # dg = Var('dg')
-        Pg = Var('Pg' + self.name)
-        Qg = Var('Qg' + self.name)
-
-        Sa = Var('Sa')
-        V_qag = Var('V_qag')
-        V_dag = Var('V_dag')
-        Psi_ag = Var('Psi_ag')
-
-        # ______________________________________________________________________________________
-        #                                    parameters
-        # ______________________________________________________________________________________
-        fn = Var('fn')  # system frequency [Hz]
-        ws = Var('ws')  # synchronous speed [rad/s]
-        M = Var('M')  # inertia constant
-        D = Var('D')  # damping (optional)
-        Rs = Var('Rs')  # stator resistance
-        Ra = Var('Ra')  # armature resistance (if distinct)
-
-        # Reactances
-        Xd = Var('Xd')
-        Xq = Var('Xq')
-        Xd_prime = Var('Xd_prime')
-        Xq_prime = Var('Xq_prime')
-        Xd_2prime = Var('Xd_2prime')
-        Xq_2prime = Var('Xq_2prime')
-        Xl = Var('Xl')
-
-        # Time constants
-        Td0_prime = Var('Td0_prime')
-        Tq0_prime = Var('Tq0_prime')
-        Td0_2prime = Var('Td0_2prime')
-        Tq0_2prime = Var('Tq0_2prime')
-
-        A = Var('A')
-        B = Var("B")
-
-        event_dict = {
-            fn: Const(50.0),
-            ws: Const(1.0),
-            M: Const(3.5),
-            D: Const(10.0),
-            Rs: Const(0.003),
-            Ra: Const(0.003),
-
-            # Reactances
-            Xd: Const(1.8),
-            Xq: Const(1.7),
-            Xd_prime: Const(0.3),
-            Xq_prime: Const(0.55),
-            Xd_2prime: Const(0.25),
-            Xq_2prime: Const(0.25),
-            Xl: Const(0.15),
-
-            # Time constants
-            Td0_prime: Const(8.0),
-            Tq0_prime: Const(0.4),
-            Td0_2prime: Const(0.03),
-            Tq0_2prime: Const(0.05),
-
-            A: Const(5.0),
-            B: Const(1.0)
-        }
-
-        generator_block = Block(
-            state_eqs=[
-                (omega - Const(1)) * ws,  # dδ/dt
-                (inputs[2] - Te - D * (omega - Const(1))) * (1 / M),  # dω/dt
-                inputs[3] / Td0_prime - Sat_q * Eq1 / Td0_prime,  # dEq'/dt
-                -Sat_q * Ed1 / Tq0_prime,  # dEd'/dt
-                Eq2_coef * (-Eq2),  # dEq''/dt
-                Ed2_coef * (-Ed2),  # dEd''/dt
-            ],
-            state_vars=[delta, omega, Eq_prime, Ed_prime, Eq_2prime, Ed_2prime],
-            algebraic_eqs=[
-                Vd - (-inputs[2] * sin(inputs[3] - delta)),  # from input block
-                Vq - (inputs[2] * cos(inputs[3] - delta)),  # from input block
-                Pg - (Vd * Id + Vq * Iq),  # from input block
-                Qg - (Vq * Id - Vd * Iq),  # from input block
-                Vd - (omega * Ed_2prime + Iq * Xq_2prime_sat - Id * Ra),
-                Vq - (omega * Eq_2prime - Id * Xd_2prime_sat - Iq * Ra),
-                Psid - (Eq_prime - Id * Xd_2prime_sat),
-                Psiq - (-Ed_prime - Iq * Xq_2prime_sat),
-                Te - (Psid * Iq - Psiq * Id),
-                (Xd_sat - Xd_prime_sat) * Eq1 - (
-                        (Xd_sat - Xd_prime_sat) * Eq_2prime + (Eq_prime - Eq_2prime) * (Xd_sat - Xd_2prime_sat)),
-                # Eq1 definition
-                (Xq_sat - Xq_prime_sat) * Ed1 - (
-                        (Xq_sat - Xq_prime_sat) * Ed_2prime + (Ed_prime - Ed_2prime) * (Xq_sat - Xq_2prime_sat)),
-                # Ed1 definition
-                (Xd_sat - Xd_2prime_sat) * Eq2 - (-1) * (
-                        (Eq_prime - Eq_2prime) * (Xd_sat - Xd_prime_sat) + Id * (Xd_sat - Xd_2prime_sat) ** 2),
-                # Ed2 definition
-                (Xq_sat - Xq_2prime_sat) * Ed2 - (-1) * (
-                        (Ed_prime - Ed_2prime) * (Xq_sat - Xq_prime_sat) + Iq * (Xq_sat - Xq_2prime_sat) ** 2),
-                # Eq2 definition
-                Eq2_coef * (Tq0_2prime * (Xq_sat - Xq_2prime_sat)) - (Xq_prime_sat - Xq_2prime_sat) * Sat_q,
-                Ed2_coef * (Td0_2prime * (Xd_sat - Xd_2prime_sat)) - (Xd_prime_sat - Xd_2prime_sat) * Sat_d,
-                # saturated resistance
-                Sat_d * Xd_2prime_sat - (Xd_2prime - Xl + Xl * Sat_d),
-                Sat_q * Xq_2prime_sat - (Xq_2prime - Xl + Xl * Sat_q),
-                Sat_d * Xd_prime_sat - (Xd_prime - Xl + Xl * Sat_d),
-                Sat_q * Xq_prime_sat - (Xq_prime - Xl + Xl * Sat_q),
-                Sat_d * Xd_sat - (Xd - Xl + Xl * Sat_d),
-                Sat_q * Xq_sat - (Xq - Xl + Xl * Sat_q),
-                # flux
-                V_dag - (Vd - Ra * Id + Xq_2prime_sat * Iq + Iq * Ra + Id * Xl),
-                V_qag - (Vq - Ra * Iq + Xd_2prime_sat * Id + Id * Ra - Iq * Xl),
-                (omega) * Psi_ag - (ws) * sqrt(V_qag * V_qag + V_dag * V_dag),
-                Sat_d - (Const(1) + Sa),
-                Sat_q - (Const(1) + Sa),
-                # saturations (quadratic)
-                Sa - A * ((Psi_ag - B) + sqrt((Psi_ag - B) ** 2 + Const(1e-4))),
-                IRPu - Eq1 * (1 + Sa)
-            ],
-            algebraic_vars=[Vd, Vq, Psid, Psiq, Ed2_coef, Eq2_coef, Te, Ed1, Eq1, Ed2, Eq2, Id, Iq,
-                            # saturated resistance
-                            Xq_sat, Xd_sat, Xq_prime_sat, Xd_prime_sat, Xq_2prime_sat, Xd_2prime_sat,
-                            # flux
-                            Sa, V_dag, V_qag, Sat_d, Sat_q, Psi_ag,
-                            IRPu],
-            init_eqs={
-                omega: Const(0),
-                V_dag: inputs[0] * sin(inputs[1]) + imag(
-                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
-                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
-                V_qag: inputs[0] * cos(inputs[1]) + real(
-                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
-                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Xl,
-                Psi_ag: sqrt(V_dag ** 2 + V_qag ** 2),
-                Sa: A * (Psi_ag - B) ** 2,
-                delta: atan(
-                    (inputs[0] * sin(inputs[1]) + imag(
-                        conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + real(
-                        conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
-                     ((Xq - Xl) / (Const(1) + Sa) + Xl)) /
-                    (inputs[0] * cos(inputs[1]) + real(
-                        conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * Ra + imag(
-                        conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) *
-                     ((Xq - Xl) / (Const(1) + Sa) + Xl))),
-                Vd: (inputs[0] * sin(delta - inputs[1])),
-                Vq: (inputs[0] * cos(delta - inputs[1])),
-                Id: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta) - real(
-                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta),
-                Iq: real(conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * cos(delta) + real(
-                    conj(Pg + 1j * Qg) / conj(inputs[0] * exp(1j * inputs[1]))) * sin(delta),
-                Ed_prime: (Xq - Xq_prime) * Iq / (Const(1) + Sa),
-                Eq_prime: Ed_prime + (Xq_prime - Xl) * (Iq / (Const(1) + Sa)) + (Xq_prime - Xl) * (
-                        Iq / (Const(1) + Sa)),
-                Eq_2prime: Vd,
-                Ed_2prime: Vq,
-            })
-
-        generator_block.external_mapping = {
-            VarPowerFlowRefferenceType.P: Pg,
-            VarPowerFlowRefferenceType.Q: Qg,
-        }
-        generator_block.name = "genqec"
-        generator_block.event_dict = event_dict
-        generator_block.in_vars = in_vars_dict
-        generator_block.out_vars[str(0)] = Pg
-        generator_block.out_vars[str(1)] = Qg
-        generator_block.out_vars[str(2)] = omega
-        generator_block.out_vars[str(3)] = IRPu
-
-        return generator_block
-
-
-class GovernorBuild:
-    def __init__(self, name: str = ""):
-        self.name: str = name
-
-        self.parameters = {
-            # Time constants
-            "T1": Const(1.0),  # governor time constant (s)
-            "T2": Const(1.0),  # reheater time constant (s)
-            "T3": Const(10.0),  # crossover time constant (s)
-            "T4": Const(0.2),  # lead/lag constant (s)
-            "T5": Const(0.5),  # lead/lag constant (s)
-            "T6": Const(0.1),  # lead/lag constant (s)
-            "T7": Const(0.05),  # lead/lag constant (s)
-
-            # Steam fractions (distribution factors)
-            "K1": Const(0.5),
-            "K2": Const(0.5),
-            "K3": Const(0.0),
-            "K4": Const(0.0),
-            "K5": Const(0.0),
-            "K6": Const(0.0),
-            "K7": Const(0.0),
-            "K8": Const(0.0),
-        }
-
-    def governor(self) -> Block:
-        """
-            governor model with no load control and with no free reference
-        """
-
-        # Inputs
-        # omega: omega (from generator)
-
-        inputs = [Var("omega_" + self.name)]
-
-        in_vars_dict: Dict[str, Var] = dict()
-        for i, inpt in enumerate(inputs):
-            in_vars_dict[str(i)] = inpt
-
-        # ______________________________________________________________________________________
-        #                                    variables
-        # ______________________________________________________________________________________
-
-        Tm = Var("Tm")  # Mechanical power input (pu
-        et = Var("et")
-        algebraic_eqs = []
-        algebraic_vars = []
-
-        # ______________________________________________________________________________________
-        #                                    parameters
-        # ______________________________________________________________________________________
-
-        # Time constants
-        T1 = Const(1.0)  # governor time constant (s)
-        T2 = Const(1.0)  # reheater time constant (s)
-        T3 = Const(10.0)  # crossover time constant (s)
-        T4 = Const(0.2)  # lead/lag constant (s)
-        T5 = Const(0.5)  # lead/lag constant (s)
-        T6 = Const(0.1)  # lead/lag constant (s)
-        T7 = Const(0.05)  # lead/lag constant (s)
-
-        # Steam fractions (distribution factors)
-        K1 = Const(0.5)
-        K2 = Const(0.5)
-        K3 = Const(0.0)
-        K4 = Const(0.0)
-        K5 = Const(0.0)
-        K6 = Const(0.0)
-        K7 = Const(0.0)
-        K8 = Const(0.0)
-
-        # Gains and limits
-        K = Var("K")  # governor gain (inverse droop)
-        Pmax = Var("Pmax")  # max mechanical power (pu)
-        Pmin = Var("Pmin")  # min mechanical power (pu)
-        Uc = Var("Uc")  # max valve closing rate (pu/s)
-        Uo = Var("Uo")  # max valve opening rate (pu/s)
-        T_aux = Var("T_aux")
-
-        # Control
-        Kp = Var("Kp")
-        Ki = Var("Ki")
-        omega_ref = Var('omega_ref')
-        p0 = Var('p0')
-        P0 = Var('P0')
-
-        # reference
-        Pm_ref = Var('Pm_ref')
-
-        events_dict = {
-            # control parameters
-            Kp: Const(-0.01),
-            Ki: Const(-0.01),
-            p0: Const(1.0),
-            P0: Const(0.01),
-            omega_ref: Const(1),
-
-            # Governor parameters
-            K: Const(10.0),  # governor gain (inverse droop)
-            Pmax: Const(2.0),  # max mechanical power (pu)
-            Pmin: Const(0.0),  # min mechanical power (pu)
-            Uc: Const(-0.1),  # max valve closing rate (pu/s)
-            Uo: Const(0.1),  # max valve opening rate (pu/s)
-            T_aux: Const(0.0),
-
-            # reference
-            Pm_ref: Const(0.0963287180659294)
-        }
-        controller_block = Block(
-            state_eqs=[
-                P0 * (inputs[0] - omega_ref)
-            ],
-            state_vars=[et],
-            algebraic_eqs=[
-                T_aux - (Kp * (inputs[0] - omega_ref) + Ki * et),
-            ],
-            algebraic_vars=[T_aux],
-        )
-
-        u1 = inputs[0] - omega_ref
-        lead_lag_block, y1 = tf_to_diffblock(
-            num=np.array([1, self.parameters["T2"]]),
-            den=np.array([1, self.parameters["T1"]]),
-            x=u1,
-            name='gov0',
-        )
-
-        # ==============================
-        # First Feed back Loop
-        y2_3 = Var('y2_3_gov')
-        algebraic_vars.append(y2_3)
-        x2 = Pm_ref - K * y1 - y2_3
-
-        y2 = x2 * (1 / self.parameters["T3"])
-        y2_1 = hard_sat(y2, Uc, Uo)
-        tf1, y2_2 = tf_to_diffblock(
-            num=np.array([1]),
-            den=np.array([0, 1]),
-            x=y2_1,
-            name='gov1',
-        )
-        algebraic_eqs.append(y2_3 - hard_sat(y2_2, Pmin, Pmax))
-
-        # ==============================
-        # We compute different outputs for every tf
-        tf2, y3_1 = tf_to_diffblock(
-            num=np.array([1]),
-            den=np.array([1, self.parameters["T4"]]),
-            x=y2_3,
-            name='gov2',
-        )
-        tf3, y3_2 = tf_to_diffblock(
-            num=np.array([1]),
-            den=np.array([1, self.parameters["T5"]]),
-            x=y3_1,
-            name='gov3',
-        )
-        tf4, y3_3 = tf_to_diffblock(
-            num=np.array([1]),
-            den=np.array([1, self.parameters["T6"]]),
-            x=y3_2,
-            name='gov4',
-        )
-        tf5, y3_4 = tf_to_diffblock(
-            num=np.array([1]),
-            den=np.array([1, self.parameters["T7"]]),
-            x=y3_3,
-            name='gov5',
-        )
-
-        u = self.parameters["K1"] * y3_1 + self.parameters["K2"] * y3_2 + self.parameters["K3"] * y3_3 + \
-            self.parameters["K4"] * y3_4 + T_aux
-        aux_block = Block(
-            algebraic_eqs=[u - Tm] + algebraic_eqs,
-            algebraic_vars=[Tm] + algebraic_vars,
-        )
-
-        governor_block = Block(
-            children=[lead_lag_block, tf1, tf2, tf3, tf4, tf5, aux_block, controller_block]
-        )
-
-        governor_block.name = "governor"
-
-        governor_block.event_dict = events_dict
-
-        governor_block.parameters = self.parameters
-
-        governor_block.out_vars[str(0)] = Tm
-
-        governor_block.in_vars = in_vars_dict
-
-        return governor_block
-
-
-class StabilizerBuild:
-    def __init__(self, name: str = ""):
-        self.name: str = name
-
-        self.parameters = {
-            # Stabilizer parameters
-            "A1": Const(1.0),  # notch filter coefficient 1
-            "A2": Const(1.0),  # notch filter coefficient 2
-            "t1": Const(0.1),  # lead time constant
-            "t2": Const(0.02),  # lag time constant
-            "t3": Const(0.02),  # lag time constant
-            "t4": Const(0.1),  # second lag time constant
-            "t5": Const(10.0),  # washout time constant
-            "t6": Const(0.02),  # transducer time constant
-        }
-
-    def stabilizer(self):
-        """
-           stabilizer model
-        """
-
-        # input variables
-        # omega: omega from generator
-
-        inputs = [Var("omega_" + self.name)]
-
-        in_vars_dict: Dict[str, Var] = dict()
-        for i, inpt in enumerate(inputs):
-            in_vars_dict[str(i)] = inpt
-
-        # PSS parameters with typical values
-
-        Ks = Var("Ks")  # stabilizer gain
-        VPssMaxPu = Var("VPssMaxPu")  # max stabilizer output
-        VPssMinPu = Var("VPssMinPu")  # min stabilizer output
-        SNom = Var("SNom")  # nominal apparent power
-
-        events_dict = {
-            # Stabilizer parameters
-            Ks: Const(20.0),  # stabilizer gain
-            VPssMaxPu: Const(1.0),  # max stabilizer output
-            VPssMinPu: Const(-1.0),  # min stabilizer output
-            SNom: Const(1.0),  # nominal apparent power
-        }
-
-        # variables
-        Vpss = Var('V_pss')
-
-        vars_block = Block(
-            algebraic_vars=[],
-        )
-
-        tf, y = tf_to_diffblock_with_states(
-            num=np.array([1.0]),
-            den=np.array([1, self.parameters["t6"]]),
-            x=inputs[0],
-            name='stabilizer1',
-        )
-
-        tf2, y2 = tf_to_diffblock_with_states(
-            num=np.array([0, self.parameters["t5"]]),
-            den=np.array([1, self.parameters["t5"]]),
-            x=Ks * y,
-            name='stabilizer2',
-        )
-        tf3, y3 = tf_to_diffblock_with_states(
-            num=np.array([1]),
-            den=np.array([1, self.parameters["A1"], self.parameters["A2"]]),
-            x=y2,
-            name='stabilizer3',
-        )
-        tf4, y4 = tf_to_diffblock_with_states(
-            num=np.array([1, self.parameters["t1"]]),
-            den=np.array([1, self.parameters["t2"]]),
-            x=y3,
-            name='stabilizer4',
-        )
-        tf5, y5 = tf_to_diffblock_with_states(
-            num=np.array([1, self.parameters["t3"]]),
-            den=np.array([1, self.parameters["t4"]]),
-            x=y4,
-            name='stabilizer5',
-        )
-
-        algebraic_eqs = list()
-        algebraic_eqs.append(hard_sat(y5, VPssMinPu, VPssMaxPu) - Vpss)
-        block_1 = Block()
-
-        stabilizer_block = Block(
-            children=[tf, tf2, tf3, tf4, tf5],
-            algebraic_eqs=algebraic_eqs,
-            algebraic_vars=[Vpss],
-        )
-
-        stabilizer_block.in_vars = in_vars_dict
-        stabilizer_block.add(vars_block)
-        stabilizer_block.add(block_1)
-        stabilizer_block.out_vars[str(0)] = Vpss
-        stabilizer_block.event_dict = events_dict
-        stabilizer_block.parameters = self.parameters
-        stabilizer_block.name = "stabilizer"
-
-        return stabilizer_block
-
-
-class ExciterBuild:
-    def __init__(self, name: str = ""):
-        self.name: str = name
-
-        self.parameters = {
-            # Exciter (AVR) parameters
-            "Ka": Const(200.0),  # AVR gain
-            "Kf": Const(0.03),  # exciter rate feedback gain
-
-            # Time constants
-            "tA": Const(0.02),  # AVR time constant (s)
-            "tB": Const(10.0),  # lead-lag: lag time constant (s)
-            "tC": Const(1.0),  # lead-lag: lead time constant (s)
-            "tE": Const(0.5),  # exciter field time constant (s)
-            "tF": Const(1.0),  # rate feedback time constant (s)
-            "tR": Const(0.02),  # stator voltage filter time constant (s)
-
-            # Exciter submodel parameters
-            "Kc": Const(0.2),  # rectifier loading factor
-            "Kd": Const(0.1),  # demagnetizing factor
-            "Ke": Const(1.0),  # field resistance constant
-
-        }
-
-    def exciter(self):
-        """
-        exciter model
-        """
-
-        # input variables
-        # IRPu: rotor current (pu) ???
-        # Va: measured stator voltage (from generator) (pu)
-        # Vpss: output from power system stabilizer (pu)
-
-        inputs = [Var("IRPu_" + self.name), Var("Va_" + self.name), Var("Vpss_" + self.name)]
-
-        in_vars_dict: Dict[str, Var] = dict()
-        for i, inpt in enumerate(inputs):
-            in_vars_dict[str(i)] = inpt
-
-        algebraic_vars = []
-
-        # ______________________________________________________________________________________
-        #                                    variables
-        # ______________________________________________________________________________________
-
-        Vf = Var("Vf")
-        Efe = Var('Efe')
-
-        # Exciter internal variables
-        VeMaxPu = Var('VeMaxPu')
-        u_aux = Var('u_aux')
-
-        # ______________________________________________________________________________________
-        #                                    parameters
-        # ______________________________________________________________________________________
-
-        # ---- Exciter (AVR) parameters ----
-        UsRefPu = Var("UsRefPu")  # reference voltage (pu)
-        AEz = Var("AEz")  # saturation gain
-        BEz = Var("BEz")  # saturation exponential coefficient
-        EfeMaxPu = Var("EfeMaxPu")  # max exciter field voltage (pu)
-        EfeMinPu = Var("EfeMinPu")  # min exciter field voltage (pu)
-
-        # ---- Exciter (AVR) time constants and limits ----
-
-        TolLi = Var("TolLi")  # limiter crossing tolerance (fraction)
-
-        VaMaxPu = Var("VaMaxPu")  # AVR output max (pu)
-        VaMinPu = Var("VaMinPu")  # AVR output min (pu)
-        VeMinPu = Var("VeMinPu")  # min exciter output voltage (pu)
-        VfeMaxPu = Var("VfeMaxPu")  # max exciter field current signal (pu)
-
-        # exciter submodel parameters
-        AEx = Var("AEx")  # Gain of saturation function
-        BEx = Var("BEx")  # Exponential coefficient of saturation function
-        ToLLi = Var("ToLLi")  # Tolerance on limit crossing
-        VeMinPu_submodel = Var("VeMinPu_submodel")  # Minimum exciter output voltage (pu)
-        VfeMaxPu_submodel = Var("VfeMaxPu_submodel")  # Maximum exciter field current signal (pu)
-        F_rectifier = Var("F_rectifier")  # Rectifier factor
-
-        events_dict = {
-            # Exciter (AVR) parameters
-            UsRefPu: Const(1.0),  # reference voltage (pu)
-            AEz: Const(0.02),  # saturation gain
-            BEz: Const(1.5),  # saturation exponential coefficient
-            EfeMaxPu: Const(15.0),  # max exciter field voltage (pu)
-            EfeMinPu: Const(-5.0),  # min exciter field voltage (pu)
-
-            # Time constants
-            TolLi: Const(0.05),  # limiter crossing tolerance (fraction)
-
-            # Limits
-            VaMaxPu: Const(20.0),  # AVR output max (pu)
-            VaMinPu: Const(-10.0),  # AVR output min (pu)
-            VeMinPu: Const(-1.0),  # min exciter output voltage (pu)
-            VfeMaxPu: Const(5.0),  # max exciter field current signal (pu)
-
-            # Exciter submodel parameters
-            AEx: Const(0.02),  # saturation gain
-            BEx: Const(-0.01),  # exponential coeff of saturation function
-            ToLLi: Const(0.05),  # tolerance on limit crossing
-            VeMinPu_submodel: Const(-0.1),  # minimum exciter output voltage
-            VfeMaxPu_submodel: Const(5.0),  # max exciter field current signal
-            F_rectifier: Const(1.0),  # rectifier factor (1=DC, 0.5=AC)
-        }
-
-        # ---Internal Blocks---
-        tf1, y1 = tf_to_diffblock(
-            num=np.array([1]),
-            den=np.array([1, self.parameters["tR"]]),
-            x=inputs[1],
-            name='exciter1',
-        )  # filtered stator voltage
-
-        # error1 = UPssPu - y + UsRefPu
-        error1 = (- y1 + UsRefPu) + inputs[2]
-        tf2, y2 = tf_to_diffblock(
-            num=np.array([0, self.parameters["Kf"]]),
-            den=np.array([1, self.parameters["tF"]]),
-            x=Vf,
-            name='exciter2',
-        )
-        error2 = error1 - y2
-
-        tf3, y3 = tf_to_diffblock(
-            num=np.array([1, self.parameters["tC"]]),
-            den=np.array([1, self.parameters["tB"]]),
-            x=error2,
-            name='exciter3',
-        )
-        tf4, y4 = tf_to_diffblock(
-            num=np.array([self.parameters["Ka"]]),
-            den=np.array([1, self.parameters["tA"]]),
-            x=y3,
-            name='exciter4',
-        )
-
-        y5 = hard_sat(y4, VaMinPu, VaMaxPu)
-
-        min_const = Const(max(events_dict[VaMinPu], events_dict[EfeMinPu]))
-        max_const = Const(min(events_dict[VaMaxPu], events_dict[EfeMaxPu]))
-        y6 = hard_sat(y4, min_const, max_const)
-
-        # exciter submodel
-
-        algebraic_eqs_submodel = []
-        algebraic_vars_submodel = []
-
-        x1 = VfeMaxPu - inputs[0] * self.parameters["Kd"]
-        error1 = Efe - (inputs[0] * self.parameters["Kd"] + u_aux)
-
-        tf1, Ve_presat = tf_to_diffblock(
-            num=np.array([1]),
-            den=np.array([0, self.parameters["tE"]]),
-            x=error1,
-            name='subexciter1',
-        )
-
-        Ve = hard_sat(Ve_presat, VeMinPu, Const(1000))
-        aux_expr = self.parameters["Ke"] * Ve + AEx * Ve * exp(BEx * Ve)
-        algebraic_eqs_submodel.append(u_aux - aux_expr)
-        algebraic_eqs_submodel.append(VeMaxPu * u_aux - x1)
-
-        f_input = Var('f_input')
-        f_output = f_exc(f_input)
-        algebraic_vars_submodel.append(f_input)
-        algebraic_eqs_submodel.append(f_input * Ve - inputs[0] * self.parameters["Kc"])
-
-        algebraic_eqs_submodel.append(Vf - f_output * Ve)
-
-        aux_model = DiffBlock(
-            algebraic_eqs=algebraic_eqs_submodel,
-            algebraic_vars=[u_aux, VeMaxPu, Vf] + algebraic_vars_submodel
-        )
-
-        exciter_submodel = DiffBlock(children=[tf1, aux_model])
-
-        linking_block = Block(
-            algebraic_eqs=[y6 - Efe],
-            algebraic_vars=[Efe] + algebraic_vars,
-
-        )
-
-        exciter_model = Block(children=[tf1, tf2, tf3, tf4, exciter_submodel, linking_block])
-        exciter_model.out_vars[str(0)] = Vf
-        exciter_model.in_vars = in_vars_dict
-
-        return exciter_model
-
-
-def exciter(item_name: str = "") -> Block:
+def exciter_fake(item_name: str = "") -> Block:
+    """
+
+    :param item_name:
+    :return:
+    """
     vf = Var("vf" + item_name)
+    vf_fixed = Var("vf_fixed")
+    # event_dict = {vf_fixed: Const(1.2028205849036708)}
     blk = Block()
+    blk.algebraic_vars.append(vf)
+    # blk.algebraic_eqs.append(vf-vf_fixed)
+    # blk.event_dict = event_dict
     blk.in_vars = dict()
-    blk.out_vars[str(0)] = vf
+    blk.out_vars = [vf]
+    blk.name = "const"
+    return blk
+
+
+def governor_fake(item_name: str = "") -> Block:
+    """
+
+    :param item_name:
+    :return:
+    """
+    tm = Var("tm" + item_name)
+    tm_fixed = Var("tm_fixed")
+    # event_dict = {tm_fixed: Const(6.99999999999765)}
+    blk = Block()
+    blk.algebraic_vars.append(tm)
+    # blk.algebraic_eqs.append(tm-tm_fixed)
+    # blk.event_dict = event_dict
+    blk.in_vars = dict()
+    blk.out_vars = [tm]
     blk.name = "const"
     return blk
 
 
 def generator(name: str = "") -> Block:
-    inputs = [Var("Vm_" + name), Var("Va_" + name)]
+    """
 
-    in_vars_dict: Dict[str, Var] = dict()
-    for i, inpt in enumerate(inputs):
-        in_vars_dict[str(i)] = inpt
+    :param name:
+    :return:
+    """
+    inputs = [Var("Vm_" + name), Var("Va_" + name)]
 
     delta = Var("delta")
     omega = Var("omega")
@@ -1521,24 +946,24 @@ def generator(name: str = "") -> Block:
             tm: te,
             et: Const(0),
         },
+        event_dict=event_dict,
+        in_vars=inputs,
+        out_vars=[P_g, Q_g],
+        external_mapping={
+            VarPowerFlowRefferenceType.P: P_g,
+            VarPowerFlowRefferenceType.Q: Q_g
+        }
     )
-    # gen_block.fix_vars = [tm0, vf]
-    # gen_block.fix_vars_eqs = {tm0.uid: tm,
-    #                       vf.uid: psid + X1 * i_d}
 
-    gen_block.external_mapping = {
-        VarPowerFlowRefferenceType.P: P_g,
-        VarPowerFlowRefferenceType.Q: Q_g
-    }
-
-    gen_block.event_dict = event_dict
-    gen_block.in_vars = in_vars_dict
-    gen_block.out_vars[str(0)] = P_g
-    gen_block.out_vars[str(1)] = Q_g
     return gen_block
 
 
 def load(name: str = "load") -> Block:
+    """
+
+    :param name:
+    :return:
+    """
     Ql = Var("Ql")
     Pl = Var("Pl")
 
@@ -1548,16 +973,23 @@ def load(name: str = "load") -> Block:
             # Ql - load_object.Ql0
         ],
         algebraic_vars=[Pl, Ql],
-        init_eqs={})
+        init_eqs={},
+        external_mapping={
+            VarPowerFlowRefferenceType.P: Pl,
+            VarPowerFlowRefferenceType.Q: Ql
+        }
+    )
 
-    load_block.external_mapping = {
-        VarPowerFlowRefferenceType.P: Pl,
-        VarPowerFlowRefferenceType.Q: Ql
-    }
     return load_block
 
 
 def line(item_name: str, api_object: Any) -> Block:
+    """
+
+    :param item_name:
+    :param api_object:
+    :return:
+    """
     line_object = api_object
     Qf = Var("Qf_" + item_name)
     Qt = Var("Qt_" + item_name)
@@ -1584,35 +1016,43 @@ def line(item_name: str, api_object: Any) -> Block:
         ],
         algebraic_vars=[Pf, Pt, Qf, Qt],
         init_eqs={},
-        parameters=[])
-    line_block.external_mapping = {
-        VarPowerFlowRefferenceType.Pf: Pf,
-        VarPowerFlowRefferenceType.Pt: Pt,
-        VarPowerFlowRefferenceType.Qf: Qf,
-        VarPowerFlowRefferenceType.Qt: Qt,
-    }
+        parameters=[],
+        external_mapping={
+            VarPowerFlowRefferenceType.Pf: Pf,
+            VarPowerFlowRefferenceType.Pt: Pt,
+            VarPowerFlowRefferenceType.Qf: Qf,
+            VarPowerFlowRefferenceType.Qt: Qt,
+        }
+    )
+
     return line_block
 
 
-def generic(state_inputs: int, state_outputs: Sequence[str], algebraic_inputs: int,
+def generic(state_inputs: int,
+            state_outputs: Sequence[str],
+            algebraic_inputs: int,
             algebraic_outputs: Sequence[str]) -> Block:
-    blk = Block()
-    blk.name = "generic"
-    input_vars = [Var(f"Vport{i}") for i in range(state_inputs + algebraic_inputs)]
+    """
+
+    :param state_inputs:
+    :param state_outputs:
+    :param algebraic_inputs:
+    :param algebraic_outputs:
+    :return:
+    """
+    blk = Block(
+        name="generic",
+        in_vars=[Var(f"Vport{i}") for i in range(state_inputs + algebraic_inputs)]
+    )
 
     for i, v in enumerate(state_outputs):
         var = Var(v)
         blk.state_vars.append(var)
-        blk.out_vars[str(i)] = var
+        blk.out_vars.append(var)
 
     for i, v in enumerate(algebraic_outputs):
         var = Var(v)
         blk.algebraic_vars.append(var)
-        blk.out_vars[str(i)] = var
-
-    in_vars_dict: Dict[str, Var] = dict()
-    for i, inpt in enumerate(input_vars):
-        in_vars_dict[str(i)] = inpt
-    blk.in_vars = in_vars_dict
+        blk.out_vars.append(var)
 
     return blk

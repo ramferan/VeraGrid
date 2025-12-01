@@ -4,9 +4,11 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
+import pdb
 import uuid
 import sys
 import copy
+from typing import cast
 
 from enum import Enum, auto
 from typing import List, Dict, Optional, Union, Sequence, Any
@@ -18,12 +20,14 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraph
                                QDialog, QVBoxLayout, QComboBox, QDialogButtonBox, QSplitter, QLabel, QDoubleSpinBox,
                                QListView, QAbstractItemView, QPushButton, QListWidget, QInputDialog, QWidget,
                                QListWidgetItem, QFormLayout, QSpinBox, QLineEdit, QTableWidget, QTableWidgetItem,
-                               QMessageBox, QColorDialog)
+                               QMessageBox, QColorDialog, QCheckBox)
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter, QIcon, QStandardItemModel, QStandardItem,
                            QPixmap, QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
 from PySide6.QtCore import Qt, QPointF, QByteArray, QDataStream, QIODevice, QModelIndex, QMimeData, Signal, QPoint
-
-
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import (GenqecBuild,
+                                                                      GovernorBuild,
+                                                                      StabilizerBuild,
+                                                                      ExciterBuild, )
 from VeraGridEngine.Utils.Symbolic.block import (
     Block,
     constant,
@@ -34,17 +38,17 @@ from VeraGridEngine.Utils.Symbolic.block import (
     divide,
     absolut,
     generator,
-    GenqecBuild,
-    GovernorBuild,
-    StabilizerBuild,
-    ExciterBuild,
+
     line,
-    generic
+    generic,
+    exciter_fake,
+    governor_fake
 )
 
 from VeraGrid.Gui.RmsModelEditor.rms_model_editor import Ui_MainWindow
 from VeraGrid.Gui.messages import error_msg
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, make_symbolic, symbolic_to_string
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, make_symbolic, symbolic_to_string, \
+    VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import BlockDiagram, DynamicModelHost
 from VeraGridEngine.enumerations import DeviceType
 
@@ -109,7 +113,14 @@ def _get_var_name_from_subsys(subsys, is_input: bool, index: int) -> str:
     except Exception:
         return "<no var>"
 
+
 def change_model_params(mdl_old, mdl_new):
+    """
+
+    :param mdl_old:
+    :param mdl_new:
+    :return:
+    """
     mdl_old.parameters = mdl_new.parameters
     mdl_old.algebraic_eqs = mdl_new.algebraic_eqs
     mdl_old.state_eqs = mdl_new.state_eqs
@@ -132,6 +143,36 @@ def change_model_params(mdl_old, mdl_new):
     if mdl_old.children:
         for submodel_old, submodel_new in zip(mdl_old.children, mdl_new.children):
             change_model_params(submodel_old, submodel_new)
+
+
+def update_equations(blk, old, new):
+    """
+
+    :param blk:
+    :param old:
+    :param new:
+    :return:
+    """
+    for i, eq in enumerate(blk.algebraic_eqs):
+        new_equ = eq.subs({old: new})
+        blk.algebraic_eqs[i] = new_equ
+    for i, eq in enumerate(blk.state_eqs):
+        new_equ = eq.subs({old: new})
+        blk.state_eqs[i] = new_equ
+
+
+def update_model(model, old, new):
+    """
+
+    :param model:
+    :param old:
+    :param new:
+    :return:
+    """
+    update_equations(model, old, new)
+    if model.children:
+        for child in model.children:
+            update_model(child, old, new)
 
 
 @dataclass
@@ -158,6 +199,9 @@ class BlockType(Enum):
     LINE = auto()
     GENERIC = auto()
     BUS_CONNECTION = auto()
+    EXTERNAL_MAPPING = auto()
+    EXCITER_FAKE = auto()
+    GOVERNOR_FAKE = auto()
 
 
 class BlockTypeDialog(QDialog):
@@ -369,8 +413,6 @@ class BlockItem(QGraphicsRectItem):
         self.update_handle_position()
 
         self._resizing_from_handle = False
-
-
 
     def mouseDoubleClickEvent(self, event):
         # --- Constant editing ---
@@ -949,45 +991,61 @@ def create_block_of_type(block_type: BlockType, api_object: Any, item_name: str 
 
     # GENQEC (generator with saturation)
     if block_type == BlockType.GENQEC:
-        builder = GenqecBuild()
-        blk =builder.genqec()
-        return blk
+        return GenqecBuild(item_name).block
 
     # GOVERNOR (governor with control)
     if block_type == BlockType.GOV:
-        builder = GovernorBuild()
-        blk = builder.governor()
-        return blk
+        return GovernorBuild(item_name).block
 
     # STABILIZER (stabilizer)
     if block_type == BlockType.STAB:
-        builder = StabilizerBuild()
-        blk = builder.stabilizer()
-        return blk
+        return StabilizerBuild(item_name).block
 
     # EXCITER (exciter)
     if block_type == BlockType.EXCITER:
-        builder = ExciterBuild()
-        blk = builder.exciter()
-        return blk
+        return ExciterBuild(item_name).block
 
     # LINE (line)
     if block_type == BlockType.LINE:
         blk = line(item_name, api_object)
         return blk
 
+    # EXCITER FAKE (line)
+    if block_type == BlockType.EXCITER_FAKE:
+        blk = exciter_fake(item_name)
+        return blk
+
+    # GOVERNOR FAKE (line)
+    if block_type == BlockType.GOVERNOR_FAKE:
+        blk = governor_fake(item_name)
+        return blk
+
     else:
         return None
 
 
-def create_generic_block(state_inputs: int, state_outputs: Sequence[str], algebraic_inputs: int,
+def create_generic_block(state_inputs: int,
+                         state_outputs: Sequence[str],
+                         algebraic_inputs: int,
                          algebraic_outputs: Sequence[str]):
+    """
+
+    :param state_inputs:
+    :param state_outputs:
+    :param algebraic_inputs:
+    :param algebraic_outputs:
+    :return:
+    """
     blk = generic(state_inputs, state_outputs, algebraic_inputs, algebraic_outputs)
     blk.name = "generic"
     return blk
 
 
 class DiagramScene(QGraphicsScene):
+    """
+    DiagramScene
+    """
+
     def __init__(self, editor):
         super().__init__()
         self.editor = editor
@@ -997,9 +1055,18 @@ class DiagramScene(QGraphicsScene):
         self._main_block = Block()
 
     def get_main_block(self):
+        """
+
+        :return:
+        """
         return self._main_block
 
     def change_item_fill_color(self, item: Union[BlockItem, ModelHostItem, ConnectionItem]):
+        """
+
+        :param item:
+        :return:
+        """
         new_color = QColorDialog.getColor()
         if new_color.isValid():
             if isinstance(item, (BlockItem, ModelHostItem)):
@@ -1020,6 +1087,11 @@ class DiagramScene(QGraphicsScene):
                 self.editor.diagram.con_data[item.uid].color = new_color
 
     def contextMenuEvent(self, event):
+        """
+
+        :param event:
+        :return:
+        """
         items = self.items(event.scenePos())
         if not items:
             return
@@ -1042,6 +1114,11 @@ class DiagramScene(QGraphicsScene):
                 break
 
     def mousePressEvent(self, event):
+        """
+
+        :param event:
+        :return:
+        """
         for item in self.items(event.scenePos()):
             if isinstance(item, PortItem) and not item.is_input:
                 self.source_port = item
@@ -1090,15 +1167,23 @@ class DiagramScene(QGraphicsScene):
                     else:
                         self.source_port.connections.append(connection)
 
-                    dst_var = self.source_port.subsystem.subsys.out_vars[str(self.source_port.index)]
+                    dst_var = self.source_port.subsystem.subsys.out_vars[self.source_port.index]
 
-                    for i, eq in enumerate(dst_port.subsystem.subsys.algebraic_eqs):
-                        new_equ = eq.subs({dst_port.subsystem.subsys.in_vars[str(dst_port.index)]: dst_var})
-                        dst_port.subsystem.subsys.algebraic_eqs[i] = new_equ
-                    for i, eq in enumerate(dst_port.subsystem.subsys.state_eqs):
-                        new_equ = eq.subs({dst_port.subsystem.subsys.in_vars[str(dst_port.index)]: dst_var})
-                        dst_port.subsystem.subsys.state_eqs[i] = new_equ
-                    dst_port.subsystem.subsys.in_vars[str(dst_port.index)] = dst_var
+                    # update destiny model
+                    update_model(dst_port.subsystem.subsys, dst_port.subsystem.subsys.in_vars[dst_port.index], dst_var)
+
+                    # for i, eq in enumerate(dst_port.subsystem.subsys.algebraic_eqs):
+                    #     new_equ = eq.subs({dst_port.subsystem.subsys.in_vars[dst_port.index]: dst_var})
+                    #     dst_port.subsystem.subsys.algebraic_eqs[i] = new_equ
+                    # for i, eq in enumerate(dst_port.subsystem.subsys.state_eqs):
+                    #     new_equ = eq.subs({dst_port.subsystem.subsys.in_vars[dst_port.index]: dst_var})
+                    #     dst_port.subsystem.subsys.state_eqs[i] = new_equ
+                    #
+
+                    for key, value in self.editor.main_block.external_mapping.items():
+                        if dst_port.subsystem.subsys.in_vars[dst_port.index] is value:
+                            self.editor.main_block.external_mapping[key] = dst_var
+                    dst_port.subsystem.subsys.in_vars[dst_port.index] = dst_var
 
                     self.addItem(connection)
 
@@ -1138,6 +1223,12 @@ class DynamicLibraryModel(QStandardItemModel):
             self.mime_dict[t] = bt
 
     def get_type(self, t) -> BlockType | None:
+        """
+
+        :param t:
+        :return:
+        """
+
         return self.mime_dict.get(t, None)
 
     def add(self, name: str, icon_name: str):
@@ -1161,7 +1252,7 @@ class DynamicLibraryModel(QStandardItemModel):
         :return: QByteArray
         """
         data = QByteArray()
-        stream = QDataStream(data, QIODevice.WriteOnly)
+        stream = QDataStream(data, QIODevice.OpenModeFlag.WriteOnly)
         stream.writeQString(val)
         return data
 
@@ -1177,7 +1268,7 @@ class DynamicLibraryModel(QStandardItemModel):
                 txt = self.data(idx, Qt.ItemDataRole.DisplayRole)
 
                 data = QByteArray()
-                stream = QDataStream(data, QIODevice.WriteOnly)
+                stream = QDataStream(data, QIODevice.OpenModeFlag.WriteOnly)
                 stream.writeQString(txt)
 
                 mimedata.setData('component/name', data)
@@ -1354,6 +1445,7 @@ class TemplateEditor(QtWidgets.QWidget):
             return self.selected_template.event_dict
         return {}
 
+
 class ParameterEditorDialog(QDialog):
     """
     A dialog that edits BOTH:
@@ -1387,14 +1479,15 @@ class ParameterEditorDialog(QDialog):
         self.table.setHorizontalHeaderLabels(["Name", "Value"])
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.verticalHeader().setVisible(False)
-        self.table.setEditTriggers(QTableWidget.AllEditTriggers)
+        self.table.setEditTriggers(QTableWidget.EditTrigger.AllEditTriggers)
         layout.addWidget(self.table)
 
         self.populate_table()
 
         # Buttons
         buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, Qt.Horizontal, self
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
+            Qt.Horizontal, self
         )
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
@@ -1413,7 +1506,7 @@ class ParameterEditorDialog(QDialog):
         for name, const in self.parameters.items():
             self.add_row(row, name, getattr(const, "value", const))
             # store metadata
-            self.table.item(row, 0).setData(Qt.UserRole, ("parameter", name))
+            self.table.item(row, 0).setData(Qt.ItemDataRole.UserRole, ("parameter", name))
             row += 1
 
         # --- event_dict ---
@@ -1421,14 +1514,21 @@ class ParameterEditorDialog(QDialog):
             name = getattr(var, "name", str(var))
             self.add_row(row, name, getattr(const, "value", const))
             # store metadata
-            self.table.item(row, 0).setData(Qt.UserRole, ("event", var))
+            self.table.item(row, 0).setData(Qt.ItemDataRole.UserRole, ("event", var))
             row += 1
 
     # --------------------------------------------------------
 
     def add_row(self, row, name, value):
+        """
+
+        :param row:
+        :param name:
+        :param value:
+        :return:
+        """
         name_item = QTableWidgetItem(name)
-        name_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+        name_item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
         self.table.setItem(row, 0, name_item)
 
         value_item = QTableWidgetItem(str(value))
@@ -1439,7 +1539,7 @@ class ParameterEditorDialog(QDialog):
     def accept(self):
         """Reads table values and rebuilds parameters + event_dict."""
         for row in range(self.table.rowCount()):
-            meta = self.table.item(row, 0).data(Qt.UserRole)
+            meta = self.table.item(row, 0).data(Qt.ItemDataRole.UserRole)
             value_str = self.table.item(row, 1).text()
 
             # convert to float if possible
@@ -1468,6 +1568,7 @@ class ParameterEditorDialog(QDialog):
     def get_updated_data(self):
         """Return updated (parameters, event_dict)."""
         return self.new_parameters, self.new_event_dict
+
 
 # class ParameterEditorDialog(QDialog):
 #     """
@@ -1545,6 +1646,10 @@ class ParameterEditorDialog(QDialog):
 #         return self.new_parameters
 
 class NameDialog(QDialog):
+    """
+    NameDialog
+    """
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Block name")
@@ -1553,7 +1658,7 @@ class NameDialog(QDialog):
         self.label = QLabel("Enter block name:")
         self.edit = QLineEdit()
         self.buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel,
+            QDialogButtonBox.standardButton().Ok | QDialogButtonBox.StandardButton.Cancel,
             parent=self
         )
 
@@ -1565,10 +1670,18 @@ class NameDialog(QDialog):
         self.buttons.rejected.connect(self.reject)
 
     def get_name(self):
+        """
+
+        :return:
+        """
         return self.edit.text().strip()
 
 
 class InspectModel(QWidget):
+    """
+    InspectModel
+    """
+
     def __init__(self, model_host, parent=None):
         super().__init__(parent)
 
@@ -1601,7 +1714,7 @@ class InspectModel(QWidget):
         self.table_params.setHorizontalHeaderLabels(["Name", "Value"])
         self.table_params.horizontalHeader().setStretchLastSection(True)
         self.table_params.verticalHeader().setVisible(False)
-        self.table_params.setEditTriggers(QTableWidget.NoEditTriggers)  # make read-only for now
+        self.table_params.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)  # make read-only for now
         left_panel.addWidget(self.table_params)
 
         # ----------------- RIGHT PANEL -----------------
@@ -1745,10 +1858,11 @@ class BlockBoxesEditor(QSplitter):
 
             Vmf, Vaf = self.api_object.bus_from.get_rms_algebraic_vars()
 
-            bus_from_con_blk = Block()
-            bus_from_con_blk.out_vars[str(0)] = Vmf
-            bus_from_con_blk.out_vars[str(1)] = Vaf
-            bus_from_con_blk.name = name
+            bus_from_con_blk = Block(
+                algebraic_vars=[Vmf, Vaf],
+                out_vars=[Vmf, Vaf],
+                name=name
+            )
 
             self.main_block.add(bus_from_con_blk)
 
@@ -1766,6 +1880,10 @@ class BlockBoxesEditor(QSplitter):
                     tpe=tpe.name,
                     device_uid=bus_from_con_item.subsys.uid,
                 )
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Vmf: Vmf})
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Vaf: Vaf})
 
             # add con bus to
             name = "Conn To"
@@ -1775,10 +1893,11 @@ class BlockBoxesEditor(QSplitter):
 
             Vmt, Vat = self.api_object.bus_to.get_rms_algebraic_vars()
 
-            bus_to_con_blk = Block()
-            bus_to_con_blk.out_vars[str(0)] = Vmt
-            bus_to_con_blk.out_vars[str(1)] = Vat
-            bus_to_con_blk.name = name
+            bus_to_con_blk = Block(
+                algebraic_vars=[Vmt, Vat],
+                out_vars=[Vmt, Vat],
+                name=name
+            )
 
             self.main_block.add(bus_to_con_blk)
 
@@ -1801,6 +1920,11 @@ class BlockBoxesEditor(QSplitter):
                     device_uid=bus_to_con_item.subsys.uid,
                 )
 
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Vmt: Vmt})
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Vat: Vat})
+
         else:
             x0, y0 = 0, 0
             name = "Conn Bus"
@@ -1808,10 +1932,10 @@ class BlockBoxesEditor(QSplitter):
             bus_con_item = BlockItem(name=name)
             Vm, Va = self.api_object.bus.get_rms_algebraic_vars()
 
-            bus_con_blk = Block()
-            bus_con_blk.out_vars[str(0)] = Vm
-            bus_con_blk.out_vars[str(1)] = Va
-            bus_con_blk.name = name
+            bus_con_blk = Block(
+                out_vars=[Vm, Va],
+                name=name
+            )
 
             self.main_block.add(bus_con_blk)
 
@@ -1829,6 +1953,120 @@ class BlockBoxesEditor(QSplitter):
                     tpe=tpe.name,
                     device_uid=bus_con_item.subsys.uid,
                 )
+
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Vm: Vm})
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Va: Va})
+
+    def add_external_mapping_block(self):
+        """
+
+        :return:
+        """
+        bus_con_item = None
+        tpe = BlockType.EXTERNAL_MAPPING
+
+        if self.api_object.device_type == DeviceType.LineDevice:
+
+            # add mapping bus from
+            x0, y0 = 200, 200
+            name = "mapping From"
+            bus_from_mapping_item = BlockItem(name=name)
+
+            Pf = Var('Pf_placeholder')
+            Qf = Var('Qf_placeholder')
+
+            bus_from_mapping_blk = Block(
+                in_vars=[Pf, Qf],
+                name=name
+            )
+
+            self.main_block.add(bus_from_mapping_blk)
+
+            bus_from_mapping_item.set_subsystem(bus_from_mapping_blk)
+            bus_from_mapping_item.build_item()
+
+            if bus_from_mapping_item.subsys is not None:
+                self.scene.addItem(bus_from_mapping_item)
+                bus_from_mapping_item.setPos(x0, y0)
+                # save nodes in diagram
+                self.diagram.add_node(
+                    name=name,
+                    x=x0,
+                    y=y0,
+                    tpe=tpe.name,
+                    device_uid=bus_from_mapping_item.subsys.uid,
+                )
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Pf: bus_from_mapping_blk.in_vars[0]})
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Qf: bus_from_mapping_blk.in_vars[1]})
+
+            # add con bus to
+            name = "mapping To"
+            x0, y0 = 0, 200
+
+            bus_to_mapping_item = BlockItem(name=name)
+
+            Pt = Var('Pt_placeholder')
+            Qt = Var('Qt_placeholder')
+
+            bus_to_mapping_blk = Block(
+                in_vars=[Pt, Qt],
+                name=name
+            )
+            self.main_block.add(bus_to_mapping_blk)
+
+            bus_to_mapping_item.set_subsystem(bus_to_mapping_blk)
+            bus_to_mapping_item.build_item()
+
+            # Add to scene
+            self.scene.addItem(bus_from_mapping_item)
+            bus_to_mapping_item.setPos(QPointF(x0, y0))
+            if bus_to_mapping_item.subsys is not None:
+                self.scene.addItem(bus_to_mapping_item)
+                bus_to_mapping_item.setPos(QPointF(x0, y0))
+                # save nodes in diagram
+                self.diagram.add_node(
+                    name=name,
+                    x=x0,
+                    y=y0,
+                    tpe=tpe.name,
+                    device_uid=bus_to_mapping_item.subsys.uid,
+                )
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Pt: bus_to_mapping_blk.in_vars[0]})
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Qt: bus_to_mapping_blk.in_vars[1]})
+
+        else:
+            x0, y0 = 0, 0
+            name = "mapping Bus"
+
+            bus_mapping_item = BlockItem(name=name)
+            P = Var('P_placeholder')
+            Q = Var('Q_placeholder')
+
+            bus_mapping_blk = Block(
+                in_vars=[P, Q],
+                name=name
+            )
+
+            self.main_block.add(bus_mapping_blk)
+
+            bus_mapping_item.set_subsystem(bus_mapping_blk)
+            bus_mapping_item.build_item()
+
+            if bus_mapping_item.subsys is not None:
+                self.scene.addItem(bus_mapping_item)
+                bus_mapping_item.setPos(x0, y0)
+                # save nodes in diagram
+                self.diagram.add_node(
+                    name=name,
+                    x=x0,
+                    y=y0,
+                    tpe=tpe.name,
+                    device_uid=bus_mapping_item.subsys.uid,
+                )
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: bus_mapping_blk.in_vars[0]})
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: bus_mapping_blk.in_vars[1]})
 
     def open_inspect_dialog(self):
         """
@@ -1857,7 +2095,7 @@ class BlockBoxesEditor(QSplitter):
         layout.addWidget(inspect_widget)
 
         # Añadir botones estándar (OK / Cancelar)
-        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         layout.addWidget(button_box)
         button_box.accepted.connect(dialog.accept)
         button_box.rejected.connect(dialog.reject)
@@ -1876,7 +2114,6 @@ class BlockBoxesEditor(QSplitter):
 
             del self.diagram.con_data[item.uid]
 
-
             source_port = item.source_port
             target_port = item.target_port
 
@@ -1887,13 +2124,13 @@ class BlockBoxesEditor(QSplitter):
             target_port.connections = None
             self.scene.removeItem(item)
 
-            dst_var = source_port.subsystem.subsys.out_vars[str(source_port.index)]
+            dst_var = source_port.subsystem.subsys.out_vars[source_port.index]
 
             for i, eq in enumerate(target_port.subsystem.subsys.algebraic_eqs):
-                new_equ = eq.subs({dst_var: target_port.subsystem.subsys.in_vars[str(target_port.index)]})
+                new_equ = eq.subs({dst_var: target_port.subsystem.subsys.in_vars[target_port.index]})
                 target_port.subsystem.subsys.algebraic_eqs[i] = new_equ
             for i, eq in enumerate(target_port.subsystem.subsys.state_eqs):
-                new_equ = eq.subs({dst_var: target_port.subsystem.subsys.in_vars[str(target_port.index)]})
+                new_equ = eq.subs({dst_var: target_port.subsystem.subsys.in_vars[target_port.index]})
                 target_port.subsystem.subsys.state_eqs[i] = new_equ
 
         # remove item from scene
@@ -1911,13 +2148,13 @@ class BlockBoxesEditor(QSplitter):
                         source_port.connections.remove(conn)
                         target_port.connections = None
 
-                        dst_var = source_port.subsystem.subsys.out_vars[str(source_port.index)]
+                        dst_var = source_port.subsystem.subsys.out_vars[source_port.index]
 
                         for i, eq in enumerate(target_port.subsystem.subsys.algebraic_eqs):
-                            new_equ = eq.subs({dst_var :target_port.subsystem.subsys.in_vars[str(target_port.index)]})
+                            new_equ = eq.subs({dst_var: target_port.subsystem.subsys.in_vars[target_port.index]})
                             target_port.subsystem.subsys.algebraic_eqs[i] = new_equ
                         for i, eq in enumerate(target_port.subsystem.subsys.state_eqs):
-                            new_equ = eq.subs({dst_var :target_port.subsystem.subsys.in_vars[str(target_port.index)]})
+                            new_equ = eq.subs({dst_var: target_port.subsystem.subsys.in_vars[target_port.index]})
                             target_port.subsystem.subsys.state_eqs[i] = new_equ
 
             self.scene.removeItem(item)
@@ -1973,7 +2210,6 @@ class BlockBoxesEditor(QSplitter):
                     self.main_block.add(model_host.model)
                     item = ModelHostItem(model_host, self.api_object_name, self.templates_list,
                                          self.templates_catalogue, self.api_object)
-
 
                     item.setPos(QPointF(x0, y0))
                     self.scene.addItem(item)
@@ -2044,7 +2280,9 @@ class BlockBoxesEditor(QSplitter):
 
                 model_host.model.uid = uid
                 model_host.diagram = node.sub_diagram
-                item = ModelHostItem(model_host_sys = model_host, api_object_name= node.api_object_name, api_object= self.api_object, templates_list= self.templates_list, templates_catalogue=self.templates_catalogue)
+                item = ModelHostItem(model_host_sys=model_host, api_object_name=node.api_object_name,
+                                     api_object=self.api_object, templates_list=self.templates_list,
+                                     templates_catalogue=self.templates_catalogue)
 
                 item.setPos(QPointF(node.x, node.y))
                 self.scene.addItem(item)
@@ -2070,6 +2308,23 @@ class BlockBoxesEditor(QSplitter):
                     bus_con_item.setBrush(QColor(node.color))
 
                 uid_to_blockitem[uid] = bus_con_item
+
+            elif block_type == BlockType.EXTERNAL_MAPPING:
+                bus_mapping_item = BlockItem(name=node.name)
+                bus_mapping_blk = Block()
+                for model in self.main_block.children:
+                    if model.uid == node.device_uid:
+                        bus_mapping_blk = model
+
+                bus_mapping_item.set_subsystem(bus_mapping_blk)
+                bus_mapping_item.build_item()
+
+                if bus_mapping_item.subsys is not None:
+                    self.scene.addItem(bus_mapping_item)
+                    bus_mapping_item.setPos(QPointF(node.x, node.y))
+                    bus_mapping_item.setBrush(QColor(node.color))
+
+                uid_to_blockitem[uid] = bus_mapping_item
 
             else:
 
@@ -2111,9 +2366,11 @@ class BlockBoxesEditor(QSplitter):
         self.block_system = self.scene.get_main_block()
 
 
-### equations editor ##########
-
 class EditEquations(QWidget):
+    """
+    EditEquations
+    """
+
     def __init__(self, model, parent=None):
         super().__init__(parent)
 
@@ -2205,6 +2462,14 @@ class EditEquations(QWidget):
 
 
 def add_submodel_vars(model, vars_model, eqns_model, color_map):
+    """
+
+    :param model:
+    :param vars_model:
+    :param eqns_model:
+    :param color_map:
+    :return:
+    """
     for submodel in model.children:
         for var in submodel.state_vars:
             items = [
@@ -2246,6 +2511,14 @@ def add_submodel_vars(model, vars_model, eqns_model, color_map):
 
 
 def add_vars(model, vars_model, eqns_model, color_map):
+    """
+
+    :param model:
+    :param vars_model:
+    :param eqns_model:
+    :param color_map:
+    :return:
+    """
     for var in model.state_vars:
         items = [
             QStandardItem(var.name),
@@ -2286,6 +2559,10 @@ def add_vars(model, vars_model, eqns_model, color_map):
 
 
 class RmsParameterDialog(QtWidgets.QDialog):  # TODO: Move this section to the template page in the general editor
+    """
+    RmsParameterDialog
+    """
+
     def __init__(self, event_dict: Dict[Var, Const], parent=None):
         super().__init__(parent)
         # self.event_dict = event_dict
@@ -2315,7 +2592,85 @@ class RmsParameterDialog(QtWidgets.QDialog):  # TODO: Move this section to the t
         return {param: Const(float(edit.text())) for param, edit in self.inputs.items()}
 
 
+class InitialValuesDialog(QDialog):
+    """
+    Dialog to edit initial Const values for each Var.
+    Now receives a dict[Var, Const] and also includes a checkbox
+    per row so the user can select which entries to return.
+    """
+
+    def __init__(self, var_const_dict: Dict[Var, Const], parent: Optional[QtWidgets.QWidget] = None):
+        """
+
+        :param var_const_dict:
+        :param parent:
+        """
+        super().__init__(parent)
+        self.setWindowTitle("Initial Values")
+
+        self.var_const_dict = var_const_dict
+
+        layout = QVBoxLayout(self)
+
+        # Table with CHECKBOX + NAME + VALUE
+        self.table = QTableWidget()
+        self.table.setColumnCount(3)
+        self.table.setHorizontalHeaderLabels(["Use", "Variable", "Initial Value"])
+        self.table.setRowCount(len(var_const_dict))
+        self.table.horizontalHeader().setStretchLastSection(True)
+
+        for row, (var, const) in enumerate(var_const_dict.items()):
+            # --- Column 0: CHECKBOX ---
+            chk = QCheckBox()
+            chk.setChecked(True)  # marked by default
+            self.table.setCellWidget(row, 0, chk)
+
+            # --- Column 1: Variable name (not editable) ---
+            name_item = QTableWidgetItem(var.name)
+            name_item.setFlags(name_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.table.setItem(row, 1, name_item)
+
+            # --- Column 2: SpinBox with initial value ---
+            spin = QDoubleSpinBox()
+            spin.setDecimals(6)
+            spin.setRange(-1e12, 1e12)
+            spin.setValue(float(const.value))
+            self.table.setCellWidget(row, 2, spin)
+
+        layout.addWidget(self.table)
+
+        # Buttons
+        btn_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        btn_box.accepted.connect(self.accept)
+        btn_box.rejected.connect(self.reject)
+        layout.addWidget(btn_box)
+
+    def get_values_dict(self) -> Dict[Var, Const]:
+        """
+        Return a dict containing only the rows whose checkbox is checked.
+        """
+        result: Dict[Var, Const] = {}
+
+        for row, (var, old_const) in enumerate(self.var_const_dict.items()):
+
+            # Checkbox must be checked
+            chk = self.table.cellWidget(row, 0)
+            if not chk.isChecked():
+                continue  # skip this row
+
+            # Read spinbox value
+            spin = self.table.cellWidget(row, 2)
+            new_value = float(spin.value())
+
+            result[var] = Const(new_value)
+
+        return result
+
+
 class RmsModelEditorGUI(QtWidgets.QMainWindow):
+    """
+    RmsModelEditorGUI
+    """
 
     def __init__(self, api_object_model_host, templates_list, templates_catalogue, api_object_name,
                  api_object=None, main_editor=False, parent=None):
@@ -2344,6 +2699,8 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         self.api_object = api_object
         self.main_editor = main_editor
 
+        self.current_editor = None
+
         self.tempaltes_name = "Templates"
         self.block_editor_name = "Block Editor"
         self.equationseditor_name = "Equations editor"
@@ -2371,9 +2728,13 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
             templates_catalogue=self.templates_catalogue,
             api_object=self.api_object
         )
+
+        # _____ Add user init guess dialog ______
+
         # === Add default bus connection block if diagram is empty ===
-        if not self.blockboxes_editor.diagram.node_data and main_editor:
+        if not self.blockboxes_editor.diagram.node_data and self.main_editor:
             self.blockboxes_editor.add_connection_vars()
+            self.blockboxes_editor.add_external_mapping_block()
         # === Add pf parameters ===
         self.blockboxes_editor.rebuild_scene_from_diagram()
         self.blockboxes_editor.view.setSceneRect(0, 0, 2000, 2000)  # tamaño arbitrario de escena
@@ -2396,6 +2757,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
 
         # --- connections ---
         self.ui.doItButton.clicked.connect(self.do_it)
+        self.ui.InitGuessButton.clicked.connect(self.add_init_guess)
 
         # current editor view change
         self.ui.model_selector_comboBox.currentIndexChanged.connect(self.editor_change)
@@ -2403,6 +2765,11 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         # select the template view
         self.ui.model_selector_comboBox.setCurrentIndex(0)
         self.editor_change()
+
+        # innit guess button
+
+        if not self.main_editor:
+            self.ui.InitGuessButton.setVisible(False)
 
     def editor_change(self):
         """
@@ -2421,13 +2788,16 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
 
         if self.ui.model_selector_comboBox.currentText() == self.tempaltes_name:
             self.ui.mainLayout.addWidget(self.template_editor)
+            self.current_editor = self.template_editor
 
         elif self.ui.model_selector_comboBox.currentText() == self.block_editor_name:
             self.ui.mainLayout.addWidget(self.blockboxes_editor)
+            self.current_editor = self.blockboxes_editor
 
         elif self.ui.model_selector_comboBox.currentText() == self.equationseditor_name:
             # TODO: add model host logic
             self.ui.mainLayout.addWidget(self.equations_editor)
+            self.current_editor = self.equations_editor
 
         else:
             raise ValueError("Unsupported RMS editor!")
@@ -2448,7 +2818,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
                 return
 
         elif self.ui.model_selector_comboBox.currentText() == self.block_editor_name:
-            if self.blockboxes_editor.block_system is not None:
+            if self.blockboxes_editor.main_block is not None:
                 self.model_host.template = None
                 self.model_host.diagram = self.blockboxes_editor.diagram
                 # self.model_host.custom_model = self.blockboxes_editor.block_system
@@ -2465,12 +2835,66 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
 
         self.close()
 
+    def add_init_guess(self):
+        """
 
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = BlockBoxesEditor(
-        block=Block(),
-        diagram=BlockDiagram()
-    )
-    window.show()
-    sys.exit(app.exec())
+        :return:
+        """
+        if isinstance(self.current_editor, TemplateEditor):
+            if self.current_editor.selected_template is None:
+                QtWidgets.QMessageBox.warning(self, "Error", "No template selected.")
+                return
+            try:
+                template = self.current_editor.selected_template
+                if template.init_values:
+                    values_dict = template.init_values.copy()
+                else:
+                    model = template.get_block()
+                    values_dict: Dict[Var, Const] = dict()
+                    variables = model.get_all_vars()
+                    for var in variables:
+                        values_dict.update({var: Const(0)})
+
+                # TODO: add logic to get all variables from the model and pass them to InitialValuesDialog
+
+                init_guess_editor = InitialValuesDialog(values_dict)
+                result = init_guess_editor.exec()
+                if result == QDialog.DialogCode.Accepted:
+                    init_values_dict = init_guess_editor.get_values_dict()
+                    template.init_values = init_values_dict
+
+            except Exception as e:
+                QtWidgets.QMessageBox.warning(self, "Error", f"Failed get variables from template:\n{e}")
+                return
+        elif isinstance(self.current_editor, BlockBoxesEditor):
+            model = self.current_editor.main_block
+
+            if model.init_values:
+                values_dict = model.init_values.copy()
+            else:
+                values_dict: Dict[Var, Const] = dict()
+                variables = model.get_all_vars()
+                for var in variables:
+                    values_dict.update({var: Const(0)})
+
+            # TODO: add logic to get all variables from the model and pass them to InitialValuesDialog
+
+            init_guess_editor = InitialValuesDialog(values_dict)
+            result = init_guess_editor.exec()
+            if result == QDialog.DialogCode.Accepted:
+                init_values_dict = init_guess_editor.get_values_dict()
+                model.init_values = init_values_dict
+
+        elif isinstance(self.current_editor, EditEquations):
+            # TODO: add logic for this case
+            pass
+
+
+# if __name__ == "__main__":
+#     app = QApplication(sys.argv)
+#     window = BlockBoxesEditor(
+#         block=Block(),
+#         diagram=BlockDiagram()
+#     )
+#     window.show()
+#     sys.exit(app.exec())

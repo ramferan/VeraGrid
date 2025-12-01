@@ -10,6 +10,7 @@ import ast
 import uuid
 import numpy as np
 from enum import Enum
+from scipy.sparse import csc_matrix
 import numba as nb
 from dataclasses import dataclass, field
 from types import MappingProxyType
@@ -61,6 +62,12 @@ def _heaviside(x):
 
 def heaviside(x: Any) -> Func:
     return Func("heaviside", _to_expr(x))
+
+def max(x: Expr, y: Expr) -> Expr:
+    return x*heaviside((x - y)) + y*(Const(1)-heaviside((x - y)))
+
+def min(x: Expr, y: Expr) -> Expr:
+    return x*heaviside(y - x) + y*(Const(1)-heaviside(y - x))
 
 def hard_sat(x: Expr, x_min: Expr, x_max: Expr) -> Expr:
     return x_min + (x-x_min)*heaviside(x-x_min) - (x -x_max)*heaviside(x-x_max)
@@ -624,6 +631,10 @@ class BinOp(Expr):
             if r.value == 0:
                 return Const(1)
 
+        if self.op == '/' and isinstance(l, Const):
+            if l.value == 0:
+                return l
+
         return BinOp(self.op, l, r)
 
     def subs(self, mapping: Dict[Any, Expr]) -> Expr:
@@ -757,7 +768,7 @@ class Func(Expr):
         if self.name == "cosh":
             return sinh(u) * du
         if self.name == "heaviside":
-            return Const(0)
+            return du*self
         raise ValueError(f"Unknown function '{self.name}'")
 
     # --- simplification ------------------------------------------------------
@@ -984,6 +995,8 @@ def _emit(expr: Expr, uid_map_vars: Dict[int, str], uid_map_params: Dict[int, st
                          "exp", "log", "sqrt", "asin", "acos", "atan",
                          "sinh", "cosh", "abs"):
             return f"np.{expr.name}({_emit(expr.arg, uid_map_vars, uid_map_params)})"
+        elif expr.name == "heaviside":
+            return f"_heaviside({_emit(expr.arg, uid_map_vars, uid_map_params)})"
         else:
             return f"np.{expr.name}({_emit(expr.arg, uid_map_vars, uid_map_params)})"
 
@@ -1153,7 +1166,7 @@ _FUNC_MAP = {
     "imag": imag,
     "conj": conj,
     "angle": angle,
-    "abs": abs,  # ⚠️ rename if you avoid shadowing built-in
+    "abs": abs,  #
     "heaviside": heaviside,
 }
 
