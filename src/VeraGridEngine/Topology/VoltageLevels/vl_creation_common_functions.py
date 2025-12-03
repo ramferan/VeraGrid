@@ -5,16 +5,16 @@
 from __future__ import annotations
 from typing import Tuple, List
 import VeraGridEngine.Devices as dev
-from VeraGridEngine import Country, BusGraphicType, SwitchGraphicType
+from VeraGridEngine import BusGraphicType
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.types import BRANCH_TYPES, INJECTION_DEVICE_TYPES
 from VeraGridEngine.Topology.VoltageLevels.single_bar import (
     create_single_bar,
     create_single_bar_with_disconnectors,
     create_single_bar_with_splitter,
     create_single_bar_with_splitter_with_disconnectors,
     create_single_bar_with_bypass,
-    create_single_bar_with_bypass_with_disconnectors,
-    connect_bar_segments)
+    create_single_bar_with_bypass_with_disconnectors)
 from VeraGridEngine.Topology.VoltageLevels.double_bar import (
     create_double_bar,
     create_double_bar_with_disconnectors,
@@ -111,8 +111,15 @@ def transform_bus_into_voltage_level(
         bus: dev.Bus,
         vl_type=VoltageLevelTypes.SingleBar,
         add_disconnectors: bool = False,
-        bar_by_segments: bool = False
-) -> List[dev.Bus]:
+        bar_by_segments: bool = False,
+        skip_injections_reconnection: bool = True
+) -> Tuple[
+    List[dev.Bus],
+    List[dev.Bus],
+    List[BRANCH_TYPES],
+    List[INJECTION_DEVICE_TYPES],
+    List[Tuple[BRANCH_TYPES | INJECTION_DEVICE_TYPES, dev.Bus, dev.Bus]]
+]:
     """
     Transform a bus into a voltage level
     :param grid: MultiCircuit to add devices to
@@ -120,7 +127,13 @@ def transform_bus_into_voltage_level(
     :param vl_type: VoltageLevelTypes
     :param add_disconnectors: add voltage level disconnectors?
     :param bar_by_segments: Have the bar with connectivities and impedances instead of a single bus-bar?
-    :return: List of all voltage level buses
+    :param skip_injections_reconnection: if true the injections are not included in the reconnections list
+    :return:
+    - List of all voltage level buses,
+    - List of bay buses,
+    - List of bus connected branches,
+    - List of bus connected
+    - List of re-connections (element, old bus, new bus)
     """
 
     # get the associations of the bus
@@ -234,7 +247,7 @@ def transform_bus_into_voltage_level(
 
     elif vl_type == VoltageLevelTypes.DoubleBarWithBypass:
         # TODO: Implement
-        return all_buses
+        return all_buses, list(), associated_branches, associated_injections, list()
 
     elif vl_type == VoltageLevelTypes.DoubleBarWithTransference:
 
@@ -264,7 +277,7 @@ def transform_bus_into_voltage_level(
 
     elif vl_type == VoltageLevelTypes.DoubleBarDuplex:
         # TODO: Implement
-        return all_buses
+        return all_buses, list(), associated_branches, associated_injections, list()
 
     elif vl_type == VoltageLevelTypes.Ring:
 
@@ -318,24 +331,35 @@ def transform_bus_into_voltage_level(
 
     else:
         print(f"{vl_type} not implemented :/")
-        return all_buses
+        return all_buses, list(), associated_branches, associated_injections, list()
 
     # re-connect the branches and injections to the new position-buses
+
+    # element, old bus, new bus
+    reconnection_list = list()
+
     j = 0
     for elem in associated_branches:
         if elem.bus_from == bus:
             elem.bus_from = conn_buses[j]
+            reconnection_list.append((elem, bus, conn_buses[j]))
 
         elif elem.bus_to == bus:
             elem.bus_to = conn_buses[j]
+            reconnection_list.append((elem, bus, conn_buses[j]))
 
         j += 1
 
     for elem in associated_injections:
+        old_bus = elem.bus
         elem.bus = conn_buses[j]
+
+        if not skip_injections_reconnection:
+            reconnection_list.append((elem, old_bus, conn_buses[j]))
+
         j += 1
 
-    return all_buses
+    return all_buses, conn_buses, associated_branches, associated_injections, reconnection_list
 
 
 def _store_voltage_level_data(
@@ -361,7 +385,7 @@ def _store_voltage_level_data(
     if voltage not in conn_buses_by_voltage:
         conn_buses_by_voltage[voltage] = []
     conn_buses_by_voltage[voltage].extend(conn_buses)
-    
+
     # Store bars (buses with BusGraphicType.BusBar) for this voltage level
     bars = [bus for bus in all_buses if bus.graphic_type == BusGraphicType.BusBar]
     if voltage not in bars_by_voltage:
@@ -370,7 +394,7 @@ def _store_voltage_level_data(
     existing_bar_ids = {b.idtag for b in bars_by_voltage[voltage]}
     new_bars = [b for b in bars if b.idtag not in existing_bar_ids]
     bars_by_voltage[voltage].extend(new_bars)
-    
+
     # Store voltage level type
     vl_type_by_voltage[voltage] = vl_type
 
@@ -404,12 +428,12 @@ def create_substation(
         for bus in buses_to_replace:
             associated_branches, associated_injections = grid.get_bus_devices(bus=bus)
             bus_connections[bus] = (associated_branches, associated_injections)
-            
+
             v_nom = bus.Vnom
             if v_nom not in buses_by_voltage:
                 buses_by_voltage[v_nom] = []
             buses_by_voltage[v_nom].append(bus)
-    
+
     # create the SE
     se_object = dev.Substation(name=se_name,
                                code=se_code,
@@ -675,19 +699,19 @@ def create_substation(
                 bars_for_voltage = bars_by_voltage[v_nom]
                 vl_type = vl_type_by_voltage[v_nom]
                 original_name = old_bus.name
-                
+
                 if vl_type == VoltageLevelTypes.SingleBar:
                     # Single bar: rename the bar to {original_name}JBP1
                     if len(bars_for_voltage) > 0:
                         bars_for_voltage[0].name = f"{original_name}_JBP1"
-                
+
                 elif vl_type == VoltageLevelTypes.DoubleBar:
                     # Double bar: rename the 2 bars to {original_name}JBP1 and JBP2
                     if len(bars_for_voltage) >= 1:
                         bars_for_voltage[0].name = f"{original_name}_JBP1"
                     if len(bars_for_voltage) >= 2:
                         bars_for_voltage[1].name = f"{original_name}_JBP2"
-                
+
                 elif vl_type == VoltageLevelTypes.BreakerAndAHalf:
                     # Breaker and a half: rename the 2 bars to {original_name}JBP1 and JBP2
                     if len(bars_for_voltage) >= 1:
@@ -698,30 +722,29 @@ def create_substation(
                     # Nothing to rename
                     pass
 
-                
                 # Mark this voltage level as renamed
                 renamed_voltage_levels.add(v_nom)
-    
+
     # Reconnect buses to replace to the new substation connection buses
     buses_to_delete = []
     # Track connection index per voltage level to distribute connections evenly
     conn_idx_by_voltage = {}
-    
+
     if buses_to_replace and bus_connections:
         for old_bus in buses_to_replace:
             v_nom = old_bus.Vnom
             associated_branches, associated_injections = bus_connections[old_bus]
-            
+
             # Find matching connection buses for this voltage level
             if v_nom in conn_buses_by_voltage and len(conn_buses_by_voltage[v_nom]) > 0:
                 # Get the first available connection bus for this voltage level
                 # We will distribute connections across available connection buses
                 conn_buses_for_voltage = conn_buses_by_voltage[v_nom]
-                
+
                 # Initialize connection index for this voltage level if not already done
                 if v_nom not in conn_idx_by_voltage:
                     conn_idx_by_voltage[v_nom] = 0
-                
+
                 # Reconnect branches
                 for elem in associated_branches:
                     conn_idx = conn_idx_by_voltage[v_nom]
@@ -732,7 +755,7 @@ def create_substation(
                         elem.bus_to = new_bus
                     # Move to next connection bus, wrapping around if needed
                     conn_idx_by_voltage[v_nom] = (conn_idx + 1) % len(conn_buses_for_voltage)
-                
+
                 # Reconnect injections
                 for elem in associated_injections:
                     conn_idx = conn_idx_by_voltage[v_nom]
@@ -740,10 +763,10 @@ def create_substation(
                     elem.bus = new_bus
                     # Move to next connection bus, wrapping around if needed
                     conn_idx_by_voltage[v_nom] = (conn_idx + 1) % len(conn_buses_for_voltage)
-                
+
                 # Mark the old bus for deletion after all reconnections are done
                 buses_to_delete.append(old_bus)
-    
+
     # Delete old buses considering we have all reconnections complete
     for old_bus in buses_to_delete:
         grid.delete_bus(old_bus)

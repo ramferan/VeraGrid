@@ -1,5 +1,5 @@
 from VeraGridEngine.api import *
-from VeraGridEngine.Topology.VoltageLevels import common_functions
+from VeraGridEngine.Topology.VoltageLevels import vl_creation_common_functions
 
 print('Creating grid...')
 

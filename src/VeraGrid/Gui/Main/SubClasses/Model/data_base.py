@@ -14,7 +14,7 @@ from VeraGrid.Gui.associations_model import AssociationsModel
 from VeraGrid.Gui.table_view_header_wrap import HeaderViewWithWordWrap
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGrid.Gui.Main.SubClasses.Model.compiled_arrays_model import CompiledArraysModule
-from VeraGridEngine.Topology.VoltageLevels import common_functions as substation_wizards
+from VeraGridEngine.Topology.VoltageLevels import vl_creation_common_functions as substation_wizards
 import VeraGridEngine.basic_structures as bs
 import VeraGridEngine.Devices as dev
 import VeraGrid.Gui.gui_functions as gf

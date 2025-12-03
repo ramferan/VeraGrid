@@ -43,11 +43,11 @@ from VeraGridEngine.Devices.Diagrams.schematic_diagram import SchematicDiagram
 from VeraGridEngine.Devices.Diagrams.graphic_location import GraphicLocation
 from VeraGridEngine.Simulations.OPF.opf_ts_results import OptimalPowerFlowTimeSeriesResults
 from VeraGridEngine.Simulations.PowerFlow.power_flow_ts_results import PowerFlowTimeSeriesResults
-from VeraGridEngine.Topology.VoltageLevels.common_functions import transform_bus_to_connectivity_grid
+from VeraGridEngine.Topology.VoltageLevels.vl_creation_common_functions import transform_bus_to_connectivity_grid
 from VeraGridEngine.enumerations import DeviceType, ResultTypes, BusGraphicType
 from VeraGridEngine.basic_structures import Vec, CxVec, IntVec, Logger
 import VeraGridEngine.Devices.Diagrams.palettes as palettes
-from VeraGridEngine.Topology.VoltageLevels import common_functions as substation_wizards
+from VeraGridEngine.Topology.VoltageLevels import vl_creation_common_functions as substation_wizards
 from VeraGridEngine.enumerations import TerminalType
 
 from VeraGrid.Gui.SubstationDesigner.voltage_level_conversion import VoltageLevelConversionWizard
@@ -4697,10 +4697,11 @@ class SchematicWidget(BaseDiagramWidget):
 
             new_bus_graphic.get_terminal().update()
 
-    def transform_busbar_to_connectivity_grid(self, bus_graphics: BusGraphicItem):
+    def transform_busbar_to_connectivity_grid(self, bus_graphics: BusGraphicItem, x_offset=80):
         """
         Transform the bus into a grid of buses to be able to compute the bus currents
         :param bus_graphics: BusGraphicItem
+        :param x_offset: x offset of the new connectivity buses
         """
 
         # convert a bus into many small buses connected by impedances
@@ -4709,6 +4710,11 @@ class SchematicWidget(BaseDiagramWidget):
 
         # add the new buses
         self.add_buses(buses=new_buses)
+
+        # correct the new buses position
+        for i, bus in enumerate(new_buses):
+            new_bus_graphic: BusGraphicItem = self.graphics_manager.query(bus)
+            new_bus_graphic.setPos(bus_graphics.x() + (i * x_offset), bus_graphics.y() + 20)
 
         # connected branches
         self.reconnect_bus_graphics(bus_graphics=bus_graphics, new_buses=new_buses)
@@ -4730,19 +4736,44 @@ class SchematicWidget(BaseDiagramWidget):
         vl_wizard.exec()  # waits until closed
 
         if vl_wizard.closed_ok is not None:
-            new_buses = substation_wizards.transform_bus_into_voltage_level(
+            (new_buses,
+             conn_buses,
+             associated_branches,
+             associated_injections,
+             reconnection_list) = substation_wizards.transform_bus_into_voltage_level(
                 grid=self.circuit,
                 bus=bus_graphics.api_object,
                 vl_type=vl_wizard.get_vl_type(),
                 add_disconnectors=vl_wizard.add_brakers_checkbox.isChecked(),
-                bar_by_segments=vl_wizard.bar_by_segments_checkbox.isChecked()
+                bar_by_segments=vl_wizard.bar_by_segments_checkbox.isChecked(),
+                skip_injections_reconnection=True
             )
 
             # add the newly created buses to the diagram (with all their stuff that's not there already)
             self.add_buses(buses=new_buses)
 
             # reconnect graphics
-            self.reconnect_bus_graphics(bus_graphics=bus_graphics, new_buses=new_buses)
+            # self.reconnect_bus_graphics(bus_graphics=bus_graphics, new_buses=conn_buses)
+            # Note: graphical shunts have been added already
+            # the order of the buses matches the order of the branches because the
+            # transformation function already works like that
+            for element, old_bus, new_bus in reconnection_list:
+                new_bus_graphic: BusGraphicItem = self.graphics_manager.query(new_bus)
+                branch_graphic = self.graphics_manager.query(element)
+
+                # At this point the API branch has been ressigned already
+
+                new_bus_graphic.terminal.reassign_terminal(
+                    graphic_obj=branch_graphic,
+                    another_terminal=bus_graphics.terminal
+                )
+
+                branch_graphic.api_object.reassign_bus(
+                    old_bus=bus_graphics.api_object,
+                    new_bus=new_bus_graphic.api_object
+                )
+
+                new_bus_graphic.get_terminal().update()
 
             # Finally delete the old bus
             self.delete_element_utility_function(device=bus_graphics.api_object)

@@ -94,14 +94,18 @@ class GraphicsManager:
             elm_dict: Dict[str, ALL_GRAPHICS] = self.graphic_dict.get(elm.device_type, None)
 
             if elm_dict is None:
+                # the graphic category did not exist
                 self.graphic_dict[elm.device_type] = {elm.idtag: graphic}
             else:
-                graphic_0 = elm_dict.get(elm.idtag, None)  # try to get the existing element
+                # The category exits, try to get the existing element
+                graphic_0 = elm_dict.get(elm.idtag, None)
                 if graphic_0 is None:
+                    # the element did not exist, add it
                     elm_dict[elm.idtag] = graphic
                 else:
+                    # the element existed, and maybe we're going to replace it with something else
                     if graphic_0 != graphic:
-                        warn(f"Replacing {graphic} with {graphic}, this could be a sign of an idtag bug")
+                        print(f"Replacing {graphic} with {graphic}, this could be a sign of an idtag bug")
                     elm_dict[elm.idtag] = graphic
 
         else:
