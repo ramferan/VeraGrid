@@ -1577,17 +1577,33 @@ class Assets:
         buses_to_remove_set = buses_to_remove
         self._buses = ListSet([b for b in self._buses if b not in buses_to_remove_set])
 
-    def get_buses_by(self, filter_elements: List[Union[dev.Area, dev.Country, dev.Zone]]) -> List[dev.Bus]:
+    def get_buses_by(self, filter_elements: List[Union[dev.Area, dev.Zone,
+    dev.Country, dev.Community,
+    dev.Region, dev.Municipality]]) -> List[dev.Bus]:
         """
         Get a list of buses that can be found in the list of Areas | Zones | Countries
         :param filter_elements: list of Areas | Zones | Countries
         :return: list of buses
         """
         data: List[dev.Bus] = list()
+        filter_elements_set = set(filter_elements)
 
         for bus in self._buses:
 
-            if bus.area in filter_elements or bus.zone in filter_elements or bus.country in filter_elements:
+            ok = bus.area in filter_elements_set
+            ok = ok or bus.zone in filter_elements_set
+            ok = ok or bus.country in filter_elements_set
+
+            if bus.substation is not None:
+                ok = ok or bus.substation.municipality in filter_elements_set
+
+                if bus.substation.municipality is not None:
+                    ok = ok or bus.substation.municipality.region in filter_elements_set
+
+                    if bus.substation.municipality.region is not None:
+                        ok = ok or bus.substation.municipality.region.community in filter_elements_set
+
+            if ok:
                 data.append(bus)
 
         return data
@@ -4136,7 +4152,8 @@ class Assets:
         return logger
 
     def get_contingency_groups_in(self,
-                                  grouping_elements: List[Union[dev.Area, dev.Country, dev.Zone]]
+                                  grouping_elements: List[Union[dev.Area, dev.Zone,
+                                  dev.Country, dev.Community, dev.Region, dev.Municipality]]
                                   ) -> List[dev.ContingencyGroup]:
         """
         Get a filtered set of ContingencyGroups

@@ -63,7 +63,18 @@
        <number>0</number>
       </property>
       <item>
-       <widget class="QComboBox" name="methodComboBox"/>
+       <widget class="QComboBox" name="busModeComboBox">
+        <property name="placeholderText">
+         <string>Buses</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="methodComboBox">
+        <property name="placeholderText">
+         <string>Method</string>
+        </property>
+       </widget>
       </item>
       <item>
        <spacer name="horizontalSpacer">

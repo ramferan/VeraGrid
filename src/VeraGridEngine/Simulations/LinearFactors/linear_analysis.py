@@ -1024,19 +1024,23 @@ class LinearAnalysisTs:
 
     def __init__(self, grid: MultiCircuit,
                  distributed_slack: bool = True,
-                 correct_values: bool = False):
+                 correct_values: bool = False,
+                 time_indices: IntVec | None = None):
         """
         Constructor
         :param grid: MultiCircuit instance
         :param distributed_slack: boolean to distribute slack
         :param correct_values: boolean to fix out layer values
+        :param time_indices: Array of time indices
         """
 
         if not grid.has_time_series:
             raise Exception("The grid does not have any time series :(")
 
+        self.time_indices = grid.get_all_time_indices() if time_indices is None else time_indices
+
         # get the states matrix
-        mat: IntMat = grid.get_branch_active_time_array()
+        mat: IntMat = grid.get_branch_active_time_array()[self.time_indices, None]
 
         # analyze how many PTDF's we need to get
         self.groups, self.mapping = find_different_states(mat)
@@ -1052,7 +1056,7 @@ class LinearAnalysisTs:
 
         self.nbr = grid.get_branch_number()
         self.nbus = grid.get_bus_number()
-        self.nt = grid.get_time_number()
+        self.nt = len(self.time_indices)
 
     def get_linear_analysis_at(self, t_idx: int) -> LinearAnalysis:
         """

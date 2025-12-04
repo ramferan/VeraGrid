@@ -28,7 +28,7 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="merged from eroots devel 5.6.1 1.12.25" />
+    <list default="true" id="aa3ee678-6e91-470f-91a9-09e9d8a4756d" name="Changes" comment="merged from eroots devel 5.6.2, 3.12.25" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -1796,7 +1796,7 @@
       <option name="project" value="LOCAL" />
       <updated>1698766404661</updated>
     </task>
-    <option name="localTasksCounter" value="616" />
+    <option name="localTasksCounter" value="617" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -1842,7 +1842,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Improved psse parsing" />
     <MESSAGE value="Improved rms initialize" />
     <MESSAGE value="Improved rms generator values" />
     <MESSAGE value="Equivalent events in simulations" />
@@ -1867,7 +1866,8 @@
     <MESSAGE value="merged from eroots devel 5.6.0" />
     <MESSAGE value="merged from eroots devel 5.6.0 26.10.26" />
     <MESSAGE value="merged from eroots devel 5.6.1 1.12.25" />
-    <option name="LAST_COMMIT_MESSAGE" value="merged from eroots devel 5.6.1 1.12.25" />
+    <MESSAGE value="merged from eroots devel 5.6.2, 3.12.25" />
+    <option name="LAST_COMMIT_MESSAGE" value="merged from eroots devel 5.6.2, 3.12.25" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

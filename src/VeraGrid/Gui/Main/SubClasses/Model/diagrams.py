@@ -1964,7 +1964,8 @@ class DiagramsMain(CompiledArraysMain):
                      title="Substations schematic")
             return
 
-        selected_buses = self.circuit.get_buses_from_objects(elements=substations)
+        selected_buses = self.circuit.get_buses_from_objects(elements=substations,
+                                                             dtype=DeviceType.SubstationDevice)
 
         if len(selected_buses):
             diagram = make_diagram_from_buses(circuit=self.circuit,
@@ -2005,7 +2006,8 @@ class DiagramsMain(CompiledArraysMain):
             self.show_error_toast("The current diagram is not a schematic :(")
             return
 
-        selected_buses = self.circuit.get_buses_from_objects(elements=substations)
+        selected_buses = self.circuit.get_buses_from_objects(elements=substations,
+                                                             dtype=DeviceType.SubstationDevice)
 
         if len(selected_buses):
             diagram_widget.add_buses(selected_buses)

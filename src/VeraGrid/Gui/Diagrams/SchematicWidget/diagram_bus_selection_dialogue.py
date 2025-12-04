@@ -3,14 +3,13 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
-from typing import List, Union, Any, TYPE_CHECKING
-from PySide6 import QtCore, QtGui, QtWidgets
-from PySide6.QtWidgets import (QApplication, QDialog, QTableView, QVBoxLayout, QPushButton, QHBoxLayout,
-                               QLabel, QComboBox, QSpacerItem, QSizePolicy)
+from typing import List, TYPE_CHECKING
+from PySide6 import QtWidgets
+from PySide6.QtWidgets import (QVBoxLayout, QPushButton)
 
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import (SchematicWidget, make_diagram_from_buses,
                                                                     SchematicDiagram)
-from VeraGridEngine.Devices.Substation.substation import Substation
+from VeraGridEngine.Devices.Substation.substation import Substation, DeviceType
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 
@@ -38,7 +37,7 @@ class DiagramBusSelectorDialogue(QtWidgets.QDialog):
 
         self.layout = QVBoxLayout(self)
 
-        selected_buses = grid.get_buses_from_objects(elements=[substation])
+        selected_buses = grid.get_buses_from_objects(elements=[substation], dtype=DeviceType.SubstationDevice)
 
         if len(selected_buses):
             diagram = make_diagram_from_buses(circuit=grid,

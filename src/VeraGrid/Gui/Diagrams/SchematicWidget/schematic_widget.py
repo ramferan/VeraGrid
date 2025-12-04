@@ -4735,7 +4735,7 @@ class SchematicWidget(BaseDiagramWidget):
         vl_wizard.setModal(True)
         vl_wizard.exec()  # waits until closed
 
-        if vl_wizard.closed_ok is not None:
+        if vl_wizard.closed_ok:
             (new_buses,
              conn_buses,
              associated_branches,

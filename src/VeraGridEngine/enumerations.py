@@ -2118,6 +2118,9 @@ class ContingencyFilteringMethods(Enum):
     """
     AllActive = "All active contingencies"
     Country = "Country"
+    Community = "Community"
+    Region = "Region"
+    Municipality = "Municipality"
     Zone = "Zone"
     Area = "Area"
     SensitiveToMonitored = "Sensitive to monitored"
@@ -2375,6 +2378,32 @@ class GridReductionMethod(Enum):
         """
         try:
             return GridReductionMethod[s]
+        except KeyError:
+            return s
+
+
+class BusReductionMethod(Enum):
+    """
+    GridReductionMethod
+    """
+    Reduce = "Reduce"
+    Keep = "Keep"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return BusReductionMethod[s]
         except KeyError:
             return s
 

@@ -10,15 +10,16 @@ import numpy as np
 from VeraGrid.Gui.GridReduce.grid_reduce_gui import Ui_ReduceDialog
 from VeraGrid.Gui.general_dialogues import LogsDialogue
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
-from VeraGrid.Gui.gui_functions import get_list_model
+from VeraGrid.Gui.gui_functions import get_list_model, enums_to_model
 from VeraGrid.Session.session import SimulationSession
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Topology.GridReduction.di_shi_grid_reduction import di_shi_reduction
-from VeraGridEngine.Topology.GridReduction.ptdf_grid_reduction import ptdf_reduction, ptdf_reduction_projected, ptdf_reduction_ree_bad, ptdf_reduction_ree_less_bad
+from VeraGridEngine.Topology.GridReduction.ptdf_grid_reduction import ptdf_reduction, ptdf_reduction_projected, \
+    ptdf_reduction_ree_bad, ptdf_reduction_ree_less_bad
 from VeraGridEngine.Topology.GridReduction.ward_equivalents import ward_standard_reduction
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.enumerations import GridReductionMethod
+from VeraGridEngine.enumerations import GridReductionMethod, BusReductionMethod
 
 
 class GridReduceDialogue(QtWidgets.QDialog):
@@ -44,12 +45,18 @@ class GridReduceDialogue(QtWidgets.QDialog):
 
         self.ui.listView.setModel(get_list_model(list(selected_buses_set)))
 
-        methods = [GridReductionMethod.PTDF,
-                   GridReductionMethod.PTDFProjected,
-                   GridReductionMethod.DiShi,
-                   GridReductionMethod.Ward]
-        self.methods_dict = {m.value: m for m in methods}
-        self.ui.methodComboBox.setModel(get_list_model([m.value for m in methods]))
+        self.methods_dict, methods_mdl = enums_to_model(
+            [GridReductionMethod.PTDF,
+             GridReductionMethod.PTDFProjected,
+             GridReductionMethod.DiShi,
+             GridReductionMethod.Ward]
+        )
+        self.ui.methodComboBox.setModel(methods_mdl)
+
+        self.bus_methods_dict, bus_methods_mdl = enums_to_model(
+            [BusReductionMethod.Reduce, BusReductionMethod.Keep]
+        )
+        self.ui.busModeComboBox.setModel(bus_methods_mdl)
 
         self._grid: MultiCircuit = grid
         self._session: SimulationSession = session
@@ -59,7 +66,7 @@ class GridReduceDialogue(QtWidgets.QDialog):
 
         self.ui.reduceButton.clicked.connect(self.reduce_grid)
 
-    def reduce_grid(self):
+    def reduce_grid(self) -> None:
         """
         The elements of the grid will be added with new idtags.
         This is useful in the case you want to compose a new grid from grids that are the same.
@@ -67,21 +74,39 @@ class GridReduceDialogue(QtWidgets.QDialog):
         """
         if len(self._selected_buses_set):
 
-            method: GridReductionMethod = self.methods_dict[self.ui.methodComboBox.currentText()]
+            reduction_method: GridReductionMethod = self.methods_dict[self.ui.methodComboBox.currentText()]
+            bus_mode: BusReductionMethod = self.bus_methods_dict[self.ui.busModeComboBox.currentText()]
+
+            if bus_mode == BusReductionMethod.Reduce:
+                text = f"This will delete the selected buses and reintroduce their influence."
+            else:
+                text = "This will keep the selected buses and delete all others, reintroducing their influence."
+
+            text += f"using the {reduction_method.value} equivalent. "
+            "This cannot be undone and it is dangerous if you don't know"
+            "what you are doing \nAre you sure?"
 
             ok = yes_no_question(
-                text="This will delete the selected buses and reintroduce their influence"
-                     "using the Ward equivalent. This cannot be undone and it is dangerous if you don't know"
-                     "what you are doing \nAre you sure?",
+                text=text,
                 title="Grid reduction?")
 
             if ok:
 
-                # convert the set of buses to bus indices
-                reduction_bus_indices = np.array([self._grid.buses.index(b) for b in self._selected_buses_set],
-                                                 dtype=int)
+                if bus_mode == BusReductionMethod.Reduce:
+                    # convert the set of buses to bus indices
+                    reduction_bus_indices = np.array([self._grid.buses.index(b)
+                                                      for b in self._selected_buses_set],
+                                                     dtype=int)
 
-                if method == GridReductionMethod.DiShi:
+                elif bus_mode == BusReductionMethod.Keep:
+                    # the the other buses that are not in the set
+                    reduction_bus_indices = np.array([i for i in range(self._grid.get_bus_number())
+                                                      if self._grid.buses[i] not in self._selected_buses_set],
+                                                     dtype=int)
+                else:
+                    raise NotImplementedError(f"BusReductionMethod not implemented: {bus_mode.value}")
+
+                if reduction_method == GridReductionMethod.DiShi:
 
                     # get the previous power flow
                     _, pf_res = self._session.power_flow
@@ -97,7 +122,7 @@ class GridReduceDialogue(QtWidgets.QDialog):
                         V0=pf_res.voltage
                     )
 
-                elif method == GridReductionMethod.Ward:
+                elif reduction_method == GridReductionMethod.Ward:
 
                     # get the previous power flow
                     _, pf_res = self._session.power_flow
@@ -113,7 +138,7 @@ class GridReduceDialogue(QtWidgets.QDialog):
                         V0=pf_res.voltage,
                     )
 
-                elif method == GridReductionMethod.PTDF:
+                elif reduction_method == GridReductionMethod.PTDF:
 
                     # NOTE: self._grid gets reduced in-place
                     grid_reduced, logger = ptdf_reduction(
@@ -121,16 +146,16 @@ class GridReduceDialogue(QtWidgets.QDialog):
                         reduction_bus_indices=reduction_bus_indices,
                     )
 
-                elif method == GridReductionMethod.PTDFProjected:
+                elif reduction_method == GridReductionMethod.PTDFProjected:
 
                     # NOTE: self._grid gets reduced in-place
-                    
+
                     # get the options from the linear analysis driver
                     lin_drv, _ = self._session.linear_power_flow
                     distribute_slack = True
                     if lin_drv is not None:
                         distribute_slack = lin_drv.options.distribute_slack
-                    
+
                     grid_reduced, logger = ptdf_reduction_projected(
                         grid=self._grid,
                         reduction_bus_indices=reduction_bus_indices,

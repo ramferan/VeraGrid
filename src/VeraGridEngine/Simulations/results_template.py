@@ -101,6 +101,10 @@ class ResultsTemplate:
 
     @property
     def data_variables(self):
+        """
+
+        :return:
+        """
         return self._data_variables
 
     @property

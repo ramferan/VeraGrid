@@ -60,39 +60,45 @@ class SimulationsMain(TimeEventsMain):
         self._remote_jobs: Dict[str, RemoteJobDriver] = dict()
 
         # Power Flow Methods
-        self.se_solvers_dict, se_solvers_mdl = gf.enums_to_model([SolverType.NR,
-                                                                  SolverType.LM,
-                                                                  SolverType.GN])
+        self.se_solvers_dict, se_solvers_mdl = gf.enums_to_model(
+            [SolverType.NR,
+             SolverType.LM,
+             SolverType.GN]
+        )
         self.ui.se_solver_comboBox.setModel(se_solvers_mdl)
         self.ui.se_solver_comboBox.setCurrentIndex(0)
 
         # SE Methods
-        self.solvers_dict, solvers_mdl = gf.enums_to_model([SolverType.NR,
-                                                            SolverType.IWAMOTO,
-                                                            SolverType.LM,
-                                                            SolverType.PowellDogLeg,
-                                                            SolverType.FASTDECOUPLED,
-                                                            SolverType.HELM,
-                                                            SolverType.GAUSS,
-                                                            SolverType.LACPF,
-                                                            SolverType.Linear])
+        self.solvers_dict, solvers_mdl = gf.enums_to_model(
+            [SolverType.NR,
+             SolverType.IWAMOTO,
+             SolverType.LM,
+             SolverType.PowellDogLeg,
+             SolverType.FASTDECOUPLED,
+             SolverType.HELM,
+             SolverType.GAUSS,
+             SolverType.LACPF,
+             SolverType.Linear]
+        )
         self.ui.solver_comboBox.setModel(solvers_mdl)
         self.ui.solver_comboBox.setCurrentIndex(0)
 
         # transfer modes
-        self.transfer_modes_dict = OrderedDict()
-        self.transfer_modes_dict['Area generation'] = AvailableTransferMode.Generation
-        self.transfer_modes_dict['Area installed power'] = AvailableTransferMode.InstalledPower
-        self.transfer_modes_dict['Area load'] = AvailableTransferMode.Load
-        self.transfer_modes_dict['Area nodes'] = AvailableTransferMode.GenerationAndLoad
-        lst = list(self.transfer_modes_dict.keys())
-        self.ui.transferMethodComboBox.setModel(gf.get_list_model(lst))
+        self.transfer_modes_dict, transfer_modes_mdl = gf.enums_to_model(
+            [AvailableTransferMode.Generation,
+             AvailableTransferMode.InstalledPower,
+             AvailableTransferMode.Load,
+             AvailableTransferMode.GenerationAndLoad]
+        )
+        self.ui.transferMethodComboBox.setModel(transfer_modes_mdl)
         self.ui.transferMethodComboBox.setCurrentIndex(1)
 
         # opf solvers dictionary
-        self.lp_solvers_dict, lp_solvers_mdl = gf.enums_to_model([SolverType.LINEAR_OPF,
-                                                                  SolverType.NONLINEAR_OPF,
-                                                                  SolverType.GREEDY_DISPATCH_OPF])
+        self.lp_solvers_dict, lp_solvers_mdl = gf.enums_to_model(
+            [SolverType.LINEAR_OPF,
+             SolverType.NONLINEAR_OPF,
+             SolverType.GREEDY_DISPATCH_OPF]
+        )
         self.ui.lpf_solver_comboBox.setModel(lp_solvers_mdl)
 
         # opf dispatch methods
@@ -104,43 +110,47 @@ class SimulationsMain(TimeEventsMain):
         )
         self.ui.opfDispatchModeComboBox.setModel(opf_dispatch_mode_mdl)
 
+        # MIP frameworks
         self.opf_mip_framework_dict, opf_mip_framework_mdl = gf.enums_to_model(
             get_available_mip_frameworks()
         )
         self.ui.mip_framework_comboBox.setModel(opf_mip_framework_mdl)
 
         # reliability modes
-        self.reliability_mode_dict = OrderedDict()
-        self.reliability_mode_dict[ReliabilityMode.GenerationAdequacy.value] = ReliabilityMode.GenerationAdequacy
-        self.reliability_mode_dict[ReliabilityMode.GridMetrics.value] = ReliabilityMode.GridMetrics
-        self.ui.reliability_method_comboBox.setModel(gf.get_list_model(list(self.reliability_mode_dict.keys())))
+        (self.reliability_mode_dict,
+         reliability_mode_dict_mdl) = gf.enums_to_model(
+            [ReliabilityMode.GenerationAdequacy,
+             ReliabilityMode.GridMetrics]
+        )
+        self.ui.reliability_method_comboBox.setModel(reliability_mode_dict_mdl)
 
         # ips solvers dictionary
-        self.ips_solvers_dict = OrderedDict()
-        self.ips_solvers_dict[SolverType.NR.value] = SolverType.NR
-        self.ui.ips_method_comboBox.setModel(gf.get_list_model(list(self.ips_solvers_dict.keys())))
+        (self.ips_solvers_dict,
+         ips_solvers_dict_mdl) = gf.enums_to_model(
+            [SolverType.NR]
+        )
+        self.ui.ips_method_comboBox.setModel(ips_solvers_dict_mdl)
 
         # the MIP combobox models assigning is done in modify_ui_options_according_to_the_engine
-        self.mip_solvers_dict = OrderedDict()
-        self.mip_solvers_dict[MIPSolvers.HIGHS.value] = MIPSolvers.HIGHS
-        self.mip_solvers_dict[MIPSolvers.SCIP.value] = MIPSolvers.SCIP
-        self.mip_solvers_dict[MIPSolvers.CPLEX.value] = MIPSolvers.CPLEX
-        self.mip_solvers_dict[MIPSolvers.GUROBI.value] = MIPSolvers.GUROBI
-        self.mip_solvers_dict[MIPSolvers.XPRESS.value] = MIPSolvers.XPRESS
-        self.mip_solvers_dict[MIPSolvers.CBC.value] = MIPSolvers.CBC
-        self.mip_solvers_dict[MIPSolvers.PDLP.value] = MIPSolvers.PDLP
+        (self.mip_solvers_dict,
+         mip_solvers_dict_mdl) = gf.enums_to_model(
+            [MIPSolvers.HIGHS,
+             MIPSolvers.SCIP,
+             MIPSolvers.CPLEX,
+             MIPSolvers.GUROBI,
+             MIPSolvers.XPRESS,
+             MIPSolvers.CBC,
+             MIPSolvers.PDLP]
+        )
 
         # opf solvers dictionary
-        self.nodal_capacity_methods_dict = OrderedDict()
-
-        for val in [NodalCapacityMethod.LinearOptimization,
-                    NodalCapacityMethod.NonlinearOptimization,
-                    NodalCapacityMethod.CPF]:
-            self.nodal_capacity_methods_dict[val.value] = val
-
-        self.ui.nodal_capacity_method_comboBox.setModel(
-            gf.get_list_model(list(self.nodal_capacity_methods_dict.keys()))
+        (self.nodal_capacity_methods_dict,
+         nodal_capacity_methods_mdl) = gf.enums_to_model(
+            [NodalCapacityMethod.LinearOptimization,
+             NodalCapacityMethod.NonlinearOptimization,
+             NodalCapacityMethod.CPF]
         )
+        self.ui.nodal_capacity_method_comboBox.setModel(nodal_capacity_methods_mdl)
 
         # branch types for reduction
         mdl = gf.get_list_model([DeviceType.LineDevice.value,
@@ -148,19 +158,23 @@ class SimulationsMain(TimeEventsMain):
         self.ui.removeByTypeListView.setModel(mdl)
 
         # OPF grouping modes
-        self.opf_time_groups = OrderedDict()
-        self.opf_time_groups[TimeGrouping.NoGrouping.value] = TimeGrouping.NoGrouping
-        self.opf_time_groups[TimeGrouping.Monthly.value] = TimeGrouping.Monthly
-        self.opf_time_groups[TimeGrouping.Weekly.value] = TimeGrouping.Weekly
-        self.opf_time_groups[TimeGrouping.Daily.value] = TimeGrouping.Daily
-        self.opf_time_groups[TimeGrouping.Hourly.value] = TimeGrouping.Hourly
-        self.ui.opf_time_grouping_comboBox.setModel(gf.get_list_model(list(self.opf_time_groups.keys())))
+        (self.opf_time_groups,
+         opf_time_groups_mdl) = gf.enums_to_model(
+            [TimeGrouping.NoGrouping,
+             TimeGrouping.Monthly,
+             TimeGrouping.Weekly,
+             TimeGrouping.Daily,
+             TimeGrouping.Hourly]
+        )
+        self.ui.opf_time_grouping_comboBox.setModel(opf_time_groups_mdl)
 
-        self.opf_zonal_groups = OrderedDict()
-        self.opf_zonal_groups[ZonalGrouping.NoGrouping.value] = ZonalGrouping.NoGrouping
-        # self.opf_zonal_groups[ZonalGrouping.Area.value] = ZonalGrouping.Area
-        self.opf_zonal_groups[ZonalGrouping.All.value] = ZonalGrouping.All
-        self.ui.opfZonalGroupByComboBox.setModel(gf.get_list_model(list(self.opf_zonal_groups.keys())))
+        # zonal opf grouping
+        (self.opf_zonal_groups,
+         opf_zonal_groups_mdl) = gf.enums_to_model(
+            [ZonalGrouping.NoGrouping,
+             ZonalGrouping.All]
+        )
+        self.ui.opfZonalGroupByComboBox.setModel(opf_zonal_groups_mdl)
 
         # voltage collapse mode (full, nose)
         self.ui.vc_stop_at_comboBox.setModel(gf.get_list_model([sim.CpfStopAt.Nose.value,
@@ -168,63 +182,56 @@ class SimulationsMain(TimeEventsMain):
         self.ui.vc_stop_at_comboBox.setCurrentIndex(0)
 
         # reactive power controls
-        self.contingency_engines_dict = OrderedDict()
-        self.contingency_engines_dict[ContingencyMethod.PowerFlow.value] = ContingencyMethod.PowerFlow
-        # self.contingency_engines_dict[ContingencyMethod.OptimalPowerFlow.value] = ContingencyMethod.OptimalPowerFlow
-        self.contingency_engines_dict[ContingencyMethod.Linear.value] = ContingencyMethod.Linear
-        self.contingency_engines_dict[ContingencyMethod.PTDF_scan.value] = ContingencyMethod.PTDF_scan
-        self.contingency_engines_dict[ContingencyMethod.HELM.value] = ContingencyMethod.HELM
-        self.ui.contingencyEngineComboBox.setModel(gf.get_list_model(list(self.contingency_engines_dict.keys())))
+        (self.contingency_engines_dict,
+         contingency_engines_mdl) = gf.enums_to_model(
+            [ContingencyMethod.PowerFlow,
+             ContingencyMethod.Linear,
+             ContingencyMethod.PTDF_scan,
+             ContingencyMethod.HELM]
+        )
+        self.ui.contingencyEngineComboBox.setModel(contingency_engines_mdl)
 
         # list of stochastic power flow methods
-        self.stochastic_pf_methods_dict = OrderedDict()
-        self.stochastic_pf_methods_dict[
-            sim.StochasticPowerFlowType.LatinHypercube.value] = sim.StochasticPowerFlowType.LatinHypercube
-        self.stochastic_pf_methods_dict[
-            sim.StochasticPowerFlowType.MonteCarlo.value] = sim.StochasticPowerFlowType.MonteCarlo
-        mdl = gf.get_list_model(list(self.stochastic_pf_methods_dict.keys()))
-        self.ui.stochastic_pf_method_comboBox.setModel(mdl)
+        (self.stochastic_pf_methods_dict,
+         stochastic_pf_methods_mdl) = gf.enums_to_model(
+            [sim.StochasticPowerFlowType.LatinHypercube,
+             sim.StochasticPowerFlowType.MonteCarlo]
+        )
+        self.ui.stochastic_pf_method_comboBox.setModel(stochastic_pf_methods_mdl)
 
         # investment evaluation methods
-        investment_methods = [
-            InvestmentEvaluationMethod.Independent,
-            InvestmentEvaluationMethod.NSGA3,
-            InvestmentEvaluationMethod.MVRSM,
-            InvestmentEvaluationMethod.MixedVariableGA,
-        ]
-        self.investment_evaluation_method_dict = OrderedDict()
-        self.plugins_investment_evaluation_method_dict = OrderedDict()
-        lst = list()
-        for method in investment_methods:
-            self.investment_evaluation_method_dict[method.value] = method
-            lst.append(method.value)
-        self.ui.investment_evaluation_method_ComboBox.setModel(gf.get_list_model(lst))
+        (self.investment_evaluation_method_dict,
+         investment_evaluation_method_mdl) = gf.enums_to_model(
+            [InvestmentEvaluationMethod.Independent,
+             InvestmentEvaluationMethod.NSGA3,
+             InvestmentEvaluationMethod.MVRSM,
+             InvestmentEvaluationMethod.MixedVariableGA, ]
+        )
+        self.ui.investment_evaluation_method_ComboBox.setModel(investment_evaluation_method_mdl)
 
         # contingency filtering modes
-        con_filters = [ContingencyFilteringMethods.AllActive,
-                       ContingencyFilteringMethods.Country,
-                       ContingencyFilteringMethods.Area,
-                       ContingencyFilteringMethods.Zone,
-                       ContingencyFilteringMethods.SensitiveToMonitored]
-        self.contingency_filter_modes_dict = OrderedDict()
-        con_filter_vals = list()
-        for con_filter in con_filters:
-            self.contingency_filter_modes_dict[con_filter.value] = con_filter
-            con_filter_vals.append(con_filter.value)
-        self.ui.contingency_filter_by_comboBox.setModel(gf.get_list_model(con_filter_vals))
+        (self.contingency_filter_modes_dict,
+         contingency_filter_modes_mdl) = gf.enums_to_model(
+            [ContingencyFilteringMethods.AllActive,
+             ContingencyFilteringMethods.Country,
+             ContingencyFilteringMethods.Community,
+             ContingencyFilteringMethods.Region,
+             ContingencyFilteringMethods.Municipality,
+             ContingencyFilteringMethods.Area,
+             ContingencyFilteringMethods.Zone,
+             ContingencyFilteringMethods.SensitiveToMonitored]
+        )
+        self.ui.contingency_filter_by_comboBox.setModel(contingency_filter_modes_mdl)
 
-        # ptdf grouping modes
-        self.ptdf_group_modes = OrderedDict()
-
-        self.investment_evaluation_objfunc_dict = OrderedDict()
-        lst = list()
-        for method in [InvestmentsEvaluationObjectives.PowerFlow,
-                       InvestmentsEvaluationObjectives.TimeSeriesPowerFlow,
-                       InvestmentsEvaluationObjectives.GenerationAdequacy,
-                       InvestmentsEvaluationObjectives.SimpleDispatch]:
-            self.investment_evaluation_objfunc_dict[method.value] = method
-            lst.append(method.value)
-        self.ui.investment_evaluation_objfunc_ComboBox.setModel(gf.get_list_model(lst))
+        # investment modes
+        (self.investment_evaluation_objfunc_dict,
+         investment_evaluation_objfunc_mdl) = gf.enums_to_model(
+            [InvestmentsEvaluationObjectives.PowerFlow,
+             InvestmentsEvaluationObjectives.TimeSeriesPowerFlow,
+             InvestmentsEvaluationObjectives.GenerationAdequacy,
+             InvestmentsEvaluationObjectives.SimpleDispatch]
+        )
+        self.ui.investment_evaluation_objfunc_ComboBox.setModel(investment_evaluation_objfunc_mdl)
 
         # dictionaries for available results
         self.available_results_dict: Union[Dict[str, Dict[str, ResultTypes]], None] = dict()
@@ -457,6 +464,21 @@ class SimulationsMain(TimeEventsMain):
                                     checks=True,
                                     check_value=True)
 
+        elif filter_mode == ContingencyFilteringMethods.Community:
+            mdl = gf.get_list_model(lst=[elm.name for elm in self.circuit.get_communities()],
+                                    checks=True,
+                                    check_value=True)
+
+        elif filter_mode == ContingencyFilteringMethods.Region:
+            mdl = gf.get_list_model(lst=[elm.name for elm in self.circuit.get_regions()],
+                                    checks=True,
+                                    check_value=True)
+
+        elif filter_mode == ContingencyFilteringMethods.Municipality:
+            mdl = gf.get_list_model(lst=[elm.name for elm in self.circuit.get_municipalities()],
+                                    checks=True,
+                                    check_value=True)
+
         elif filter_mode == ContingencyFilteringMethods.Area:
             mdl = gf.get_list_model(lst=[elm.name for elm in self.circuit.get_areas()],
                                     checks=True,
@@ -506,7 +528,40 @@ class SimulationsMain(TimeEventsMain):
                 return self.circuit.get_contingency_groups_in(grouping_elements=[elements[i] for i in idx])
             else:
                 # default to returning all groups, since it's safer
-                return self.circuit.get_contingency_groups()
+                return self.circuit.get_contingency_groups_active()
+
+        elif filter_mode == ContingencyFilteringMethods.Community:
+
+            if self.circuit.get_communities_number() > 0:
+                # get the selection indices
+                idx = gf.get_checked_indices(self.ui.contingency_group_filter_listView.model())
+                elements = self.circuit.get_communities()
+                return self.circuit.get_contingency_groups_in(grouping_elements=[elements[i] for i in idx])
+            else:
+                # default to returning all groups, since it's safer
+                return self.circuit.get_contingency_groups_active()
+
+        elif filter_mode == ContingencyFilteringMethods.Region:
+
+            if self.circuit.get_regions_number() > 0:
+                # get the selection indices
+                idx = gf.get_checked_indices(self.ui.contingency_group_filter_listView.model())
+                elements = self.circuit.get_regions()
+                return self.circuit.get_contingency_groups_in(grouping_elements=[elements[i] for i in idx])
+            else:
+                # default to returning all groups, since it's safer
+                return self.circuit.get_contingency_groups_active()
+
+        elif filter_mode == ContingencyFilteringMethods.Municipality:
+
+            if self.circuit.get_municipalities_number() > 0:
+                # get the selection indices
+                idx = gf.get_checked_indices(self.ui.contingency_group_filter_listView.model())
+                elements = self.circuit.get_municipalities()
+                return self.circuit.get_contingency_groups_in(grouping_elements=[elements[i] for i in idx])
+            else:
+                # default to returning all groups, since it's safer
+                return self.circuit.get_contingency_groups_active()
 
         elif filter_mode == ContingencyFilteringMethods.Area:
             if self.circuit.get_area_number() > 0:
@@ -516,7 +571,7 @@ class SimulationsMain(TimeEventsMain):
                 return self.circuit.get_contingency_groups_in(grouping_elements=[elements[i] for i in idx])
             else:
                 # default to returning all groups, since it's safer
-                return self.circuit.get_contingency_groups()
+                return self.circuit.get_contingency_groups_active()
 
         elif filter_mode == ContingencyFilteringMethods.Zone:
             if self.circuit.get_zone_number() > 0:
@@ -526,7 +581,7 @@ class SimulationsMain(TimeEventsMain):
                 return self.circuit.get_contingency_groups_in(grouping_elements=[elements[i] for i in idx])
             else:
                 # default to returning all groups, since it's safer
-                return self.circuit.get_contingency_groups()
+                return self.circuit.get_contingency_groups_active()
 
         elif filter_mode == ContingencyFilteringMethods.SensitiveToMonitored:
             idx = gf.get_checked_indices(self.ui.contingency_group_filter_listView.model())
@@ -1138,7 +1193,6 @@ class SimulationsMain(TimeEventsMain):
 
         if not self.session.is_anything_running():
             self.UNLOCK()
-
 
     def run_power_flow3ph(self):
         """

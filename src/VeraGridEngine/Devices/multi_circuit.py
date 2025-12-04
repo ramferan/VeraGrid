@@ -1617,6 +1617,42 @@ class MultiCircuit(Assets):
 
         return lst
 
+    def get_substations_set_from_grouping(self, selected_objects: List[ALL_DEV_TYPES]) -> Set[dev.Substation]:
+        """
+        Get substation from place
+        :param selected_objects: Regions, Areas, country, etc...
+        :return: Set of substations
+        """
+        elm2se: Dict[ALL_DEV_TYPES, List[dev.Substation]] = dict()
+
+        # Associate country, community, region and municipality to substation
+        for se in self.substations:
+            for elm in [se.country, se.community, se.region, se.municipality]:
+                if elm is not None:
+                    if elm in elm2se:
+                        elm2se[elm].append(se)
+                    else:
+                        elm2se[elm] = [se]
+
+        # associate voltage levels to substations
+        for vl in self.voltage_levels:
+            if vl.substation is not None:
+                elm2se[vl] = [vl.substation]
+
+        # associate buses to substations
+        for bus in self.buses:
+            if bus.substation is not None:
+                elm2se[bus] = [bus.substation]
+
+        substations = set()
+        for sel_obj in selected_objects:
+            se_list = elm2se.get(sel_obj, None)
+            if se_list is not None:
+                for se in se_list:
+                    substations.add(se)
+
+        return substations
+
     def fuse_devices(self) -> List[INJECTION_DEVICE_TYPES]:
         """
         Fuse all the different devices in a node to a single device per node
@@ -2922,73 +2958,77 @@ class MultiCircuit(Assets):
 
         return external, boundary, internal, boundary_branches, internal_branches
 
-    def get_buses_from_objects(self, elements: List[ALL_DEV_TYPES]) -> Set[dev.Bus]:
+    def get_buses_from_objects(self, elements: List[ALL_DEV_TYPES], dtype: DeviceType) -> Set[dev.Bus]:
         """
         Returns set of buses belonging to the list elements
 
         :param elements: list of objects
+        :param dtype: DeviceType of all the elements
         :return: set of buses
         """
 
-        buses = set()
+        if dtype == DeviceType.BusDevice:
 
-        for sel_obj in elements:
+            return set(elements)
 
-            if isinstance(sel_obj, dev.Bus):
-                root_bus = sel_obj
+        elif dtype == DeviceType.SubstationDevice:
 
-            elif isinstance(sel_obj, dev.Generator):
-                root_bus = sel_obj.bus
-
-            elif isinstance(sel_obj, dev.Battery):
-                root_bus = sel_obj.bus
-
-            elif isinstance(sel_obj, dev.Load):
-                root_bus = sel_obj.bus
-
-            elif isinstance(sel_obj, dev.Shunt):
-                root_bus = sel_obj.bus
-
-            elif isinstance(sel_obj, dev.Line):
-                root_bus = sel_obj.bus_from
-
-            elif isinstance(sel_obj, dev.Transformer2W):
-                root_bus = sel_obj.bus_from
-
-            elif isinstance(sel_obj, dev.DcLine):
-                root_bus = sel_obj.bus_from
-
-            elif isinstance(sel_obj, dev.HvdcLine):
-                root_bus = sel_obj.bus_from
-
-            elif isinstance(sel_obj, dev.VSC):
-                root_bus = sel_obj.bus_from
-
-            elif isinstance(sel_obj, dev.UPFC):
-                root_bus = sel_obj.bus_from
-
-            elif isinstance(sel_obj, dev.Switch):
-                root_bus = sel_obj.bus_from
-
-            elif isinstance(sel_obj, dev.VoltageLevel):
-                root_bus = None
-                sel = self.get_voltage_level_buses(vl=sel_obj)
-                for bus in sel:
-                    buses.add(bus)
-
-            elif isinstance(sel_obj, dev.Substation):
-                root_bus = None
+            buses = set()
+            for sel_obj in elements:
                 sel = self.get_substation_buses(substation=sel_obj)
                 for bus in sel:
                     buses.add(bus)
+            return buses
 
-            else:
-                root_bus = None
+        elif dtype == DeviceType.VoltageLevelDevice:
 
-            if root_bus is not None:
-                buses.add(root_bus)
+            buses = set()
+            for sel_obj in elements:
+                sel = self.get_voltage_level_buses(vl=sel_obj)
+                for bus in sel:
+                    buses.add(bus)
+            return buses
 
-        return buses
+        elif dtype in [DeviceType.CountryDevice,
+                       DeviceType.CommunityDevice,
+                       DeviceType.RegionDevice,
+                       DeviceType.MunicipalityDevice]:
+
+            se_set = self.get_substations_set_from_grouping(elements)
+            buses = set()
+            for se in se_set:
+                sel = self.get_substation_buses(substation=se)
+                for bus in sel:
+                    buses.add(bus)
+            return buses
+
+        elif dtype in [DeviceType.GeneratorDevice,
+                       DeviceType.BatteryDevice,
+                       DeviceType.LoadDevice,
+                       DeviceType.ShuntDevice,
+                       DeviceType.CurrentInjectionDevice,
+                       DeviceType.ControllableShuntDevice,
+                       DeviceType.ExternalGridDevice,
+                       DeviceType.StaticGeneratorDevice]:
+
+            return {sel_obj.bus for sel_obj in elements}
+
+        elif dtype in [DeviceType.LineDevice,
+                       DeviceType.DCLineDevice,
+                       DeviceType.Transformer2WDevice,
+                       DeviceType.HVDCLineDevice,
+                       DeviceType.VscDevice,
+                       DeviceType.SeriesReactanceDevice,
+                       DeviceType.UpfcDevice,
+                       DeviceType.SwitchDevice]:
+
+            buses = set()
+            for sel_obj in elements:
+                buses.add(sel_obj.bus_from)
+            return buses
+
+        else:
+            return set()
 
     def get_topology_data(self, t_idx: int | None = None):
         """
