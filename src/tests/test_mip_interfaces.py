@@ -53,8 +53,10 @@ def test_issue_372_1():
 
         opf_options = vg.OptimalPowerFlowOptions(
             consider_contingencies=False,
+            # export_model_fname="test_issue_372_1.lp"
             mip_framework=mip_framework,
             mip_solver=vg.MIPSolvers.HIGHS,
+            export_model_fname=f"NTC test_issue_372_1 {mip_framework.value}.mps"
         )
 
         lin_options = vg.LinearAnalysisOptions()

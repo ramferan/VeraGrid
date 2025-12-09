@@ -58,7 +58,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
         # Enabled for short circuit
         self.sc_enabled = [False, False, False, False]
-        self.sc_type = FaultType.LLLG
+        self.sc_type = FaultType.ph3
         self.pen_width = 4
 
         # index
@@ -535,7 +535,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                 msg += f" [{tpe}]"
             msg += "<br>"
             msg += f"v={vm}&lt;{va}º pu<br>"
-            msg += f"V={vm_kv} kV<br>"
+            msg += f"V={vm_kv} KV<br>"
             if P is not None:
                 p = format_str.format(P)
                 q = format_str.format(Q)
@@ -589,7 +589,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                 msg += f" [{tpe}]"
             msg += "<br>"
             msg += f"v={vm}&lt;{va}º pu<br>"
-            msg += f"V={vm_kv} kV<br>"
+            msg += f"V={vm_kv} KV<br>"
             if P is not None:
                 p = format_str.format(P)
                 q = format_str.format(Q)

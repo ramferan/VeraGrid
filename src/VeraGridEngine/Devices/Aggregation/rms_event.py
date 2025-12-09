@@ -3,44 +3,13 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Union, Any
+from typing import Union
 import numpy as np
 
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
-#
-# from VeraGridEngine.Devices.Branches import *
-# from VeraGridEngine.Devices.Injections import *
-
 from VeraGridEngine.Devices.Parents.pointer_device_parent import PointerDeviceParent
 from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.enumerations import DeviceType
-#
-# INJECTION_DEVICE_TYPES = Union[
-#     Generator,
-#     Battery,
-#     Load,
-#     ExternalGrid,
-#     StaticGenerator,
-#     Shunt,
-#     ControllableShunt,
-#     CurrentInjection,
-# ]
-#
-# BRANCH_TYPES = Union[
-#     Line,
-#     DcLine,
-#     Transformer2W,
-#     HvdcLine,
-#     VSC,
-#     UPFC,
-#     Winding,
-#     Switch,
-#     SeriesReactance
-# ]
-#
-# INJECTIONS_BRANCHES_TYPES = Union[
-#     INJECTION_DEVICE_TYPES,
-#     BRANCH_TYPES]
 
 
 class RmsEvent(PointerDeviceParent):
@@ -48,18 +17,17 @@ class RmsEvent(PointerDeviceParent):
     Investment
     """
     __slots__ = (
-        'device',
         'parameter',
-        'time',
-        'value',
+        'times',
+        'values',
         '_group'
     )
 
     def __init__(self,
                  device: EditableDevice | None = None,
-                 parameter: Any = None,
-                 time: float = None,
-                 value: float = None,
+                 parameter: str = None,
+                 times: np.ndarray = None,
+                 values: np.ndarray = None,
                  idtag: Union[str, None] = None,
                  name="RmsEvent",
                  code='',
@@ -73,8 +41,8 @@ class RmsEvent(PointerDeviceParent):
         :param code: String. Contingency code name
         :param group: RmsEventsGroup. RmsEvent group
         :param parameter: parameter
-        :param time: time
-        :param value: value
+        :param times: time
+        :param values: value
         :param comment: Comment
         """
 
@@ -86,18 +54,16 @@ class RmsEvent(PointerDeviceParent):
                                      device_type=DeviceType.RmsEventDevice,
                                      comment=comment)
 
-
         self._group: RmsEventsGroup = group
-        self.device = device
-        self.parameter: Any = parameter
-        self.time: float = time
-        self.value: float = value
+        self.parameter: str = parameter
+        self.times: np.ndarray = times
+        self.values: np.ndarray = values
 
         self.register(key='parameter', units='', tpe=str,
                       definition='parameter that the event changes')
-        self.register(key='time', units='', tpe=float,
+        self.register(key='times', units='', tpe=float,
                       definition='Time when the event occurs')
-        self.register(key='value', units='', tpe=float,
+        self.register(key='values', units='', tpe=float,
                       definition='New value for the parameter')
         self.register(key='group', units='', tpe=DeviceType.RmsEventsGroupDevice, definition='RmsEvent group')
 

@@ -388,7 +388,7 @@ def create_double_bar_with_transference_bar_with_disconnectors(
         bar_by_segments: bool = False,
         offset_x=0,
         offset_y=0
-) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], float, float]:
+) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], int, int]:
     """
     Create a double-bar with transference bar voltage level
     :param name: Voltage level name
@@ -614,7 +614,7 @@ def create_double_bar_with_transference_bar(
         bar_by_segments: bool = False,
         offset_x=0,
         offset_y=0
-) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], float, float]:
+) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], int, int]:
     """
     Create a double-bar with transference bar voltage level
     :param name: Voltage level name

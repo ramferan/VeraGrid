@@ -2,70 +2,52 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from __future__ import annotations
 
-from typing import Union, Dict
+from typing import Union
 
-from VeraGridEngine.Simulations.StateEstimation.observability_analysis import (
-    check_for_observability_and_return_unobservable_buses, add_pseudo_measurements_for_unobservable_buses)
+from VeraGridEngine.Simulations.StateEstimation.observability_analysis import \
+    check_for_observability_and_return_unobservable_buses, add_pseudo_measurements_for_unobservable_buses
 from VeraGridEngine.Simulations.StateEstimation.pseudo_measurements_augmentation import PseudoMeasurement
 from VeraGridEngine.Simulations.StateEstimation.state_estimation_results import StateEstimationResults
 from VeraGridEngine.basic_structures import ConvergenceReport
-from VeraGridEngine.Simulations.StateEstimation.state_estimation import (solve_se_nr, solve_se_lm,
-                                                                         solve_se_gauss_newton,
-                                                                         decoupled_state_estimation)
+from VeraGridEngine.Simulations.StateEstimation.state_estimation import solve_se_nr, solve_se_lm, solve_se_gauss_newton, \
+    decoupled_state_estimation
 from VeraGridEngine.Simulations.StateEstimation.state_estimation_inputs import StateEstimationInput
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
-from VeraGridEngine.enumerations import SolverType, SimulationTypes
+from VeraGridEngine.enumerations import SolverType
 
 
 class StateEstimationOptions:
-    """
-    StateEstimationOptions
-    """
 
-    def __init__(self,
-                 solver: SolverType = SolverType.NR,
-                 tol: float = 1e-8,
-                 max_iter: int = 100,
-                 verbose: int = 0,
-                 prefer_correct: bool = True,
-                 c_threshold: float = 4.0,
-                 fixed_slack: bool = False,
-                 run_observability_analyis: bool = False,
-                 add_pseudo_measurements: bool = False,
-                 run_measurement_profiling: bool = False,
-                 include_line_measurements_on_both_ends: bool = True,
+    def __init__(self, solver: SolverType = SolverType.NR,
+                 tol: float = 1e-8, max_iter: int = 100, verbose: int = 0,
+                 prefer_correct: bool = True, c_threshold: int = 4.0,
+                 fixed_slack: bool = False, run_observability_analyis: bool = False,
+                 add_pseudo_measurements: bool = False,run_measurement_profiling:bool=False,
+                 include_line_measurements_on_both_ends:bool=True,
                  pseudo_meas_std: float = 1.0):
         """
-
-        :param solver:
+        StateEstimationOptions
         :param tol: Tolerance
         :param max_iter: Maximum number of iterations
         :param verbose: Verbosity level (1 light, 2 heavy)
         :param prefer_correct: Prefer measurement correction? otherwise measurement deletion is used
         :param c_threshold: confidence threshold (default 4.0)
         :param fixed_slack: if true, the measurements on the slack bus are omitted
-        :param run_observability_analyis:
-        :param add_pseudo_measurements:
-        :param run_measurement_profiling:
-        :param include_line_measurements_on_both_ends:
-        :param pseudo_meas_std:
         """
-
         self.solver = solver
         self.tol = tol
         self.max_iter = max_iter
         self.verbose = verbose
         self.prefer_correct = prefer_correct
         self.c_threshold = c_threshold
-        self.fixed_slack = fixed_slack
+        self.fixed_slack= fixed_slack
         self.observability_analysis = run_observability_analyis
         self.add_pseudo_measurements = add_pseudo_measurements
-        self.pseudo_meas_std = pseudo_meas_std
-        self.run_meas_profiling = run_measurement_profiling
+        self.pseudo_meas_std= pseudo_meas_std
+        self.run_meas_profiling= run_measurement_profiling
         self.include_line_measurements_on_both_ends = include_line_measurements_on_both_ends
 
 
@@ -92,7 +74,7 @@ class StateEstimationConvergenceReport(ConvergenceReport):
                bus_contribution: list,
                pseudo_measurements: list,
                unobservable_buses: list,
-               measurement_profile: dict):
+               measurement_profile:dict):
         """
 
         :param method:
@@ -101,17 +83,12 @@ class StateEstimationConvergenceReport(ConvergenceReport):
         :param elapsed:
         :param iterations:
         :param bad_data_detected:
-        :param is_observable:
-        :param bus_contribution:
-        :param pseudo_measurements:
-        :param unobservable_buses:
-        :param measurement_profile:
         :return:
         """
         # Call parent's add method for common parameters
         self.add(method, converged, error, elapsed, iterations)
-        self.bad_data_detected = bad_data_detected
-        self.is_observable = is_observable
+        self.bad_data_detected=bad_data_detected
+        self.is_observable=is_observable
         self.add_bus_contribution(bus_contribution)
         self.add_pseudo_measurements(pseudo_measurements)
         self.add_unobservable_buses(unobservable_buses)
@@ -132,71 +109,33 @@ class StateEstimationConvergenceReport(ConvergenceReport):
         return self.bad_data_detected
 
     def get_unobservable_buses(self) -> list:
-        """
-
-        :return:
-        """
         return self.unobservable_buses
 
     def get_bus_contribution(self) -> list:
-        """
-
-        :return:
-        """
         return self.bus_contribution
 
     def get_pseudo_measurements(self) -> list:
-        """
-
-        :return:
-        """
         return self.pseudo_measurements
 
     def add_unobservable_buses(self, unobservable_buses):
-        """
-
-        :param unobservable_buses:
-        :return:
-        """
         self.unobservable_buses.append(unobservable_buses)
 
     def add_bus_contribution(self, bus_contribution):
-        """
-
-        :param bus_contribution:
-        :return:
-        """
         self.bus_contribution.append(bus_contribution)
 
     def add_pseudo_measurements(self, se_input):
-        """
-
-        :param se_input:
-        :return:
-        """
         for m in se_input.p_inj:
             if isinstance(m, PseudoMeasurement):
                 self.pseudo_measurements.append(m)
 
     def add_measurement_profile(self, meas_profile):
-        """
-
-        :param meas_profile:
-        :return:
-        """
         self.measurement_profile.append(meas_profile)
 
     def get_measurement_profile(self) -> list:
-        """
-
-        :return:
-        """
         return self.measurement_profile
 
 
-class StateEstimationDriver(DriverTemplate):
-    name = 'State estimation'
-    tpe = SimulationTypes.StateEstimation_run
+class StateEstimation(DriverTemplate):
 
     def __init__(self, circuit: MultiCircuit, options: StateEstimationOptions | None = None):
         """
@@ -219,62 +158,57 @@ class StateEstimationDriver(DriverTemplate):
         se_input = StateEstimationInput()
 
         # bus measurements
-        bus_dict = circuit.get_bus_idtag_index_dict()
+        bus_dict = circuit.get_bus_index_dict()
 
         for elm in circuit.get_p_measurements():
-            se_input.p_idx.append(bus_dict[elm.device_idtag])
+            se_input.p_idx.append(bus_dict[elm.api_object])
             se_input.p_inj.append(elm)
 
         for elm in circuit.get_q_measurements():
-            se_input.q_idx.append(bus_dict[elm.device_idtag])
+            se_input.q_idx.append(bus_dict[elm.api_object])
             se_input.q_inj.append(elm)
 
-        # build gen->bus index dict
-        gen_dict: Dict[str, int] = dict()
-        for gen in circuit.generators:
-            gen_dict[gen.idtag] = bus_dict[gen.bus.idtag]
-
         for elm in circuit.get_pg_measurements():
-            se_input.pg_idx.append(gen_dict[elm.device_idtag])
+            se_input.pg_idx.append(bus_dict[elm.api_object.bus])
             se_input.pg_inj.append(elm)
 
         for elm in circuit.get_qg_measurements():
-            se_input.qg_idx.append(gen_dict[elm.device_idtag])
+            se_input.qg_idx.append(bus_dict[elm.api_object.bus])
             se_input.qg_inj.append(elm)
 
         for elm in circuit.get_vm_measurements():
-            se_input.vm_idx.append(bus_dict[elm.device_idtag])
+            se_input.vm_idx.append(bus_dict[elm.api_object])
             se_input.vm_value.append(elm)
 
         for elm in circuit.get_va_measurements():
-            se_input.va_idx.append(bus_dict[elm.device_idtag])
+            se_input.va_idx.append(bus_dict[elm.api_object])
             se_input.va_value.append(elm)
 
         # branch measurements
-        branch_dict = circuit.get_branches_idtag_index_dict(add_vsc=False, add_hvdc=False, add_switch=True)
+        branch_dict = circuit.get_branches_index_dict(add_vsc=False, add_hvdc=False, add_switch=True)
 
         for elm in circuit.get_pf_measurements():
-            se_input.pf_idx.append(branch_dict[elm.device_idtag])
+            se_input.pf_idx.append(branch_dict[elm.api_object])
             se_input.pf_value.append(elm)
 
         for elm in circuit.get_pt_measurements():
-            se_input.pt_idx.append(branch_dict[elm.device_idtag])
+            se_input.pt_idx.append(branch_dict[elm.api_object])
             se_input.pt_value.append(elm)
 
         for elm in circuit.get_qf_measurements():
-            se_input.qf_idx.append(branch_dict[elm.device_idtag])
+            se_input.qf_idx.append(branch_dict[elm.api_object])
             se_input.qf_value.append(elm)
 
         for elm in circuit.get_qt_measurements():
-            se_input.qt_idx.append(branch_dict[elm.device_idtag])
+            se_input.qt_idx.append(branch_dict[elm.api_object])
             se_input.qt_value.append(elm)
 
         for elm in circuit.get_if_measurements():
-            se_input.if_idx.append(branch_dict[elm.device_idtag])
+            se_input.if_idx.append(branch_dict[elm.api_object])
             se_input.if_value.append(elm)
 
         for elm in circuit.get_it_measurements():
-            se_input.it_idx.append(branch_dict[elm.device_idtag])
+            se_input.it_idx.append(branch_dict[elm.api_object])
             se_input.it_value.append(elm)
 
         return se_input
@@ -320,19 +254,19 @@ class StateEstimationDriver(DriverTemplate):
             se_input_island = se_input.slice(bus_idx=island.bus_data.original_idx,
                                              branch_idx=island.passive_branch_data.original_idx)
 
-            bus_dict = {i: self.grid.buses[idx] for i, idx in enumerate(island.bus_data.original_idx)}
+            bus_dict = {i:self.grid.buses[idx] for i, idx in enumerate(island.bus_data.original_idx)}
 
             conn = island.get_connectivity_matrices()
 
             report = StateEstimationConvergenceReport()
 
-            is_observable = True  # by default we consider it True, if SE diverges and LM solver is chosen there assert
+            is_observable = True # by default we consider it True, if SE diverges and LM solver is chosen there assert
             # statement explicitly mentions unobservability, if user runs observability analysis, this boolean is
             # assigned as per standard output
             solution = None  # initialized so observability results can be saved without running SE
-            unobservable_buses = []
-            bus_contrib = {}
-            measurement_profile = {}
+            unobservable_buses=[]
+            bus_contrib={}
+            measurement_profile={}
 
             # the idea is to first run observability analysis uif user wants then the normal SE
             if self.options.observability_analysis:
@@ -356,7 +290,6 @@ class StateEstimationDriver(DriverTemplate):
                     do_profiling_of_measurements=self.options.run_meas_profiling,
                     include_line_measurements_on_both_ends=self.options.include_line_measurements_on_both_ends,
                     logger=self.logger)
-
                 if unobservable_buses and self.options.add_pseudo_measurements:
                     se_input_island = add_pseudo_measurements_for_unobservable_buses(bus_dict=bus_dict,
                                                                                      unobservable_buses=unobservable_buses,
@@ -434,7 +367,6 @@ class StateEstimationDriver(DriverTemplate):
                                                  c_threshold=self.options.c_threshold,
                                                  fixed_slack=self.options.fixed_slack,
                                                  logger=self.logger)
-
             elif self.options.solver == SolverType.Decoupled_LU:
                 solution = decoupled_state_estimation(nc=island,
                                                       Ybus=adm.Ybus,
@@ -461,6 +393,7 @@ class StateEstimationDriver(DriverTemplate):
             else:
                 raise ValueError(f"State Estimation solver type not recognized: {self.options.solver.value}")
 
+
             # we need to switch is_observable back to True in case the pseudo measurements were added and SE converged
             # if not is_observable and self.options.add_pseudo_measurements and solution.converged:
             #     is_observable=True
@@ -472,7 +405,7 @@ class StateEstimationDriver(DriverTemplate):
                           elapsed=solution.elapsed if solution else 0,
                           iterations=solution.iterations if solution else 0,
                           bad_data_detected=solution.bad_data_detected if solution else is_observable,
-                          is_observable=solution.is_observable if solution else is_observable,
+                          is_observable=solution.is_observable if solution else is_observable ,
                           unobservable_buses=unobservable_buses,
                           bus_contribution=bus_contrib,
                           measurement_profile=measurement_profile,

@@ -26,11 +26,10 @@ from VeraGridEngine.DataStructures.hvdc_data import HvdcData
 from VeraGridEngine.DataStructures.vsc_data import VscData
 from VeraGridEngine.DataStructures.bus_data import BusData
 from VeraGridEngine.basic_structures import Logger, Vec, IntVec, BoolVec, StrVec, CxMat, Mat, ObjVec
-from VeraGridEngine.Utils.MIP.selected_interface import LpExp, LpVar, OrToolsLpModel, join, LpModel
+from VeraGridEngine.Utils.MIP.selected_interface import LpExp, LpVar, OrToolsLpModel, join
 from VeraGridEngine.enumerations import TapPhaseControl, HvdcControlType, AvailableTransferMode, ConverterControlType
 from VeraGridEngine.Simulations.LinearFactors.linear_analysis import LinearAnalysis, LinearMultiContingencies
-from VeraGridEngine.Simulations.ATC.available_transfer_capacity_driver import compute_alpha, compute_alpha_n1, \
-    compute_dP
+from VeraGridEngine.Simulations.ATC.available_transfer_capacity_driver import compute_alpha, compute_alpha_n1, compute_dP
 from VeraGridEngine.IO.file_system import opf_file_path
 
 
@@ -1779,8 +1778,9 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
                               logger: Logger = Logger(),
                               progress_text: Union[None, Callable[[str], None]] = None,
                               progress_func: Union[None, Callable[[float], None]] = None,
+                              export_model_fname: Union[None, str] = None,
                               verbose: int = 0,
-                              robust: bool = False) -> Tuple[NtcVars, LpModel]:
+                              robust: bool = False) -> NtcVars:
     """
 
     :param grid: MultiCircuit instance
@@ -1801,6 +1801,7 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
     :param logger: logger instance
     :param progress_text: function to report text messages
     :param progress_func: function to report progress
+    :param export_model_fname: Export the model into LP and MPS?
     :param verbose: Verbosity level
     :param robust: Robust optimization?
     :return: NtcVars class with the results
@@ -2031,6 +2032,11 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
     if progress_func is not None:
         progress_func(0)
 
+    if export_model_fname is not None:
+        lp_model.save_model(file_name=export_model_fname)
+        logger.add_info("LP model saved", value=export_model_fname)
+        print('LP model saved as:', export_model_fname)
+
     # solve the model
     status = lp_model.solve(robust=robust, show_logs=verbose > 0, progress_text=progress_text)
 
@@ -2109,4 +2115,4 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
     logger.add_info("Structural inter-area rate", value=vars_v.structural_ntc[t_idx])
     logger.add_info("Inter-area NTC", value=vars_v.inter_area_flows[t_idx])
 
-    return vars_v, lp_model
+    return vars_v

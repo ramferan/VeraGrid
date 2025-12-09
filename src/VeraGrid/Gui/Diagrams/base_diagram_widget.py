@@ -334,7 +334,7 @@ class BaseDiagramWidget(QSplitter):
             return False
 
     def delete_element_utility_function(self, device: ALL_DEV_TYPES, propagate: bool = True,
-                                        graphic_object: ALL_GRAPHICS | None = None):
+                                        graphic_object: QGraphicsItem | None = None):
         """
         This function is a utility function to call this function in other diagrams through the GUI
         :param device: ALL_DEV_TYPES
@@ -349,9 +349,6 @@ class BaseDiagramWidget(QSplitter):
 
         if graphic_object is not None:
             self._remove_from_scene(graphic_object)
-
-            for extra_grph in graphic_object.get_extra_graphics():
-                self._remove_from_scene(extra_grph)
 
         if propagate:
             self.gui.call_delete_db_element(caller=self, api_obj=device)

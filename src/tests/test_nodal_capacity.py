@@ -39,11 +39,11 @@ def test_linear_vs_nonlinear_ncap():
     assert np.allclose(res.nodal_capacity, res_nl, rtol=1e-5)
 
     # Linear OPF
-    res, model = run_linear_opf_ts(grid=grid,
-                                   dispatch_mode=gce.OpfDispatchMode.NodalCapacity,
-                                   time_indices=None,
-                                   nodal_capacity_sign=-1.0,
-                                   capacity_nodes_idx=np.array([10, 11]))
+    res = run_linear_opf_ts(grid=grid,
+                            optimize_nodal_capacity=True,
+                            time_indices=None,
+                            nodal_capacity_sign=-1.0,
+                            capacity_nodes_idx=np.array([10, 11]))
 
     print('P nodal capacity: ', res.nodal_capacity_vars.P)
     print('P generators: ', res.gen_vars.p)

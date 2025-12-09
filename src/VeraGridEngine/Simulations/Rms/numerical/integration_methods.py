@@ -89,6 +89,8 @@ class Integration:
             jac = self.calc_jac(dae, dt=1.0)
             residual = np.vstack((dae.f.reshape(-1, 1), dae.g.reshape(-1, 1)))
 
+            pdb.set_trace()
+
             # Solve linear system
             inc = spsolve(jac, -residual)
 

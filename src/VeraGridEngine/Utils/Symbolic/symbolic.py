@@ -14,12 +14,10 @@ from scipy.sparse import csc_matrix
 import numba as nb
 from dataclasses import dataclass, field
 from types import MappingProxyType
-
-from typing import Any, Callable, ClassVar, Dict, Mapping, Union, List, Sequence, Tuple, Set, Optional
-
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+from typing import Any, Callable, ClassVar, Dict, Mapping, Union, List, Sequence, Tuple, Set
 
 NUMBER = Union[int, float, complex]
+
 
 # -----------------------------------------------------------------------------
 # UUID helper
@@ -33,7 +31,6 @@ def _new_uid() -> int:
 # -----------------------------------------------------------------------------
 # Generic helpers
 # -----------------------------------------------------------------------------
-
 
 def _to_expr(val: Any) -> "Expr":
     if isinstance(val, Expr):
@@ -63,24 +60,8 @@ def _heaviside(x):
 def heaviside(x: Any) -> Func:
     return Func("heaviside", _to_expr(x))
 
-def max(x: Expr, y: Expr) -> Expr:
-    return x*heaviside((x - y)) + y*(Const(1)-heaviside((x - y)))
 
-def min(x: Expr, y: Expr) -> Expr:
-    return x*heaviside(y - x) + y*(Const(1)-heaviside(y - x))
-
-def hard_sat(x: Expr, x_min: Expr, x_max: Expr) -> Expr:
-    return x_min + (x-x_min)*heaviside(x-x_min) - (x -x_max)*heaviside(x-x_max)
-
-def f_exc(In: Expr) -> Expr:
-    a = heaviside(-In)*(Const(0.577)*In)
-    b = ((Const(1)-Const(0.577)*In) - (sqrt(Const(0.75)-In**2)))*heaviside(Const(0.433)-In)
-    c = ((sqrt(Const(0.75)-In**2) - (Const(1.732) - In*Const(1.732)))*heaviside(Const(0.75)-In))
-    d = (Const(1.732) - In*Const(1.732))*(Const(1)*heaviside(Const(1.0)-In))
-    return a + b + c + d
-
-
-def piecewise(time: Expr, t_events: np.ndarray, new_values: np.ndarray, default_value: Any) -> Expr:
+def piecewise(time: Expr, t_events: np.ndarray, new_values: np.ndarray, default_value: NUMBER) -> Expr:
     """
     Symbolic piecewise function.
     Returns default_value before the first event, then switches to
@@ -94,7 +75,7 @@ def piecewise(time: Expr, t_events: np.ndarray, new_values: np.ndarray, default_
         1D array of event times (must be sorted ascending)
     new_values : np.ndarray
         1D array of values after each event time
-    default_value : Any
+    default_value : NUMBER
         Value before the first event
     """
     t_expr = _to_expr(time)
@@ -290,10 +271,6 @@ class Var(Expr):
     name: str
     uid: int = field(default_factory=_new_uid)
 
-    # this reference tell me if this var should be replaced by another variable at the block compilation time
-    # i.e DynamicVarType.P tells me that this var is actually the bus active power var.
-    pf_ref: VarPowerFlowRefferenceType = VarPowerFlowRefferenceType.NOTHING
-
     def eval(self, **bindings: NUMBER) -> NUMBER:
         try:
             return bindings[self.name]
@@ -363,183 +340,10 @@ class UndefinedConst(Expr):
         return self
 
     def __str__(self) -> str:
-        return str(self.name)
+        return str(self.value)
 
     def __repr__(self) -> str:
         return self.__str__()
-
-@dataclass(frozen=True)
-class LagVar(Var):
-    base_var: Var = field(default=None)
-    lag: int = field(default=None)
-
-    # Registry to ensure uniqueness
-    _registry: ClassVar[Dict[Tuple[int, int], "LagVar"]] = {}
-
-    def __post_init__(self):
-        # Optionally, you could add checks here to ensure base_var is an instance of Var
-        if not isinstance(self.base_var, Var):
-            raise TypeError(f"base_var must be an argument")
-        key = (self.base_var.uid, self.lag)
-        if key in self._registry:
-            raise ValueError(f"DiffVar for base_var {key} already exists.")
-        self._registry[key] = self
-        return self
-
-    def __eq__(self, other):
-        return isinstance(other, LagVar) and self.base_var.uid == other.base_var.uid and self.lag == other.lag
-
-    def __hash__(self):
-        return hash((self.base_var, self.lag))
-
-    @classmethod
-    def get_or_create(cls, name, base_var: Var, lag: int) -> "LagVar":
-        key = (base_var.uid, lag)
-        if key not in cls._registry:
-            return cls(name=name, base_var=base_var, lag=lag)
-        return cls._registry[key]
-
-    def populate_initial_lag(self, x0: float, dx0: np.ndarray, lag_x: float, dt: Optional[Var], h: float):
-        # function that initializes the lag of the same order for the same original_var
-        diff_order = self.lag
-        if diff_order == 1:
-            return x0
-        elif diff_order == 2:
-            return x0 - dt * dx0[0]
-        else:
-            res = x0 - dt * dx0[0]
-
-        for i in range(1, diff_order + 1):
-            val = (diff_order + 1 - i) * (dt ** (i)) * ((-1) ** (i)) * dx0[i - 1]
-            res += val
-        return res.eval(dt=h)
-
-@dataclass(frozen=True)
-class DiffVar(Var):
-    """
-    Any variable
-    """
-    base_var: Var = field(default=None)
-
-    # Class-level registry
-    _registry: ClassVar[Dict[int, "DiffVar"]] = {}
-    _absolute_registry: ClassVar[Dict[Tuple[int, int], "DiffVar"]] = {}
-
-    @property
-    def registry(self):
-        """
-        Return registry
-        :return:
-        """
-        return self._registry
-
-
-    def __post_init__(self):
-        key = self.base_var.uid
-        if not isinstance(self.base_var, Var):
-            raise TypeError(f"base_var must be an argument of type Var")
-        if key in self._registry:
-            raise ValueError(f"DiffVar for base_var {key} already exists.")
-        self._registry[key] = self
-
-        # Register by (origin_var.uid, diff_order)
-        origin_uid = self.origin_var.uid
-        order = self.diff_order
-        self._absolute_registry[(origin_uid, order)] = self
-
-        return self
-
-    @classmethod
-    def get_or_create(cls, name: str, base_var: Var) -> "DiffVar":
-        key = base_var.uid
-        if key in cls._registry:
-            return cls._registry[key]
-        return cls(name=name, base_var=base_var)
-
-    def __eq__(self, other):
-        return isinstance(other, DiffVar) and self.base_var.uid == other.base_var.uid
-
-    def __hash__(self):
-        return hash((self.base_var))
-
-    @property
-    def diff_order(self) -> int:
-        order = 0
-        var = self
-        while isinstance(var, DiffVar):
-            var = var.base_var
-            order += 1
-        return order
-
-    @property
-    def origin_var(self) -> Var:
-        origin = self.base_var
-        while isinstance(origin, DiffVar):
-            origin = origin.base_var
-        return origin
-
-    @classmethod
-    def get_by_origin_and_order(cls, origin_var: Var, order: int) -> "DiffVar":
-        key = (origin_var.uid, order)
-        if key not in cls._absolute_registry:
-            raise KeyError(f"No DiffVar found for origin UID={origin_var.uid} and order={order}")
-        return cls._absolute_registry[key]
-
-    def populate_initial_lag(self, x0: float, dx0: np.ndarray, lag_x: float, dt: Optional[Const]):
-        # function that initializes the lag of the same order for the same original_var
-        diff_order = self.diff_order
-        central_difference = True
-
-        for i in range(diff_order):
-            res += (dt ** (i + 1)) * (-1) ** (i + 1) * dx0[i]
-        return res.eval()
-
-    def approximation_expr(self, dt: Optional[Const], lag_can_be_0=True, central=False) -> Tuple:
-        """
-        Computes the n-th backward finite difference approximation of the derivative
-        using the closed-form backward difference formula.
-        """
-        origin_name = self.origin_var.name
-        if lag_can_be_0:
-            lag_var_0 = LagVar.get_or_create(
-                f"{origin_name}_lag_{0}",
-                base_var=self.origin_var,
-                lag=0
-            )
-        else:
-            lag_var_0 = self.origin_var
-
-        origin_name = self.origin_var.name
-        lag_total = self.diff_order
-        if self.diff_order == 1 and central:
-            lag_var_2 = LagVar.get_or_create(
-                f"{origin_name}_lag_{2}",
-                base_var=self.origin_var,
-                lag=2
-            )
-            return (lag_var_0 - lag_var_2) / (2 * dt), lag_total
-
-        # Compute the sum: ∑_{i=0}^{n} (-1)^i * C(n, i) * f(x - i*dt)
-        terms = []
-        minus1 = Const(-1)
-
-        for i in range(lag_total + 1):
-            if i == 0:
-                lag_var = lag_var_0
-            else:
-                lag_var = LagVar.get_or_create(
-                    f"{origin_name}_lag_{i}",
-                    base_var=self.origin_var,
-                    lag=i
-                )
-            coeff = minus1 ** i * Const(math.comb(lag_total, i))
-            terms.append(coeff * lag_var)
-
-        finite_diff_sum = sum(terms)
-
-        # Divide by dt^n for n-th derivative
-        result = finite_diff_sum / dt ** lag_total
-        return result.simplify(), lag_total
 
 
 @dataclass(frozen=True)
@@ -630,10 +434,6 @@ class BinOp(Expr):
                 return l
             if r.value == 0:
                 return Const(1)
-
-        if self.op == '/' and isinstance(l, Const):
-            if l.value == 0:
-                return l
 
         return BinOp(self.op, l, r)
 
@@ -768,7 +568,7 @@ class Func(Expr):
         if self.name == "cosh":
             return sinh(u) * du
         if self.name == "heaviside":
-            return du*self
+            return Const(0)
         raise ValueError(f"Unknown function '{self.name}'")
 
     # --- simplification ------------------------------------------------------
@@ -995,8 +795,6 @@ def _emit(expr: Expr, uid_map_vars: Dict[int, str], uid_map_params: Dict[int, st
                          "exp", "log", "sqrt", "asin", "acos", "atan",
                          "sinh", "cosh", "abs"):
             return f"np.{expr.name}({_emit(expr.arg, uid_map_vars, uid_map_params)})"
-        elif expr.name == "heaviside":
-            return f"_heaviside({_emit(expr.arg, uid_map_vars, uid_map_params)})"
         else:
             return f"np.{expr.name}({_emit(expr.arg, uid_map_vars, uid_map_params)})"
 
@@ -1039,7 +837,7 @@ def _emit_params_eq(expr: Expr, uid_map_t: Dict[int, str] = None) -> str:
     raise TypeError(type(expr))
 
 
-def _emit_one(expr: Expr, uid_map_vars: Dict[int, str], uid_map_params: Dict[int, str]) -> str:
+def _emit_one(expr: Expr, uid_map_vars: Dict[int, str]) -> str:
     """
     Emit a pure-Python (Numba-friendly) expression string
     :param expr: Expr (expression)
@@ -1049,20 +847,16 @@ def _emit_one(expr: Expr, uid_map_vars: Dict[int, str], uid_map_params: Dict[int
     if isinstance(expr, Const):
         return repr(expr.value)
     if isinstance(expr, Var):
-        if expr.uid in uid_map_vars.keys():
-            return uid_map_vars[expr.uid]  # positional variable
-
-        else:
-            return uid_map_params[expr.uid]
+        return uid_map_vars[expr.uid]  # positional variable
     if isinstance(expr, UnOp):
-        return f"-({_emit_one(expr.operand, uid_map_vars, uid_map_params)})"
+        return f"-({_emit_one(expr.operand, uid_map_vars)})"
     if isinstance(expr, BinOp):
-        return f"({_emit_one(expr.left, uid_map_vars, uid_map_params)} {expr.op} {_emit_one(expr.right, uid_map_vars, uid_map_params)})"
+        return f"({_emit_one(expr.left, uid_map_vars)} {expr.op} {_emit_one(expr.right, uid_map_vars)})"
     if isinstance(expr, Func):
         if expr.name in ("real", "imag", "conj", "angle"):
-            return f"np.{expr.name}({_emit_one(expr.arg, uid_map_vars, uid_map_params)})"
+            return f"np.{expr.name}({_emit_one(expr.arg, uid_map_vars)})"
         else:
-            return f"np.{expr.name}({_emit_one(expr.arg, uid_map_vars, uid_map_params)})"
+            return f"np.{expr.name}({_emit_one(expr.arg, uid_map_vars)})"
 
     raise TypeError(type(expr))
 
@@ -1166,7 +960,7 @@ _FUNC_MAP = {
     "imag": imag,
     "conj": conj,
     "angle": angle,
-    "abs": abs,  #
+    "abs": abs,  # ⚠️ rename if you avoid shadowing built-in
     "heaviside": heaviside,
 }
 
@@ -1221,8 +1015,6 @@ def symbolic_to_string(expr: Expr) -> str:
         return str(expr.value)
     elif isinstance(expr, Var):
         return expr.name
-    elif isinstance(expr, UndefinedConst):
-        return expr.name
     elif isinstance(expr, UnOp):
         if expr.op == "-":
             return f"-({symbolic_to_string(expr.operand)})"
@@ -1259,11 +1051,7 @@ __all__ = [
     "heaviside",
     "piecewise",
     "symbolic_to_string",
-    "make_symbolic",
-    "DiffVar",
-    "hard_sat",
-    "UndefinedConst",
-    "f_exc"
+    "make_symbolic"
 ]
 #
 # x = Var("x")

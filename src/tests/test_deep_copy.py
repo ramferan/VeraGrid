@@ -14,7 +14,7 @@ def test_multi_circuit_deep_copy() -> bool:
     - make a deep copy of the original circuit
     - Make modifications to the copy
     - Check that the copy and the original are different
-      by applying the modification only to the original and
+      by aplying the modification only to the original and
       checking that it is equal to the copy
     :return:
     """
@@ -45,4 +45,3 @@ def test_multi_circuit_deep_copy() -> bool:
         assert np.all(np.isclose(elm.P_prof.toarray() * 3.0, elm_copy.P_prof.toarray()))
 
     return True
-

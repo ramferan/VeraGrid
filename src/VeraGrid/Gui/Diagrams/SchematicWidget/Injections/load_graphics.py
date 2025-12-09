@@ -8,13 +8,15 @@ from typing import TYPE_CHECKING
 
 from PySide6 import QtWidgets
 from PySide6.QtCore import QPointF
-from PySide6.QtGui import QPolygonF
+from PySide6.QtGui import QPen, QIcon, QPixmap, QPolygonF
+from PySide6.QtWidgets import QMenu
 from VeraGrid.Gui.gui_functions import add_menu_entry
-from VeraGrid.Gui.Diagrams.generic_graphics import Polygon
+from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, DEACTIVATED, OTHER, Polygon, Square
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import InjectionTemplateGraphicItem
-from VeraGrid.Gui.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
+from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsChoiceDialog
+from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
+from VeraGrid.Gui.messages import yes_no_question
 from VeraGridEngine.Devices.Injections.load import Load
-from VeraGridEngine.enumerations import DeviceType
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -74,19 +76,15 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
 
         :return:
         """
-        # load templates
-        templates = self.editor.circuit.rms_models
+        templates = [t.name for t in
+                     self.editor.circuit.sequence_line_types]  # TODO: find where to build and save the templates
 
-        # select line templates
-        templ_catalogue = dict()
-        templ_list = []
-        for templ in templates:
-            if templ.tpe == DeviceType.LoadDevice:
-                templ_list.append(templ.name)
-                templ_catalogue[templ.name] = templ
-
-        # prompt RmsModelEditorGUI
-        rms_model_editor = RmsModelEditorGUI(api_object_model_host=self.api_object.rms_model, templates_list=templ_list,
-                                             templates_catalogue=templ_catalogue, api_object_name=self.api_object.name,
-                                             api_object=self.api_object, main_editor= True, parent=self.editor)
-        rms_model_editor.show()
+        choice_dialog = RmsChoiceDialog(templates, parent=self.editor)
+        if choice_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+            if choice_dialog.choice == "template":
+                template_name = choice_dialog.selected_template
+                print(f"User chose template: {template_name}")
+                # TODO: missing finding the template object and apply it to self.api_object
+            elif choice_dialog.choice == "editor":
+                dlg = RmsModelEditorGUI(self.api_object.rms_model, parent=self.editor)
+                dlg.show()

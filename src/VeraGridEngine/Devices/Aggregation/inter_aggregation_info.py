@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
-from typing import List, Tuple, Set, TYPE_CHECKING
+from typing import List, Tuple, TYPE_CHECKING
 import numpy as np
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType
 from VeraGridEngine.basic_structures import IntVec, Vec
@@ -30,8 +30,6 @@ class InterAggregationInfo(EditableDevice):
         'lst_br_hvdc',
         'objects_from',
         'objects_to',
-        'set_bus_idx_from',
-        'set_bus_idx_to',
         'logger',
     )
 
@@ -67,15 +65,10 @@ class InterAggregationInfo(EditableDevice):
         self.lst_from: List[Tuple[int, Bus]] = lst_from
         self.lst_to: List[Tuple[int, Bus]] = lst_to
 
-        # sets of bus indices from and to for quick search
-        self.set_bus_idx_from: Set[int] = {idx for idx, _ in lst_from}
-        self.set_bus_idx_to: Set[int] = {idx for idx, _ in lst_to}
-
         # store the branch index, the branch ptr and the sense
         self.lst_br: List[Tuple[int, BRANCH_TYPES, float]] = lst_br
         self.lst_br_hvdc = lst_br_hvdc
 
-        # area, zone, country objects
         self.objects_from: List[Area | Zone | Country] = objects_from
         self.objects_to: List[Area | Zone | Country] = objects_to
 
@@ -128,19 +121,3 @@ class InterAggregationInfo(EditableDevice):
         :return:
         """
         return np.array([sense for i, bus, sense in self.lst_br_hvdc])
-
-    def is_from(self, bus_idx: int) -> bool:
-        """
-        check if a bus index belongs to the "from" set
-        :param bus_idx: bus index
-        :return: true / false
-        """
-        return bus_idx in self.set_bus_idx_from
-
-    def is_to(self, bus_idx: int) -> bool:
-        """
-        check if a bus index belongs to the "to" set
-        :param bus_idx: bus index
-        :return: true / false
-        """
-        return bus_idx in self.set_bus_idx_to

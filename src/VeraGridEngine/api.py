@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+
 """
 NOTE: Do not optimize or remove imports here, this is the API and exposes functionality outside
 """
@@ -90,7 +91,7 @@ def save_cgmes_file(grid: MultiCircuit,
 
 def power_flow(grid: MultiCircuit,
                options: PowerFlowOptions | None = None,
-               engine=EngineType.VeraGrid) -> PowerFlowResults:
+               engine=EngineType.VeraGrid) -> PowerFlowResults | PowerFlowResults3Ph:
     """
     Run power flow on the snapshot
     :param grid: MultiCircuit instance
@@ -102,26 +103,6 @@ def power_flow(grid: MultiCircuit,
         options = PowerFlowOptions()
 
     driver = PowerFlowDriver(grid=grid, options=options, engine=engine)
-
-    driver.run()
-
-    return driver.results
-
-
-def power_flow3ph(grid: MultiCircuit,
-                  options: PowerFlowOptions | None = None,
-                  engine=EngineType.VeraGrid) -> PowerFlowResults3Ph:
-    """
-    Run power flow on the snapshot
-    :param grid: MultiCircuit instance
-    :param options: PowerFlowOptions instance
-    :param engine: Engine to run with
-    :return: PowerFlowResults instance
-    """
-    if options is None:
-        options = PowerFlowOptions()
-
-    driver = PowerFlowDriver3Ph(grid=grid, options=options, engine=engine)
 
     driver.run()
 
@@ -205,8 +186,7 @@ def short_circuit(grid: MultiCircuit,
                   fault_index: int,
                   fault_type=FaultType.LG,
                   pf_options: PowerFlowOptions = PowerFlowOptions(),
-                  pf_results: PowerFlowResults | None = None,
-                  pf_results3ph: PowerFlowResults3Ph | None = None) -> ShortCircuitResults:
+                  pf_results: PowerFlowResults | None = None) -> ShortCircuitResults:
     """
     Run short circuit
     :param grid: MultiCircuit instance
@@ -214,29 +194,19 @@ def short_circuit(grid: MultiCircuit,
     :param fault_type: Short circuit FaultType
     :param pf_options: Power Flow Options instance (optional)
     :param pf_results: PowerFlowResults (optional, if none, a power flow is run)
-    :param pf_results3ph: PowerFlowResults3Ph (optional, if none, a power flow is run)
     :return: Short circuit results
     """
     if pf_results is None:
         pf_results = power_flow(grid=grid,
                                 options=pf_options)
 
-    sc_options = ShortCircuitOptions()
-
-    grid.add_short_circuit_definition(
-        ShortCircuitEvent(
-            device=grid.buses[fault_index],
-            fault_type=fault_type,
-            method=MethodShortCircuit.sequences,
-            phases=PhasesShortCircuit.a
-        )
-    )
+    sc_options = ShortCircuitOptions(bus_index=fault_index,
+                                     fault_type=fault_type)
 
     sc = ShortCircuitDriver(grid=grid,
                             options=sc_options,
                             pf_options=pf_options,
-                            pf_results=pf_results,
-                            pf_results3ph=pf_results3ph)
+                            pf_results=pf_results)
     sc.run()
 
     return sc.results

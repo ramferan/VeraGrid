@@ -16,7 +16,7 @@ from VeraGridEngine.Devices.Substation.busbar import BusBar
 from VeraGridEngine.Devices.Substation.voltage_level import VoltageLevel
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, VarPowerFlowRefferenceType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, DynamicVarType
 from VeraGridEngine.Devices.Parents.editable_device import get_at
 
 
@@ -230,9 +230,7 @@ class Bus(PhysicalDevice):
         self.ph_n: bool = True
         self.is_grounded: bool = True
 
-        # The model of the bus is fixed, then it can already be defined here
         self._rms_model: DynamicModelHost = DynamicModelHost()
-
 
         self.register(key='active', units='', tpe=bool, definition='Is the bus active? used to disable the bus.',
                       profile_name='active_prof')
@@ -472,7 +470,7 @@ class Bus(PhysicalDevice):
         if show_fig:
             plt.show()
 
-    def get_fault_impedance(self) -> complex:
+    def get_fault_impedance(self):
         """
         Get the fault impedance
         :return: complex value of fault impedance
@@ -529,35 +527,30 @@ class Bus(PhysicalDevice):
         else:
             raise ValueError("The value must be a BusBar")
 
-    def get_rms_algebraic_vars(self) -> Tuple[Var, Var] :
-        """
-        Initializes rms model if not initialized
-        :return: Vm, Va rms vars
-        """
-        if self.rms_model.model.empty():
-            self.initialize_rms()
-        assert len(self.rms_model.model.algebraic_vars) == 2
-        return self.rms_model.model.algebraic_vars[0], self.rms_model.model.algebraic_vars[1]
-
-
     def initialize_rms(self):
         """
         Initialize the RMS model
         """
         if self.rms_model.empty():
-            Vm = Var("Vm")
-            Va = Var("Va")
-            P = Var("P")
-            Q = Var("Q")
+            Vm = Var("Vm" + self.name)
+            Va = Var("Va" + self.name)
+            P = Var("P" + self.name)
+            Q = Var("Q" + self.name)
 
-            block = Block(
-                algebraic_vars=[Vm, Va])
+            self.rms_model.model = Block(
+                state_eqs=[],
+                state_vars=[],
+                algebraic_eqs=[
+                ],
+                # algebraic_vars=[],
+                algebraic_vars=[Vm, Va],
 
-            block.external_mapping = {
-                VarPowerFlowRefferenceType.Vm: Vm,
-                VarPowerFlowRefferenceType.Va: Va,
-                VarPowerFlowRefferenceType.P: P,
-                VarPowerFlowRefferenceType.Q: Q
-            }
-
-            self.rms_model.model = block
+                init_eqs={},
+                init_vars=[],
+                external_mapping={
+                    DynamicVarType.Vm: Vm,
+                    DynamicVarType.Va: Va,
+                    DynamicVarType.P: P,
+                    DynamicVarType.Q: Q
+                }
+            )

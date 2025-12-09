@@ -105,7 +105,7 @@ def test_14_bus_matpower():
             run_observability_analyis=True,
             run_measurement_profiling=True
         )
-        se = StateEstimationDriver(circuit=grid, options=se_options)
+        se = StateEstimation(circuit=grid, options=se_options)
         se.run()
 
         # Get the first convergence report

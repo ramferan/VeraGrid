@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import List, Union
 from VeraGridEngine.enumerations import (SolverType, MIPSolvers, ZonalGrouping, TimeGrouping, AcOpfMode, DeviceType,
-                                         SubObjectType, MIPFramework, OpfDispatchMode)
+                                         SubObjectType, MIPFramework)
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Devices.Aggregation.contingency_group import ContingencyGroup
 from VeraGridEngine.Devices.Aggregation.inter_aggregation_info import InterAggregationInfo
@@ -22,7 +22,6 @@ class OptimalPowerFlowOptions(OptionsTemplate):
     def __init__(self,
                  verbose: int = 0,
                  solver: SolverType = SolverType.LINEAR_OPF,
-                 dispatch_mode: OpfDispatchMode = OpfDispatchMode.Normal,
                  time_grouping: TimeGrouping = TimeGrouping.NoGrouping,
                  zonal_grouping: ZonalGrouping = ZonalGrouping.NoGrouping,
                  mip_solver=MIPSolvers.HIGHS,
@@ -31,13 +30,16 @@ class OptimalPowerFlowOptions(OptionsTemplate):
                  contingency_groups_used: List[ContingencyGroup] = (),
                  skip_generation_limits=False,
                  lodf_tolerance=0.001,
+                 maximize_flows=False,
                  inter_aggregation_info: InterAggregationInfo | None = None,
+                 unit_commitment=False,
                  consider_ramps=False,
                  consider_time_up_down=False,
                  area_spinning_reserve=False,
                  use_glsk_as_cost: bool = False,
                  add_losses_approximation: bool = False,
-                 report_formulation: bool = False,
+                 generation_expansion_planning: bool = False,
+                 export_model_fname: Union[None, str] = None,
                  generate_report=False,
                  ips_method: SolverType = SolverType.NR,
                  ips_tolerance: float = 1e-4,
@@ -62,12 +64,14 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         :param contingency_groups_used:
         :param skip_generation_limits:
         :param lodf_tolerance:
+        :param maximize_flows:
         :param inter_aggregation_info:
+        :param unit_commitment:
         :param consider_ramps:
         :param consider_time_up_down:
         :param area_spinning_reserve:
         :param use_glsk_as_cost: if true, the GLSK values are used instead of the traditional costs
-        :param report_formulation:
+        :param export_model_fname:
         :param generate_report:
         :param ips_method:
         :param ips_tolerance:
@@ -101,9 +105,11 @@ class OptimalPowerFlowOptions(OptionsTemplate):
 
         self.lodf_tolerance = lodf_tolerance
 
+        self.maximize_flows = maximize_flows
+
         self.inter_aggregation_info = inter_aggregation_info
 
-        self.dispatch_mode = dispatch_mode
+        self.unit_commitment = unit_commitment
 
         self.consider_ramps = consider_ramps
 
@@ -115,11 +121,13 @@ class OptimalPowerFlowOptions(OptionsTemplate):
 
         self.add_losses_approximation = add_losses_approximation
 
+        self.generation_expansion_planning = generation_expansion_planning
+
         self.max_va = 6.28
 
         self.max_vm = 1.0
 
-        self.report_formulation: bool = report_formulation
+        self.export_model_fname: Union[None, str] = export_model_fname
 
         self.generate_report = generate_report
 
@@ -145,19 +153,20 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         self.register(key="time_grouping", tpe=TimeGrouping)
         self.register(key="zonal_grouping", tpe=ZonalGrouping)
         self.register(key="mip_solver", tpe=MIPSolvers)
-        self.register(key="dispatch_mode", tpe=OpfDispatchMode)
         self.register(key="power_flow_options", tpe=DeviceType.SimulationOptionsDevice)
         self.register(key="skip_generation_limits", tpe=bool)
         self.register(key="consider_contingencies", tpe=bool)
         self.register(key="contingency_groups_used", tpe=SubObjectType.Array)
         self.register(key="lodf_tolerance", tpe=float)
+        self.register(key="maximize_flows", tpe=bool)
         self.register(key="add_losses_approximation", tpe=bool)
         self.register(key="use_glsk_as_cost", tpe=bool)
         self.register(key="inter_aggregation_info", tpe=DeviceType.InterAggregationInfo)
+        self.register(key="unit_commitment", tpe=bool)
         self.register(key="consider_ramps", tpe=bool)
         self.register(key="consider_time_up_down", tpe=bool)
         self.register(key="area_spinning_reserve", tpe=bool)
-        self.register(key="report_formulation", tpe=bool)
+        self.register(key="export_model_fname", tpe=str)
         self.register(key="generate_report", tpe=bool)
         self.register(key="acopf_mode", tpe=AcOpfMode)
 

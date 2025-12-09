@@ -251,16 +251,6 @@ class ConfigurationMain(ResultsMain):
                 "add_pf_report": self.ui.addPowerFlowReportCheckBox,
                 "initialize_angles": self.ui.initialize_pf_angles_checkBox,
             },
-            "state_estimation": {
-                "solver": self.ui.se_solver_comboBox,
-                "tolerance": self.ui.se_tolerance_spinBox,
-                "max_iter": self.ui.se_max_iterations_spinBox,
-                "prefer_correct": self.ui.se_prefer_correct_checkBox,
-                "fixed_slack": self.ui.se_fixed_slack_checkBox,
-                "run_observability_analyis": self.ui.se_observability_analysis_checkBox,
-                "add_pseudo_measurements": self.ui.se_add_pseudo_measurements_checkBox,
-                "run_measurement_profiling": self.ui.se_measurements_profiling_checkBox
-            },
             "optimal_power_flow": {
                 "method": self.ui.lpf_solver_comboBox,
                 "time_grouping": self.ui.opf_time_grouping_comboBox,
@@ -269,7 +259,8 @@ class ConfigurationMain(ResultsMain):
                 "contingency_tolerance": self.ui.opfContingencyToleranceSpinBox,
                 "skip_generation_limits": self.ui.skipOpfGenerationLimitsCheckBox,
                 "consider_contingencies": self.ui.considerContingenciesOpfCheckBox,
-                "dispatch_mode": self.ui.opfDispatchModeComboBox,
+                "maximize_area_exchange": self.ui.opfMaximizeExcahngeCheckBox,
+                "unit_commitment": self.ui.opfUnitCommitmentCheckBox,
                 "consider_ramps": self.ui.opfConsiderRampsCheckBox,
                 "consider_time_up_down": self.ui.opfConsiderUpDownTimeCheckBox,
                 "area_spinning_reserve": self.ui.opfSpinningReserveCheckBox,
@@ -340,14 +331,6 @@ class ConfigurationMain(ResultsMain):
                 "map_regions_like_raw": self.ui.cgmes_map_regions_like_raw_checkBox,
                 "raw_selected_version": self.ui.raw_export_version_comboBox,
                 "cgmes_dc_as_hvdclines": self.ui.cgmes_dc_as_hvdclines_checkBox,
-            },
-            "dyn": {
-                "rms_int_method_comboBox": self.ui.rms_int_method_comboBox,
-                "tolerance_rms_spinBox": self.ui.tolerance_rms_spinBox,
-                "sim_time_spinBox": self.ui.sim_time_spinBox,
-                "h_spinBox": self.ui.h_spinBox,
-
-                "ss_assessment_time_spinBox_2": self.ui.ss_assessment_time_spinBox_2
             }
         }
 

@@ -63,7 +63,7 @@ class DcLineEditor(QDialog):
         # X = self.branch.X * Zbase
         # B = self.branch.B * Ybase
 
-        I = self.branch.rate / Vf  # current in kA
+        I = self.branch.rate / Vf  # current in KA
 
         # ------------------------------------------------------------------------------------------
 
@@ -135,22 +135,22 @@ class DcLineEditor(QDialog):
             self.layout.addWidget(self.load_template_btn)
             self.layout.addWidget(QLabel(""))
 
-        self.layout.addWidget(QLabel("L: Line length [km]"))
+        self.layout.addWidget(QLabel("L: Line length [Km]"))
         self.layout.addWidget(self.l_spinner)
 
-        self.layout.addWidget(QLabel("Imax: Max. current [kA] @" + str(int(Vf)) + " [kV]"))
+        self.layout.addWidget(QLabel("Imax: Max. current [KA] @" + str(int(Vf)) + " [KV]"))
         self.layout.addWidget(self.i_spinner)
 
-        self.layout.addWidget(QLabel("R: Resistance [Ohm/km]"))
+        self.layout.addWidget(QLabel("R: Resistance [Ohm/Km]"))
         self.layout.addWidget(self.r_spinner)
 
-        # self.layout.addWidget(QLabel("X: Inductance [Ohm/km]"))
+        # self.layout.addWidget(QLabel("X: Inductance [Ohm/Km]"))
         # self.layout.addWidget(self.x_spinner)
 
-        # self.layout.addWidget(QLabel("G: Conductance [S/km]"))
+        # self.layout.addWidget(QLabel("G: Conductance [S/Km]"))
         # self.layout.addWidget(self.g_spinner)
 
-        # self.layout.addWidget(QLabel("B: Susceptance [S/km]"))
+        # self.layout.addWidget(QLabel("B: Susceptance [S/Km]"))
         # self.layout.addWidget(self.b_spinner)
 
         self.layout.addWidget(self.accept_btn)
@@ -171,7 +171,7 @@ class DcLineEditor(QDialog):
         Vf = self.branch.bus_from.Vnom
         Vt = self.branch.bus_to.Vnom
 
-        Sn = np.round(I * Vf, 2)  # nominal power in MVA = kA * kV
+        Sn = np.round(I * Vf, 2)  # nominal power in MVA = KA * KV
 
         Zbase = self.Sbase / (Vf * Vf)
         Ybase = 1.0 / Zbase

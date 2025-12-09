@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 from VeraGridEngine.enumerations import DeviceType, BuildStatus
 from VeraGridEngine.Devices.Parents.load_parent import LoadParent
 from VeraGridEngine.Devices.profile import Profile
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, DynamicVarType
 from VeraGridEngine.Utils.Symbolic.symbolic import piecewise
 from VeraGridEngine.Devices.Parents.editable_device import get_at
 
@@ -63,13 +63,7 @@ class Load(LoadParent):
 
         'Pl0',
         'Ql0',
-        'Pl',
-        'Ql',
-        'init_params',
-        'Vm',
-        'Va',
-        'Pl_0',
-        'Ql_0'
+        'init_params'
     )
 
     def __init__(self, name='Load', idtag=None, code='',
@@ -181,9 +175,6 @@ class Load(LoadParent):
 
         self.Pl0 = Pl0
         self.Ql0 = Ql0
-
-        self.Pl_0 = Var('Pl_0')
-        self.Ql_0 = Var('Ql_0')
 
         self.init_params = init_params if init_params is not None else dict()
 
@@ -711,7 +702,7 @@ class Load(LoadParent):
             if val2 > 0:
                 self._n_customers = val2
             else:
-                pass
+                print("There must be at least one customer right?")
         except ValueError as e:
             print(e)
 
@@ -733,7 +724,7 @@ class Load(LoadParent):
             if val2 > 0:
                 self._contract_power = val2
             else:
-                pass
+                print("Do they contract negative power?")
         except ValueError as e:
             print(e)
 
@@ -753,10 +744,6 @@ class Load(LoadParent):
             self._n_customers_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into n_customers_prof')
-
-    def assign_input_vars_and_params(self):
-        self.Vm = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
-        self.Va = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Va)
 
     def plot_profiles(self, time=None, show_fig=True):
         """
@@ -798,26 +785,58 @@ class Load(LoadParent):
         :return:
         """
         if self.rms_model.empty():
-
             Ql = Var("Ql")
             Pl = Var("Pl")
-            # Pl_0 = Var("Pl0")
-            # Ql_0 = Var("Ql0")
 
-            block = Block(
-                algebraic_vars=[Pl, Ql],
+            self.rms_model.model = Block(
                 algebraic_eqs=[
-                    Pl - self.Pl_0,
-                    Ql - self.Ql_0
-                ]
+                    Pl - self.Pl0,
+                    Ql - self.Ql0
+                ],
+                algebraic_vars=[Pl, Ql],
+                init_eqs={},
+                init_vars=[],
+                parameters=[],
+                external_mapping={
+                    DynamicVarType.P: Pl,
+                    DynamicVarType.Q: Ql
+                }
             )
 
-            block.event_dict = {self.Pl_0: Const(self.Pl0),
-                                self.Ql_0: Const(self.Ql0)}
-            block.external_mapping = {
-                VarPowerFlowRefferenceType.P: Pl,
-                VarPowerFlowRefferenceType.Q: Ql
-            }
+    def initialize_rms_with_event(self, rms_events: List, glob_time):
+        """
 
-            self.rms_model.model = block
+        :param rms_events:
+        :param glob_time:
+        :return:
+        """
+        if self.rms_model.empty():
+            Ql = Var("Ql" + self.name)
+            Pl = Var("Pl" + self.name)
+            self.rms_model.model = Block(
+                algebraic_eqs=[
+                ],
+                algebraic_vars=[],
+                init_eqs={},
+                init_vars=[],
+                parameters=[],
+                parameters_eqs=[],
+                external_mapping={
+                }
+            )
+            self.rms_model.model.external_mapping[DynamicVarType.P] = Pl
+            self.rms_model.model.external_mapping[DynamicVarType.Q] = Ql
+            self.rms_model.model.algebraic_vars.append(Pl)
+            self.rms_model.model.algebraic_vars.append(Ql)
+            for rms_event in rms_events:
+                # default_value = getattr(self, rms_event.parameter,
+                #                         None)  # TODO: Find a way of not using getattr and setattr
+                default_value = self.get_profile(rms_event.parameter)
+                var = Var(rms_event.parameter)
+                setattr(self, rms_event.parameter, var)
+                self.rms_model.model.parameters.append(var)
+                self.rms_model.model.parameters_eqs.append(
+                    piecewise(glob_time, rms_event.times, rms_event.values, default_value))
 
+            self.rms_model.model.algebraic_eqs.append(Pl - self.Pl0)
+            self.rms_model.model.algebraic_eqs.append(Ql - self.Ql0)

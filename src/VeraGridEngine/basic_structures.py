@@ -217,11 +217,11 @@ def get_time_groups(t_array: pd.DatetimeIndex, grouping: TimeGrouping) -> List[i
     :return: list of indices that determine the partitions
     """
     groups: List[int] = list()
-    nt = len(t_array)
+
     last = -1
 
     i = 0
-    for i in range(nt):
+    for i in range(len(t_array)):
         t = t_array[i]
 
         if grouping == TimeGrouping.Monthly:
@@ -245,7 +245,7 @@ def get_time_groups(t_array: pd.DatetimeIndex, grouping: TimeGrouping) -> List[i
                 groups.append(i)
 
     # add the last index if it is not already there
-    if nt > 0:
+    if len(t_array) > 0:
         if i != groups[len(groups) - 1]:
             groups.append(i)
 
@@ -849,7 +849,7 @@ class ListSet(list):
         if iterable:
             self.extend(iterable)
 
-    def append(self, value: "Bus") -> None:
+    def append(self, value):
         """Append an item to the list if it's not already present."""
         if value not in self._set:
             super().append(value)

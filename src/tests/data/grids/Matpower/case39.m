@@ -54,9 +54,9 @@ function mpc = case39
 %       pp. 1-20 - 1-35.
 %       prepared by E. M. Gulachenski - New England Electric System
 %                   J. M. Undrill     - General Electric Co.
-%       "generally representative of the New England 345 kV system, but is
+%       "generally representative of the New England 345 KV system, but is
 %        not an exact or complete model of any past, present or projected
-%        configuration of the actual New England 345 kV system.
+%        configuration of the actual New England 345 KV system.
 %   [2] M. A. Pai, Energy Function Analysis for Power System Stability,
 %       Kluwer Academic Publishers, Boston, 1989.
 %       (references [3] as source of data)

@@ -10,22 +10,19 @@ from VeraGridEngine.enumerations import BranchGroupTypes
 class BranchGroup(EditableDevice):
     __slots__ = (
         '_group_type',
-        'color'
     )
 
     def __init__(self,
                  name='',
                  code='',
                  idtag: Union[str, None] = None,
-                 group_type: BranchGroupTypes = BranchGroupTypes.GenericGroup,
-                 color: Union[str, None] = None):
+                 group_type: BranchGroupTypes = BranchGroupTypes.GenericGroup):
         """
         BranchGroup
         :param name: name of the generator fuel
         :param code: secondary id
         :param idtag: UUID code
         :param group_type: type of branch group
-        :param color: hexadecimal color string (i.e. #AA00FF)
         """
 
         EditableDevice.__init__(self,
@@ -36,10 +33,7 @@ class BranchGroup(EditableDevice):
 
         self._group_type: BranchGroupTypes = group_type
 
-        self.color = color if color is not None else self.rnd_color()
-
         self.register(key='group_type', units='', tpe=BranchGroupTypes, definition=f'Type of branch group')
-        self.register(key='color', units='', tpe=str, definition='Color to paint', is_color=True)
 
     @property
     def group_type(self) -> BranchGroupTypes:

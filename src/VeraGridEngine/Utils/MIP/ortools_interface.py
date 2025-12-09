@@ -211,13 +211,6 @@ class OrToolsLpModel(AbstractLpModel):
         with open(file_name, "w") as f:
             f.write(lp_content)
 
-    def model_as_string(self) -> str:
-        """
-        Model as string
-        """
-        lp_content = self.model.export_to_lp_string(obfuscate=False)
-        return lp_content
-
     def add_int(self, lb: int, ub: int, name: str = "") -> LpVar:
         """
         Make integer LP var

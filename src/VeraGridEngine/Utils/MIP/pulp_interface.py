@@ -15,7 +15,6 @@ import subprocess
 import pulp
 from pulp import LpVariable as LpVar, LpConstraint as LpCst, LpAffineExpression as LpExp
 from pulp import HiGHS, CPLEX_CMD
-from pulp import LpContinuous, LpInteger
 from VeraGridEngine.enumerations import MIPSolvers
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Utils.MIP.mip_interface_template import AbstractLpModel
@@ -105,11 +104,14 @@ class PulpLpModel(AbstractLpModel):
         """
         # save the problem in LP format to debug
         if file_name.lower().endswith('.lp'):
-            lp_content = self.model.writeLP(filename=file_name, max_length=10000)
+            lp_content = self.model.writeLP(filename=file_name)
         elif file_name.lower().endswith('.mps'):
             lp_content = self.model.writeMPS(filename=file_name)
         else:
             raise Exception('Unsupported file format')
+
+        # with open(file_name, "w") as f:
+        # f.write(lp_content)
 
     def add_int(self, lb: int, ub: int, name: str = "") -> LpVar:
         """
@@ -155,8 +157,7 @@ class PulpLpModel(AbstractLpModel):
         if isinstance(cst, bool):
             return 0
         else:
-            self.model.addConstraint(constraint=cst, name=name)
-            return cst
+            return self.model.addConstraint(constraint=cst, name=name)
 
     @staticmethod
     def sum(cst) -> LpExp:
@@ -406,91 +407,3 @@ class PulpLpModel(AbstractLpModel):
         :return:
         """
         return pulp.LpStatus[stat]
-
-    def model_as_string(self) -> str:
-        """
-        Return the LP representation
-        :return: string
-        """
-        lp = self.model
-        max_length = 1000000
-        mip = True
-        writeSOS = True
-
-        f = ""
-        f += "\\* " + lp.name + " *\\\n"
-        if lp.sense == 1:
-            f += "Minimize\n"
-        else:
-            f += "Maximize\n"
-        wasNone, objectiveDummyVar = lp.fixObjective()
-        assert lp.objective is not None
-        objName = lp.objective.name
-        if not objName:
-            objName = "OBJ"
-        f += lp.objective.asCplexLpAffineExpression(objName, include_constant=False)
-        f += "Subject To\n"
-        ks = list(lp.constraints.keys())
-        ks.sort()
-        dummyWritten = False
-        for k in ks:
-            constraint = lp.constraints[k]
-            if not list(constraint.keys()):
-                # empty constraint add the dummyVar
-                dummyVar = lp.get_dummyVar()
-                constraint += dummyVar
-                # set this dummyvar to zero so infeasible problems are not made feasible
-                if not dummyWritten:
-                    f += (dummyVar == 0.0).asCplexLpConstraint("_dummy")
-                    dummyWritten = True
-            f += constraint.asCplexLpConstraint(k)
-        # check if any names are longer than 100 characters
-        lp.checkLengthVars(max_length)
-        vs = lp.variables()
-        # check for repeated names
-        lp.checkDuplicateVars()
-        # Bounds on non-"positive" variables
-        # Note: XPRESS and CPLEX do not interpret integer variables without
-        # explicit bounds
-        if mip:
-            vg = [
-                v
-                for v in vs
-                if not (v.isPositive() and v.cat == LpContinuous) and not v.isBinary()
-            ]
-        else:
-            vg = [v for v in vs if not v.isPositive()]
-        if vg:
-            f += "Bounds\n"
-            for v in vg:
-                f += f" {v.asCplexLpVariable()}\n"
-        # Integer non-binary variables
-        if mip:
-            vg = [v for v in vs if v.cat == LpInteger and not v.isBinary()]
-            if vg:
-                f += "Generals\n"
-                for v in vg:
-                    f += f"{v.name}\n"
-            # Binary variables
-            vg = [v for v in vs if v.isBinary()]
-            if vg:
-                f += "Binaries\n"
-                for v in vg:
-                    f += f"{v.name}\n"
-        # Special Ordered Sets
-        if writeSOS and (lp.sos1 or lp.sos2):
-            f += "SOS\n"
-            if lp.sos1:
-                for sos in lp.sos1.values():
-                    f += "S1:: \n"
-                    for v, val in sos.items():
-                        f += f" {v.name}: {val:.12g}\n"
-            if lp.sos2:
-                for sos in lp.sos2.values():
-                    f += "S2:: \n"
-                    for v, val in sos.items():
-                        f += f" {v.name}: {val:.12g}\n"
-        f += "End\n"
-        lp.restoreObjective(wasNone, objectiveDummyVar)
-
-        return f

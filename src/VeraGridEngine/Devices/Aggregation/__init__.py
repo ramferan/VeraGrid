@@ -20,5 +20,4 @@ from VeraGridEngine.Devices.Aggregation.modelling_authority import ModellingAuth
 from VeraGridEngine.Devices.Aggregation.inter_aggregation_info import InterAggregationInfo
 from VeraGridEngine.Devices.Aggregation.facility import Facility
 from VeraGridEngine.Devices.Aggregation.rms_event import RmsEvent
-from VeraGridEngine.Devices.Aggregation.short_cirtcuit_event import ShortCircuitEvent
 from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup

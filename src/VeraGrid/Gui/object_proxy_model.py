@@ -115,23 +115,22 @@ class ObjectModelFilterProxy(QtCore.QSortFilterProxyModel):
         Copy the value pointed by the index to all the other cells in the column
         :param index: QModelIndex instance
         """
+        value = self._mdl.data_with_type(index=index)
         col = index.column()
-        row = index.row()
-        if row > -1 and col > -1:
-            if self._mdl.transposed:
-                attr_name = self._mdl.attributes[row]
-                sel = self.objects[col]
-            else:
-                attr_name = self._mdl.attributes[col]
-                sel = self.objects[row]
 
-            value = getattr(sel, attr_name)
-            for elm in self.objects:
-                if elm != sel:
-                    if attr_name not in self._mdl.non_editable_attributes:
-                        setattr(elm, attr_name, value)
-                    else:
-                        pass  # the column cannot be edited
+        for row in self._allowed_rows:
+
+            if self._mdl.transposed:
+                obj_idx = col
+                attr_idx = row
+            else:
+                obj_idx = row
+                attr_idx = col
+
+            if self._mdl.attributes[attr_idx] not in self._mdl.non_editable_attributes:
+                setattr(self._mdl.objects[obj_idx], self._mdl.attributes[attr_idx], value)
+            else:
+                pass  # the column cannot be edited
 
     def copy_to_clipboard(self):
         """

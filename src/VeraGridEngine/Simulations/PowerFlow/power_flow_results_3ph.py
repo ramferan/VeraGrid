@@ -16,19 +16,18 @@ from VeraGridEngine.basic_structures import IntVec, Vec, StrVec, CxVec, Converge
 from VeraGridEngine.enumerations import StudyResultsType, ResultTypes, DeviceType
 
 
-def get_3p_indices(length_3p: int) -> Tuple[IntVec, IntVec, IntVec, IntVec]:
+def get_3p_indices(length_3p: int) -> Tuple[IntVec, IntVec, IntVec]:
     """
     get the 3-phase indexing
-    :param length_3p: 4N length
-    :return: index N, index A, index B, index C
+    :param length_3p: 3N length
+    :return: index A, index B, index C
     """
-    n = length_3p / 4
+    n = length_3p / 3
     bus_seq = np.arange(n, dtype=int)
-    i_n = 4 * bus_seq
-    i_a = 4 * bus_seq + 1
-    i_b = 4 * bus_seq + 2
-    i_c = 4 * bus_seq + 3
-    return i_n, i_a, i_b, i_c
+    ia = 3 * bus_seq
+    ib = 3 * bus_seq + 1
+    ic = 3 * bus_seq + 2
+    return ia, ib, ic
 
 
 class PowerFlowResults3Ph(ResultsTemplate):
@@ -42,7 +41,6 @@ class PowerFlowResults3Ph(ResultsTemplate):
             n_gen: int,
             n_batt: int,
             n_sh: int,
-            n_load: int,
             bus_names: np.ndarray,
             branch_names: np.ndarray,
             hvdc_names: np.ndarray,
@@ -50,7 +48,6 @@ class PowerFlowResults3Ph(ResultsTemplate):
             gen_names: np.ndarray,
             batt_names: np.ndarray,
             sh_names: np.ndarray,
-            load_names: np.ndarray,
             bus_types: np.ndarray,
             clustering_results=None):
         """
@@ -184,11 +181,6 @@ class PowerFlowResults3Ph(ResultsTemplate):
                     ResultTypes.ShuntReactivePowerA,
                     ResultTypes.ShuntReactivePowerB,
                     ResultTypes.ShuntReactivePowerC,
-                    ResultTypes.ShuntNeutralVoltage,
-                ],
-
-                ResultTypes.LoadResults: [
-                    ResultTypes.LoadNeutralVoltage,
                 ],
 
                 ResultTypes.SpecialPlots: [
@@ -211,7 +203,6 @@ class PowerFlowResults3Ph(ResultsTemplate):
         self.n_gen = n_gen
         self.n_batt = n_batt
         self.n_sh = n_sh
-        self.n_load = n_load
 
         self.bus_names: StrVec = bus_names
         self.branch_names: StrVec = branch_names
@@ -220,15 +211,14 @@ class PowerFlowResults3Ph(ResultsTemplate):
         self.gen_names = gen_names
         self.batt_names = batt_names
         self.sh_names = sh_names
-        self.load_names = load_names
         self.bus_types: IntVec = bus_types
 
-        self.Sbus_N: CxVec = np.zeros(n, dtype=complex)
+        self.Sbus: CxVec = np.zeros(3*n, dtype=complex)
         self.Sbus_A: CxVec = np.zeros(n, dtype=complex)
         self.Sbus_B: CxVec = np.zeros(n, dtype=complex)
         self.Sbus_C: CxVec = np.zeros(n, dtype=complex)
 
-        self.voltage_N: CxVec = np.zeros(n, dtype=complex)
+        self.voltage: CxVec = np.zeros(3*n, dtype=complex)
         self.voltage_A: CxVec = np.zeros(n, dtype=complex)
         self.voltage_B: CxVec = np.zeros(n, dtype=complex)
         self.voltage_C: CxVec = np.zeros(n, dtype=complex)
@@ -241,12 +231,10 @@ class PowerFlowResults3Ph(ResultsTemplate):
         self.St_B: CxVec = np.zeros(m, dtype=complex)
         self.St_C: CxVec = np.zeros(m, dtype=complex)
 
-        self.If_N: CxVec = np.zeros(m, dtype=complex)
         self.If_A: CxVec = np.zeros(m, dtype=complex)
         self.If_B: CxVec = np.zeros(m, dtype=complex)
         self.If_C: CxVec = np.zeros(m, dtype=complex)
 
-        self.It_N: CxVec = np.zeros(m, dtype=complex)
         self.It_A: CxVec = np.zeros(m, dtype=complex)
         self.It_B: CxVec = np.zeros(m, dtype=complex)
         self.It_C: CxVec = np.zeros(m, dtype=complex)
@@ -305,13 +293,9 @@ class PowerFlowResults3Ph(ResultsTemplate):
         self.shunt_q_A: Vec = np.zeros(n_sh)
         self.shunt_q_B: Vec = np.zeros(n_sh)
         self.shunt_q_C: Vec = np.zeros(n_sh)
-        self.shunt_Vn: Vec = np.zeros(n_sh, dtype=complex)
-        self.load_Vn: Vec = np.zeros(n_load, dtype=complex)
 
         self.plot_bars_limit: int = 100
         self.convergence_reports: List[ConvergenceReport] = list()
-
-        # TODO: To register n_load, n_sh, etc
 
         self.register(name='bus_names', tpe=StrVec)
         self.register(name='branch_names', tpe=StrVec)
@@ -320,7 +304,6 @@ class PowerFlowResults3Ph(ResultsTemplate):
         self.register(name='gen_names', tpe=StrVec)
         self.register(name='batt_names', tpe=StrVec)
         self.register(name='sh_names', tpe=StrVec)
-        self.register(name='load_names', tpe=StrVec)
 
         self.register(name='bus_types', tpe=IntVec)
 
@@ -331,12 +314,12 @@ class PowerFlowResults3Ph(ResultsTemplate):
         self.register(name='bus_area_indices', tpe=IntVec)
         self.register(name='area_names', tpe=IntVec)
 
-        self.register(name='Sbus_N', tpe=CxVec)
+        self.register(name='Sbus', tpe=CxVec)
         self.register(name='Sbus_A', tpe=CxVec)
         self.register(name='Sbus_B', tpe=CxVec)
         self.register(name='Sbus_C', tpe=CxVec)
 
-        self.register(name='voltage_N', tpe=CxVec)
+        self.register(name='voltage', tpe=CxVec)
         self.register(name='voltage_A', tpe=CxVec)
         self.register(name='voltage_B', tpe=CxVec)
         self.register(name='voltage_C', tpe=CxVec)
@@ -349,12 +332,10 @@ class PowerFlowResults3Ph(ResultsTemplate):
         self.register(name='St_B', tpe=CxVec)
         self.register(name='St_C', tpe=CxVec)
 
-        self.register(name='If_N', tpe=CxVec)
         self.register(name='If_A', tpe=CxVec)
         self.register(name='If_B', tpe=CxVec)
         self.register(name='If_C', tpe=CxVec)
 
-        self.register(name='It_N', tpe=CxVec)
         self.register(name='It_A', tpe=CxVec)
         self.register(name='It_B', tpe=CxVec)
         self.register(name='It_C', tpe=CxVec)
@@ -474,20 +455,20 @@ class PowerFlowResults3Ph(ResultsTemplate):
         :param vsc_idx: vsc original indices
         :return: None
         """
-        i_n, i_a, i_b, i_c = get_3p_indices(length_3p=len(results.V))
-        kn, ka, kb, kc = get_3p_indices(length_3p=len(results.Sf))
-        vsc_n, vsc_a, vsc_b, vsc_c = get_3p_indices(length_3p=len(results.St_vsc))
-        hvdc_n, hvdc_a, hvdc_b, hvdc_c = get_3p_indices(length_3p=len(results.St_hvdc))
+        ia, ib, ic = get_3p_indices(length_3p=len(results.V))
+        ka, kb, kc = get_3p_indices(length_3p=len(results.Sf))
+        vsc_a, vsc_b, vsc_c = get_3p_indices(length_3p=len(results.St_vsc))
+        hvdc_a, hvdc_b, hvdc_c = get_3p_indices(length_3p=len(results.St_hvdc))
 
-        self.voltage_N[b_idx] = results.V[i_n]
-        self.voltage_A[b_idx] = results.V[i_a]
-        self.voltage_B[b_idx] = results.V[i_b]
-        self.voltage_C[b_idx] = results.V[i_c]
+        self.voltage = results.V
+        self.voltage_A[b_idx] = results.V[ia]
+        self.voltage_B[b_idx] = results.V[ib]
+        self.voltage_C[b_idx] = results.V[ic]
 
-        self.Sbus_N[b_idx] = results.Scalc[i_n]
-        self.Sbus_A[b_idx] = results.Scalc[i_a]
-        self.Sbus_B[b_idx] = results.Scalc[i_b]
-        self.Sbus_C[b_idx] = results.Scalc[i_c]
+        self.Sbus = results.Scalc
+        self.Sbus_A[b_idx] = results.Scalc[ia]
+        self.Sbus_B[b_idx] = results.Scalc[ib]
+        self.Sbus_C[b_idx] = results.Scalc[ic]
 
         # TODO: taps are 3-phase too
         # self.tap_module[br_idx] = results.tap_module
@@ -501,12 +482,10 @@ class PowerFlowResults3Ph(ResultsTemplate):
         self.St_B[br_idx] = results.St[kb]
         self.St_C[br_idx] = results.St[kc]
 
-        self.If_N[br_idx] = results.If[kn]
         self.If_A[br_idx] = results.If[ka]
         self.If_B[br_idx] = results.If[kb]
         self.If_C[br_idx] = results.If[kc]
 
-        self.It_N[br_idx] = results.It[kn]
         self.It_A[br_idx] = results.It[ka]
         self.It_B[br_idx] = results.It[kb]
         self.It_C[br_idx] = results.It[kc]
@@ -626,65 +605,15 @@ class PowerFlowResults3Ph(ResultsTemplate):
             "QlossC": self.losses_C.imag,
         }, index=self.branch_names)
 
-    def get_voltage_3ph_df(self) -> pd.DataFrame:
-        """
-        Get a DataFrame with the buses results, Vm in p.u., Va in deg
-        :return: DataFrame
-        """
-        df = pd.DataFrame(data={
-            'Vm_N': np.abs(self.voltage_N).round(5),
-            'Vm_A': np.abs(self.voltage_A).round(5),
-            'Vm_B': np.abs(self.voltage_B).round(5),
-            'Vm_C': np.abs(self.voltage_C).round(5),
-            'Va_N': np.angle(self.voltage_N, deg=True).round(1),
-            'Va_A': np.angle(self.voltage_A, deg=True).round(1),
-            'Va_B': np.angle(self.voltage_B, deg=True).round(1),
-            'Va_C': np.angle(self.voltage_C, deg=True).round(1)
-        }, index=self.bus_names)
+    def get_voltage_3ph_df(self):
 
-        return df
-
-    def get_load_neutral_voltage_df(self) -> pd.DataFrame:
-        """
-        Get a DataFrame with the load neutral voltage results, Vm in p.u., Va in deg
-        :return: DataFrame
-        """
-        df = pd.DataFrame(data={
-            'Vm_N': np.abs(self.load_Vn).round(5),
-            'Va_N': np.angle(self.load_Vn, deg=True).round(1)
-        }, index=self.load_names)
-
-        return df
-
-    def get_shunt_neutral_voltage_df(self) -> pd.DataFrame:
-        """
-        Get a DataFrame with the load neutral voltage results, Vm in p.u., Va in deg
-        :return: DataFrame
-        """
-        df = pd.DataFrame(data={
-            'Vm_N': np.abs(self.shunt_Vn).round(5),
-            'Va_N': np.angle(self.shunt_Vn, deg=True).round(1)
-        }, index=self.sh_names)
-
-        return df
-
-    def get_current_3ph_df(self) -> pd.DataFrame:
-        """
-        Get a DataFrame with the buses results, Vm in p.u., Va in deg
-        :return: DataFrame
-        """
-        df = pd.DataFrame(data={
-            'If_N': np.abs(self.If_N).round(5),
-            'If_A': np.abs(self.If_A).round(5),
-            'If_B': np.abs(self.If_B).round(5),
-            'If_C': np.abs(self.If_C).round(5),
-            'It_N': np.abs(self.It_N).round(5),
-            'It_A': np.abs(self.It_A).round(5),
-            'It_B': np.abs(self.It_B).round(5),
-            'It_C': np.abs(self.It_C).round(5),
-        }, index=self.branch_names)
-
-        return df
+        return pd.DataFrame(data={'Um A [p.u.]': np.abs(self.voltage_A).round(4),
+                                  'Ua A [º]': np.angle(self.voltage_A, deg=True).round(1),
+                                  'Um B [p.u.]': np.abs(self.voltage_B).round(4),
+                                  'Ua B [º]': np.angle(self.voltage_B, deg=True).round(1),
+                                  'Um C [p.u.]': np.abs(self.voltage_C).round(4),
+                                  'Ua C [º]': np.angle(self.voltage_C, deg=True).round(1)},
+                            index=self.bus_names)
 
     def export_all(self):
         """
@@ -1606,28 +1535,6 @@ class PowerFlowResults3Ph(ResultsTemplate):
                                 title=result_type.value,
                                 ylabel='(MVAr)',
                                 units='(MVAr)')
-
-        elif result_type == ResultTypes.ShuntNeutralVoltage:
-
-            return ResultsTable(data=self.shunt_Vn,
-                                index=self.sh_names,
-                                idx_device_type=DeviceType.ShuntLikeDevice,
-                                columns=np.array([result_type.value]),
-                                cols_device_type=DeviceType.NoDevice,
-                                title=result_type.value,
-                                ylabel='(kV)',
-                                units='(kV)')
-
-        elif result_type == ResultTypes.LoadNeutralVoltage:
-
-            return ResultsTable(data=self.load_Vn,
-                                index=self.load_names,
-                                idx_device_type=DeviceType.LoadLikeDevice,
-                                columns=np.array([result_type.value]),
-                                cols_device_type=DeviceType.NoDevice,
-                                title=result_type.value,
-                                ylabel='(kV)',
-                                units='(kV)')
 
         else:
             raise Exception('Unsupported result type: ' + str(result_type))

@@ -7,14 +7,14 @@ from __future__ import annotations
 import numpy as np
 from typing import Tuple
 
-from VeraGridEngine.basic_structures import Logger, Mat, IntVec
+from VeraGridEngine.basic_structures import Logger, Mat
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import (WindingsConnection, BuildStatus, TapPhaseControl,
                                          TapModuleControl, TapChangerTypes, WindingType)
 from VeraGridEngine.Devices.Parents.controllable_branch_parent import ControllableBranchParent
 from VeraGridEngine.Devices.Branches.transformer_type import TransformerType, reverse_transformer_short_circuit_study
 from VeraGridEngine.Devices.Parents.editable_device import DeviceType
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, DynamicVarType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin
 
 
@@ -32,8 +32,7 @@ class Transformer2W(ControllableBranchParent):
         'possible_transformer_types',
         '_conn_f',
         '_conn_t',
-        '_vector_group_number',
-        '_phases'
+        '_vector_group_number'
     )
 
     def __init__(self,
@@ -233,10 +232,9 @@ class Transformer2W(ControllableBranchParent):
         # association with transformer templates
         # self.possible_transformer_types: Associations = Associations(device_type=DeviceType.TransformerTypeDevice)
 
-        self._conn_f: WindingType = WindingType.Delta
-        self._conn_t: WindingType = WindingType.GroundedStar
+        self._conn_f: WindingType = WindingType.GroundedStar
+        self._conn_t: WindingType = WindingType.Delta
         self._vector_group_number: int = 0
-        self._phases: IntVec = np.array([1, 2, 3])
 
         # register
         self.register(key='HV', units='kV', tpe=float, definition='High voltage rating')
@@ -259,9 +257,6 @@ class Transformer2W(ControllableBranchParent):
         self.register(key='vector_group_number', units='', tpe=int,
                       definition='Vector group number. It indicates the structural phase:'
                                  'phase = vector_group_number · 30º')
-
-        # TODO: do we need to edit the phases vector?
-        # self.register(key='phases', units='', tpe=IntVec, definition='Which phases are present at the transformer')
 
         self.register(key='template', units='', tpe=DeviceType.TransformerTypeDevice, definition='', editable=False)
 
@@ -299,17 +294,6 @@ class Transformer2W(ControllableBranchParent):
             self._vector_group_number = val
         else:
             print("Vector group out of range (0-11)")
-
-    @property
-    def phases(self) -> IntVec:
-        return self._phases
-
-    @phases.setter
-    def phases(self, val: IntVec):
-        if isinstance(val, np.ndarray):
-            self._phases = val
-        else:
-            raise Exception("phases must be a numpy array (IntVec)")
 
     def set_hv_and_lv(self, HV: float, LV: float):
         """
@@ -578,28 +562,6 @@ class Transformer2W(ControllableBranchParent):
 
         return tpe
 
-    def transformer_phases(self, logger: Logger):
-        phaseN = phaseA = phaseB = phaseC = 0
-
-        for phase in self.phases:
-            if phase == 0:
-                phaseN = 1
-            elif phase == 1:
-                phaseA = 1
-            elif phase == 2:
-                phaseB = 1
-            elif phase == 3:
-                phaseC = 1
-            else:
-                logger.add_error(
-                    f"transformer_phases: Incorrect phase value {phase} in {self.name}",
-                    device=self.name
-                )
-                return phaseN, phaseA, phaseB, phaseC
-
-        return phaseN, phaseA, phaseB, phaseC
-
-
     def transformer_admittance(self,
                                vtap_f: float,
                                vtap_t: float,
@@ -612,8 +574,8 @@ class Transformer2W(ControllableBranchParent):
         :return: 3x3 matrices -> Yff, Yft, Ytf, Ytt
         """
 
-        conn_y_from = self.conn_f == WindingType.NeutralStar or self.conn_f == WindingType.GroundedStar
-        conn_y_to = self.conn_t == WindingType.NeutralStar or self.conn_t == WindingType.GroundedStar
+        conn_y_from = self.conn_f == WindingType.Star or self.conn_f == WindingType.GroundedStar
+        conn_y_to = self.conn_t == WindingType.Star or self.conn_t == WindingType.GroundedStar
 
         # phase_displacement = np.deg2rad(self.vector_group_number * 30.0)
         if self.conn_f == WindingType.Delta and conn_y_to: # Dy
@@ -635,54 +597,46 @@ class Transformer2W(ControllableBranchParent):
 
         if conn_y_from and conn_y_to:  # Yy
             Yff = np.array([
-                [0, 0, 0, 0],
-                [0, yff, 0, 0],
-                [0, 0, yff, 0],
-                [0, 0, 0, yff]
+                [yff, 0, 0],
+                [0, yff, 0],
+                [0, 0, yff]
             ])
             Yft = np.array([
-                [0, 0, 0, 0],
-                [0, yft, 0, 0],
-                [0, 0, yft, 0],
-                [0, 0, 0, yft]
+                [yft, 0, 0],
+                [0, yft, 0],
+                [0, 0, yft]
             ])
             Ytf = np.array([
-                [0, 0, 0, 0],
-                [0, ytf, 0, 0],
-                [0, 0, ytf, 0],
-                [0, 0, 0, ytf]
+                [ytf, 0, 0],
+                [0, ytf, 0],
+                [0, 0, ytf]
             ])
             Ytt = np.array([
-                [0, 0, 0, 0],
-                [0, ytt, 0, 0],
-                [0, 0, ytt, 0],
-                [0, 0, 0, ytt]
+                [ytt, 0, 0],
+                [0, ytt, 0],
+                [0, 0, ytt]
             ])
 
         elif conn_y_from and self.conn_t == WindingType.Delta:  # 'Yd'
             Yff = np.array([
-                [0, 0, 0, 0],
-                [0, yff, 0, 0],
-                [0, 0, yff, 0],
-                [0, 0, 0, yff]
+                [yff, 0, 0],
+                [0, yff, 0],
+                [0, 0, yff]
             ])
             Yft = np.array([
-                [0, 0, 0, 0],
-                [0, yft / np.sqrt(3), -yft / np.sqrt(3), 0],
-                [0, 0, yft / np.sqrt(3), -yft / np.sqrt(3)],
-                [0, -yft / np.sqrt(3), 0, yft / np.sqrt(3)]
+                [yft / np.sqrt(3), -yft / np.sqrt(3), 0],
+                [0, yft / np.sqrt(3), -yft / np.sqrt(3)],
+                [-yft / np.sqrt(3), 0, yft / np.sqrt(3)]
             ])
             Ytf = np.array([
-                [0, 0, 0, 0],
-                [0, ytf / np.sqrt(3), 0, -ytf / np.sqrt(3)],
-                [0, -ytf / np.sqrt(3), ytf / np.sqrt(3), 0],
-                [0, 0, -ytf / np.sqrt(3), ytf / np.sqrt(3)]
+                [ytf / np.sqrt(3), 0, -ytf / np.sqrt(3)],
+                [-ytf / np.sqrt(3), ytf / np.sqrt(3), 0],
+                [0, -ytf / np.sqrt(3), ytf / np.sqrt(3)]
             ])
             Ytt = np.array([
-                [0, 0, 0, 0],
-                [0, 2 * ytt / 3, -ytt / 3, -ytt / 3],
-                [0, -ytt / 3, 2 * ytt / 3, -ytt / 3],
-                [0, -ytt / 3, -ytt / 3, 2 * ytt / 3]
+                [2 * ytt / 3, -ytt / 3, -ytt / 3],
+                [-ytt / 3, 2 * ytt / 3, -ytt / 3],
+                [-ytt / 3, -ytt / 3, 2 * ytt / 3]
             ])
 
         elif conn_y_from and self.conn_t == WindingType.ZigZag:  # 'Yz'
@@ -709,54 +663,46 @@ class Transformer2W(ControllableBranchParent):
 
         elif self.conn_f == WindingType.Delta and conn_y_to:  # 'Dy'
             Yff = np.array([
-                [0, 0, 0, 0],
-                [0, 2 * yff / 3, -yff / 3, -yff / 3],
-                [0, -yff / 3, 2 * yff / 3, -yff / 3],
-                [0, -yff / 3, -yff / 3, 2 * yff / 3]
+                [2 * yff / 3, -yff / 3, -yff / 3],
+                [-yff / 3, 2 * yff / 3, -yff / 3],
+                [-yff / 3, -yff / 3, 2 * yff / 3]
             ])
             Yft = np.array([
-                [0, 0, 0, 0],
-                [0, yft / np.sqrt(3), 0, -yft / np.sqrt(3)],
-                [0, -yft / np.sqrt(3), yft / np.sqrt(3), 0],
-                [0, 0, -yft / np.sqrt(3), yft / np.sqrt(3)]
+                [yft / np.sqrt(3), 0, -yft / np.sqrt(3)],
+                [-yft / np.sqrt(3), yft / np.sqrt(3), 0],
+                [0, -yft / np.sqrt(3), yft / np.sqrt(3)]
             ])
             Ytf = np.array([
-                [0, 0, 0, 0],
-                [0, ytf / np.sqrt(3), -ytf / np.sqrt(3), 0],
-                [0, 0, ytf / np.sqrt(3), -ytf / np.sqrt(3)],
-                [0, -ytf / np.sqrt(3), 0, ytf / np.sqrt(3)]
+                [ytf / np.sqrt(3), -ytf / np.sqrt(3), 0],
+                [0, ytf / np.sqrt(3), -ytf / np.sqrt(3)],
+                [-ytf / np.sqrt(3), 0, ytf / np.sqrt(3)]
             ])
             Ytt = np.array([
-                [0, 0, 0, 0],
-                [0, ytt, 0, 0],
-                [0, 0, ytt, 0],
-                [0, 0, 0, ytt]
+                [ytt, 0, 0],
+                [0, ytt, 0],
+                [0, 0, ytt]
             ])
 
         elif self.conn_f == WindingType.Delta and self.conn_t == WindingType.Delta:  # 'Dd'
             Yff = np.array([
-                [0, 0, 0, 0],
-                [0, 2 * yff / 3, -yff / 3, -yff / 3],
-                [0, -yff / 3, 2 * yff / 3, -yff / 3],
-                [0, -yff / 3, -yff / 3, 2 * yff / 3]
+                [2 * yff / 3, -yff / 3, -yff / 3],
+                [-yff / 3, 2 * yff / 3, -yff / 3],
+                [-yff / 3, -yff / 3, 2 * yff / 3]
             ])
             Yft = np.array([
-                [0, 0, 0, 0],
-                [0, 2 * yft / 3, -yft / 3, -yft / 3],
-                [0, -yft / 3, 2 * yft / 3, -yft / 3],
-                [0, -yft / 3, -yft / 3, 2 * yft / 3]
+                [2 * yft / 3, -yft / 3, -yft / 3],
+                [-yft / 3, 2 * yft / 3, -yft / 3],
+                [-yft / 3, -yft / 3, 2 * yft / 3]
             ])
             Ytf = np.array([
-                [0, 0, 0, 0],
-                [0, 2 * ytf / 3, -ytf / 3, -ytf / 3],
-                [0, -ytf / 3, 2 * ytf / 3, -ytf / 3],
-                [0, -ytf / 3, -ytf / 3, 2 * ytf / 3]
+                [2 * ytf / 3, -ytf / 3, -ytf / 3],
+                [-ytf / 3, 2 * ytf / 3, -ytf / 3],
+                [-ytf / 3, -ytf / 3, 2 * ytf / 3]
             ])
             Ytt = np.array([
-                [0, 0, 0, 0],
-                [0, 2 * ytt / 3, -ytt / 3, -ytt / 3],
-                [0, -ytt / 3, 2 * ytt / 3, -ytt / 3],
-                [0, -ytt / 3, -ytt / 3, 2 * ytt / 3]
+                [2 * ytt / 3, -ytt / 3, -ytt / 3],
+                [-ytt / 3, 2 * ytt / 3, -ytt / 3],
+                [-ytt / 3, -ytt / 3, 2 * ytt / 3]
             ])
 
         elif self.conn_f == WindingType.Delta and self.conn_t == WindingType.ZigZag:  # 'Dz':
@@ -849,52 +795,44 @@ class Transformer2W(ControllableBranchParent):
 
         else:
             logger.add_error("transformer_admittance: Unknown vector group", device=self.name)
-            zeros = np.zeros((4, 4), dtype=float)
+            zeros = np.zeros((3, 3), dtype=float)
             return zeros, zeros, zeros, zeros
 
         return Yff, Yft, Ytf, Ytt
-
+    
     def initialize_rms(self):
+        # NOTE: accurate model considering phase shift and tap change still need to be implemented!
         if self.rms_model.empty():
-            Qf = Var("Qf")
-            Qt = Var("Qt")
-            Pf = Var("Pf")
-            Pt = Var("Pt")
+            Qf = Var("Qf" + self.name)
+            Qt = Var("Qt" + self.name)
+            Pf = Var("Pf" + self.name)
+            Pt = Var("Pt" + self.name)
 
             ys = 1.0 / complex(self.R, self.X)
-            g = Var("g")
-            b = Var("b")
-            bsh = Var("bsh")
+            g = Const(ys.real)
+            b = Const(ys.imag)
+            bsh = Const(self.B)
 
-            Vmf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
-            Vaf = self.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Va)
-            Vmt = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
-            Vat = self.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Va)
+            Vmf = self.bus_from.rms_model.model.E(DynamicVarType.Vm)
+            Vaf = self.bus_from.rms_model.model.E(DynamicVarType.Va)
+            Vmt = self.bus_to.rms_model.model.E(DynamicVarType.Vm)
+            Vat = self.bus_to.rms_model.model.E(DynamicVarType.Va)
 
-            block = Block(
-                algebraic_vars=[Pf, Pt, Qf, Qt],
+            self.rms_model.model = Block(
                 algebraic_eqs=[
-                    Pf - ((Vmf ** 2 * g) - g * Vmf * Vmt * cos(
-                        Vaf - Vat) + b * Vmf * Vmt * cos(Vaf - Vat + np.pi / 2)),
-                    Qf - (Vmf ** 2 * (-bsh / 2 - b) - g * Vmf * Vmt * sin(
-                        Vaf - Vat) + b * Vmf * Vmt * sin(
-                        Vaf - Vat + np.pi / 2)),
-                    Pt - ((Vmt ** 2 * g) - g * Vmt * Vmf * cos(
-                        Vat - Vaf) + b * Vmt * Vmf * cos(Vat - Vaf + np.pi / 2)),
-                    Qt - (Vmt ** 2 * (-bsh / 2 - b) - g * Vmt * Vmf * sin(
-                        Vat - Vaf) + b * Vmt * Vmf * sin(
-                        Vat - Vaf + np.pi / 2)),
-                ])
-
-            block.external_mapping = {
-                VarPowerFlowRefferenceType.Pf: Pf,
-                VarPowerFlowRefferenceType.Pt: Pt,
-                VarPowerFlowRefferenceType.Qf: Qf,
-                VarPowerFlowRefferenceType.Qt: Qt,
-            }
-
-            block.event_dict = {g: Const(ys.real),
-                                b: Const(ys.imag),
-                                bsh: Const(self.B)}
-
-            self.rms_model.model = block
+                    Pf - ((Vmf ** 2 * g) - g * Vmf * Vmt * cos(Vaf - Vat) + b * Vmf * Vmt * cos(Vaf - Vat + np.pi / 2)),
+                    Qf - (Vmf ** 2 * (-bsh / 2 - b) - g * Vmf * Vmt * sin(Vaf - Vat) + b * Vmf * Vmt * sin(Vaf - Vat + np.pi / 2)),
+                    Pt - ((Vmt ** 2 * g) - g * Vmt * Vmf * cos(Vat - Vaf) + b * Vmt * Vmf * cos(Vat - Vaf + np.pi / 2)),
+                    Qt - (Vmt ** 2 * (-bsh / 2 - b) - g * Vmt * Vmf * sin(Vat - Vaf) + b * Vmt * Vmf * sin(Vat - Vaf + np.pi / 2)),
+                ],
+                algebraic_vars=[Pf, Pt, Qf, Qt],
+                init_eqs={},
+                init_vars=[],
+                parameters=[],
+                external_mapping={
+                    DynamicVarType.Pf: Pf,
+                    DynamicVarType.Pt: Pt,
+                    DynamicVarType.Qf: Qf,
+                    DynamicVarType.Qt: Qt,
+                }
+            )

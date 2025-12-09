@@ -28,11 +28,6 @@ from VeraGridEngine.Devices.Substation import Bus
 from VeraGridEngine.Devices.Branches.line import Line, accept_line_connection
 from VeraGridEngine.Devices.Branches.dc_line import DcLine
 from VeraGridEngine.Devices.Branches.hvdc_line import HvdcLine
-from VeraGridEngine.Devices.Injections.battery import Battery
-from VeraGridEngine.Devices.Injections.generator import Generator
-from VeraGridEngine.Devices.Injections.load import Load
-from VeraGridEngine.Devices.Injections.external_grid import ExternalGrid
-from VeraGridEngine.Devices.Injections.static_generator import StaticGenerator
 from VeraGridEngine.Devices.Diagrams.map_diagram import MapDiagram
 from VeraGridEngine.Devices.Fluid import FluidNode, FluidPath
 from VeraGridEngine.basic_structures import Vec, CxVec, IntVec
@@ -46,7 +41,7 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Simulations.OPF.opf_ts_results import OptimalPowerFlowTimeSeriesResults
 from VeraGridEngine.Simulations.PowerFlow.power_flow_ts_results import PowerFlowTimeSeriesResults
 from VeraGridEngine.enumerations import Colormaps
-from VeraGridEngine.Topology.VoltageLevels import vl_creation_common_functions as substation_wizards
+from VeraGridEngine.Topology.VoltageLevels import common_functions as substation_wizards
 import VeraGridEngine.Devices.Diagrams.palettes as palettes
 
 from VeraGrid.Gui.Diagrams.MapWidget.Branches.map_ac_line import MapAcLine
@@ -56,11 +51,6 @@ from VeraGrid.Gui.Diagrams.MapWidget.Branches.map_fluid_path import MapFluidPath
 from VeraGrid.Gui.Diagrams.MapWidget.Branches.line_location_graphic_item import LineLocationGraphicItem
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.voltage_level_graphic_item import VoltageLevelGraphicItem
-from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_battery_graphics import MapBatteryGraphicItem
-from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_generator_graphics import MapGeneratorGraphicItem
-from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_load_graphics import MapLoadGraphicItem
-from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_external_grid_graphics import MapExternalGridGraphicItem
-from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_static_generator_graphics import MapStaticGeneratorGraphicItem
 from VeraGrid.Gui.Diagrams.MapWidget.map_widget import MapWidget, MapDiagramScene
 from VeraGrid.Gui.Diagrams.Editors.new_line_dialogue import NewMapLineDialogue
 import VeraGrid.Gui.Visualization.visualization as viz
@@ -322,9 +312,6 @@ class GridMapWidget(BaseDiagramWidget):
 
     @property
     def diagram_scene(self) -> MapDiagramScene:
-        """
-        :return: MapDiagramScene
-        """
         return self.map.diagram_scene
 
     def _get_selected(self) -> List[ALL_MAP_GRAPHICS | QGraphicsItem]:
@@ -794,136 +781,6 @@ class GridMapWidget(BaseDiagramWidget):
 
         return graphic_object
 
-    def add_api_battery(self,
-                        api_object: Battery,
-                        lat: float,
-                        lon: float) -> MapBatteryGraphicItem:
-        """
-
-        :param api_object:
-        :param lat:
-        :param lon:
-        :return:
-        """
-        graphic_object = MapBatteryGraphicItem(
-            editor=self,
-            api_object=api_object,
-            lat=lat,
-            lon=lon,
-            size=self.diagram.min_bus_width
-        )
-
-        self.graphics_manager.add_device(elm=api_object,
-                                         graphic=graphic_object)
-
-        self.add_to_scene(graphic_object=graphic_object)
-
-        return graphic_object
-
-    def add_api_generator(self,
-                          api_object: Generator,
-                          lat: float,
-                          lon: float) -> MapGeneratorGraphicItem:
-        """
-
-        :param api_object:
-        :param lat:
-        :param lon:
-        :return:
-        """
-        graphic_object = MapGeneratorGraphicItem(
-            editor=self,
-            api_object=api_object,
-            lat=lat,
-            lon=lon,
-            size=self.diagram.min_bus_width
-        )
-
-        self.graphics_manager.add_device(elm=api_object,
-                                         graphic=graphic_object)
-
-        self.add_to_scene(graphic_object=graphic_object)
-
-        return graphic_object
-
-    def add_api_load(self,
-                     api_object: Load,
-                     lat: float,
-                     lon: float) -> MapLoadGraphicItem:
-        """
-
-        :param api_object:
-        :param lat:
-        :param lon:
-        :return:
-        """
-        graphic_object = MapLoadGraphicItem(
-            editor=self,
-            api_object=api_object,
-            lat=lat,
-            lon=lon,
-            size=self.diagram.min_bus_width
-        )
-
-        self.graphics_manager.add_device(elm=api_object,
-                                         graphic=graphic_object)
-
-        self.add_to_scene(graphic_object=graphic_object)
-
-        return graphic_object
-
-    def add_api_external_grid(self,
-                              api_object: ExternalGrid,
-                              lat: float,
-                              lon: float) -> MapExternalGridGraphicItem:
-        """
-
-        :param api_object:
-        :param lat:
-        :param lon:
-        :return:
-        """
-        graphic_object = MapExternalGridGraphicItem(
-            editor=self,
-            api_object=api_object,
-            lat=lat,
-            lon=lon,
-            size=self.diagram.min_bus_width
-        )
-
-        self.graphics_manager.add_device(elm=api_object,
-                                         graphic=graphic_object)
-
-        self.add_to_scene(graphic_object=graphic_object)
-
-        return graphic_object
-
-    def add_api_static_generator(self,
-                                 api_object: StaticGenerator,
-                                 lat: float,
-                                 lon: float) -> MapStaticGeneratorGraphicItem:
-        """
-
-        :param api_object:
-        :param lat:
-        :param lon:
-        :return:
-        """
-        graphic_object = MapStaticGeneratorGraphicItem(
-            editor=self,
-            api_object=api_object,
-            lat=lat,
-            lon=lon,
-            size=self.diagram.min_bus_width
-        )
-
-        self.graphics_manager.add_device(elm=api_object,
-                                         graphic=graphic_object)
-
-        self.add_to_scene(graphic_object=graphic_object)
-
-        return graphic_object
-
     def draw_diagram(self, diagram: MapDiagram) -> None:
         """
         Draw any diagram
@@ -938,36 +795,6 @@ class GridMapWidget(BaseDiagramWidget):
                     self.add_api_substation(api_object=location.api_object,
                                             lon=location.longitude,
                                             lat=location.latitude)
-
-            elif category == DeviceType.GeneratorDevice.value:
-                for idtag, location in points_group.locations.items():
-                    self.add_api_generator(api_object=location.api_object,
-                                           lon=location.longitude,
-                                           lat=location.latitude)
-
-            elif category == DeviceType.BatteryDevice.value:
-                for idtag, location in points_group.locations.items():
-                    self.add_api_battery(api_object=location.api_object,
-                                         lon=location.longitude,
-                                         lat=location.latitude)
-
-            elif category == DeviceType.LoadDevice.value:
-                for idtag, location in points_group.locations.items():
-                    self.add_api_load(api_object=location.api_object,
-                                      lon=location.longitude,
-                                      lat=location.latitude)
-
-            elif category == DeviceType.StaticGeneratorDevice.value:
-                for idtag, location in points_group.locations.items():
-                    self.add_api_static_generator(api_object=location.api_object,
-                                                  lon=location.longitude,
-                                                  lat=location.latitude)
-
-            elif category == DeviceType.ExternalGridDevice.value:
-                for idtag, location in points_group.locations.items():
-                    self.add_api_external_grid(api_object=location.api_object,
-                                               lon=location.longitude,
-                                               lat=location.latitude)
 
         # second pass: create the rest of devices
         for category, points_group in diagram.data.items():
@@ -1218,21 +1045,15 @@ class GridMapWidget(BaseDiagramWidget):
             elm_graphics.resize(new_radius=branch_width)
 
         # rescale substations (this is super-fast)
-        for dev_tpe in [DeviceType.SubstationDevice,
-                        DeviceType.GeneratorDevice,
-                        DeviceType.BatteryDevice,
-                        DeviceType.LoadDevice,
-                        DeviceType.ExternalGridDevice,
-                        DeviceType.StaticGeneratorDevice]:
-            data: Dict[str, SubstationGraphicItem] = self.graphics_manager.get_device_type_dict(dev_tpe)
-            for se_key, elm_graphics in data.items():
-                elm_graphics.set_api_object_color()
-                elm_graphics.set_size(r=se_width)
+        data: Dict[str, SubstationGraphicItem] = self.graphics_manager.get_device_type_dict(DeviceType.SubstationDevice)
+        for se_key, elm_graphics in data.items():
+            # elm_graphics.set_api_object_color()
+            elm_graphics.set_size(r=se_width)
 
         self.diagram_scene.blockSignals(False)
         self.diagram_scene.update(self.diagram_scene.sceneRect())
 
-    def center(self) -> None:
+    def center(self):
         """
         Center the diagram
         """
@@ -1243,86 +1064,32 @@ class GridMapWidget(BaseDiagramWidget):
         lon_max = -1e20
         lon_min = 1e20
         n = 0
-        for dev_tpe in [DeviceType.SubstationDevice,
-                        DeviceType.GeneratorDevice,
-                        DeviceType.BatteryDevice,
-                        DeviceType.LoadDevice,
-                        DeviceType.ExternalGridDevice,
-                        DeviceType.StaticGeneratorDevice]:
-            for graphic_obj in self.graphics_manager.get_device_type_list(dev_tpe):
-                lat += graphic_obj.lat
-                lon += graphic_obj.lon
+        for graphic_obj in self.graphics_manager.get_device_type_list(DeviceType.SubstationDevice):
+            lat += graphic_obj.lat
+            lon += graphic_obj.lon
 
-                lat_max = max(lat_max, graphic_obj.lat)
-                lat_min = min(lat_min, graphic_obj.lat)
-                lon_max = max(lon_max, graphic_obj.lon)
-                lon_min = min(lon_min, graphic_obj.lon)
-                n += 1
+            lat_max = max(lat_max, graphic_obj.lat)
+            lat_min = min(lat_min, graphic_obj.lat)
+            lon_max = max(lon_max, graphic_obj.lon)
+            lon_min = min(lon_min, graphic_obj.lon)
+            n += 1
 
         if n > 0:
             lat /= n
             lon /= n
+            self.map.pan_position(latitude=lat, longitude=lon)
 
-            self.map.go_to_position(latitude=lat, longitude=lon)
-            # self.map.set_zoom_level(level=10)
-            # level = self.map.best_zoom_from_bbox(min_lat=lat_min,
-            #                                      max_lat=lat_max,
-            #                                      min_lon=lon_min,
-            #                                      max_lon=lon_max)
-            # self.map.set_zoom_level(level=level)
+            # this is to also move the diagram layer according to the map
+            # z = self.map.best_zoom_from_bbox(min_lat=lat_min,
+            #                                  max_lat=lat_max,
+            #                                  min_lon=lon_min,
+            #                                  max_lon=lon_max)
+
+            self.map.set_zoom_level(level=self.map.level)
+            # self.map.set_zoom_level(level=z)
 
         else:
             self.gui.show_warning_toast("No points to center :/")
-
-    def graphical_search(self, search_text: str):
-        """
-        Search object in the diagram and center around it
-        :param search_text: object name, object code or object idtag
-        """
-        # Initialize boundaries
-        min_lat = min_lon = max_lat = max_lon = None
-
-        n = 0
-        for key, points_group in self.diagram.data.items():
-            for idTag, location in points_group.locations.items():
-                if location.api_object is not None:
-
-                    # Check if searchText is in the name, code, or idtag of the api_object
-                    if (search_text in location.api_object.name.lower() or
-                            search_text in location.api_object.code.lower() or
-                            search_text in str(location.api_object.idtag).lower()):
-
-                        # Calculate boundaries (x: latitude, y: longitude)
-                        left = location.latitude
-                        right = location.latitude + location.w
-                        top = location.longitude
-                        bottom = location.longitude + location.h
-
-                        if min_lat is None or left < min_lat:
-                            min_lat = left
-                        if min_lon is None or top < min_lon:
-                            min_lon = top
-                        if max_lat is None or right > max_lat:
-                            max_lat = right
-                        if max_lon is None or bottom > max_lon:
-                            max_lon = bottom
-
-                        n += 1
-
-        # After all matching elements have been processed
-
-        if None not in (min_lat, min_lon, max_lat, max_lon):
-            lat = (min_lat + max_lat) / 2.0
-            lon = (min_lon + max_lon) / 2.0
-
-            # Fit the view
-            level = self.map.best_zoom_from_bbox(min_lat=min_lat,
-                                                 max_lat=max_lat,
-                                                 min_lon=min_lon,
-                                                 max_lon=max_lon)
-
-            self.map.set_zoom_level(level=level)
-            # self.map.go_to_position(latitude=lat, longitude=lon)
 
     def colour_results(self,
                        Sbus: CxVec,
@@ -2918,11 +2685,6 @@ def generate_map_diagram(
         hvdc_lines: List[HvdcLine],
         fluid_nodes: List[FluidNode],
         fluid_paths: List[FluidPath],
-        generators: List[Generator],
-        batteries: List[Battery],
-        loads: List[Load],
-        static_generators: List[StaticGenerator],
-        external_grids: List[ExternalGrid],
         prog_func: Union[Callable, None] = None,
         text_func: Union[Callable, None] = None,
         name='Map diagram',
@@ -2944,11 +2706,6 @@ def generate_map_diagram(
     :param hvdc_lines: list of HvdcLine objects
     :param fluid_nodes: list of FluidNode objects
     :param fluid_paths: list of FluidPath objects
-    :param external_grids:
-    :param static_generators:
-    :param loads:
-    :param batteries:
-    :param generators:
     :param prog_func: progress report function
     :param text_func: Text report function
     :param name: name of the diagram
@@ -2979,34 +2736,16 @@ def generate_map_diagram(
         text_func('Creating schematic buses')
 
     nn = len(substations)
-    for i, elm in enumerate(substations):
+    for i, substation in enumerate(substations):
 
         if prog_func is not None:
             prog_func((i + 1) / nn * 100.0)
 
-        diagram.set_point(device=elm, location=MapLocation(latitude=elm.latitude,
-                                                           longitude=elm.longitude,
-                                                           api_object=elm))
+        diagram.set_point(device=substation, location=MapLocation(latitude=substation.latitude,
+                                                                  longitude=substation.longitude,
+                                                                  api_object=substation))
 
     # --------------------------------------------------------------------------------------------------------------
-
-    if text_func is not None:
-        text_func('Creating schematic injections')
-
-    for lst in [generators, batteries, loads, static_generators, external_grids]:
-        nn = len(lst)
-        for i, elm in enumerate(lst):
-
-            if prog_func is not None:
-                prog_func((i + 1) / nn * 100.0)
-
-            lon, lat = elm.try_to_find_coordinates()
-            diagram.set_point(device=elm, location=MapLocation(latitude=lat,
-                                                               longitude=lon,
-                                                               api_object=elm))
-
-    # --------------------------------------------------------------------------------------------------------------
-
     if text_func is not None:
         text_func('Creating schematic buses')
 
@@ -3243,11 +2982,6 @@ def make_diagram_from_substations(circuit: MultiCircuit,
         hvdc_lines=hvdc_lines,
         fluid_nodes=list(),
         fluid_paths=list(),
-        external_grids=list(),
-        static_generators=list(),
-        loads=list(),
-        batteries=list(),
-        generators=list(),
         prog_func=prog_func,
         text_func=text_func,
         name=name,

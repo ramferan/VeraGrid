@@ -27,17 +27,15 @@ def connect_bar_segments(grid: MultiCircuit, bar_buses: List[dev.Bus], name: str
         grid.add_line(ln)
 
 
-def create_single_bar_with_disconnectors(
-        name: str,
-        grid: MultiCircuit,
-        n_bays: int,
-        v_nom: float,
-        substation: dev.Substation,
-        country: dev.Country = None,
-        bar_by_segments: bool = False,
-        offset_x: float = 0.0,
-        offset_y: float = 0.0
-) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], float, float]:
+def create_single_bar_with_disconnectors(name: str,
+                      grid: MultiCircuit,
+                      n_bays: int,
+                      v_nom: float,
+                      substation: dev.Substation,
+                      country: dev.Country = None,
+                      bar_by_segments: bool = False,
+                      offset_x: float = 0.0,
+                      offset_y: float = 0.0) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], float, float]:
     """
     Create a single-bar voltage level without disconnectors
     :param name: Voltage level name
@@ -450,7 +448,7 @@ def create_single_bar_with_bypass(
         bar_by_segments: bool = False,
         offset_x: int = 0,
         offset_y: int = 0
-) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], float, float]:
+) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], int, int]:
     """
     Create a single-bar with by-pass voltage level
     :param name: Voltage level name

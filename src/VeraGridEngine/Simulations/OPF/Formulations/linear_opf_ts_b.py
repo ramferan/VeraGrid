@@ -812,7 +812,7 @@ def add_linear_generation_formulation(local_t: int,
             # TODO Review and change the id_gen_nonvd stuff
             if active and k not in id_gen_nonvd and bus_idx > -1:
 
-                if elm.get_enabled_dispatch_at(global_t) and not all_generators_fixed:
+                if elm.enabled_dispatch and not all_generators_fixed:
 
                     # declare active power var (limits will be applied later)
                     gen_vars.p[local_t, k] = prob.add_var(
@@ -1017,7 +1017,7 @@ def add_linear_generation_formulation(local_t: int,
                 # TODO Review and change the id_gen_nonvd stuff
                 if elm.get_active_at(local_t) and k not in id_gen_nonvd and bus_idx > -1:
 
-                    if elm.get_enabled_dispatch_at(global_t) and not all_generators_fixed:
+                    if elm.enabled_dispatch and not all_generators_fixed:
 
                         # Generation Expansion Planning
                         if is_candidate[k] and generation_expansion_planning:
@@ -1102,7 +1102,7 @@ def add_linear_battery_formulation(local_t: int,
             p_neg = prob.add_var(0, 1e20, join("batt_pneg_", [local_t, k], "_"))
             batt_vars.p[local_t, k] = p_pos - p_neg
 
-            if elm.get_enabled_dispatch_at(global_t):
+            if elm.enabled_dispatch:
 
                 if unit_commitment:
 
@@ -2005,6 +2005,7 @@ def run_linear_opf_ts(grid: MultiCircuit,
                       logger: Logger = Logger(),
                       progress_text: Union[None, Callable[[str], None]] = None,
                       progress_func: Union[None, Callable[[float], None]] = None,
+                      export_model_fname: Union[None, str] = None,
                       verbose: int = 0,
                       robust: bool = False,
                       mip_framework: MIPFramework = MIPFramework.PuLP) -> OpfVars:
@@ -2035,6 +2036,7 @@ def run_linear_opf_ts(grid: MultiCircuit,
     :param logger: logger instance
     :param progress_text: Text progress callback
     :param progress_func: Numerical progress callback
+    :param export_model_fname: Export the model into LP and MPS?
     :param verbose: verbosity level
     :param robust: Robust optimization?
     :return: OpfVars
@@ -2377,6 +2379,11 @@ def run_linear_opf_ts(grid: MultiCircuit,
 
     if progress_func is not None:
         progress_func(0)
+
+    if export_model_fname is not None:
+        lp_model.save_model(file_name=export_model_fname)
+        logger.add_info("LP model saved as", value=export_model_fname)
+        print('LP model saved as:', export_model_fname)
 
     status = lp_model.solve(robust=robust, show_logs=verbose > 0, progress_text=progress_text)
 

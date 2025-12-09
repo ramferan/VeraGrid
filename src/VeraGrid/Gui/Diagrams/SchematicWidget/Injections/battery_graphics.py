@@ -33,8 +33,4 @@ class BatteryGraphicItem(InjectionTemplateGraphicItem):
 
     @property
     def api_object(self) -> Battery:
-        """
-
-        :return:
-        """
         return self._api_object

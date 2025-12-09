@@ -1,10 +1,8 @@
 # 🌀 State estimation
 
-VeraGrid has the ability to run state estimation simulations.
-For this to work you will have to fill in the apropriate measurements 
-in the database and run the State Estimation simulation.
-
-![se_settings.png](figures/se_settings.png)
+VeraGrid has the ability to run state estimation simulations, however not 
+from the interface since VeraGrid is not (yet) made to be coupled to SCADA measurements.
+Hence, the state estimation calculations will only be available through the API.
 
 ## API
 
@@ -46,7 +44,7 @@ m_circuit.add_line(br2)
 m_circuit.add_line(br3)
 
 # Declare the simulation driver and run
-se = gce.StateEstimationDriver(circuit=m_circuit)
+se = gce.StateEstimation(circuit=m_circuit)
 se.run()
 
 print(se.results.get_bus_df())

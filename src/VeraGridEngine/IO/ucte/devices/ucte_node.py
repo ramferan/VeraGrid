@@ -2,9 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from __future__ import annotations
-
-from VeraGridEngine.IO.ucte.devices.ucte_base import sub_int, sub_str, sub_float, try_int, try_float
+from VeraGridEngine.IO.ucte.devices.ucte_base import sub_int, sub_str, sub_float
 from VeraGridEngine.basic_structures import Logger
 
 UCTE_VOLTAGE_MAP = {
@@ -65,13 +63,7 @@ def try_parse_voltage(val: str | float, name: str, logger: Logger) -> float:
 
 
 class UcteNode:
-    """
-    UcteNode
-    """
     def __init__(self):
-
-        self.current_country = ""
-
         self.node_code = ""  # 0-7: Node (code)
         self.geo_name = ""  # 9-20: Geographical name
         self.status = 0  # 22: Status: 0 = real, 1 = equivalent
@@ -81,7 +73,7 @@ class UcteNode:
         # 3 = U and θ constant(global slack node, only one in the whole network))
         self.node_type = 0  # 24: Node type code
 
-        self.voltage = 10.0  # 26-31: Voltage (reference value, kV)
+        self.voltage = float  # 26-31: Voltage (reference value, kV)
 
         self.active_load = 0.0  # 33-39: Active load (MW)
         self.reactive_load = 0.0  # 41-47: Reactive load (MVAr)
@@ -108,17 +100,9 @@ class UcteNode:
         self.plant_type = ""  # 127: Power plant type (e.g., H: hydro, N: nuclear)
 
     def has_load(self) -> bool:
-        """
-
-        :return:
-        """
         return self.active_load != 0.0 or self.reactive_load != 0.0
 
     def has_gen(self) -> bool:
-        """
-
-        :return:
-        """
         return self.active_gen != 0.0 or self.reactive_gen != 0.0
 
     def parse(self, line: str, logger: Logger):
@@ -130,7 +114,6 @@ class UcteNode:
         """
 
         device = "Node"
-
         self.node_code = sub_str(line, 0, 8, device, "node_code", logger)
         self.geo_name = sub_str(line, 9, 21, device, "geo_name", logger)
         self.status = sub_int(line, 22, 23, device, "status", logger)
@@ -140,32 +123,13 @@ class UcteNode:
         self.reactive_load = sub_float(line, 41, 48, device, "reactive_load", logger)
         self.active_gen = sub_float(line, 49, 56, device, "active_gen", logger)
         self.reactive_gen = sub_float(line, 57, 64, device, "reactive_gen", logger)
-        self.min_gen_mw = sub_float(line, 65, 72, device, "min_gen_mw", logger, -9999.0)
-        self.max_gen_mw = sub_float(line, 73, 80, device, "max_gen_mw", logger, 9999.0)
-        self.min_gen_mvar = sub_float(line, 81, 88, device, "min_gen_mvar", logger, -9999.0)
-        self.max_gen_mvar = sub_float(line, 89, 96, device, "max_gen_mvar", logger, 9999.0)
+        self.min_gen_mw = sub_float(line, 65, 72, device, "min_gen_mw", logger)
+        self.max_gen_mw = sub_float(line, 73, 80, device, "max_gen_mw", logger)
+        self.min_gen_mvar = sub_float(line, 81, 88, device, "min_gen_mvar", logger)
+        self.max_gen_mvar = sub_float(line, 89, 96, device, "max_gen_mvar", logger)
         self.static_primary_control = sub_float(line, 97, 102, device, "static_primary_control", logger)
-        self.nominal_power_primary_control = sub_float(line, 103, 110, device, "nominal_power_primary_control", logger)
+        self.nominal_power_primary_control = sub_float(line, 103, 110, device,
+                                                       "nominal_power_primary_control", logger)
         self.short_circuit_power = sub_float(line, 111, 118, device, "short_circuit_power", logger)
         self.xr_ratio = sub_float(line, 119, 126, device, "xr_ratio", logger)
         self.plant_type = sub_str(line, 127, 128, device, "plant_type", logger)
-
-        if self.min_gen_mw > self.max_gen_mw:
-            # switch order
-            self.max_gen_mw, self.min_gen_mw = self.min_gen_mw, self.max_gen_mw
-
-        if self.min_gen_mvar > self.max_gen_mvar:
-            # switch order
-            self.max_gen_mvar, self.min_gen_mvar = self.min_gen_mvar, self.max_gen_mvar
-
-        if self.active_gen > self.max_gen_mw:
-            self.max_gen_mw = self.active_gen
-
-        if self.active_gen < self.min_gen_mw:
-            self.min_gen_mw = self.active_gen
-
-        if self.reactive_gen > self.max_gen_mvar:
-            self.max_gen_mvar = self.reactive_gen
-
-        if self.reactive_gen < self.min_gen_mvar:
-            self.min_gen_mvar = self.reactive_gen

@@ -174,7 +174,7 @@ class SequenceLineType(EditableDevice):
 
         return R, X, B, R0, X0, B0, rate
 
-    def get_ys_nabc(self) -> AdmittanceMatrix:
+    def get_ys_abc(self) -> AdmittanceMatrix:
         """
         Get the series 3x3 admittance matrix
         :return: AdmittanceMatrix
@@ -185,23 +185,22 @@ class SequenceLineType(EditableDevice):
         diag = (2 * z1 + z0) / 3
         off_diag = (z0 - z1) / 3
 
-        zabc = np.full((4, 4), off_diag)
+        zabc = np.full((3, 3), off_diag)
         np.fill_diagonal(zabc, diag)
 
-        adm = AdmittanceMatrix(size=4)
+        adm = AdmittanceMatrix(size=3)
         try:
             adm.values = np.linalg.inv(zabc)
         except np.linalg.LinAlgError:
             adm.values = np.linalg.pinv(zabc)
 
-        adm.phN = 0
         adm.phA = 1
         adm.phB = 1
         adm.phC = 1
 
         return adm
 
-    def get_ysh_nabc(self) -> AdmittanceMatrix:
+    def get_ysh_abc(self) -> AdmittanceMatrix:
         """
         get the 3x3 shunt admittance matrix from the sequence values
         :return AdmittanceMatrix
@@ -216,13 +215,11 @@ class SequenceLineType(EditableDevice):
         diag = (2.0 * y1 + y0) / 3.0
         off_diag = (y0 - y1) / 3.0
 
-        yabc = np.full((4, 4), off_diag)
+        yabc = np.full((3, 3), off_diag)
         np.fill_diagonal(yabc, diag)
 
-        adm = AdmittanceMatrix(size=4)
+        adm = AdmittanceMatrix(size=3)
         adm.values = yabc
-
-        adm.phN = 0
         adm.phA = 1
         adm.phB = 1
         adm.phC = 1

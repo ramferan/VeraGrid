@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import List, Dict, Any, Sequence
+from typing import List, Dict, Any, Union, Sequence
 from dataclasses import dataclass
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -13,40 +13,28 @@ from VeraGridEngine.enumerations import DeviceType
 
 
 @dataclass
+
 class BlockDiagramNode:
-    """
-    BlockDiagramNode
-    """
-    name: str
     x: float
     y: float
     tpe: str
     device_uid: int
-    api_object_name: str
     state_ins: int
     state_outs: Sequence[str]
     algeb_ins: int
     algeb_outs: Sequence[str]
-    color: str
     sub_diagram: "BlockDiagram" = None
 
     def get_node_dict(self) -> Dict[str, Any]:
-        """
-
-        :return:
-        """
         data: Dict[str, Any] = {
-            'name': self.name,
             'x': self.x,
             'y': self.y,
             'tpe': self.tpe,
             'device_uid': self.device_uid,
-            'api_object_name': self.api_object_name,
             'state_ins': self.state_ins,
-            'state_outs': self.state_outs,
+            'state_uots': self.state_outs,
             'algeb_ins': self.algeb_ins,
-            'algeb_outs': self.algeb_outs,
-            'color': self.color
+            'algeb_outs': self.algeb_outs
         }
         if self.sub_diagram is not None:
             data['sub_diagram'] = {
@@ -55,32 +43,11 @@ class BlockDiagramNode:
             }
         return data
 
-    def copy(self):
-        """
-        Deep copy
-        :return:
-        """
-        return BlockDiagramNode(
-            name=self.name,
-            x=self.x,
-            y=self.y,
-            tpe=self.tpe,
-            device_uid=self.device_uid,
-            api_object_name=self.api_object_name,
-            state_ins=self.state_ins,
-            state_outs=[e for e in self.state_outs],
-            algeb_ins=self.algeb_ins,
-            algeb_outs=[e for e in self.algeb_outs],
-            color=self.color,
-            sub_diagram=self.sub_diagram  # should not be a copy but a pointer!
-        )
+
 
 
 @dataclass
 class BlockDiagramConnection:
-    """
-    BlockDiagramConnection
-    """
     from_uid: int
     to_uid: int
     port_number_from: int
@@ -98,15 +65,7 @@ class BlockDiagramConnection:
                 'port_number_to': self.port_number_to,
                 'color': self.color}
 
-    def copy(self):
 
-        return BlockDiagramConnection(
-            from_uid=self.from_uid,
-            to_uid=self.to_uid,
-            port_number_from=self.port_number_from,
-            port_number_to=self.port_number_to,
-            color=self.color
-        )
 
 
 class BlockDiagram:
@@ -114,73 +73,40 @@ class BlockDiagram:
     Diagram
     """
 
-    def __init__(self):
+    def __init__(self, idtag=None, name=''):
         """
 
+        :param name: Diagram name
         """
-        self.status: str | None = None
         self.node_data: Dict[int, BlockDiagramNode] = dict()
-        self.con_data: Dict[int, BlockDiagramConnection] = dict()
+        self.con_data: List[BlockDiagramConnection] = list()
 
-    def copy(self):
+    def add_node(self, x: float, y: float, tpe: str,  device_uid: int, state_ins: int = 0, state_outs: Sequence[str] = [], algeb_ins: int = 0, algeb_outs: Sequence[str] = [], subdiagram: BlockDiagram = None):
         """
-        Deep copy of the block diagram
-        :return:
-        """
-        diag = BlockDiagram()
 
-        diag.status = self.status
-
-        diag.node_data = {key: val.copy() for key, val in self.node_data.items()}
-        diag.con_data = {key: val.copy() for key, val in self.con_data.items()}
-
-        return diag
-
-    def add_node(self, name: str, x: float, y: float,
-                 tpe: str, device_uid: int, api_object_name: str = "",
-                 state_ins: int = 0,
-                 state_outs: Sequence[str] = [],
-                 algeb_ins: int = 0,
-                 algeb_outs: Sequence[str] = [],
-                 color=None,
-                 subdiagram: BlockDiagram = None):
-        """
-        :param api_object_name:
-        :param state_ins:
-        :param state_outs:
-        :param algeb_ins:
-        :param algeb_outs:
-        :param name:
         :param x:
         :param y:
         :param device_uid:
         :param tpe:
-        :param color:
         :param subdiagram:
         :return:
         """
-
-        if color is None:
-            color = "#C0C0C0"  # light blue
         self.node_data[device_uid] = BlockDiagramNode(
-            name=name,
             x=x,
             y=y,
             tpe=tpe,
             device_uid=device_uid,
-            api_object_name=api_object_name,
-            state_ins=state_ins,
-            state_outs=state_outs,
-            algeb_ins=algeb_ins,
-            algeb_outs=algeb_outs,
-            color=color,
+            state_ins = state_ins,
+            state_outs = state_outs,
+            algeb_ins = algeb_ins,
+            algeb_outs = algeb_outs,
             sub_diagram=subdiagram
         )
 
-    def add_branch(self, connectionitem_uid: int, device_uid_from: int, device_uid_to: int,
+    def add_branch(self, device_uid_from: int, device_uid_to: int,
                    port_number_from: int, port_number_to: int, color: str):
         """
-        :param connectionitem_uid:
+
         :param device_uid_from:
         :param device_uid_to:
         :param port_number_from:
@@ -188,30 +114,21 @@ class BlockDiagram:
         :param color:
         :return:
         """
-
-        self.con_data[connectionitem_uid] = BlockDiagramConnection(
-            from_uid=device_uid_from,
-            to_uid=device_uid_to,
-            port_number_from=port_number_from,
-            port_number_to=port_number_to,
-            color=color
+        self.con_data.append(
+            BlockDiagramConnection(
+                from_uid=device_uid_from,
+                to_uid=device_uid_to,
+                port_number_from=port_number_from,
+                port_number_to=port_number_to,
+                color=color
+            )
         )
-
     def get_node_data_dict(self) -> Dict[int, Dict[str, Any]]:
-        """
-
-        :return:
-        """
-        graph_info = {device_uid: node.get_node_dict() for device_uid, node in self.node_data.items()}
+        graph_info ={device_uid: node.get_node_dict() for device_uid, node in self.node_data.items()}
         return graph_info
 
     def get_con_data_dict(self) -> Dict[int, Dict[str, Any]]:
-        """
-
-        :return:
-        """
-        graph_info = {connection_uid: connection.get_connection_dict() for connection_uid, connection in
-                      self.con_data.items()}
+        graph_info = {index: connection.get_connection_dict() for index, connection in enumerate(self.con_data)}
         return graph_info
 
     def parse_nodes(self, nodes_data) -> None:
@@ -227,17 +144,14 @@ class BlockDiagram:
                 subdiagram.parse_branches(node["sub_diagram"]["connections"])
 
             self.node_data[int(uid)] = BlockDiagramNode(
-                name=node['name'],
                 x=node['x'],
                 y=node['y'],
                 tpe=node['tpe'],
                 device_uid=node['device_uid'],
-                api_object_name=node['api_object_name'],
                 state_ins=node['state_ins'],
                 state_outs=node['state_outs'],
                 algeb_ins=node['algeb_ins'],
                 algeb_outs=node['algeb_outs'],
-                color=node['color'],
                 sub_diagram=subdiagram
             )
 
@@ -245,14 +159,14 @@ class BlockDiagram:
         """
         Parse connection data from dictionary
         """
-        self.con_data = dict()
-        for uid, con in con_data.items():
-            self.con_data[int(uid)] = (BlockDiagramConnection(
-                from_uid=con['from_uid'],
-                to_uid=con['to_uid'],
-                port_number_from=con['port_number_from'],
-                port_number_to=con['port_number_to'],
-                color=con['color'],
+        self.con_data = []
+        for idx, node in con_data.items():
+            self.con_data.append(BlockDiagramConnection(
+                from_uid=node['from_uid'],
+                to_uid=node['to_uid'],
+                port_number_from=node['port_number_from'],
+                port_number_to=node['port_number_to'],
+                color=node['color'],
             ))
 
 
@@ -262,10 +176,7 @@ class DynamicModelHost(EditableDevice):
     """
 
     def __init__(self, name=""):
-        """
 
-        :param name:
-        """
         super().__init__(name=name,
                          idtag=None,
                          code="",
@@ -279,47 +190,23 @@ class DynamicModelHost(EditableDevice):
 
     @property
     def template(self):
-        """
-
-        :return:
-        """
         return self._template
 
     @template.setter
-    def template(self, val: Block):
-        """
+    def template(self, val: Block | RmsModelTemplate):
 
-        :param val:
-        :return:
-        """
-        if isinstance(val, Block):
+        if isinstance(val, RmsModelTemplate):
+            self._template = val.block
+
+        elif isinstance(val, Block):
             self._template = val
-        elif val is None:
-            self._template = None
+
         else:
             raise ValueError(f"Cannot set template with {val}")
 
     @property
     def custom_model(self):
-        """
-        Return custom
-        :return:
-        """
         return self._custom_model
-
-    @custom_model.setter
-    def custom_model(self, val: Block):
-        """
-
-        :param val:
-        :return:
-        """
-        if isinstance(val, Block):
-            self._custom_model = val
-        elif val is None:
-            self._custom_model = None
-        else:
-            raise ValueError(f"Cannot set template with {val}")
 
     @property
     def model(self) -> Block:
@@ -333,17 +220,20 @@ class DynamicModelHost(EditableDevice):
             return self.template
 
     @model.setter
-    def model(self, val: Block):
-        if not isinstance(val, Block):
+    def model(self, val: Block | RmsModelTemplate):
+
+        if isinstance(val, RmsModelTemplate):
+            self.template = val.block
+
+        elif isinstance(val, Block):
+            self._custom_model = val
+
+        else:
             raise ValueError(f"Cannot set model with {val}")
-        self._custom_model = val
 
     @property
     def diagram(self) -> BlockDiagram:
-        """
 
-        :return:
-        """
         return self._diagram
 
     @diagram.setter

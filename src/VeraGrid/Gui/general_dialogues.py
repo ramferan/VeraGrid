@@ -2,49 +2,21 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from __future__ import annotations
-
-import sys
 import io
 import numpy as np
 import pandas as pd
-from typing import List, Union, Any, Dict
+from typing import List, Union, Any
 from datetime import datetime
 from PySide6 import QtCore, QtGui, QtWidgets
-from PySide6.QtWidgets import (QApplication, QDialog, QTableView, QVBoxLayout, QPushButton, QHBoxLayout,
-                               QLabel, QComboBox, QSpacerItem, QSizePolicy)
-
+from PySide6.QtWidgets import QApplication, QDialog, QTableView, QVBoxLayout, QPushButton, QHBoxLayout
 from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGrid.Gui.gui_functions import get_list_model, get_checked_indices, get_chck_list_model
+from VeraGrid.Gui.gui_functions import get_list_model, get_checked_indices
 from VeraGrid.Gui.object_model import ObjectsModel
-from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, PhasesShortCircuit
 
 
-class CenteredDialog(QDialog):
-    """
-    Class to make the dialogues centered
-    """
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-    def showEvent(self, event):
-        """
-
-        :param event:
-        :return:
-        """
-        super().showEvent(event)
-        if self.parent():
-            parent_geo = self.parent().geometry()
-            self.move(
-                parent_geo.center().x() - self.width() // 2,
-                parent_geo.center().y() - self.height() // 2
-            )
-
-
-class NewProfilesStructureDialogue(CenteredDialog):
+class NewProfilesStructureDialogue(QtWidgets.QDialog):
     """
     New profile dialogue window
     """
@@ -209,7 +181,7 @@ class MTreeExpandHook(QtCore.QObject):
         return super(MTreeExpandHook, self).eventFilter(self.tree, event)
 
 
-class LogsDialogue(CenteredDialog):
+class LogsDialogue(QtWidgets.QDialog):
     """
     New profile dialogue window
     """
@@ -308,7 +280,7 @@ class LogsDialogue(CenteredDialog):
         cb.setText(txt)
 
 
-class ElementsDialogue(CenteredDialog):
+class ElementsDialogue(QtWidgets.QDialog):
     """
     Selected elements dialogue window
     """
@@ -374,7 +346,7 @@ class ElementsDialogue(CenteredDialog):
         pass
 
 
-class TimeReIndexDialogue(CenteredDialog):
+class TimeReIndexDialogue(QtWidgets.QDialog):
     """
     New profile dialogue window
     """
@@ -434,7 +406,7 @@ class TimeReIndexDialogue(CenteredDialog):
         self.accept()
 
 
-class CorrectInconsistenciesDialogue(CenteredDialog):
+class CorrectInconsistenciesDialogue(QtWidgets.QDialog):
     """
     New profile dialogue window
     """
@@ -514,7 +486,7 @@ def clear_qt_layout(layout):
         layout.itemAt(i).widget().deleteLater()
 
 
-class CheckListDialogue(CenteredDialog):
+class CheckListDialogue(QtWidgets.QDialog):
     """
     New profile dialogue window
     """
@@ -524,9 +496,7 @@ class CheckListDialogue(CenteredDialog):
                  title='Select objects',
                  ask_for_group_name: bool = False,
                  group_label: str = "",
-                 group_text: str = "",
-                 default: List[bool] | None = None,
-                 default_val: bool = True):
+                 group_text: str = ""):
         """
 
         :param objects_list: List of names to display
@@ -535,18 +505,13 @@ class CheckListDialogue(CenteredDialog):
         :param group_label: Name of the property
         :param group_text: Tentative group name
         """
-        CenteredDialog.__init__(self)
-
-        self.objects_list = objects_list
-        self.default_vals = default if default is not None else [default_val for e in objects_list]
-
+        QtWidgets.QDialog.__init__(self)
         self.setObjectName("self")
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.NoContextMenu)
         self.main_layout = QtWidgets.QVBoxLayout(self)
 
         self.is_accepted: bool = False
         self.selected_indices: List[int] = list()
-        self.status_dict: Dict[str, bool] = dict()
 
         self.label1 = QtWidgets.QLabel()
         self.label1.setText("Selected objects")
@@ -559,15 +524,7 @@ class CheckListDialogue(CenteredDialog):
 
         # list
         self.list_view = QtWidgets.QListView()
-        # self.mdl = get_list_model(lst=objects_list,
-        #                           checks=True,
-        #                           check_value=default_val)
-
-        self.mdl = get_chck_list_model(
-            lst=objects_list,
-            check_status=self.default_vals
-        )
-
+        self.mdl = get_list_model(objects_list, checks=True, check_value=True)
         self.list_view.setModel(self.mdl)
 
         # accept button
@@ -598,14 +555,6 @@ class CheckListDialogue(CenteredDialog):
         """
         return self.group_name_text.toPlainText()
 
-    def selected(self, val: str) -> bool:
-        """
-        Check if the value was selected
-        :param val:
-        :return:
-        """
-        return self.status_dict.get(val, False)
-
     def accept_click(self):
         """
         Accept and close
@@ -613,18 +562,11 @@ class CheckListDialogue(CenteredDialog):
         self.is_accepted = True
 
         self.selected_indices = get_checked_indices(self.mdl)
-
-        for row in range(self.mdl.rowCount()):
-            item = self.mdl.item(row)
-            if item.checkState() == QtCore.Qt.CheckState.Checked:
-                self.status_dict[self.objects_list[row]] = True
-            else:
-                self.status_dict[self.objects_list[row]] = False
-
         self.accept()
 
 
-class DeleteDialogue(CenteredDialog):
+
+class DeleteDialogue(QtWidgets.QDialog):
     """
     New profile dialogue window
     """
@@ -646,7 +588,7 @@ class DeleteDialogue(CenteredDialog):
         :param group_label: Name of the property
         :param group_text: Tentative group name
         """
-        CenteredDialog.__init__(self)
+        QtWidgets.QDialog.__init__(self)
         self.setObjectName("self")
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.NoContextMenu)
         self.main_layout = QtWidgets.QVBoxLayout(self)
@@ -716,7 +658,7 @@ class DeleteDialogue(CenteredDialog):
         self.accept()
 
 
-class InputNumberDialogue(CenteredDialog):
+class InputNumberDialogue(QtWidgets.QDialog):
     """
     New InputNumberDialogue window
     """
@@ -735,7 +677,7 @@ class InputNumberDialogue(CenteredDialog):
         :param h:
         :param w:
         """
-        CenteredDialog.__init__(self)
+        QtWidgets.QDialog.__init__(self)
         self.setObjectName("self")
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.NoContextMenu)
         self.main_layout = QtWidgets.QVBoxLayout(self)
@@ -782,7 +724,7 @@ class InputNumberDialogue(CenteredDialog):
         self.accept()
 
 
-class InputSearchDialogue(CenteredDialog):
+class InputSearchDialogue(QtWidgets.QDialog):
     """
     New InputNumberDialogue window
     """
@@ -797,7 +739,7 @@ class InputSearchDialogue(CenteredDialog):
         """
 
         self.searchText = ""
-        CenteredDialog.__init__(self)
+        QtWidgets.QDialog.__init__(self)
         self.setObjectName("self")
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.NoContextMenu)
         self.main_layout = QtWidgets.QVBoxLayout(self)
@@ -836,7 +778,7 @@ class InputSearchDialogue(CenteredDialog):
         self.accept()
 
 
-class StartEndSelectionDialogue(CenteredDialog):
+class StartEndSelectionDialogue(QtWidgets.QDialog):
     """
     New StartEndSelectionDialogue window
     """
@@ -852,7 +794,7 @@ class StartEndSelectionDialogue(CenteredDialog):
         :param h:
         :param w:
         """
-        CenteredDialog.__init__(self)
+        QtWidgets.QDialog.__init__(self)
         self.setObjectName("self")
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.NoContextMenu)
         self.main_layout = QtWidgets.QVBoxLayout(self)
@@ -928,7 +870,7 @@ class StartEndSelectionDialogue(CenteredDialog):
         self.accept()
 
 
-class CustomQuestionDialogue(CenteredDialog):
+class CustomQuestionDialogue(QtWidgets.QDialog):
     """
     Custom question dialogue
     """
@@ -1011,8 +953,7 @@ class ArrayTableModel(QAbstractTableModel):
         """
         return len(self._data)  # We have two columns, one for each array
 
-    def headerData(self, section: int, orientation: QtCore.Qt.Orientation,
-                   role: int = Qt.ItemDataRole.DisplayRole) -> Any:
+    def headerData(self, section: int, orientation: QtCore.Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
         """
 
         :param section:
@@ -1116,13 +1057,13 @@ class ArrayTableModel(QAbstractTableModel):
         return True
 
 
-class ArrayEditor(CenteredDialog):
+class ArrayEditor(QDialog):
     """
     ArrayEditor
     """
 
     def __init__(self):
-        CenteredDialog.__init__(self)
+        QDialog.__init__(self)
 
         self.setWindowTitle("Array Editor")
 
@@ -1168,174 +1109,8 @@ class ArrayEditor(CenteredDialog):
             self.model.removeRows(position=r, rows=1)
 
 
-# ----------------------------------------------------
-# VALIDITY RULES
-# ----------------------------------------------------
-
-
-def valid_methods_for_fault(fault: FaultType):
-    """
-    :param fault:
-    :return:
-    """
-    # all other faults allow both
-    return list(MethodShortCircuit)
-
-
-def valid_phases_for_fault(fault: FaultType):
-    """
-
-    :param fault:
-    :return:
-    """
-    if fault in (FaultType.LLLG, FaultType.LLL):
-        return [PhasesShortCircuit.abc]
-
-    if fault == FaultType.LG:
-        return [PhasesShortCircuit.a, PhasesShortCircuit.b, PhasesShortCircuit.c]
-
-    if fault in (FaultType.LL, FaultType.LLG):
-        return [PhasesShortCircuit.ab, PhasesShortCircuit.bc, PhasesShortCircuit.ca]
-
-    return []
-
-
-class ShortCircuitSelector(CenteredDialog):
-    """
-    ShortCircuitSelector
-    """
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.setWindowTitle("Short Circuit Configuration")
-
-        layout = QVBoxLayout(self)
-
-        # Fault type
-        self.cb_fault = QComboBox()
-        self.cb_fault.addItems([e.value for e in FaultType])
-        layout.addWidget(QLabel("Fault type:"))
-        layout.addWidget(self.cb_fault)
-
-        # Method
-        self.cb_method = QComboBox()
-        self.cb_method.addItems([e.value for e in MethodShortCircuit])
-        layout.addWidget(QLabel("Method:"))
-        layout.addWidget(self.cb_method)
-
-        # Phases
-        self.cb_phases = QComboBox()
-        self.cb_phases.addItems([e.value for e in PhasesShortCircuit])
-        self.phases_label = QLabel("Phases:")
-        layout.addWidget(self.phases_label)
-        layout.addWidget(self.cb_phases)
-
-        # --- VERTICAL SPACER ---
-        layout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
-
-        # Accept button
-        self.btn_accept = QPushButton("Accept")
-        layout.addWidget(self.btn_accept)
-
-        # Logic connections
-        self.cb_fault.currentIndexChanged.connect(self.update_logic)
-        self.btn_accept.clicked.connect(self.accept_clicked)
-
-        self.update_logic()
-        self.fault = FaultType(self.cb_fault.currentText())
-        self.method = MethodShortCircuit(self.cb_method.currentText())
-        self.phases = PhasesShortCircuit(self.cb_phases.currentText())
-
-        self.was_accepted = False
-
-        self.cb_method.currentTextChanged.connect(self.update_view)
-
-    def update_view(self):
-        """
-
-        :return:
-        """
-
-        fault = FaultType(self.cb_fault.currentText())
-
-        # -------- UPDATE PHASES --------
-        if self.cb_method.currentText() == MethodShortCircuit.sequences.value:
-            self.cb_phases.setVisible(False)
-            self.phases_label.setVisible(False)
-        else:
-            self.cb_phases.setVisible(True)
-            self.phases_label.setVisible(True)
-            allowed_phases = valid_phases_for_fault(fault)
-            current_phase = self.cb_phases.currentText()
-
-            self.cb_phases.clear()
-            for p in allowed_phases:
-                self.cb_phases.addItem(p.value)
-
-            if current_phase in [p.value for p in allowed_phases]:
-                self.cb_phases.setCurrentText(current_phase)
-
-    def update_logic(self):
-        """Update available method and phase options based on the fault type."""
-
-        fault = FaultType(self.cb_fault.currentText())
-
-        # -------- UPDATE METHOD --------
-        allowed_methods = valid_methods_for_fault(fault)
-        current_method = self.cb_method.currentText()
-
-        self.cb_method.clear()
-        for m in allowed_methods:
-            self.cb_method.addItem(m.value)
-
-        if current_method in [m.value for m in allowed_methods]:
-            self.cb_method.setCurrentText(current_method)
-
-        # -------- UPDATE PHASES --------
-        if current_method == MethodShortCircuit.sequences.value:
-            self.cb_phases.setVisible(False)
-            self.phases_label.setVisible(False)
-        else:
-            self.cb_phases.setVisible(True)
-            self.phases_label.setVisible(True)
-            allowed_phases = valid_phases_for_fault(fault)
-            current_phase = self.cb_phases.currentText()
-
-            self.cb_phases.clear()
-            for p in allowed_phases:
-                self.cb_phases.addItem(p.value)
-
-            if current_phase in [p.value for p in allowed_phases]:
-                self.cb_phases.setCurrentText(current_phase)
-
-        self.fault = FaultType(self.cb_fault.currentText())
-        self.method = MethodShortCircuit(self.cb_method.currentText())
-        self.phases = PhasesShortCircuit(self.cb_phases.currentText())
-
-    def get_selection(self):
-        """Return the selected configuration as enums."""
-        return (
-            FaultType(self.cb_fault.currentText()),
-            MethodShortCircuit(self.cb_method.currentText()),
-            PhasesShortCircuit(self.cb_phases.currentText()),
-        )
-
-    def accept_clicked(self):
-        """Check if values are valid and close dialog."""
-        self.fault = FaultType(self.cb_fault.currentText())
-        self.method = MethodShortCircuit(self.cb_method.currentText())
-        self.phases = PhasesShortCircuit(self.cb_phases.currentText())
-        self.was_accepted = True
-        self.close()
-
-
 if __name__ == "__main__":
     import sys
-
-    app = QApplication(sys.argv)
-    w = ShortCircuitSelector()
-    w.show()
-    sys.exit(app.exec())
 
     # from PySide6.QtWidgets import QApplication
     #

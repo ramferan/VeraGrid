@@ -2,19 +2,15 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from VeraGridEngine.IO.ucte.devices.ucte_base import sub_int, sub_str, sub_float, try_float, try_int
+from VeraGridEngine.IO.ucte.devices.ucte_base import sub_int, sub_str, sub_float
 from VeraGridEngine.basic_structures import Logger
 
-
 class UcteLine:
-    """
-    UcteLine
-    """
-
     def __init__(self):
         self.node1 = ""  # 0-7: Node 1 code
         self.node2 = ""  # 9-16: Node 2 code
         self.order_code = ""  # 18: Order code
+
 
         self.status = 0  # 20: Status
 
@@ -61,59 +57,12 @@ class UcteLine:
         """
 
         device = "Line"
-        if len(line) == 66:
-            # cannonical parsing
-            self.node1 = sub_str(line, 0, 8, device, "node1", logger)
-            self.node2 = sub_str(line, 9, 17, device, "node2", logger)
-            self.order_code = sub_str(line, 18, 19, device, "", logger)
-            self.status = sub_int(line, 20, 21, device, "status", logger)
-            self.resistance = sub_float(line, 22, 28, device, "resistance", logger)
-            self.reactance = sub_float(line, 29, 35, device, "reactance", logger)
-            self.susceptance = sub_float(line, 36, 44, device, "susceptance", logger)
-            self.current_limit = sub_float(line, 45, 51, device, "current_limit", logger, 9999.0)
-            self.name = sub_str(line, 53, len(line), device, "name", logger)
-        else:
-            logger.add_warning("Non canonical line length",
-                               device_class=device,
-                               value=len(line),
-                               expected_value=66)
-
-            chunks = line.split()
-
-            if len(chunks) >= 9:
-
-                self.node1 = chunks[0].strip()
-                self.node2 = chunks[1].strip()
-                self.order_code = chunks[2].strip()
-                self.status = try_int(chunks[3].strip(), device, "status", logger)
-                self.resistance = try_float(chunks[4].strip(), device, "resistance", logger)
-                self.reactance = try_float(chunks[5].strip(), device, "reactance", logger)
-                self.susceptance = try_float(chunks[6].strip(), device, "susceptance", logger)
-                self.current_limit = try_float(chunks[7].strip(), device, "current_limit", logger, 9999.0)
-                self.name = chunks[8].strip()
-
-            elif len(chunks) == 8:
-
-                self.node1 = chunks[0].strip()
-                self.node2 = chunks[1].strip()
-                self.order_code = chunks[2].strip()
-                self.status = try_int(chunks[3].strip(), device, "status", logger)
-                self.resistance = try_float(chunks[4].strip(), device, "resistance", logger)
-                self.reactance = try_float(chunks[5].strip(), device, "reactance", logger)
-                self.susceptance = try_float(chunks[6].strip(), device, "susceptance", logger)
-                self.current_limit = try_float(chunks[7].strip(), device, "current_limit", logger, 9999.0)
-                self.name = "No name provided"
-
-                logger.add_warning("Incorrect number of parameters",
-                                   device_class=device,
-                                   value=len(chunks),
-                                   expected_value=9)
-
-            else:
-                logger.add_error("Incorrect number of parameters",
-                                 device_class=device,
-                                 value=len(chunks),
-                                 expected_value=9)
-
-        if self.current_limit < 0:
-            self.current_limit = 9999.0
+        self.node1 = sub_str(line, 0, 8, device,"node1",  logger)
+        self.node2 = sub_str(line, 9, 17,device,  "node2", logger)
+        self.order_code = sub_str(line, 18, 19, device, "", logger)
+        self.status = sub_int(line, 20, 21, device, "status", logger)
+        self.resistance = sub_float(line, 22, 28, device, "resistance", logger)
+        self.reactance = sub_float(line, 29, 35, device, "reactance", logger)
+        self.susceptance = sub_float(line, 36, 44, device, "susceptance", logger)
+        self.current_limit = sub_int(line, 45, 51, device, "current_limit", logger)
+        self.name = sub_str(line, 53, len(line), device, "name", logger)

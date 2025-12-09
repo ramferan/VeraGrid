@@ -1,15 +1,15 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at https://mozilla.org/MPL/2.0/.
-# SPDX-License-Identifier: MPL-2.0
-from __future__ import annotations
+from datetime import time
+from typing import List
 
 import numpy as np
+import networkx as nx
 from matplotlib import pyplot as plt
-from scipy.sparse import csc_matrix
+from numpy.linalg import matrix_rank, inv
+from scipy.sparse import csc_matrix, diags
+from scipy.sparse.linalg import splu
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
-from VeraGridEngine.Simulations.StateEstimation.pseudo_measurements_augmentation import (add_pseudo_measurements,
-                                                                                         build_neighbors)
+from VeraGridEngine.Simulations.StateEstimation.pseudo_measurements_augmentation import add_pseudo_measurements, \
+    build_neighbors
 from VeraGridEngine.Simulations.StateEstimation.state_estimation_inputs import StateEstimationInput
 from VeraGridEngine.basic_structures import CscMat, IntVec, Logger
 from VeraGridEngine.Simulations.StateEstimation.state_estimation import Jacobian_SE
@@ -31,7 +31,7 @@ def check_for_observability_and_return_unobservable_buses(nc: NumericalCircuit,
                                                           fixed_slack: bool = True,
                                                           tolerance_for_observability_score=1e-6,
                                                           do_profiling_of_measurements: bool = False,
-                                                          include_line_measurements_on_both_ends: bool = True,
+                                                          include_line_measurements_on_both_ends:bool=True,
                                                           logger: Logger | None = None):
     """
     Fast decoupled WLS state estimator using LU decomposition based observability analysis
@@ -51,40 +51,40 @@ def check_for_observability_and_return_unobservable_buses(nc: NumericalCircuit,
 
     for meas in se_input.p_inj:
         measurement_types.append("P")
-        measurement_ids.append(("p_inj", meas.device))
+        measurement_ids.append(("p_inj", meas.api_object))
     for meas in se_input.q_inj:
         measurement_types.append("Q")
-        measurement_ids.append(("q_inj", meas.device))
+        measurement_ids.append(("q_inj", meas.api_object))
     for meas in se_input.pg_inj:
         measurement_types.append("P")
-        measurement_ids.append(("pg_inj", meas.device))
+        measurement_ids.append(("pg_inj", meas.api_object))
     for meas in se_input.qg_inj:
         measurement_types.append("Q")
-        measurement_ids.append(("qg_inj", meas.device))
+        measurement_ids.append(("qg_inj", meas.api_object))
     for meas in se_input.pf_value:
         measurement_types.append("P")
-        measurement_ids.append(("pf_value", meas.device))
+        measurement_ids.append(("pf_value", meas.api_object))
     for meas in se_input.pt_value:
         measurement_types.append("P")
-        measurement_ids.append(("pt_value", meas.device))
+        measurement_ids.append(("pt_value", meas.api_object))
     for meas in se_input.qf_value:
         measurement_types.append("Q")
-        measurement_ids.append(("qf_value", meas.device))
+        measurement_ids.append(("qf_value", meas.api_object))
     for meas in se_input.qt_value:
         measurement_types.append("Q")
-        measurement_ids.append(("qt_value", meas.device))
+        measurement_ids.append(("qt_value", meas.api_object))
     for meas in se_input.if_value:
         measurement_types.append("I")
-        measurement_ids.append(("if_value", meas.device))
+        measurement_ids.append(("if_value", meas.api_object))
     for meas in se_input.it_value:
         measurement_types.append("I")
-        measurement_ids.append(("it_value", meas.device))
+        measurement_ids.append(("it_value", meas.api_object))
     for meas in se_input.vm_value:
         measurement_types.append("V")
-        measurement_ids.append(("vm_value", meas.device))
+        measurement_ids.append(("vm_value", meas.api_object))
     for meas in se_input.va_value:
         measurement_types.append("V")
-        measurement_ids.append(("va_value", meas.device))
+        measurement_ids.append(("va_value", meas.api_object))
 
     measurement_types = np.array(measurement_types)
     measurement_ids = np.array(measurement_ids, dtype=object)
@@ -120,8 +120,7 @@ def check_for_observability_and_return_unobservable_buses(nc: NumericalCircuit,
             Hr = H.tocsr()[r_idx, n_non_slack:]
             Hv = H.tocsr()[v_idx, :]
             Hi = H.tocsr()[i_idx, :]
-            measurement_profile = parallel_measurement_profiling(Ha, Hr, Hv, Hi, measurement_ids, a_idx, r_idx, v_idx,
-                                                                 i_idx, True)
+            measurement_profile=parallel_measurement_profiling(Ha, Hr, Hv, Hi, measurement_ids, a_idx, r_idx, v_idx, i_idx,True)
             bus_status = bus_observability_profile(measurement_profile)
             plot_bus_observability(bus_status)
             logger.add_info("Measurement profiling completed")
@@ -154,6 +153,7 @@ def check_for_observability_and_return_unobservable_buses(nc: NumericalCircuit,
             if score > tolerance_for_observability_score:
                 unobservable_buses.append(bus)
         return False, unobservable_buses, None, V, bus_contrib
+
 
 
 def parallel_measurement_profiling(Ha, Hr, Hv, Hi, measurement_ids, a_idx, r_idx, v_idx, i_idx,
@@ -192,6 +192,10 @@ def parallel_measurement_profiling(Ha, Hr, Hv, Hi, measurement_ids, a_idx, r_idx
     return results
 
 
+
+
+
+
 def add_pseudo_measurements_for_unobservable_buses(bus_dict, unobservable_buses: object, se_input: object, V: object,
                                                    Ybus: object, Cf: object, Ct: object,
                                                    sigma_pseudo_meas_value: object = 1.0, Sbase=100,
@@ -216,7 +220,7 @@ def add_pseudo_measurements_for_unobservable_buses(bus_dict, unobservable_buses:
     )
 
 
-def profile_measurements(Hsub, ids, tol=1e-9, include_line_measurements_on_both_ends=True):
+def profile_measurements(Hsub, ids, tol=1e-9,include_line_measurements_on_both_ends=True):
     """
     Condition	            System rank	            Local rank	            Classification
     Rank drops system-wide	    ↓	                    –	                Critical
@@ -229,17 +233,17 @@ def profile_measurements(Hsub, ids, tol=1e-9, include_line_measurements_on_both_
     prof = {}
     # Ensure IDs are tuples for hashable dict keys
     ids = [tuple(id_) for id_ in ids]
-    groups = build_local_groups(ids, include_line_measurements_on_both_ends=include_line_measurements_on_both_ends)
+    groups = build_local_groups(ids,include_line_measurements_on_both_ends=include_line_measurements_on_both_ends)
     # Convert Hsub to dense once if it's sparse
     H_dense = Hsub.toarray() if hasattr(Hsub, "toarray") else Hsub
     # Precompute G = H.T @ H once
     G = H_dense.T @ H_dense
     for idx, meas_id in enumerate(ids):
         # this is slower but understandable
-        # mask = np.arange(Hsub.shape[0]) != idx
-        # H_reduced = Hsub[mask, :]
-        # G_reduced = H_reduced.T @ H_reduced
-        # rank_reduced = np.linalg.matrix_rank(G_reduced.toarray(), tol=tol)
+        #mask = np.arange(Hsub.shape[0]) != idx
+        #H_reduced = Hsub[mask, :]
+        #G_reduced = H_reduced.T @ H_reduced
+        #rank_reduced = np.linalg.matrix_rank(G_reduced.toarray(), tol=tol)
 
         # Compute rank using rank-1 downdate instead of full recomputation
         # Extract the measurement row
@@ -357,7 +361,7 @@ def profile_measurements_ultrafast(Hsub, ids, tol=1e-9, include_line_measurement
     return prof
 
 
-def build_local_groups(measurement_ids, include_line_measurements_on_both_ends=True):
+def build_local_groups(measurement_ids,include_line_measurements_on_both_ends=True ):
     groups = defaultdict(list)
 
     for idx, (cat, api_obj) in enumerate(measurement_ids):
@@ -462,14 +466,13 @@ def plot_bus_observability(bus_status_per_type):
     plt.legend()
     # plt.show()
 
-
 # -------------- we extend measurement classification to check single and mutliple redundancies ----------------------
 def classify_redundancy(H, idx, tol=1e-9):
     """Classify redundant measurement into none/single/multiple redundancy."""
     """
     Take the measurement’s row h_i.Remove it from the Jacobian H_rest.
     """
-    h_i = H[idx, :].reshape(1, -1)  # row vector = the measurement we test
+    h_i = H[idx, :].reshape(1, -1)      # row vector = the measurement we test
     H_rest = np.delete(H, idx, axis=0)  # all other measurements
 
     # Least squares to check dependence

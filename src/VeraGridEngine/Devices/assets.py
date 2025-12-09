@@ -2,15 +2,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
-from __future__ import annotations
-
 import warnings
 import numpy as np
 import pandas as pd
 from typing import List, Dict, Tuple, Union, Any, Set, Generator, Sequence
 import datetime as dateslib
 
-from VeraGridEngine.basic_structures import IntVec, StrVec, Vec, Mat
+from VeraGridEngine.Devices.Dynamic.events import RmsEvent
+from VeraGridEngine.basic_structures import IntVec, StrVec, Vec
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, BRANCH_TYPES, INJECTION_DEVICE_TYPES, FLUID_TYPES
 from VeraGridEngine.Devices.Parents.editable_device import GCPROP_TYPES
@@ -93,7 +92,6 @@ class Assets:
         '_contingency_groups',
         '_remedial_actions',
         '_remedial_action_groups',
-        '_short_circuit_definitions',
         '_investments',
         '_investments_groups',
         '_technologies',
@@ -245,9 +243,6 @@ class Assets:
         # remedial actions group
         self._remedial_action_groups: List[dev.RemedialActionGroup] = list()
 
-        # Short circuit definition
-        self._short_circuit_definitions: List[dev.ShortCircuitEvent] = list()
-
         # investments
         self._investments: List[dev.Investment] = list()
 
@@ -285,7 +280,7 @@ class Assets:
         self._p2xs: List[dev.FluidP2x] = list()
 
         # list of wire types
-        self._rms_models: List[dev.RmsModelTemplate] = list()
+        self._rms_models: List[dev.DynamicModelHost] = list()
 
         # list of declared diagrams
         self._diagrams: List[Union[dev.MapDiagram, dev.SchematicDiagram]] = list()
@@ -299,11 +294,6 @@ class Assets:
                 dev.Municipality(),
                 dev.Area(),
                 dev.Zone(),
-            ],
-            "Associations": [
-                dev.Technology(),
-                dev.Fuel(),
-                dev.EmissionGas(),
             ],
             "Substation": [
                 dev.Substation(),
@@ -341,24 +331,22 @@ class Assets:
                 dev.FluidP2x(),
             ],
             "Groups": [
-                dev.BranchGroup(),
-                dev.ModellingAuthority(),
-                dev.Facility(),
-            ],
-            "Contingencies": [
                 dev.ContingencyGroup(),
                 dev.Contingency(),
                 dev.RemedialActionGroup(),
                 dev.RemedialAction(),
-                dev.ShortCircuitEvent()
-            ],
-            "Investments": [
                 dev.InvestmentsGroup(),
                 dev.Investment(),
-            ],
-            "Dynamic": [
+                dev.BranchGroup(),
+                dev.ModellingAuthority(),
+                dev.Facility(),
                 dev.RmsEvent(),
                 dev.RmsEventsGroup()
+            ],
+            "Associations": [
+                dev.Technology(),
+                dev.Fuel(),
+                dev.EmissionGas(),
             ],
             "Catalogue": [
                 dev.Wire(),
@@ -366,21 +354,7 @@ class Assets:
                 dev.UndergroundLineType(),
                 dev.SequenceLineType(),
                 dev.TransformerType(),
-                dev.RmsModelTemplate()
-            ],
-            "Measurements": [
-                dev.PiMeasurement(),
-                dev.QiMeasurement(),
-                dev.PfMeasurement(),
-                dev.QfMeasurement(),
-                dev.IfMeasurement(),
-                dev.PtMeasurement(),
-                dev.QtMeasurement(),
-                dev.ItMeasurement(),
-                dev.VmMeasurement(),
-                dev.VaMeasurement(),
-                dev.PgMeasurement(),
-                dev.QgMeasurement(),
+                dev.DynamicModelHost()
             ]
 
         }
@@ -399,17 +373,14 @@ class Assets:
         """
         for key, elm_list in self.template_objects_dict.items():
             for elm in elm_list:
-
-                key = str(elm.device_type.value)
-
-                associated_props, indices = elm.get_association_properties()
-                self.device_type_name_dict[key] = elm.device_type
-                self.device_associations[key] = [prop.name for prop in associated_props]
-
                 if elm.properties_with_profile is not None:
+                    key = str(elm.device_type.value)
                     profile_attr = list(elm.properties_with_profile.keys())
                     profile_types = [elm.registered_properties[attr].tpe for attr in profile_attr]
+                    associated_props, indices = elm.get_association_properties()
                     self.profile_magnitudes[key] = (profile_attr, profile_types)
+                    self.device_type_name_dict[key] = elm.device_type
+                    self.device_associations[key] = [prop.name for prop in associated_props]
 
     # ------------------------------------------------------------------------------------------------------------------
     # Device iterators
@@ -1346,7 +1317,7 @@ class Assets:
 
     @buses.setter
     def buses(self, value: List[dev.Bus]):
-        self._buses = ListSet(value)
+        self._buses = value
 
     def get_bus_number(self) -> int:
         """
@@ -1394,13 +1365,6 @@ class Assets:
         :return: dictionary of buses {name:object}
         """
         return {b: i for i, b in enumerate(self._buses)}
-
-    def get_bus_idtag_index_dict(self) -> Dict[str, int]:
-        """
-        Return dictionary of buses
-        :return: dictionary of buses {name:object}
-        """
-        return {b.idtag: i for i, b in enumerate(self._buses)}
 
     def get_bus_actives(self, t_idx: int | None = None) -> IntVec:
         """
@@ -1461,8 +1425,10 @@ class Assets:
                         inj_list[i].bus = None
 
         # delete the bus itself
-        # Use list comprehension for faster removal (avoids ValueError if already removed)
-        self._buses = ListSet([b for b in self._buses if b != obj])
+        try:
+            self._buses.remove(obj)
+        except ValueError:
+            print(f"Could not delete {obj.name}")
 
     def delete_branches_with_sets(self, buses_to_remove: Set[dev.Bus], delete_associated: bool = False):
         """
@@ -1491,53 +1457,36 @@ class Assets:
 
         # Optimized branch removal by creating a set for faster lookups
         branches_to_delete_set = set(branches_to_delete)
-
+        
         # Remove branches directly from lists in one pass
         # This is more efficient than calling delete_branch for each
         for branch_list in self.get_branch_lists(add_vsc=True, add_hvdc=True, add_switch=True):
             # Use list comprehension to not consider branches to delete 
             # This is faster than the multiple remove() calls we had before
             branch_list[:] = [b for b in branch_list if b not in branches_to_delete_set]
-
+        
         # Batch process groupings, faster than calling delete_groupings_with_object for each branch
         if branches_to_delete:
             branch_idtags = {b.idtag for b in branches_to_delete}  # all idtags to consider
-
-            # Process contingencies in batch. Remove all at once, then check for empty groups
+            
+            # Process contingencies in batch
             contingencies_to_delete = [elm for elm in self.contingencies if elm.device_idtag in branch_idtags]
-            if contingencies_to_delete:
-                contingencies_to_delete_set = set(contingencies_to_delete)
-                # Remove all contingencies in one pass
-                self._contingencies = [c for c in self._contingencies if c not in contingencies_to_delete_set]
-                # Check which groups are now empty (only check once, not per deletion)
-                groups_in_use = {c.group for c in self._contingencies}
-                groups_to_delete = [g for g in self._contingency_groups if g not in groups_in_use]
-                for grp in groups_to_delete:
-                    self.delete_contingency_group(grp)
-
-            # Process remedial actions in batch. Remove all at once, then check for empty groups
+            for elm in contingencies_to_delete:
+                self.delete_contingency(elm, del_group=True)
+            
+            # Process remedial actions in batch
             remedial_actions_to_delete = [elm for elm in self.remedial_actions if elm.device_idtag in branch_idtags]
-            if remedial_actions_to_delete:
-                remedial_actions_to_delete_set = set(remedial_actions_to_delete)
-                # Remove all remedial actions in one pass
-                self._remedial_actions = [r for r in self._remedial_actions if r not in remedial_actions_to_delete_set]
-                # Check which groups are now empty (only check once, not per deletion)
-                groups_in_use = {r.group for r in self._remedial_actions}
-                groups_to_delete = [g for g in self._remedial_action_groups if g not in groups_in_use]
-                for grp in groups_to_delete:
-                    self.delete_remedial_action_group(grp)
-
-            # Process investments in batch. Remove all at once, then check for empty groups
+            for elm in remedial_actions_to_delete:
+                self.delete_remedial_action(elm, del_group=True)
+            
+            # Process investments in batch
             investments_to_delete = [elm for elm in self.investments if elm.device_idtag in branch_idtags]
-            if investments_to_delete:
-                investments_to_delete_set = set(investments_to_delete)
-                # Remove all investments in one pass
-                self._investments = [i for i in self._investments if i not in investments_to_delete_set]
-                # Check which groups are now empty (only check once, not per deletion)
-                groups_in_use = {i.group for i in self._investments}
-                groups_to_delete = [g for g in self._investments_groups if g not in groups_in_use]
-                for grp in groups_to_delete:
-                    self.delete_investment_groups(grp)
+            for elm in investments_to_delete:
+                self.delete_investment(elm, del_group=True)
+
+        else:
+            # No branches to delete, so nothing to be done
+            pass
 
         return None
 
@@ -1573,37 +1522,24 @@ class Assets:
             pass
 
         # delete the bus itself - use set difference for faster removal
-        # Remove all buses in one pass using list comprehension (faster and avoids ValueError)
-        buses_to_remove_set = buses_to_remove
-        self._buses = ListSet([b for b in self._buses if b not in buses_to_remove_set])
+        buses_to_remove_list = list(buses_to_remove)
+        for elm in buses_to_remove_list:
+            try:
+                self._buses.remove(elm)
+            except ValueError:
+                print(f"Could not delete {elm.name}")
 
-    def get_buses_by(self, filter_elements: List[Union[dev.Area, dev.Zone,
-    dev.Country, dev.Community,
-    dev.Region, dev.Municipality]]) -> List[dev.Bus]:
+    def get_buses_by(self, filter_elements: List[Union[dev.Area, dev.Country, dev.Zone]]) -> List[dev.Bus]:
         """
         Get a list of buses that can be found in the list of Areas | Zones | Countries
         :param filter_elements: list of Areas | Zones | Countries
         :return: list of buses
         """
         data: List[dev.Bus] = list()
-        filter_elements_set = set(filter_elements)
 
         for bus in self._buses:
 
-            ok = bus.area in filter_elements_set
-            ok = ok or bus.zone in filter_elements_set
-            ok = ok or bus.country in filter_elements_set
-
-            if bus.substation is not None:
-                ok = ok or bus.substation.municipality in filter_elements_set
-
-                if bus.substation.municipality is not None:
-                    ok = ok or bus.substation.municipality.region in filter_elements_set
-
-                    if bus.substation.municipality.region is not None:
-                        ok = ok or bus.substation.municipality.region.community in filter_elements_set
-
-            if ok:
+            if bus.area in filter_elements or bus.zone in filter_elements or bus.country in filter_elements:
                 data.append(bus)
 
         return data
@@ -3979,55 +3915,6 @@ class Assets:
             for grp in to_del:
                 self.delete_contingency_group(grp)
 
-    def get_contingencies_by_group(self) -> Dict[dev.ContingencyGroup, List[dev.Contingency]]:
-        """
-        Get a dictionary of contingency groups as keys and a list of contingencies as value
-        :return: dict[contingency group] -> [contingencies list]
-        """
-        d: Dict[dev.ContingencyGroup, List[dev.Contingency]] = dict()
-
-        for con in self.contingencies:
-            lst = d.get(con.group, None)
-
-            if lst is None:
-                d[con.group] = [con]
-            else:
-                lst.append(con)
-
-        return d
-
-    def get_contingency_branch_indices_by_group(
-            self,
-            add_vsc: bool = True,
-            add_hvdc: bool = True,
-            add_switch: bool = False) -> Dict[dev.ContingencyGroup, List[int]]:
-        """
-        Get a dictionary of contingency groups as keys and a list of contingencies as value
-        :param add_vsc: Include the list of VSC?
-        :param add_hvdc: Include the list of HvdcLine?
-        :param add_switch: Include the list of Switch?
-        :return: dict[contingency group] -> [contingencies list]
-        """
-        d: Dict[dev.ContingencyGroup, List[int]] = dict()
-
-        br_idtag_dict = self.get_branches_idtag_index_dict(add_vsc=add_vsc,
-                                                           add_hvdc=add_hvdc,
-                                                           add_switch=add_switch)
-
-        for con in self.contingencies:
-
-            idx = br_idtag_dict.get(con.device_idtag, None)
-
-            if idx is not None:
-                lst = d.get(con.group, None)
-
-                if lst is None:
-                    d[con.group] = [idx]
-                else:
-                    lst.append(idx)
-
-        return d
-
     # ------------------------------------------------------------------------------------------------------------------
     # Contingency group
     # ------------------------------------------------------------------------------------------------------------------
@@ -4050,13 +3937,6 @@ class Assets:
         :return:List[dev.ContingencyGroup]
         """
         return self._contingency_groups
-
-    def get_contingency_groups_active(self) -> List[dev.ContingencyGroup]:
-        """
-        Get contingency_groups
-        :return:List[dev.ContingencyGroup]
-        """
-        return [e for e in self._contingency_groups if e.active]
 
     def get_contingency_groups_number(self) -> int:
         """
@@ -4152,8 +4032,7 @@ class Assets:
         return logger
 
     def get_contingency_groups_in(self,
-                                  grouping_elements: List[Union[dev.Area, dev.Zone,
-                                  dev.Country, dev.Community, dev.Region, dev.Municipality]]
+                                  grouping_elements: List[Union[dev.Area, dev.Country, dev.Zone]]
                                   ) -> List[dev.ContingencyGroup]:
         """
         Get a filtered set of ContingencyGroups
@@ -4194,40 +4073,6 @@ class Assets:
                             filtered_groups_idx.add(group_idx)
 
         return [self._contingency_groups[i] for i in sorted(filtered_groups_idx)]
-
-    def get_contingency_groups_sensitive_to_moitoring(self, LODF: Mat, threshold: float) -> IntVec:
-        """
-        Get a list of contingency groups that are sensitive to the monitoring rule
-        :param LODF: LODF matrix (nbr, nbr)
-        :param threshold: LODF threshold
-        :return: vector of sensitive status
-        """
-
-        d = self.get_contingency_branch_indices_by_group()
-        sensitive = np.zeros(self.get_contingency_groups_number(), dtype=bool)
-
-        for cg_idx, con_group in enumerate(self.contingency_groups):  # for every contingency group
-
-            # get the branch indices of this contingency group
-            branch_indices = d[con_group]
-
-            sensitive[cg_idx] = False
-
-            if con_group.active:
-                i = 0
-                for elm in self.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True):  # for every branch
-
-                    if elm.monitor_loading:  # if monitored
-
-                        # check if any contingency branch is sensitive to the monitored branch
-
-                        for j in branch_indices:
-                            if abs(LODF[i, j]) >= threshold:
-                                sensitive[cg_idx] = True
-
-                    i += 1
-
-        return sensitive
 
     # ------------------------------------------------------------------------------------------------------------------
     # Investment group
@@ -4384,7 +4229,7 @@ class Assets:
                 self.delete_investment_groups(grp)
 
     # ------------------------------------------------------------------------------------------------------------------
-    # Rms Events group
+    # Rms group
     # ------------------------------------------------------------------------------------------------------------------
 
     @property
@@ -4408,7 +4253,7 @@ class Assets:
 
     def add_rms_events_group(self, obj: dev.RmsEventsGroup):
         """
-        Add rms events group
+        Add investments group
         :param obj: InvestmentsGroup
         """
         self._rms_events_groups.append(obj)
@@ -4590,7 +4435,7 @@ class Assets:
     def remedial_action_groups(self, value: List[dev.RemedialActionGroup]):
         self._remedial_action_groups = value
 
-    def get_remedial_action_groups(self) -> List[dev.RemedialActionGroup]:
+    def get_rmedial_action_groups(self) -> List[dev.RemedialActionGroup]:
         """
         Get contingency_groups
         :return:List[dev.ContingencyGroup]
@@ -4729,65 +4574,6 @@ class Assets:
                             filtered_groups_idx.add(group_idx)
 
         return [self._remedial_action_groups[i] for i in sorted(filtered_groups_idx)]
-
-    # ------------------------------------------------------------------------------------------------------------------
-    # Short Circuit Definition
-    # ------------------------------------------------------------------------------------------------------------------
-
-    @property
-    def short_circuit_definitions(self) -> List[dev.ShortCircuitEvent]:
-        """
-        Get list of ShortCircuitDefinition
-        :return:
-        """
-        return self._short_circuit_definitions
-
-    @short_circuit_definitions.setter
-    def short_circuit_definitions(self, value: List[dev.ShortCircuitEvent]):
-        self._short_circuit_definitions = value
-
-    def add_short_circuit_definition(self, obj: dev.ShortCircuitEvent):
-        """
-        Add short_circuit_definitions
-        :param obj: ShortCircuitDefinition
-        """
-        self._short_circuit_definitions.append(obj)
-
-    def delete_short_circuit_definition(self, obj: dev.ShortCircuitEvent):
-        """
-        Delete ShortCircuitDefinition
-        :param obj: index
-        """
-
-        try:
-            self._short_circuit_definitions.remove(obj)
-        except ValueError:
-            pass
-
-    def get_short_circuit_definition_names(self) -> StrVec:
-        """
-        Get the short circuit definition names
-        :return: Names
-        """
-        return np.array([elm.name for elm in self._short_circuit_definitions])
-
-    def get_short_circuit_definition_number(self) -> int:
-        """
-        Get the short circuit definition names
-        :return: Names
-        """
-        return len(self._short_circuit_definitions)
-
-    def short_circuit_definition_exist(self, scd: dev.ShortCircuitEvent) -> bool:
-        """
-        Check if a short circuit definition has been added already
-        :param scd: ShortCircuitDefinition
-        :return: Bool
-        """
-        for elm in self._short_circuit_definitions:
-            if elm.device_idtag == scd.device_idtag and elm.fault_type == scd.fault_type:
-                return True
-        return False
 
     # ------------------------------------------------------------------------------------------------------------------
     # Technology
@@ -5486,7 +5272,7 @@ class Assets:
     # ------------------------------------------------------------------------------------------------------------------
 
     @property
-    def rms_models(self) -> List[dev.RmsModelTemplate]:
+    def rms_models(self) -> List[dev.DynamicModelHost]:
         """
         list of rms models
         :return:
@@ -5494,27 +5280,24 @@ class Assets:
         return self._rms_models
 
     @rms_models.setter
-    def rms_models(self, value: List[dev.RmsModelTemplate]):
+    def rms_models(self, value: List[dev.DynamicModelHost]):
         self._rms_models = value
 
     def get_rms_models_number(self) -> int:
-        """
-        Get number of RMS models
-        """
         return len(self._rms_models)
 
-    def add_rms_model(self, obj: dev.RmsModelTemplate):
+    def add_rms_model(self, obj: dev.DynamicModelHost):
         """
         Add rms model to the collection
         :param obj: DynamicModel instance
         """
         if obj is not None:
-            if isinstance(obj, dev.RmsModelTemplate):
+            if isinstance(obj, dev.DynamicModelHost):
                 self._rms_models.append(obj)
             else:
-                print('The template is not a RmsModelTemplate!')
+                print('The template is not a DynamicModel!')
 
-    def delete_rms_model(self, obj: dev.RmsModelTemplate):
+    def delete_rms_model(self, obj: dev.DynamicModelHost):
         """
         Delete RMS model from the collection
         :param obj: DynamicModel object
@@ -5731,20 +5514,6 @@ class Assets:
                                                                   add_hvdc=add_hvdc,
                                                                   add_switch=add_switch))}
 
-    def get_branches_idtag_index_dict(self, add_vsc: bool = True,
-                                      add_hvdc: bool = True,
-                                      add_switch: bool = False) -> Dict[str, int]:
-        """
-        Get the branch to index dictionary
-        :param add_vsc: Include the list of VSC?
-        :param add_hvdc: Include the list of HvdcLine?
-        :param add_switch: Include the list of Switch?
-        :return: Branch object to index
-        """
-        return {b.idtag: i for i, b in enumerate(self.get_branches_iter(add_vsc=add_vsc,
-                                                                        add_hvdc=add_hvdc,
-                                                                        add_switch=add_switch))}
-
     def get_branches_index_dict2(self, add_vsc: bool = True,
                                  add_hvdc: bool = True,
                                  add_switch: bool = False) -> Dict[str, int]:
@@ -5793,26 +5562,6 @@ class Assets:
             T[i] = bus_dict[elm.bus_to]
         return F, T
 
-    def get_branches_monitored_indices(self,
-                                       add_vsc: bool = True,
-                                       add_hvdc: bool = True,
-                                       add_switch: bool = False) -> IntVec:
-        """
-         Get the indices of the monitored branche
-        :param add_vsc: Include the list of VSC?
-        :param add_hvdc: Include the list of HvdcLine?
-        :param add_switch: Include the list of Switch?
-        :return: numpy array with the indices of the branches
-        """
-        lst = list()
-        i = 0
-        for elm in self.get_branches_iter(add_vsc=add_vsc, add_hvdc=add_hvdc, add_switch=add_switch):
-            if elm.monitor_loading:
-                lst.append(i)
-            i += 1
-
-        return np.array(lst, dtype=int)
-
     def delete_groupings_with_object(self, obj: BRANCH_TYPES, delete_groups: bool = True):
         """
         Delete the dependencies that may come with a branch
@@ -5822,7 +5571,6 @@ class Assets:
         """
         for elm in self.contingencies:
             if elm.device_idtag == obj.idtag:
-                print(elm)
                 self.delete_contingency(elm, del_group=delete_groups)
 
         for elm in self.remedial_actions:
@@ -5954,17 +5702,6 @@ class Assets:
             n += len(lst)
 
         return n
-
-    def get_load_like_devices_names(self) -> StrVec:
-        """
-        Get a list of names of the load like devices
-        :return: array of str
-        """
-        elms = list()
-        for lst in self.get_load_like_devices_lists():
-            for elm in lst:
-                elms.append(elm.name)
-        return np.array(elms)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Shunt-like devices
@@ -6239,9 +5976,6 @@ class Assets:
         elif device_type == DeviceType.RemedialActionGroupDevice:
             return self._remedial_action_groups
 
-        elif device_type == DeviceType.ShortCircuitEvent:
-            return self._short_circuit_definitions
-
         elif device_type == DeviceType.Technology:
             return self._technologies
 
@@ -6335,7 +6069,7 @@ class Assets:
         elif device_type == DeviceType.LambdaDevice:
             return list()
 
-        elif device_type == DeviceType.RmsModelTemplateDevice:
+        elif device_type == DeviceType.DynamicModelHostDevice:
             return self.rms_models
 
         elif device_type == DeviceType.RmsEventDevice:
@@ -6475,9 +6209,6 @@ class Assets:
         elif device_type == DeviceType.RemedialActionGroupDevice:
             self._remedial_action_groups = devices
 
-        elif device_type == DeviceType.ShortCircuitEvent:
-            self._short_circuit_definitions = devices
-
         elif device_type == DeviceType.Technology:
             self._technologies = devices
 
@@ -6554,7 +6285,7 @@ class Assets:
         elif device_type == DeviceType.FacilityDevice:
             self._facilities = devices
 
-        elif device_type == DeviceType.RmsModelTemplateDevice:
+        elif device_type == DeviceType.DynamicModelHostDevice:
             self._rms_models = devices
 
         elif device_type == DeviceType.RmsEventDevice:
@@ -6756,7 +6487,7 @@ class Assets:
         elif obj.device_type == DeviceType.FacilityDevice:
             self.add_facility(obj=obj)
 
-        elif obj.device_type == DeviceType.RmsModelTemplateDevice:
+        elif obj.device_type == DeviceType.DynamicModelHostDevice:
             self.add_rms_model(obj=obj)
 
         elif obj.device_type == DeviceType.RmsEventDevice:
@@ -6966,7 +6697,7 @@ class Assets:
         elif obj.device_type == DeviceType.LineLocation:
             pass
 
-        elif obj.device_type == DeviceType.RmsModelTemplateDevice:
+        elif obj.device_type == DeviceType.DynamicModelHostDevice:
             self.delete_rms_model(obj=obj)
 
         elif obj.device_type == DeviceType.RmsEventDevice:
@@ -7083,7 +6814,7 @@ class Assets:
             self,
             add_locations: bool = False,
             string_keys: bool = True
-    ) -> Dict[Union[str, DeviceType], Union[Dict[str, ALL_DEV_TYPES], Any]]:
+    ) -> dict[Union[str, DeviceType], Union[dict[str, ALL_DEV_TYPES], Any]]:
         """
         Get a dictionary of all elements by type
         :param add_locations: Add locations to dict
@@ -7336,9 +7067,6 @@ class Assets:
         elif elm_type == DeviceType.ContingencyGroupDevice:
             elm = dev.ContingencyGroup()
 
-        elif elm_type == DeviceType.ShortCircuitEvent:
-            elm = dev.ShortCircuitEvent()
-
         elif elm_type == DeviceType.RemedialActionDevice:
             elm = dev.Contingency()
             dictionary_of_lists = {DeviceType.RemedialActionDevice: self.remedial_action_groups, }
@@ -7427,64 +7155,16 @@ class Assets:
             elm = dev.Facility()
             dictionary_of_lists = dict()
 
-        elif elm_type == DeviceType.RmsModelTemplateDevice:
-            elm = dev.RmsModelTemplate()
+        elif elm_type == DeviceType.DynamicModelHostDevice:
+            elm = dev.DynamicModelHost()
             dictionary_of_lists = dict()
 
         elif elm_type == DeviceType.RmsEventDevice:
             elm = dev.RmsEvent()
-            dictionary_of_lists = {DeviceType.RmsEventsGroupDevice: self.rms_events_groups}
+            dictionary_of_lists = dict()
 
         elif elm_type == DeviceType.RmsEventsGroupDevice:
             elm = dev.RmsEventsGroup()
-            dictionary_of_lists = dict()
-
-        elif elm_type == DeviceType.PMeasurementDevice:
-            elm = dev.PiMeasurement()
-            dictionary_of_lists = dict()
-
-        elif elm_type == DeviceType.QMeasurementDevice:
-            elm = dev.QiMeasurement()
-            dictionary_of_lists = dict()
-
-        elif elm_type == DeviceType.PgMeasurementDevice:
-            elm = dev.PgMeasurement()
-            dictionary_of_lists = dict()
-
-        elif elm_type == DeviceType.QgMeasurementDevice:
-            elm = dev.QgMeasurement()
-            dictionary_of_lists = dict()
-
-        elif elm_type == DeviceType.PfMeasurementDevice:
-            elm = dev.PfMeasurement()
-            dictionary_of_lists = dict()
-
-        elif elm_type == DeviceType.QfMeasurementDevice:
-            elm = dev.QfMeasurement()
-            dictionary_of_lists = dict()
-
-        elif elm_type == DeviceType.PtMeasurementDevice:
-            elm = dev.PtMeasurement()
-            dictionary_of_lists = dict()
-
-        elif elm_type == DeviceType.QtMeasurementDevice:
-            elm = dev.QtMeasurement()
-            dictionary_of_lists = dict()
-
-        elif elm_type == DeviceType.IfMeasurementDevice:
-            elm = dev.IfMeasurement()
-            dictionary_of_lists = dict()
-
-        elif elm_type == DeviceType.ItMeasurementDevice:
-            elm = dev.ItMeasurement()
-            dictionary_of_lists = dict()
-
-        elif elm_type == DeviceType.VmMeasurementDevice:
-            elm = dev.VmMeasurement()
-            dictionary_of_lists = dict()
-
-        elif elm_type == DeviceType.VaMeasurementDevice:
-            elm = dev.VaMeasurement()
             dictionary_of_lists = dict()
 
         else:

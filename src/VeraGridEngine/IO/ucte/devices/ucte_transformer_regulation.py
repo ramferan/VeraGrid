@@ -7,9 +7,6 @@ from VeraGridEngine.basic_structures import Logger
 
 
 class UcteTransformerRegulation:
-    """
-    UcteTransformerRegulation
-    """
     def __init__(self):
         self.node1 = ""  # 0-7: Node 1 (non-regulated winding) To bus for VeraGrid
         self.node2 = ""  # 9-16: Node 2 (regulated winding) From bus for VeraGrid
@@ -28,8 +25,6 @@ class UcteTransformerRegulation:
         self.n2_prime = 0  # 54-56: Alternate taps (n2')
         self.p = 0.0  # 58-62: P (MW, optional)
         self.regulation_type = ""  # 64-67: Regulation type (ASYM, SYMM)
-
-        self.valid_regulation = True  # assume true for now...
 
     def get_primary_key(self):
         """
@@ -62,9 +57,3 @@ class UcteTransformerRegulation:
         self.n2_prime = sub_int(line, 54, 57, device, "n2_prime", logger)
         self.p = sub_float(line, 58, 63, device, "p", logger)
         self.regulation_type = sub_str(line, 64, 68, device, "regulation_type", logger)
-
-        if self.n1 == 0:
-            self.valid_regulation = False
-
-        if self.n2 == 0:
-            self.valid_regulation = False

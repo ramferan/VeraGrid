@@ -19,42 +19,30 @@ def test_unbalanced_short_circuit():
     fname = os.path.join('data', 'grids', '5bus_Saadat.xlsx')
     grid = FileOpen(fname).open()
 
-    pf_options = PowerFlowOptions(
-        solver_type=SolverType.NR,  # Base method to use
-        verbose=False,  # Verbose option where available
-        tolerance=1e-6,  # power error in p.u.
-        max_iter=25,  # maximum iteration number
-    )
+    pf_options = PowerFlowOptions(solver_type=SolverType.NR,  # Base method to use
+                                  verbose=False,  # Verbose option where available
+                                  tolerance=1e-6,  # power error in p.u.
+                                  max_iter=25,  # maximum iteration number
+                                  )
     pf = PowerFlowDriver(grid, pf_options)
     pf.run()
 
-    sc_options = ShortCircuitOptions()
+    sc_options = ShortCircuitOptions(bus_index=2,
+                                     fault_type=FaultType.LG)
 
-    grid.add_short_circuit_definition(
-        ShortCircuitEvent(
-            device=grid.buses[2],
-            fault_type=FaultType.LG,
-            method=MethodShortCircuit.sequences,
-            phases=PhasesShortCircuit.a
-        )
-    )
-
-    sc = ShortCircuitDriver(
-        grid,
-        options=sc_options,
-        pf_options=pf_options,
-        pf_results=pf.results,
-        pf_results3ph=None
-    )
+    sc = ShortCircuitDriver(grid,
+                            options=sc_options,
+                            pf_options=pf_options,
+                            pf_results=pf.results)
     sc.run()
 
     print('\t|V0|:', np.abs(sc.results.voltage0))
     print('\t|V1|:', np.abs(sc.results.voltage1))
     print('\t|V2|:', np.abs(sc.results.voltage2))
 
-    vm0 = np.abs(sc.results.voltage0[:, 0])
-    vm1 = np.abs(sc.results.voltage1[:, 0])
-    vm2 = np.abs(sc.results.voltage2[:, 0])
+    vm0 = np.abs(sc.results.voltage0)
+    vm1 = np.abs(sc.results.voltage1)
+    vm2 = np.abs(sc.results.voltage2)
 
     vm0_book = [0.12844037, 0.05963303, 0.32110092, 0.09633028, 0.0]
     vm1_book = [0.88073394, 0.88990826, 0.79816514, 0.92844037, 0.93394495]
@@ -71,3 +59,4 @@ def test_unbalanced_short_circuit():
 
 if __name__ == '__main__':
     test_unbalanced_short_circuit()
+

@@ -20,7 +20,7 @@ def create_breaker_and_a_half_with_disconnectors(
         bar_by_segments: bool = False,
         offset_x=0,
         offset_y=0
-) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], float, float]:
+) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], int, int]:
     """
     Create a breaker-and-a-half voltage level
     :param name: Voltage level name
@@ -253,7 +253,7 @@ def create_breaker_and_a_half(
         bar_by_segments: bool = False,
         offset_x=0,
         offset_y=0
-) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], float, float]:
+) -> Tuple[dev.VoltageLevel, List[dev.Bus], List[dev.Bus], int, int]:
     """
     Create a breaker-and-a-half with disconnectors voltage level
     :param name: Voltage level name
@@ -295,7 +295,7 @@ def create_breaker_and_a_half(
                        country=country,
                        graphic_type=BusGraphicType.BusBar)
         grid.add_bus(bar2)
-        all_buses.append(bar2)
+        all_buses.append(bar1)
         l_x_pos.append(bar2.x)
         l_y_pos.append(bar2.y)
     else:

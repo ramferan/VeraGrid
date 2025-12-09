@@ -3,6 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import os
+import pytest
 from VeraGridEngine.api import *
 
 np.set_printoptions(linewidth=10000)
@@ -49,19 +50,18 @@ def test_3_node_abur_exposito() -> None:
     grid.add_line(br2)
     grid.add_line(br3)
 
-    # save_file(grid, "abur_exposito_se_example.veragrid")
-
     for solver in [
         # SolverType.Decoupled_LU,
         SolverType.NR,
         SolverType.LM,
         SolverType.GN]:
+
         se_options = StateEstimationOptions(
             fixed_slack=False,
             solver=solver
         )
 
-        se = StateEstimationDriver(circuit=grid, options=se_options)
+        se = StateEstimation(circuit=grid, options=se_options)
 
         se.run()
 
@@ -124,7 +124,7 @@ def test_3_node_abur_exposito() -> None:
 
         """
 
-        expected_results = np.array([0.99962926 + 0.j, 0.97392515 - 0.02120941j, 0.94280676 - 0.04521561j])
+        expected_results = np.array([0.99962926+0.j, 0.97392515-0.02120941j, 0.94280676-0.04521561j])
         ok = np.allclose(se.results.voltage, expected_results, atol=1e-4)
         assert ok
 
@@ -231,7 +231,7 @@ def test_14_bus_matpower():
             run_measurement_profiling=True
 
         )
-        se = StateEstimationDriver(circuit=grid, options=se_options)
+        se = StateEstimation(circuit=grid, options=se_options)
         se.run()
 
         print("Bus results:\n", se.results.get_bus_df())

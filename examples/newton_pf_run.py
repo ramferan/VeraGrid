@@ -10,3 +10,5 @@ _options = PowerFlowOptions()
 _res = newton_pa_pf(circuit=_grid, pf_opt=_options, time_series=True)
 
 _res2 = translate_newton_pa_pf_results(_grid, _res)
+
+print()

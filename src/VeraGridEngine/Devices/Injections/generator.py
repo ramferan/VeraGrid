@@ -14,7 +14,7 @@ from VeraGridEngine.Devices.Associations.association import Associations
 from VeraGridEngine.Devices.Parents.generator_parent import GeneratorParent
 from VeraGridEngine.Devices.Injections.generator_q_curve import GeneratorQCurve
 from VeraGridEngine.Devices.profile import Profile
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, DynamicVarType
 from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin, real, imag, conj, angle, exp, log, abs, UndefinedConst
 from VeraGridEngine.Devices.Parents.editable_device import get_at
 
@@ -22,7 +22,6 @@ from VeraGridEngine.Devices.Parents.editable_device import get_at
 class Generator(GeneratorParent):
     __slots__ = (
         'enabled_dispatch',
-        '_enabled_dispatch_prof',
         'R1', 'X1', 'R0', 'X0', 'R2', 'X2',
         'Pf',
         '_Pf_prof',
@@ -61,9 +60,7 @@ class Generator(GeneratorParent):
         'Kw',
         'init_params',
         'P_g',
-        'Q_g',
-        'must_run',
-        '_must_run_prof'
+        'Q_g'
     )
 
     def __init__(self,
@@ -106,11 +103,11 @@ class Generator(GeneratorParent):
                  capex: float = 0,
                  opex: float = 0,
                  srap_enabled: bool = True,
+                 # init_params: dict[str, float] = {"tm0": 0.0, "vf": 0.0, "vf0": 0.0}, ###
                  init_params: dict[str, float] = {"tm0": 0.0, "vf0": 0.0},  ###
-                 build_status: BuildStatus = BuildStatus.Commissioned,
-                 must_run: bool = False):
+                 build_status: BuildStatus = BuildStatus.Commissioned):
         """
-
+        Generator.
         :param name: Name of the generator
         :param idtag: UUID code
         :param code: secondary code
@@ -122,15 +119,13 @@ class Generator(GeneratorParent):
         :param Qmax: Maximum reactive power in MVAr
         :param Snom: Nominal apparent power in MVA
         :param active: Is the generator active?
-        :param Pmin: Minimum active power
-        :param Pmax: Maximum active power
-        :param Cost: Proportional cost [e/MWh]
-        :param Cost2: Quadratic cost [e/MWh^2]
-        :param Cost0: Fixed cost [e]
+        :param Pmin:
+        :param Pmax:
+        :param Cost:
         :param Sbase: Nominal apparent power in MVA
         :param enabled_dispatch: Is the generator enabled for OPF?
-        :param mttf: Mean time to failure [h]
-        :param mttr: Mean time to recovery [h]
+        :param mttf: Mean time to failure in hours
+        :param mttr: Mean time to recovery in hours
         :param q_points: list of reactive capability curve points [(P1, Qmin1, Qmax1), (P2, Qmin2, Qmax2), ...]
         :param use_reactive_power_curve: Use the reactive power curve? otherwise use the plain old limits
         :param r1:
@@ -139,20 +134,9 @@ class Generator(GeneratorParent):
         :param x0:
         :param r2:
         :param x2:
-        :param freq:
-        :param tm0:
-        :param M:
-        :param D:
-        :param omega_ref:
-        :param vf:
-        :param Kp:
-        :param Ki:
         :param capex:
         :param opex:
-        :param srap_enabled:
-        :param init_params:
         :param build_status:
-        :param must_run:
         """
         GeneratorParent.__init__(self,
                                  name=name,
@@ -174,11 +158,8 @@ class Generator(GeneratorParent):
                                  device_type=DeviceType.GeneratorDevice)
 
         # is the device active for active power dispatch?
-        self.enabled_dispatch = bool(enabled_dispatch)
-        self._enabled_dispatch_prof = Profile(default_value=self.enabled_dispatch, data_type=bool)
 
-        self.must_run = bool(must_run)
-        self._must_run_prof = Profile(default_value=self.must_run, data_type=bool)
+        self.enabled_dispatch = bool(enabled_dispatch)
 
         # positive sequence resistance
         self.R1 = float(r1)
@@ -308,10 +289,7 @@ class Generator(GeneratorParent):
         self.register(key='RampDown', units='MW/h', tpe=float,
                       definition='Maximum amount of generation decrease per hour.')
 
-        self.register(key='enabled_dispatch', units='', tpe=bool, profile_name="enabled_dispatch_prof",
-                      definition='Enabled for dispatch? Used in OPF.')
-        self.register(key='must_run', units='', tpe=bool, profile_name="must_run_prof",
-                      definition='P >= Pmin constraint. Used in OPF with unit commitment active.')
+        self.register(key='enabled_dispatch', units='', tpe=bool, definition='Enabled for dispatch? Used in OPF.')
 
         self.register(key='emissions', units='t/MWh', tpe=SubObjectType.Associations,
                       definition='List of emissions', display=False)
@@ -463,54 +441,6 @@ class Generator(GeneratorParent):
         """
         return get_at(self.Cost0, self.Cost0_prof, t)
 
-    @property
-    def enabled_dispatch_prof(self) -> Profile:
-        """
-        Cost profile
-        :return: Profile
-        """
-        return self._enabled_dispatch_prof
-
-    @enabled_dispatch_prof.setter
-    def enabled_dispatch_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
-            self._enabled_dispatch_prof = val
-        elif isinstance(val, np.ndarray):
-            self._enabled_dispatch_prof.set(arr=val)
-        else:
-            raise Exception(str(type(val)) + 'not supported to be set into a Cost0_prof')
-
-    def get_enabled_dispatch_at(self, t: int | None) -> float:
-        """
-        :param t:
-        :return:
-        """
-        return get_at(self.enabled_dispatch, self.enabled_dispatch_prof, t)
-
-    @property
-    def must_run_prof(self) -> Profile:
-        """
-        Cost profile
-        :return: Profile
-        """
-        return self._must_run_prof
-
-    @must_run_prof.setter
-    def must_run_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
-            self._must_run_prof = val
-        elif isinstance(val, np.ndarray):
-            self._must_run_prof.set(arr=val)
-        else:
-            raise Exception(str(type(val)) + 'not supported to be set into a Cost0_prof')
-
-    def get_must_run_at(self, t: int | None) -> float:
-        """
-        :param t:
-        :return:
-        """
-        return get_at(self.must_run, self.must_run_prof, t)
-
     def plot_profiles(self, time=None, show_fig=True):
         """
         Plot the time series results of this object
@@ -627,99 +557,74 @@ class Generator(GeneratorParent):
         Initialize the RMS model
         """
 
-
-        empty = self.rms_model.empty()
         if self.rms_model.empty():
-            empty = True
-            delta = Var("delta")
-            omega = Var("omega")
-            psid = Var("psid")
-            psiq = Var("psiq")
-            i_d = Var("i_d")
-            i_q = Var("i_q")
-            v_d = Var("v_d")
-            v_q = Var("v_q")
-            te = Var("te")
-            et = Var("et")
-            tm = Var("tm")
-            P_g = Var("P_g", pf_ref=VarPowerFlowRefferenceType.P)
-            Q_g = Var("Q_g", pf_ref=VarPowerFlowRefferenceType.Q)
-
-            R1 = Var("R1")
-            X1 = Var("X1")
-            freq = Var("frequ")
-            M = Var("M")
-            D = Var("D")
-            omega_ref = Var("omega_ref")
-            Kp = Var("Kp")
-            Ki = Var("Ki")
+            delta = Var("delta" + self.name)
+            omega = Var("omega" + self.name)
+            psid = Var("psid" + self.name)
+            psiq = Var("psiq" + self.name)
+            i_d = Var("i_d" + self.name)
+            i_q = Var("i_q" + self.name)
+            v_d = Var("v_d" + self.name)
+            v_q = Var("v_q" + self.name)
+            te = Var("te" + self.name)
+            et = Var("et" + self.name)
+            tm = Var("tm" + self.name)
+            P_g = Var("P_g" + self.name)
+            Q_g = Var("Q_g" + self.name)
 
             vf = UndefinedConst()
             tm0 = UndefinedConst()
 
-            Vm = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
-            Va = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Va)
+            Vm = self.bus.rms_model.model.E(DynamicVarType.Vm)
+            Va = self.bus.rms_model.model.E(DynamicVarType.Va)
 
-            block = Block(
-                state_vars=[delta, omega],
+            self.rms_model.model = Block(
                 state_eqs=[
-                    (2 * np.pi * freq) * (omega - omega_ref),
-                    (tm - te - D * (omega - omega_ref)) / M,
+                    (2 * np.pi * self.freq) * (omega - self.omega_ref),
+                    (tm - te - self.D * (omega - self.omega_ref)) / self.M,
+                    # (omega - self.omega_ref),
                 ],
-                algebraic_vars=[P_g, Q_g, v_d, v_q, i_d, i_q, psid, psiq,
-                                te, tm, et],
+                # state_vars=[delta, omega, et],
+                state_vars=[delta, omega],
                 algebraic_eqs=[
-                    psid - (R1 * i_q + v_q),
-                    psiq + (R1 * i_d + v_d),
-                    0 - (psid + X1 * i_d - vf),
-                    0 - (psiq + X1 * i_q),
+                    psid - (self.R1 * i_q + v_q),
+                    psiq + (self.R1 * i_d + v_d),
+                    0 - (psid + self.X1 * i_d - vf),
+                    0 - (psiq + self.X1 * i_q),
                     v_d - (Vm * sin(delta - Va)),
                     v_q - (Vm * cos(delta - Va)),
                     te - (psid * i_q - psiq * i_d),
                     P_g - (v_d * i_d + v_q * i_q),
                     Q_g - (v_q * i_d - v_d * i_q),
-                    tm - (self.tm0 + Kp * (omega - omega_ref) + Ki * et),
-                    2 * np.pi * freq * et - delta,
+                    tm - (self.tm0 + self.Kp * (omega - self.omega_ref) + self.Ki * et),
+                    2 * np.pi * self.freq * et - delta,  #
                 ],
-
+                algebraic_vars=[P_g, Q_g, v_d, v_q, i_d, i_q, psid, psiq, te, tm, et],
                 init_eqs={
-                    delta: imag(
-                        log((Vm * exp(1j * Va) + (R1 + 1j * X1) * (
-                            conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))))) / (
-                                abs(Vm * exp(1j * Va) + (R1 + 1j * X1) * (
-                                    conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va)))))))),
-                    omega: omega_ref,
+                    delta: imag(log((Vm * exp(1j * Va) + (self.R1 + 1j * self.X1) * (
+                        conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))))) / (
+                                        abs(Vm * exp(1j * Va) + (self.R1 + 1j * self.X1) * (
+                                            conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va)))))))),
+                    omega: Const(self.omega_ref),
                     v_d: real((Vm * exp(1j * Va)) * exp(-1j * (delta - np.pi / 2))),
                     v_q: imag((Vm * exp(1j * Va)) * exp(-1j * (delta - np.pi / 2))),
-                    i_d: real(
-                        conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))) * exp(
-                            -1j * (delta - np.pi / 2))),
-                    i_q: imag(
-                        conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))) * exp(
-                            -1j * (delta - np.pi / 2))),
-                    psid: R1 * i_q + v_q,
-                    psiq: -R1 * i_d - v_d,
+                    i_d: real(conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))) * exp(-1j * (delta - np.pi / 2))),
+                    i_q: imag(conj((P_g + 1j * Q_g) / (Vm * exp(1j * Va))) * exp(-1j * (delta - np.pi / 2))),
+                    psid: self.R1 * i_q + v_q,
+                    psiq: -self.R1 * i_d - v_d,
                     te: psid * i_q - psiq * i_d,
                     tm: te,
                     et: Const(0),
-                })
+                    # Xad_Ifd: Const(self.vf0), ###
+                    # vf: Const(self.vf0) ###
+                },
+                init_vars=[delta, omega, et, v_d, v_q, i_d, i_q, psid, psiq, te, tm],
+                fix_vars=[tm0, vf],
+                fix_vars_eqs={tm0.uid: tm,
+                              vf.uid: psid + self.X1 * i_d},
 
-            block.fix_vars = [tm0, vf]
-            block.fix_vars_eqs = {tm0.uid: tm,
-                                  vf.uid: psid + X1 * i_d}
-
-            block.external_mapping = {
-                VarPowerFlowRefferenceType.P: P_g,
-                VarPowerFlowRefferenceType.Q: Q_g
-            }
-
-            block.event_dict = {R1: Const(self.R1),
-                                X1: Const(self.X1),
-                                freq: Const(self.freq),
-                                M: Const(self.M),
-                                D: Const(self.D),
-                                omega_ref: Const(self.omega_ref),
-                                Kp: Const(self.Kp),
-                                Ki: Const(self.Ki)}
-
-            self.rms_model.model = block
+                external_mapping={
+                    DynamicVarType.P: P_g,
+                    DynamicVarType.Q: Q_g
+                }
+            )

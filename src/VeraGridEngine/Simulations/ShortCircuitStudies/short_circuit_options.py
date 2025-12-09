@@ -13,7 +13,7 @@ class ShortCircuitOptions(OptionsTemplate):
 
     def __init__(self,
                  bus_index: int = 0,
-                 fault_type=FaultType.LLLG,
+                 fault_type=FaultType.ph3,
                  mid_line_fault: bool = False,
                  branch_index: int = 0,
                  branch_fault_locations: float = 0.5,

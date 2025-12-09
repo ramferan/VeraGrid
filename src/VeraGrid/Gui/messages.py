@@ -7,27 +7,13 @@
 from PySide6 import QtWidgets
 
 
-class CenteredMessageBox(QtWidgets.QMessageBox):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-    def showEvent(self, event):
-        super().showEvent(event)
-        if self.parent():
-            parent_geo = self.parent().geometry()
-            self.move(
-                parent_geo.center().x() - self.width() // 2,
-                parent_geo.center().y() - self.height() // 2
-            )
-
-
 def info_msg(text, title="Information"):
     """
     Message box
     :param text: Text to display
     :param title: Name of the window
     """
-    msg = CenteredMessageBox()
+    msg = QtWidgets.QMessageBox()
     msg.setIcon(QtWidgets.QMessageBox.Icon.Information)
     msg.setText(text)
     msg.setWindowTitle(title)
@@ -35,13 +21,13 @@ def info_msg(text, title="Information"):
     return msg.exec()
 
 
-def warning_msg(text: str, title: str = "Warning") -> int:
+def warning_msg(text, title="Warning"):
     """
     Message box
     :param text: Text to display
     :param title: Name of the window
     """
-    msg = CenteredMessageBox()
+    msg = QtWidgets.QMessageBox()
     msg.setIcon(QtWidgets.QMessageBox.Icon.Warning)
     msg.setText(text)
     msg.setWindowTitle(title)
@@ -49,13 +35,13 @@ def warning_msg(text: str, title: str = "Warning") -> int:
     return msg.exec()
 
 
-def error_msg(text: str, title: str = "Error") -> int:
+def error_msg(text, title="Error"):
     """
     Message box
     :param text: Text to display
     :param title: Name of the window
     """
-    msg = CenteredMessageBox()
+    msg = QtWidgets.QMessageBox()
     msg.setIcon(QtWidgets.QMessageBox.Icon.Critical)
     msg.setText(text)
     msg.setWindowTitle(title)
@@ -63,7 +49,7 @@ def error_msg(text: str, title: str = "Error") -> int:
     return msg.exec()
 
 
-def yes_no_question(text: str, title: str = 'Question') -> bool:
+def yes_no_question(text, title='Question'):
     """
     Question message
     :param text:

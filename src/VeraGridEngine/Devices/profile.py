@@ -552,7 +552,7 @@ class Profile:
 
     def set_sparse_data_from_data(self, indptr, data):
         """
-        Set sparse data from indices
+        Set spasrse data from indices
         :param indptr: array of data indices
         :param data: array of data values
         """
@@ -586,7 +586,5 @@ class Profile:
 
         if self._dense_array is not None:
             new_prof._dense_array = self._dense_array.copy()
-
-        new_prof._initialized = self.is_initialized
 
         return new_prof

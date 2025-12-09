@@ -101,10 +101,6 @@ class GenericDiagramWidget:
 
     @property
     def api_object(self) -> ALL_DEV_TYPES:
-        """
-
-        :return:
-        """
         return self._api_object
 
     @property
@@ -222,10 +218,6 @@ class Polygon(QGraphicsPolygonItem):
         self.update_nexus_fcn = update_nexus_fcn
 
     def setPen(self, pen: QPen):
-        """
-
-        :param pen:
-        """
         super().setPen(pen)
         pass
 
@@ -260,10 +252,6 @@ class Square(QGraphicsRectItem):
         self.update_nexus_fcn = update_nexus_fcn
 
     def setPen(self, pen: QPen):
-        """
-
-        :param pen:
-        """
         super().setPen(pen)
         self.label.setDefaultTextColor(pen.color())
 

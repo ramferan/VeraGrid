@@ -70,7 +70,6 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
                  options: ContingencyAnalysisOptions,
                  time_indices: IntVec | None = None,
                  clustering_results: Union["ClusteringResults", None] = None,
-                 opf_time_series_results=None,
                  engine: EngineType = EngineType.VeraGrid):
         """
         Contingency analysis constructor
@@ -90,8 +89,6 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
 
         # Options to use
         self.options: Union[ContingencyAnalysisOptions, LinearAnalysisOptions] = options
-
-        self.opf_time_series_results = opf_time_series_results
 
         # N-K results
         self.results: ContingencyAnalysisTimeSeriesResults = ContingencyAnalysisTimeSeriesResults(
@@ -164,9 +161,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
                 t_prob = 1.0 / len(self.time_indices)
 
             # set the numerical circuit
-            nc = compile_numerical_circuit_at(self.grid,
-                                              opf_results=self.opf_time_series_results,
-                                              t_idx=t)
+            nc = compile_numerical_circuit_at(self.grid, t_idx=t)
 
             res_t = nonlinear_contingency_analysis(
                 nc=nc,
@@ -278,9 +273,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
                 t_prob = 1.0 / len(self.time_indices)
 
             # res_t = cdriver.run_at(t_idx=int(t), t_prob=t_prob)
-            nc = compile_numerical_circuit_at(self.grid,
-                                              opf_results=self.opf_time_series_results,
-                                              t_idx=t)
+            nc = compile_numerical_circuit_at(self.grid, t_idx=t)
 
             res_t = linear_contingency_analysis(
                 nc=nc,
@@ -340,7 +333,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
 
         self.report_text("Analyzing...")
 
-        nbus = self.grid.get_bus_number()
+        nb = self.grid.get_bus_number()
 
         time_array = self.grid.time_profile[self.time_indices]
 
@@ -350,18 +343,17 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             con_names = [con.name for con in self.options.contingency_groups]
 
         results = ContingencyAnalysisTimeSeriesResults(
-            n=nbus,
+            n=nb,
             nbr=self.grid.get_branch_number(add_hvdc=False, add_vsc=False, add_switch=True),
             time_array=time_array,
             branch_names=self.grid.get_branch_names(add_hvdc=False, add_vsc=False, add_switch=True),
             bus_names=self.grid.get_bus_names(),
-            bus_types=np.ones(nbus, dtype=int),
+            bus_types=np.ones(nb, dtype=int),
             con_names=con_names,
             clustering_results=self.clustering_results
         )
 
-        nc = compile_numerical_circuit_at(self.grid,
-                                          t_idx=None)
+        nc = compile_numerical_circuit_at(self.grid, t_idx=None)
 
         lin_mc = LinearMultiContingencies(grid=self.grid,
                                           contingency_groups_used=self.grid.get_contingency_groups())

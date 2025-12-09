@@ -20,14 +20,12 @@ from PySide6.QtCore import (Qt, QPoint, QSize, QPointF, QRect, QRectF, QMimeData
 from PySide6.QtGui import (QIcon, QPixmap, QImage, QPainter, QStandardItemModel, QStandardItem, QColor, QPen, QBrush,
                            QDragEnterEvent, QDragMoveEvent, QDropEvent, QWheelEvent, QKeyEvent, QMouseEvent,
                            QContextMenuEvent)
-from PySide6.QtWidgets import (QGraphicsView, QGraphicsScene, QGraphicsSceneMouseEvent, QGraphicsItem, QDialog,
-                               QPushButton)
+from PySide6.QtWidgets import (QGraphicsView, QGraphicsScene, QGraphicsSceneMouseEvent, QGraphicsItem)
 from PySide6.QtSvg import QSvgGenerator
 
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, INJECTION_DEVICE_TYPES, FLUID_TYPES, BRANCH_TYPES
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.Devices.Substation.substation import Substation
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Branches.dc_line import DcLine
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
@@ -43,11 +41,11 @@ from VeraGridEngine.Devices.Diagrams.schematic_diagram import SchematicDiagram
 from VeraGridEngine.Devices.Diagrams.graphic_location import GraphicLocation
 from VeraGridEngine.Simulations.OPF.opf_ts_results import OptimalPowerFlowTimeSeriesResults
 from VeraGridEngine.Simulations.PowerFlow.power_flow_ts_results import PowerFlowTimeSeriesResults
-from VeraGridEngine.Topology.VoltageLevels.vl_creation_common_functions import transform_bus_to_connectivity_grid
+from VeraGridEngine.Topology.VoltageLevels.common_functions import transform_bus_to_connectivity_grid
 from VeraGridEngine.enumerations import DeviceType, ResultTypes, BusGraphicType
 from VeraGridEngine.basic_structures import Vec, CxVec, IntVec, Logger
 import VeraGridEngine.Devices.Diagrams.palettes as palettes
-from VeraGridEngine.Topology.VoltageLevels import vl_creation_common_functions as substation_wizards
+from VeraGridEngine.Topology.VoltageLevels import common_functions as substation_wizards
 from VeraGridEngine.enumerations import TerminalType
 
 from VeraGrid.Gui.SubstationDesigner.voltage_level_conversion import VoltageLevelConversionWizard
@@ -89,6 +87,7 @@ BRANCH_GRAPHICS = Union[
     SeriesReactanceGraphicItem,
     SwitchGraphicItem
 ]
+
 
 OPTIONAL_PORT = Union[BarTerminalItem, RoundTerminalItem, None]
 
@@ -371,7 +370,7 @@ class SchematicWidget(BaseDiagramWidget):
         Creates the Diagram Editor (DiagramEditorWidget)
         :param circuit: Circuit that is handling
         :param diagram: SchematicDiagram to use (optional)
-        :param default_bus_voltage: Default bus voltages (kV)
+        :param default_bus_voltage: Default bus voltages (KV)
         :param time_index: time index to represent
         """
 
@@ -399,7 +398,7 @@ class SchematicWidget(BaseDiagramWidget):
         self.setStretchFactor(0, 0)
         self.setStretchFactor(1, 2000)
 
-        # default_bus_voltage (kV)
+        # default_bus_voltage (KV)
         self.default_bus_voltage = default_bus_voltage
 
         # nodes distance "explosion" factor
@@ -896,8 +895,7 @@ class SchematicWidget(BaseDiagramWidget):
             if graphic_object.scene() is not None:
                 self.diagram_scene.removeItem(graphic_object)
             else:
-                # self.gui.show_warning_toast(f"Null scene for {graphic_object}, was it deleted already?")
-                pass
+                self.gui.show_warning_toast(f"Null scene for {graphic_object}, was it deleted already?")
 
     def set_selected_buses(self, buses: List[Bus]):
         """
@@ -1195,176 +1193,378 @@ class SchematicWidget(BaseDiagramWidget):
         @return:
         """
 
-        items = self.diagram_scene.items(event.scenePos())  # get the widgets at the mouse position
+        # Clear or finnish the started connection:
+        if self.started_branch is not None:
 
-        for arriving_widget in items:
+            items = self.diagram_scene.items(event.scenePos())  # get the widgets at the mouse position
 
-            if isinstance(arriving_widget,
-                          Union[BarTerminalItem, RoundTerminalItem]):
-                # arriving to a bus or bus-bar
+            for arriving_widget in items:
 
-                # Clear or finnish the started connection:
-                if self.started_branch is None:
-                    return None
+                if isinstance(arriving_widget,
+                              Union[BarTerminalItem, RoundTerminalItem]):
+                    # arriving to a bus or bus-bar
 
-                if arriving_widget.get_parent() is not self.started_branch.get_terminal_from_parent():  # forbid connecting to itself
+                    # if arriving_widget.get_parent() is not self.started_branch.get_terminal_from_parent():
+                    #     # forbid connecting to itself
+                    #
+                    #     # Check if starting from VSC terminal
+                    #     # if isinstance(self.started_branch.get_terminal_from(), RoundTerminalItem) \
+                    #     #         and isinstance(self.started_branch.get_terminal_from_parent(), VscGraphicItem3Term):
+                    #
+                    #     if (isinstance(self.started_branch.get_terminal_from_parent(), VscGraphicItem3Term)
+                    #             or isinstance(arriving_widget.get_parent(), VscGraphicItem3Term)):
+                    #
+                    #         target_object = arriving_widget.parent.api_object
+                    #
+                    #         # Create the visual line
+                    #         conn_line = LineGraphicTemplateItem(
+                    #             from_port=self.started_branch.get_terminal_from(),
+                    #             to_port=arriving_widget,
+                    #             editor=self)
+                    #
+                    #         # Set the connection in the VSC graphics/API
+                    #         if isinstance(target_object, Bus):
+                    #             success = self.started_branch.get_terminal_from_parent().assign_bus_to_vsc(
+                    #                 terminal_vsc=self.started_branch.get_terminal_from(),
+                    #                 bus_vsc=arriving_widget
+                    #             )
+                    #
+                    #         elif isinstance(target_object, VSC):
+                    #             success = arriving_widget.get_parent().assign_bus_to_vsc(
+                    #                 terminal_vsc=arriving_widget,
+                    #                 bus_vsc=self.started_branch.get_terminal_from()
+                    #             )
+                    #         else:
+                    #             success = False
+                    #
+                    #         if success:
+                    #             self.add_to_scene(conn_line)
+                    #
+                    #         self._remove_from_scene(self.started_branch)
+                    #
+                    #         self.started_branch = None
+                    #
+                    #         break  # Exit the inner loop once connection is handled
+                    #
+                    #     else:
+                    #         pass
+                    #
+                    #     # --- Handle VSC Terminal Connection --- END
+                    #
+                    #     # Set the target port for the temporary line *after* VSC check
+                    #     # if self.started_branch: # Check if it wasn't already cleared by VSC logic
+                    #     self.started_branch.set_to_port(arriving_widget)
+                    #
+                    #     if self.started_branch.connected_between_buses():  # electrical branch between electrical buses
+                    #
+                    #         # if self.started_branch.should_be_a_converter():
+                    #         #     # different DC status -> VSC
+                    #
+                    #         #     self.create_vsc(bus_from=self.started_branch.get_bus_from(),
+                    #         #                     bus_to=self.started_branch.get_bus_to(),
+                    #         #                     from_port=self.started_branch.get_terminal_from(),
+                    #         #                     to_port=self.started_branch.get_terminal_to())
+                    #
+                    #         if self.started_branch.should_be_a_dc_line():
+                    #             # both buses are DC
+                    #
+                    #             self.create_dc_line(bus_from=self.started_branch.get_bus_from(),
+                    #                                 bus_to=self.started_branch.get_bus_to(),
+                    #                                 from_port=self.started_branch.get_terminal_from(),
+                    #                                 to_port=self.started_branch.get_terminal_to())
+                    #
+                    #         elif self.started_branch.should_be_a_transformer():
+                    #
+                    #             self.create_transformer(bus_from=self.started_branch.get_bus_from(),
+                    #                                     bus_to=self.started_branch.get_bus_to(),
+                    #                                     from_port=self.started_branch.get_terminal_from(),
+                    #                                     to_port=self.started_branch.get_terminal_to())
+                    #
+                    #         else:
+                    #
+                    #             self.create_line(bus_from=self.started_branch.get_bus_from(),
+                    #                              bus_to=self.started_branch.get_bus_to(),
+                    #                              from_port=self.started_branch.get_terminal_from(),
+                    #                              to_port=self.started_branch.get_terminal_to())
+                    #
+                    #     elif self.started_branch.conneted_between_tr3_and_bus():
+                    #
+                    #         tr3_graphic_object: Transformer3WGraphicItem = self.started_branch.get_from_graphic_object()
+                    #
+                    #         if self.started_branch.is_to_port_a_bus():
+                    #             # if the bus "from" is the TR3W, the "to" is the bus
+                    #             bus = self.started_branch.get_bus_to()
+                    #         else:
+                    #             raise Exception('Nor the from or to connection points are a bus!')
+                    #
+                    #         i = tr3_graphic_object.get_connection_winding(
+                    #             from_port=self.started_branch.get_terminal_from(),
+                    #             to_port=self.started_branch.get_terminal_to()
+                    #         )
+                    #
+                    #         if tr3_graphic_object.connection_lines[i] is None:
+                    #             winding = tr3_graphic_object.api_object.get_winding(i)
+                    #
+                    #             winding_graphics = self.create_winding(
+                    #                 from_port=self.started_branch.get_terminal_from(),
+                    #                 to_port=self.started_branch.get_terminal_to(),
+                    #                 api_object=winding
+                    #             )
+                    #
+                    #             if winding not in self.circuit.windings:
+                    #                 self.circuit.add_winding(winding)
+                    #
+                    #             tr3_graphic_object.set_connection(i=i,
+                    #                                               bus=bus,
+                    #                                               conn=winding_graphics,
+                    #                                               set_voltage=True)
+                    #
+                    #     elif self.started_branch.connected_between_bus_and_tr3():
+                    #
+                    #         tr3_graphic_object = self.started_branch.get_to_graphic_object()
+                    #
+                    #         if self.started_branch.is_from_port_a_bus():
+                    #             # if the bus "to" is the TR3W, the "from" is the bus
+                    #             bus = self.started_branch.get_bus_from()
+                    #         else:
+                    #             raise Exception('Nor the from or to connection points are a bus!')
+                    #
+                    #         i = tr3_graphic_object.get_connection_winding(
+                    #             from_port=self.started_branch.get_terminal_from(),
+                    #             to_port=self.started_branch.get_terminal_to()
+                    #         )
+                    #
+                    #         if tr3_graphic_object.connection_lines[i] is None:
+                    #
+                    #             winding = tr3_graphic_object.api_object.get_winding(i)
+                    #
+                    #             winding_graphics = self.create_winding(
+                    #                 from_port=self.started_branch.get_terminal_from(),
+                    #                 to_port=self.started_branch.get_terminal_to(),
+                    #                 api_object=winding)
+                    #
+                    #             if winding not in self.circuit.windings:
+                    #                 self.circuit.add_winding(winding)
+                    #
+                    #             tr3_graphic_object.set_connection(i=i,
+                    #                                               bus=bus,
+                    #                                               conn=winding_graphics,
+                    #                                               set_voltage=True)
+                    #
+                    #     elif self.started_branch.connected_between_fluid_nodes():  # fluid path
+                    #
+                    #         self.create_fluid_path(source=self.started_branch.get_fluid_node_from(),
+                    #                                target=self.started_branch.get_fluid_node_to(),
+                    #                                from_port=self.started_branch.get_terminal_from(),
+                    #                                to_port=self.started_branch.get_terminal_to())
+                    #
+                    #     elif self.started_branch.connected_between_fluid_node_and_bus():
+                    #
+                    #         # electrical bus
+                    #         bus = self.started_branch.get_bus_to()
+                    #
+                    #         # check if the fluid node has a bus
+                    #         fn = self.started_branch.get_fluid_node_from()
+                    #
+                    #         if fn.bus is None:
+                    #             # the fluid node does not have a bus, make one
+                    #             fn_bus = Bus(fn.name, Vnom=bus.Vnom)
+                    #             self.circuit.add_bus(fn_bus)
+                    #             fn.bus = fn_bus
+                    #         else:
+                    #             fn_bus = fn.bus
+                    #
+                    #         self.create_line(bus_from=fn_bus,
+                    #                          bus_to=bus,
+                    #                          from_port=self.started_branch.get_terminal_from(),
+                    #                          to_port=self.started_branch.get_terminal_to())
+                    #
+                    #     elif self.started_branch.connected_between_bus_and_fluid_node():
+                    #         # electrical bus
+                    #         bus = self.started_branch.get_bus_from()
+                    #
+                    #         # check if the fluid node has a bus
+                    #         fn = self.started_branch.get_fluid_node_to()
+                    #
+                    #         if fn.bus is None:
+                    #             # the fluid node does not have a bus, make one
+                    #             fn_bus = Bus(fn.name, Vnom=bus.Vnom)
+                    #             self.circuit.add_bus(fn_bus)
+                    #             fn.bus = fn_bus
+                    #         else:
+                    #             fn_bus = fn.bus
+                    #
+                    #         self.create_line(bus_from=bus,
+                    #                          bus_to=fn_bus,
+                    #                          from_port=self.started_branch.get_terminal_from(),
+                    #                          to_port=self.started_branch.get_terminal_to())
+                    #
+                    #
+                    #
+                    #
+                    #     else:
+                    #         warn('unknown connection')
 
-                    self.started_branch.set_to_port(arriving_widget)
+                    # If a VSC connection was made, the temporary line might still be the 'started_branch'
 
-                    if self.started_branch.connected_between_buses():  # electrical branch between electrical buses
+                    if arriving_widget.get_parent() is not self.started_branch.get_terminal_from_parent():  # forbid connecting to itself
 
-                        if self.started_branch.should_be_a_converter():
-                            # different DC status -> VSC
+                        self.started_branch.set_to_port(arriving_widget)
 
-                            self.create_vsc_graphics_2term(bus_from=self.started_branch.get_bus_from(),
-                                                           bus_to=self.started_branch.get_bus_to(),
-                                                           from_port=self.started_branch.get_terminal_from(),
-                                                           to_port=self.started_branch.get_terminal_to())
+                        if self.started_branch.connected_between_buses():  # electrical branch between electrical buses
 
-                        elif self.started_branch.should_be_a_dc_line():
-                            # both buses are DC
+                            if self.started_branch.should_be_a_converter():
+                                # different DC status -> VSC
 
-                            self.create_dc_line(bus_from=self.started_branch.get_bus_from(),
-                                                bus_to=self.started_branch.get_bus_to(),
-                                                from_port=self.started_branch.get_terminal_from(),
-                                                to_port=self.started_branch.get_terminal_to())
+                                self.create_vsc_graphics_2term(bus_from=self.started_branch.get_bus_from(),
+                                                               bus_to=self.started_branch.get_bus_to(),
+                                                               from_port=self.started_branch.get_terminal_from(),
+                                                               to_port=self.started_branch.get_terminal_to())
 
-                        elif self.started_branch.should_be_a_transformer():
+                            elif self.started_branch.should_be_a_dc_line():
+                                # both buses are DC
 
-                            self.create_transformer(bus_from=self.started_branch.get_bus_from(),
+                                self.create_dc_line(bus_from=self.started_branch.get_bus_from(),
                                                     bus_to=self.started_branch.get_bus_to(),
                                                     from_port=self.started_branch.get_terminal_from(),
                                                     to_port=self.started_branch.get_terminal_to())
 
-                        else:
+                            elif self.started_branch.should_be_a_transformer():
 
-                            self.create_line(bus_from=self.started_branch.get_bus_from(),
-                                             bus_to=self.started_branch.get_bus_to(),
+                                self.create_transformer(bus_from=self.started_branch.get_bus_from(),
+                                                        bus_to=self.started_branch.get_bus_to(),
+                                                        from_port=self.started_branch.get_terminal_from(),
+                                                        to_port=self.started_branch.get_terminal_to())
+
+                            else:
+
+                                self.create_line(bus_from=self.started_branch.get_bus_from(),
+                                                 bus_to=self.started_branch.get_bus_to(),
+                                                 from_port=self.started_branch.get_terminal_from(),
+                                                 to_port=self.started_branch.get_terminal_to())
+
+                        elif self.started_branch.conneted_between_tr3_and_bus():
+
+                            tr3_graphic_object: Transformer3WGraphicItem = self.started_branch.get_from_graphic_object()
+
+                            if self.started_branch.is_to_port_a_bus():
+                                # if the bus "from" is the TR3W, the "to" is the bus
+                                bus = self.started_branch.get_bus_to()
+                            else:
+                                raise Exception('Nor the from or to connection points are a bus!')
+
+                            i = tr3_graphic_object.get_connection_winding(
+                                from_port=self.started_branch.get_terminal_from(),
+                                to_port=self.started_branch.get_terminal_to()
+                            )
+
+                            if tr3_graphic_object.connection_lines[i] is None:
+                                winding = tr3_graphic_object.api_object.get_winding(i)
+
+                                winding_graphics = self.create_winding(
+                                    from_port=self.started_branch.get_terminal_from(),
+                                    to_port=self.started_branch.get_terminal_to(),
+                                    api_object=winding
+                                )
+
+                                if winding not in self.circuit.windings:
+                                    self.circuit.add_winding(winding)
+
+                                tr3_graphic_object.set_connection(i=i,
+                                                                  bus=bus,
+                                                                  conn=winding_graphics,
+                                                                  set_voltage=True)
+
+                        elif self.started_branch.connected_between_bus_and_tr3():
+
+                            tr3_graphic_object = self.started_branch.get_to_graphic_object()
+
+                            if self.started_branch.is_from_port_a_bus():
+                                # if the bus "to" is the TR3W, the "from" is the bus
+                                bus = self.started_branch.get_bus_from()
+                            else:
+                                raise Exception('Nor the from or to connection points are a bus!')
+
+                            i = tr3_graphic_object.get_connection_winding(
+                                from_port=self.started_branch.get_terminal_from(),
+                                to_port=self.started_branch.get_terminal_to()
+                            )
+
+                            if tr3_graphic_object.connection_lines[i] is None:
+
+                                winding = tr3_graphic_object.api_object.get_winding(i)
+
+                                winding_graphics = self.create_winding(
+                                    from_port=self.started_branch.get_terminal_from(),
+                                    to_port=self.started_branch.get_terminal_to(),
+                                    api_object=winding)
+
+                                if winding not in self.circuit.windings:
+                                    self.circuit.add_winding(winding)
+
+                                tr3_graphic_object.set_connection(i=i,
+                                                                  bus=bus,
+                                                                  conn=winding_graphics,
+                                                                  set_voltage=True)
+
+                        elif self.started_branch.connected_between_fluid_nodes():  # fluid path
+
+                            self.create_fluid_path(source=self.started_branch.get_fluid_node_from(),
+                                                   target=self.started_branch.get_fluid_node_to(),
+                                                   from_port=self.started_branch.get_terminal_from(),
+                                                   to_port=self.started_branch.get_terminal_to())
+
+                        elif self.started_branch.connected_between_fluid_node_and_bus():
+
+                            # electrical bus
+                            bus = self.started_branch.get_bus_to()
+
+                            # check if the fluid node has a bus
+                            fn = self.started_branch.get_fluid_node_from()
+
+                            if fn.bus is None:
+                                # the fluid node does not have a bus, make one
+                                fn_bus = Bus(fn.name, Vnom=bus.Vnom)
+                                self.circuit.add_bus(fn_bus)
+                                fn.bus = fn_bus
+                            else:
+                                fn_bus = fn.bus
+
+                            self.create_line(bus_from=fn_bus,
+                                             bus_to=bus,
                                              from_port=self.started_branch.get_terminal_from(),
                                              to_port=self.started_branch.get_terminal_to())
 
-                    elif self.started_branch.conneted_between_tr3_and_bus():
-
-                        tr3_graphic_object: Transformer3WGraphicItem = self.started_branch.get_from_graphic_object()
-
-                        if self.started_branch.is_to_port_a_bus():
-                            # if the bus "from" is the TR3W, the "to" is the bus
-                            bus = self.started_branch.get_bus_to()
-                        else:
-                            raise Exception('Nor the from or to connection points are a bus!')
-
-                        i = tr3_graphic_object.get_connection_winding(
-                            from_port=self.started_branch.get_terminal_from(),
-                            to_port=self.started_branch.get_terminal_to()
-                        )
-
-                        if tr3_graphic_object.connection_lines[i] is None:
-                            winding = tr3_graphic_object.api_object.get_winding(i)
-
-                            winding_graphics = self.create_winding(
-                                from_port=self.started_branch.get_terminal_from(),
-                                to_port=self.started_branch.get_terminal_to(),
-                                api_object=winding
-                            )
-
-                            if winding not in self.circuit.windings:
-                                self.circuit.add_winding(winding)
-
-                            tr3_graphic_object.set_connection(i=i,
-                                                              bus=bus,
-                                                              conn=winding_graphics,
-                                                              set_voltage=True)
-
-                    elif self.started_branch.connected_between_bus_and_tr3():
-
-                        tr3_graphic_object = self.started_branch.get_to_graphic_object()
-
-                        if self.started_branch.is_from_port_a_bus():
-                            # if the bus "to" is the TR3W, the "from" is the bus
+                        elif self.started_branch.connected_between_bus_and_fluid_node():
+                            # electrical bus
                             bus = self.started_branch.get_bus_from()
+
+                            # check if the fluid node has a bus
+                            fn = self.started_branch.get_fluid_node_to()
+
+                            if fn.bus is None:
+                                # the fluid node does not have a bus, make one
+                                fn_bus = Bus(fn.name, Vnom=bus.Vnom)
+                                self.circuit.add_bus(fn_bus)
+                                fn.bus = fn_bus
+                            else:
+                                fn_bus = fn.bus
+
+                            self.create_line(bus_from=bus,
+                                             bus_to=fn_bus,
+                                             from_port=self.started_branch.get_terminal_from(),
+                                             to_port=self.started_branch.get_terminal_to())
+
                         else:
-                            raise Exception('Nor the from or to connection points are a bus!')
+                            warn('unknown connection')
 
-                        i = tr3_graphic_object.get_connection_winding(
-                            from_port=self.started_branch.get_terminal_from(),
-                            to_port=self.started_branch.get_terminal_to()
-                        )
+                if self.started_branch is not None:
+                    self.started_branch.unregister_port_from()
+                    self.started_branch.unregister_port_to()
+                    self._remove_from_scene(self.started_branch)
 
-                        if tr3_graphic_object.connection_lines[i] is None:
-
-                            winding = tr3_graphic_object.api_object.get_winding(i)
-
-                            winding_graphics = self.create_winding(
-                                from_port=self.started_branch.get_terminal_from(),
-                                to_port=self.started_branch.get_terminal_to(),
-                                api_object=winding)
-
-                            if winding not in self.circuit.windings:
-                                self.circuit.add_winding(winding)
-
-                            tr3_graphic_object.set_connection(i=i,
-                                                              bus=bus,
-                                                              conn=winding_graphics,
-                                                              set_voltage=True)
-
-                    elif self.started_branch.connected_between_fluid_nodes():  # fluid path
-
-                        self.create_fluid_path(source=self.started_branch.get_fluid_node_from(),
-                                               target=self.started_branch.get_fluid_node_to(),
-                                               from_port=self.started_branch.get_terminal_from(),
-                                               to_port=self.started_branch.get_terminal_to())
-
-                    elif self.started_branch.connected_between_fluid_node_and_bus():
-
-                        # electrical bus
-                        bus = self.started_branch.get_bus_to()
-
-                        # check if the fluid node has a bus
-                        fn = self.started_branch.get_fluid_node_from()
-
-                        if fn.bus is None:
-                            # the fluid node does not have a bus, make one
-                            fn_bus = Bus(fn.name, Vnom=bus.Vnom)
-                            self.circuit.add_bus(fn_bus)
-                            fn.bus = fn_bus
-                        else:
-                            fn_bus = fn.bus
-
-                        self.create_line(bus_from=fn_bus,
-                                         bus_to=bus,
-                                         from_port=self.started_branch.get_terminal_from(),
-                                         to_port=self.started_branch.get_terminal_to())
-
-                    elif self.started_branch.connected_between_bus_and_fluid_node():
-                        # electrical bus
-                        bus = self.started_branch.get_bus_from()
-
-                        # check if the fluid node has a bus
-                        fn = self.started_branch.get_fluid_node_to()
-
-                        if fn.bus is None:
-                            # the fluid node does not have a bus, make one
-                            fn_bus = Bus(fn.name, Vnom=bus.Vnom)
-                            self.circuit.add_bus(fn_bus)
-                            fn.bus = fn_bus
-                        else:
-                            fn_bus = fn.bus
-
-                        self.create_line(bus_from=bus,
-                                         bus_to=fn_bus,
-                                         from_port=self.started_branch.get_terminal_from(),
-                                         to_port=self.started_branch.get_terminal_to())
-
-                    else:
-                        warn('unknown connection')
-
-            if self.started_branch is not None:
-                self.started_branch.unregister_port_from()
-                self.started_branch.unregister_port_to()
-                self._remove_from_scene(self.started_branch)
-
-            # release this pointer
-            self.started_branch = None
+                # release this pointer
+                self.started_branch = None
 
     def apply_expansion_factor(self, factor: float):
         """
@@ -1762,7 +1962,7 @@ class SchematicWidget(BaseDiagramWidget):
             image = self.get_image(transparent=False)
             image.save(filename)
 
-        elif extension == '.svg':
+        elif extension == '.png':
             w = self.editor_graphics_view.width()
             h = self.editor_graphics_view.height()
             svg_gen = QSvgGenerator()
@@ -3677,12 +3877,8 @@ class SchematicWidget(BaseDiagramWidget):
             lnormC[lnormC == np.inf] = 0
             SfC_abs = np.abs(SfC)
 
-            max_flow = np.max([SfA_abs.max() if len(SfA_abs) > 0 else 0,
-                               SfB_abs.max() if len(SfB_abs) > 0 else 0,
-                               SfC_abs.max() if len(SfC_abs) > 0 else 0,
-                               np.abs(hvdc_PfA).max() if len(hvdc_PfA) > 0 else 0,
-                               np.abs(hvdc_PfB).max() if len(hvdc_PfB) > 0 else 0,
-                               np.abs(hvdc_PfC).max() if len(hvdc_PfC) > 0 else 0])
+            max_flow = np.max([SfA_abs.max(), SfB_abs.max(), SfC_abs.max(),
+                               np.abs(hvdc_PfA).max(), np.abs(hvdc_PfB).max(), np.abs(hvdc_PfC).max()])
 
             if max_flow != 0:
                 Sfnorm = np.maximum(np.maximum(SfA_abs, SfB_abs), SfC_abs) / max_flow
@@ -4653,6 +4849,7 @@ class SchematicWidget(BaseDiagramWidget):
                 title='Change bus')
 
             if ok:
+
                 # set the API object new bus
                 injection_graphics.api_object.bus = new_bus
 
@@ -4697,11 +4894,10 @@ class SchematicWidget(BaseDiagramWidget):
 
             new_bus_graphic.get_terminal().update()
 
-    def transform_busbar_to_connectivity_grid(self, bus_graphics: BusGraphicItem, x_offset=80):
+    def transform_busbar_to_connectivity_grid(self, bus_graphics: BusGraphicItem):
         """
         Transform the bus into a grid of buses to be able to compute the bus currents
         :param bus_graphics: BusGraphicItem
-        :param x_offset: x offset of the new connectivity buses
         """
 
         # convert a bus into many small buses connected by impedances
@@ -4710,11 +4906,6 @@ class SchematicWidget(BaseDiagramWidget):
 
         # add the new buses
         self.add_buses(buses=new_buses)
-
-        # correct the new buses position
-        for i, bus in enumerate(new_buses):
-            new_bus_graphic: BusGraphicItem = self.graphics_manager.query(bus)
-            new_bus_graphic.setPos(bus_graphics.x() + (i * x_offset), bus_graphics.y() + 20)
 
         # connected branches
         self.reconnect_bus_graphics(bus_graphics=bus_graphics, new_buses=new_buses)
@@ -4735,45 +4926,20 @@ class SchematicWidget(BaseDiagramWidget):
         vl_wizard.setModal(True)
         vl_wizard.exec()  # waits until closed
 
-        if vl_wizard.closed_ok:
-            (new_buses,
-             conn_buses,
-             associated_branches,
-             associated_injections,
-             reconnection_list) = substation_wizards.transform_bus_into_voltage_level(
+        if vl_wizard.closed_ok is not None:
+            new_buses = substation_wizards.transform_bus_into_voltage_level(
                 grid=self.circuit,
                 bus=bus_graphics.api_object,
                 vl_type=vl_wizard.get_vl_type(),
                 add_disconnectors=vl_wizard.add_brakers_checkbox.isChecked(),
-                bar_by_segments=vl_wizard.bar_by_segments_checkbox.isChecked(),
-                skip_injections_reconnection=True
+                bar_by_segments=vl_wizard.bar_by_segments_checkbox.isChecked()
             )
 
             # add the newly created buses to the diagram (with all their stuff that's not there already)
             self.add_buses(buses=new_buses)
 
             # reconnect graphics
-            # self.reconnect_bus_graphics(bus_graphics=bus_graphics, new_buses=conn_buses)
-            # Note: graphical shunts have been added already
-            # the order of the buses matches the order of the branches because the
-            # transformation function already works like that
-            for element, old_bus, new_bus in reconnection_list:
-                new_bus_graphic: BusGraphicItem = self.graphics_manager.query(new_bus)
-                branch_graphic = self.graphics_manager.query(element)
-
-                # At this point the API branch has been ressigned already
-
-                new_bus_graphic.terminal.reassign_terminal(
-                    graphic_obj=branch_graphic,
-                    another_terminal=bus_graphics.terminal
-                )
-
-                branch_graphic.api_object.reassign_bus(
-                    old_bus=bus_graphics.api_object,
-                    new_bus=new_bus_graphic.api_object
-                )
-
-                new_bus_graphic.get_terminal().update()
+            self.reconnect_bus_graphics(bus_graphics=bus_graphics, new_buses=new_buses)
 
             # Finally delete the old bus
             self.delete_element_utility_function(device=bus_graphics.api_object)

@@ -73,13 +73,13 @@ class LinearAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
         self.tic()
         self.__cancel__ = False
         self.report_text('Computing TS linear analysis...')
-        lin_ts = LinearAnalysisTs(grid=self.grid, time_indices=self.time_indices)
+        lin_ts = LinearAnalysisTs(self.grid)
 
         self.report_text('Computing flows...')
 
         if self.simplified_compilation:
             # Theoretically equivallent but cannot be ensured 100%
-            self.results.S = self.grid.get_Pbus_prof(apply_active=True)[self.time_indices]
+            self.results.S = self.grid.get_Pbus_prof(apply_active=True)
             self.results.Sf = lin_ts.get_flows_ts(P=self.results.S,
                                                   progress_func=self.report_progress,
                                                   progress_text=self.report_text)

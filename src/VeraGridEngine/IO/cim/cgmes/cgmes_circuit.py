@@ -20,13 +20,6 @@ from VeraGridEngine.enumerations import CGMESVersions
 def find_attribute(obj: CGMES_ASSETS,
                    property_name: str,
                    association_inverse_dict: Dict[Tuple[str, str], str]):
-    """
-
-    :param obj:
-    :param property_name:
-    :param association_inverse_dict:
-    :return:
-    """
     return association_inverse_dict.get((obj.tpe, property_name))
 
 
@@ -85,7 +78,7 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
 
                     elif isinstance(cim_prop.class_type, Enum) or isinstance(cim_prop.class_type, EnumMeta):
 
-                        if isinstance(value, str):
+                        if type(value) == str:
                             chunks = value.split('.')
                             value2 = chunks[-1]
                             try:
@@ -132,9 +125,6 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
 
                                 # I want to know that it was not found
                                 element.missing_references[property_name] = value
-
-                                # set the referencing property to None:
-                                setattr(element, property_name, None)
 
                                 if hasattr(element, 'rdfid'):
                                     logger.add_error(msg='Reference not found',
@@ -185,9 +175,6 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
 
                                     # I want to know that it was not found
                                     element.missing_references[property_name] = v
-
-                                    # set the referencing property to None:
-                                    setattr(element, property_name, None)
 
                                     if hasattr(element, 'rdfid'):
                                         logger.add_error(msg='Reference not found',
@@ -256,53 +243,44 @@ def convert_data_to_objects(data: Dict[str, Dict[str, Dict[str, str]]],
     :param logger:DataLogger
     :return: None
     """
-    if not isinstance(data, dict):
-        logger.add_error("Data is garbage",
-                         value=data)
-    else:
+    for class_name, objects_dict in data.items():
 
-        for class_name, objects_dict in data.items():
+        objects_list = list()
+        for rdfid, object_data in objects_dict.items():
 
-            if not isinstance(objects_dict, dict):
-                logger.add_error("Data is garbage",
-                                 value=objects_dict)
+            object_template = class_dict.get(class_name, None)
+
+            if object_template is not None:
+
+                parsed_object = object_template(rdfid=rdfid, tpe=class_name)
+
+                if all_objects_dict_boundary is None:
+                    parsed_object.boundary_set = True
+
+                parsed_object.parse_dict(data=object_data, logger=logger)
+
+                found = all_objects_dict.get(parsed_object.rdfid, None)
+
+                if found is None:
+                    all_objects_dict[parsed_object.rdfid] = parsed_object
+                else:
+                    if "Sv" not in class_name:
+                        logger.add_error("Duplicated RDFID", device=class_name, value=parsed_object.rdfid)
+
+                objects_list.append(parsed_object)
+
             else:
-                objects_list = list()
-                for rdfid, object_data in objects_dict.items():
+                logger.add_error("Class not recognized", device_class=class_name)
 
-                    object_template = class_dict.get(class_name, None)
+        elements_by_type[class_name] = objects_list
 
-                    if object_template is not None:
-
-                        parsed_object = object_template(rdfid=rdfid, tpe=class_name)
-
-                        if all_objects_dict_boundary is None:
-                            parsed_object.boundary_set = True
-
-                        parsed_object.parse_dict(data=object_data, logger=logger)
-
-                        found = all_objects_dict.get(parsed_object.rdfid, None)
-
-                        if found is None:
-                            all_objects_dict[parsed_object.rdfid] = parsed_object
-                        else:
-                            if "Sv" not in class_name:
-                                logger.add_error("Duplicated RDFID", device=class_name, value=parsed_object.rdfid)
-
-                        objects_list.append(parsed_object)
-
-                    else:
-                        logger.add_error("Class not recognized", device_class=class_name)
-
-                elements_by_type[class_name] = objects_list
-
-        # replace references by actual objects
-        find_references(elements_by_type=elements_by_type,
-                        all_objects_dict=all_objects_dict,
-                        all_objects_dict_boundary=all_objects_dict_boundary,
-                        association_inverse_dict=association_inverse_dict,
-                        logger=logger,
-                        mark_used=True)
+    # replace references by actual objects
+    find_references(elements_by_type=elements_by_type,
+                    all_objects_dict=all_objects_dict,
+                    all_objects_dict_boundary=all_objects_dict_boundary,
+                    association_inverse_dict=association_inverse_dict,
+                    logger=logger,
+                    mark_used=True)
 
 
 def is_valid_cgmes(cgmes_version) -> bool:

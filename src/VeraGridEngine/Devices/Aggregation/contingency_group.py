@@ -11,15 +11,14 @@ class ContingencyGroup(EditableDevice):
     """
     The Contingency group
     """
-    __slots__ = ('category', 'active')
+    __slots__ = ('category',)
 
-    def __init__(self, idtag: Union[str, None] = None, name="ContingencyGroup", category='', active: bool = True):
+    def __init__(self, idtag: Union[str, None] = None, name="ContingencyGroup", category=''):
         """
         Contingency group
         :param idtag: Unique identifier
         :param name: contingency group name
         :param category: tag to category the group
-        :param active: Is the contingency group active for consideration?
         """
 
         EditableDevice.__init__(self,
@@ -31,7 +30,4 @@ class ContingencyGroup(EditableDevice):
         # Contingency type
         self.category = category
 
-        self.active = bool(active)
-
         self.register(key='category', units='', tpe=str, definition='Some tag to category the contingency group')
-        self.register(key='active', units='', tpe=bool, definition='Is the contingency group active for consideration?')

@@ -48,11 +48,6 @@ class Ui_ReduceDialog(object):
         self.horizontalLayout = QHBoxLayout(self.frame)
         self.horizontalLayout.setObjectName(u"horizontalLayout")
         self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
-        self.busModeComboBox = QComboBox(self.frame)
-        self.busModeComboBox.setObjectName(u"busModeComboBox")
-
-        self.horizontalLayout.addWidget(self.busModeComboBox)
-
         self.methodComboBox = QComboBox(self.frame)
         self.methodComboBox.setObjectName(u"methodComboBox")
 
@@ -78,8 +73,6 @@ class Ui_ReduceDialog(object):
 
     def retranslateUi(self, ReduceDialog):
         ReduceDialog.setWindowTitle(QCoreApplication.translate("ReduceDialog", u"Grid Merge", None))
-        self.busModeComboBox.setPlaceholderText(QCoreApplication.translate("ReduceDialog", u"Buses", None))
-        self.methodComboBox.setPlaceholderText(QCoreApplication.translate("ReduceDialog", u"Method", None))
 #if QT_CONFIG(tooltip)
         self.reduceButton.setToolTip(QCoreApplication.translate("ReduceDialog", u"Aply the selected changes", None))
 #endif // QT_CONFIG(tooltip)

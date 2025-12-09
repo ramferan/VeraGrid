@@ -120,7 +120,7 @@ class DcLine(BranchParent):
         self.fault_pos = float(fault_pos)
 
         # total impedance and admittance in p.u.
-        self.R = float(r) if r is not None else 0.0001
+        self.R = float(r)
 
         # type template
         self.template = template
