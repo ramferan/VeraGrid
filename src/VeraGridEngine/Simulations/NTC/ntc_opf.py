@@ -142,7 +142,8 @@ def get_transfer_power_scaling_per_bus(bus_data_t: BusData,
     # get values per bus
     gen_per_bus = gen_data_t.get_injections_per_bus() / Sbase
     load_per_bus = load_data_t.get_injections_per_bus() / Sbase
-    pinst_per_bus = gen_data_t.get_installed_power_per_bus() / Sbase
+    pinst_per_bus = gen_data_t.get_array_per_bus(gen_data_t.installed_p * gen_data_t.active) / Sbase
+    # pinst_per_bus = gen_data_t.get_array_per_bus(gen_data_t.installed_p) / Sbase
 
     # Evaluate transfer method
     if transfer_method == AvailableTransferMode.InstalledPower:
@@ -157,7 +158,8 @@ def get_transfer_power_scaling_per_bus(bus_data_t: BusData,
             p_max = gen_data_t.get_pmax_per_bus() / Sbase
 
         # dispatchable_bus = (gen_data_t.C_bus_elm * gen_data_t.dispatchable).astype(bool).astype(float)
-        dispatchable_bus = gen_data_t.get_dispatchable_per_bus().astype(float)
+        dispatchable_bus = gen_data_t.get_array_per_bus(
+            (gen_data_t.dispatchable * gen_data_t.active).astype(float)).astype(bool).astype(float)
 
     elif transfer_method == AvailableTransferMode.Generation:
         p_ref = gen_per_bus
@@ -171,7 +173,8 @@ def get_transfer_power_scaling_per_bus(bus_data_t: BusData,
             p_max = gen_data_t.get_pmax_per_bus() / Sbase
 
         # dispatchable_bus = (gen_data_t.C_bus_elm * gen_data_t.dispatchable).astype(bool).astype(float)
-        dispatchable_bus = gen_data_t.get_dispatchable_per_bus().astype(float)
+        dispatchable_bus = gen_data_t.get_array_per_bus(
+            (gen_data_t.dispatchable * gen_data_t.active).astype(float)).astype(bool).astype(float)
 
     elif transfer_method == AvailableTransferMode.Load:
         p_ref = load_per_bus
@@ -446,7 +449,7 @@ def pmode3_formulation2(prob, t_idx, m, rate, P0, droop, theta_f, theta_t, base_
 
     return flow
 
-    
+
 def pmode3_formulation3(prob, t_idx, m, rate, P0, droop, theta_f, theta_t, base_name: str = "hvdc"):
     """
     Formulation
@@ -532,7 +535,58 @@ def pmode3_formulation3(prob, t_idx, m, rate, P0, droop, theta_f, theta_t, base_
 
     return None
 
-    
+
+def pmode3_formulation_impr(prob, t_idx, m, rate, P0, droop, theta_f, theta_t, base_name: str = "hvdc"):
+    """
+    Formulation for HVDC link with three operating regions using big-M and binary variables.
+    """
+    # Variables
+    flow = prob.add_var(
+        lb=-rate,
+        ub=rate,
+        name=f"{base_name}_flow_{t_idx}_{m}"
+    )
+    z1 = prob.add_int(lb=0, ub=1, name=f"{base_name}_z1_{t_idx}_{m}")
+    z2 = prob.add_int(lb=0, ub=1, name=f"{base_name}_z2_{t_idx}_{m}")
+    z3 = prob.add_int(lb=0, ub=1, name=f"{base_name}_z3_{t_idx}_{m}")
+
+    # Constants
+    delta = theta_f - theta_t
+    delta_low = (-rate - P0) / droop
+    delta_high = (rate - P0) / droop
+    M = 20 * rate  # Big-M as per note; may need adjustment for angle constraints
+
+    # Exactly one region active
+    prob.add_cst(z1 + z2 + z3 >= 1, name=f"one_region_ge_{t_idx}_{m}")
+    prob.add_cst(z1 + z2 + z3 <= 1, name=f"one_region_le_{t_idx}_{m}")
+
+    # Region constraints
+    # Region 1 (z1=1): saturated at -rate, delta <= delta_low
+    prob.add_cst(delta <= delta_low + M * (1 - z1), name=f"region1_le_{t_idx}_{m}")
+
+    # Region 2 (z2=1): droop, delta_low <= delta <= delta_high
+    prob.add_cst(delta >= delta_low - M * (1 - z2), name=f"region2_ge_{t_idx}_{m}")
+    prob.add_cst(delta <= delta_high + M * (1 - z2), name=f"region2_le_{t_idx}_{m}")
+
+    # Region 3 (z3=1): saturated at +rate, delta >= delta_high
+    prob.add_cst(delta >= delta_high - M * (1 - z3), name=f"region3_ge_{t_idx}_{m}")
+
+    # Power constraints
+    # Region 1: flow = -rate when z1=1
+    prob.add_cst(flow >= -rate - M * (1 - z1), name=f"power1_ge_{t_idx}_{m}")
+    prob.add_cst(flow <= -rate + M * (1 - z1), name=f"power1_le_{t_idx}_{m}")
+
+    # Region 2: flow = P0 + droop * (theta_f - theta_t) when z2=1
+    prob.add_cst(flow - (P0 + droop * delta) >= -M * (1 - z2), name=f"power2_ge_{t_idx}_{m}")
+    prob.add_cst(flow - (P0 + droop * delta) <= M * (1 - z2), name=f"power2_le_{t_idx}_{m}")
+
+    # Region 3: flow = rate when z3=1
+    prob.add_cst(flow >= rate - M * (1 - z3), name=f"power3_ge_{t_idx}_{m}")
+    prob.add_cst(flow <= rate + M * (1 - z3), name=f"power3_le_{t_idx}_{m}")
+
+    return flow
+
+
 def pmode3_formulation_convex_hull(prob, t_idx, m, rate, P0, droop, theta_f, theta_t, f_obj,
                                    dtheta_max=1.57, base_name: str = "hvdc"):
     """
@@ -575,11 +629,11 @@ def pmode3_formulation_convex_hull(prob, t_idx, m, rate, P0, droop, theta_f, the
     """
 
     tag = f"{t_idx}_{m}"
-    nm  = lambda s: f"{base_name}_{s}_{tag}"
+    nm = lambda s: f"{base_name}_{s}_{tag}"
 
     # Vars
     flow = prob.add_var(lb=-rate, ub=rate, name=nm("flow"))
-    g    = prob.add_var(lb=-prob.INFINITY, ub=prob.INFINITY, name=nm("g"))
+    g = prob.add_var(lb=-prob.INFINITY, ub=prob.INFINITY, name=nm("g"))
 
     lam_d = prob.add_int(lb=0, ub=1, name=nm("lam_d"))  # droop region
     lam_u = prob.add_int(lb=0, ub=1, name=nm("lam_u"))  # upper saturation
@@ -595,14 +649,14 @@ def pmode3_formulation_convex_hull(prob, t_idx, m, rate, P0, droop, theta_f, the
     prob.add_cst(lam_d + lam_u + lam_l == 1, name=nm("region_sum_eq"))
 
     # New vars
-    phi = prob.add_var(lb=-dtheta_max, ub=dtheta_max, name=nm("phi"))   # control angle
-    s   = prob.add_var(lb=0.0,        ub=prob.INFINITY, name=nm("phi_slack_abs"))
+    phi = prob.add_var(lb=-dtheta_max, ub=dtheta_max, name=nm("phi"))  # control angle
+    s = prob.add_var(lb=0.0, ub=prob.INFINITY, name=nm("phi_slack_abs"))
 
     # Use phi in droop law (replace your droop_affine_eq)
     prob.add_cst(g == P0 + droop * phi, name=nm("droop_affine_eq_phi"))
 
     # Softly tie phi to actual angle difference (absolute value with linear slacks)
-    prob.add_cst(s >=  phi - (theta_f - theta_t), name=nm("phi_couple_pos"))
+    prob.add_cst(s >= phi - (theta_f - theta_t), name=nm("phi_couple_pos"))
     prob.add_cst(s >= -(phi - (theta_f - theta_t)), name=nm("phi_couple_neg"))
 
     f_obj += 1.0 * s
@@ -614,7 +668,7 @@ def pmode3_formulation_convex_hull(prob, t_idx, m, rate, P0, droop, theta_f, the
     prob.add_cst(flow == f_d + f_u + f_l, name=nm("flow_decomp_eq"))
 
     # Saturation regimes (exact, so we avoid Big-M)
-    prob.add_cst(f_u ==  rate * lam_u, name=nm("upper_sat_eq"))
+    prob.add_cst(f_u == rate * lam_u, name=nm("upper_sat_eq"))
     prob.add_cst(f_l == -rate * lam_l, name=nm("lower_sat_eq"))
 
     # Droop regime: f_d equals disaggregated droop variable g_d (maybe could be removed?)
@@ -630,11 +684,11 @@ def pmode3_formulation_convex_hull(prob, t_idx, m, rate, P0, droop, theta_f, the
 
     # Convex hull linking g_d to g when lam_d = 1
     # Avoid indicators because hard to code into OrTools or PuLP
-    prob.add_cst(g_d - g <=  gU * (1 - lam_d), name=nm("droop_link_hull_le"))
-    prob.add_cst(g_d - g >=  gL * (1 - lam_d), name=nm("droop_link_hull_ge"))
+    prob.add_cst(g_d - g <= gU * (1 - lam_d), name=nm("droop_link_hull_le"))
+    prob.add_cst(g_d - g >= gL * (1 - lam_d), name=nm("droop_link_hull_ge"))
 
     # Consistency so we saturate only if g beyond the limit
-    prob.add_cst(g >=  rate * lam_u + gL * (1 - lam_u), name=nm("upper_sat_consistency_ge"))
+    prob.add_cst(g >= rate * lam_u + gL * (1 - lam_u), name=nm("upper_sat_consistency_ge"))
     prob.add_cst(g <= -rate * lam_l + gU * (1 - lam_l), name=nm("lower_sat_consistency_le"))
 
     return flow, f_obj
@@ -1456,7 +1510,7 @@ def add_linear_injections_formulation(t: Union[int, None],
     # minimize the power at area 2 (receiving area), maximize at area 1 (sending area)
     # minimize the slacks
     # f_obj += ntc_vars.delta_2[t] - ntc_vars.delta_1[t] + ntc_vars.delta_sl_1[t] + ntc_vars.delta_sl_2[t]
-    f_obj +=  - ntc_vars.delta_1[t]
+    f_obj += - ntc_vars.delta_1[t]
 
     return f_obj, base_power
 
@@ -1803,7 +1857,7 @@ def add_linear_branches_formulation(t_idx: int,
 
     # add the inter-area flows to the objective function with the correct sign
     # for k, sense in branch_vars.inter_space_branches:
-        # f_obj += -branch_vars.flows[t_idx, k] * sense
+    # f_obj += -branch_vars.flows[t_idx, k] * sense
 
     f_obj += 0.0
 
@@ -1945,7 +1999,8 @@ def add_linear_hvdc_formulation(t_idx: int,
                                 hvdc_vars: HvdcNtcVars,
                                 vars_bus: BusNtcVars,
                                 prob: LpModel,
-                                saturate: bool = True):
+                                logger: Logger,
+                                saturate: bool = True,):
     """
 
     :param t_idx:
@@ -1954,6 +2009,7 @@ def add_linear_hvdc_formulation(t_idx: int,
     :param hvdc_vars:
     :param vars_bus:
     :param prob:
+    :param logger:
     :param saturate:
     :return:
     """
@@ -1975,6 +2031,10 @@ def add_linear_hvdc_formulation(t_idx: int,
 
                 # convert MW/deg to pu/rad
                 droop = hvdc_data_t.get_angle_droop_in_pu_rad_at(m, Sbase)
+                if droop == 0.0:
+                    logger.add_warning("Zero HVDC droop",
+                                       device=hvdc_data_t.names[m], value=droop, expected_value=">0")
+                    droop = 1e-20
 
                 if saturate:
                     # hvdc_vars.flows[t_idx, m] = pmode3_formulation(prob=prob,
@@ -2006,17 +2066,27 @@ def add_linear_hvdc_formulation(t_idx: int,
                     #                                                 theta_t=vars_bus.Va[t_idx, to],
                     #                                                 base_name="hvdc")
 
-                    hvdc_vars.flows[t_idx, m], f_obj = pmode3_formulation_convex_hull(prob=prob,
-                                                                       t_idx=t_idx,
-                                                                       m=m,
-                                                                       rate=hvdc_data_t.rates[m] / Sbase,
-                                                                       P0=P0,
-                                                                       droop=droop,
-                                                                       theta_f=vars_bus.Va[t_idx, fr],
-                                                                       theta_t=vars_bus.Va[t_idx, to],
-                                                                       f_obj=f_obj,
-                                                                       dtheta_max=1.0,
-                                                                       base_name="hvdc")
+                    hvdc_vars.flows[t_idx, m] = pmode3_formulation_impr(prob=prob,
+                                                                        t_idx=t_idx,
+                                                                        m=m,
+                                                                        rate=hvdc_data_t.rates[m] / Sbase,
+                                                                        P0=P0,
+                                                                        droop=droop,
+                                                                        theta_f=vars_bus.Va[t_idx, fr],
+                                                                        theta_t=vars_bus.Va[t_idx, to],
+                                                                        base_name="hvdc")
+
+                    # hvdc_vars.flows[t_idx, m], f_obj = pmode3_formulation_convex_hull(prob=prob,
+                    #                                                    t_idx=t_idx,
+                    #                                                    m=m,
+                    #                                                    rate=hvdc_data_t.rates[m] / Sbase,
+                    #                                                    P0=P0,
+                    #                                                    droop=droop,
+                    #                                                    theta_f=vars_bus.Va[t_idx, fr],
+                    #                                                    theta_t=vars_bus.Va[t_idx, to],
+                    #                                                    f_obj=f_obj,
+                    #                                                    dtheta_max=1.0,
+                    #                                                    base_name="hvdc")
 
                     # hvdc_vars.flows[t_idx, m] = formulate_hvdc_Pmode3_single_flow(
                     #     solver=prob,
@@ -2094,7 +2164,7 @@ def add_linear_hvdc_formulation(t_idx: int,
 
     # add the flows to the objective function
     # for k, sense in hvdc_vars.inter_space_hvdc:
-        # f_obj += -hvdc_vars.flows[t_idx, k] * sense
+    #   f_obj += -hvdc_vars.flows[t_idx, k] * sense
     f_obj += 0.0
 
     return f_obj
@@ -2144,21 +2214,38 @@ def add_linear_vsc_formulation(t_idx: int,
                 P0 = vsc_data_t.control2_val[m] / Sbase
 
                 # convert MW/deg to pu/rad
-                droop = vsc_data_t.control1_val * 57.295779513 / Sbase  # MW/deg -> p.u./rad
+                droop = vsc_data_t.control1_val[m] * 57.295779513 / Sbase  # MW/deg -> p.u./rad
 
                 if saturate:
 
-                    vsc_vars.flows[t_idx, m] = pmode3_formulation2(
-                        prob=prob,
-                        t_idx=t_idx,
-                        m=m,
-                        rate=vsc_data_t.rates[m] / Sbase,
-                        P0=P0,
-                        droop=droop,
-                        theta_f=bus_vars.Va[t_idx, control_bus_idx],  # control bus
-                        theta_t=bus_vars.Va[t_idx, to],  # ac bus
-                        base_name="vsc"
-                    )
+                    # vsc_vars.flows[t_idx, m] = pmode3_formulation2(
+                    #     prob=prob,
+                    #     t_idx=t_idx,
+                    #     m=m,
+                    #     rate=vsc_data_t.rates[m] / Sbase,
+                    #     P0=P0,
+                    #     droop=droop,
+                    #     theta_f=bus_vars.Va[t_idx, control_bus_idx],  # control bus
+                    #     theta_t=bus_vars.Va[t_idx, to],  # ac bus
+                    #     base_name="vsc"
+                    # )
+
+                    # On the selection of the angles:
+                    # The VSC connects an AC bus (to) to a DC bus (from)
+                    # On the other end of the DC connection, there is a second VSC
+                    # The AC bus of this second VSC is the control_bus_idx
+                    # Hence, if P = P0 + k · (theta_f - theta_t), then:
+                    # theta_f = Va at to, theta_t = Va at control_bus_idx
+
+                    vsc_vars.flows[t_idx, m] = pmode3_formulation_impr(prob=prob,
+                                                                       t_idx=t_idx,
+                                                                       m=m,
+                                                                       rate=vsc_data_t.rates[m] / Sbase,
+                                                                       P0=P0,
+                                                                       droop=droop,
+                                                                       theta_f=bus_vars.Va[t_idx, control_bus_idx],
+                                                                       theta_t=bus_vars.Va[t_idx, to],
+                                                                       base_name="vsc")
 
                 else:
 
@@ -2174,7 +2261,7 @@ def add_linear_vsc_formulation(t_idx: int,
                     # flow = P0 + k · (theta_f - theta_t)
                     prob.add_cst(
                         cst=vsc_vars.flows[t_idx, m] == P0 + droop * (
-                                bus_vars.Va[t_idx, fr] - bus_vars.Va[control_bus_idx, to]),
+                                bus_vars.Va[t_idx, control_bus_idx] - bus_vars.Va[t_idx, to]),
                         name=join("vsc_flow_cst_", [t_idx, m], "_")
                     )
 
@@ -2366,10 +2453,9 @@ def run_linear_ntc_opf(grid: MultiCircuit,
                        logger: Logger = Logger(),
                        progress_text: Union[None, Callable[[str], None]] = None,
                        progress_func: Union[None, Callable[[float], None]] = None,
-                       export_model_fname: Union[None, str] = None,
                        verbose: int = 0,
                        robust: bool = False,
-                       mip_framework: MIPFramework = MIPFramework.PuLP) -> NtcVars:
+                       mip_framework: MIPFramework = MIPFramework.PuLP) -> Tuple[NtcVars, LpModel]:
     """
 
     :param grid: MultiCircuit instance
@@ -2390,7 +2476,6 @@ def run_linear_ntc_opf(grid: MultiCircuit,
     :param logger: logger instance
     :param progress_text: function to report text messages
     :param progress_func: function to report progress
-    :param export_model_fname: Export the model into LP and MPS?
     :param verbose: Verbosity level
     :param robust: Robust optimization?
     :param mip_framework: MIPFramework to use
@@ -2512,6 +2597,8 @@ def run_linear_ntc_opf(grid: MultiCircuit,
         hvdc_vars=mip_vars.hvdc_vars,
         vars_bus=mip_vars.bus_vars,
         prob=lp_model,
+        logger=logger,
+        saturate=True
     )
 
     # formulate vsc -------------------------------------------------------------------------------------------
@@ -2655,11 +2742,6 @@ def run_linear_ntc_opf(grid: MultiCircuit,
     if progress_func is not None:
         progress_func(0)
 
-    if export_model_fname is not None:
-        lp_model.save_model(file_name=export_model_fname)
-        logger.add_info("LP model saved", value=export_model_fname)
-        print('LP model saved as:', export_model_fname)
-
     # solve the model
     status = lp_model.solve(robust=robust, show_logs=verbose > 0, progress_text=progress_text)
 
@@ -2746,4 +2828,4 @@ def run_linear_ntc_opf(grid: MultiCircuit,
     logger.add_info("Structural inter-area rate", value=vars_v.structural_ntc[t_idx])
     logger.add_info("Inter-area NTC", value=vars_v.inter_area_flows[t_idx])
 
-    return vars_v
+    return vars_v, lp_model

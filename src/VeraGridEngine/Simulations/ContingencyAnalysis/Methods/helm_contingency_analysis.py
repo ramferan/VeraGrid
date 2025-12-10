@@ -2,9 +2,10 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
 
 import numpy as np
-from typing import Union
+from typing import Union, TYPE_CHECKING
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_results import ContingencyAnalysisResults
@@ -14,10 +15,14 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOpt
 from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_options import ContingencyAnalysisOptions
 from VeraGridEngine.enumerations import ContingencyOperationTypes
 
+if TYPE_CHECKING:  # Only imports the below statements during type checking
+    from VeraGridEngine.Compilers.circuit_to_data import VALID_OPF_RESULTS
+
 
 def helm_contingency_analysis(grid: MultiCircuit,
                               options: ContingencyAnalysisOptions,
                               calling_class,
+                              opf_results: VALID_OPF_RESULTS | None = None,
                               t: Union[int, None] = None,
                               t_prob: float = 1.0) -> ContingencyAnalysisResults:
     """
@@ -25,13 +30,16 @@ def helm_contingency_analysis(grid: MultiCircuit,
     :param grid:
     :param options:
     :param calling_class:
+    :param opf_results: OPF results, to be used if not None
     :param t: time index, if None the snapshot is used
     :param t_prob: probability of te time
     :return: returns the results
     """
 
     # set the numerical circuit
-    nc = compile_numerical_circuit_at(grid, t_idx=t)
+    nc = compile_numerical_circuit_at(grid,
+                                      opf_results=opf_results,
+                                      t_idx=t)
 
     if options.pf_options is None:
         pf_opts = PowerFlowOptions(solver_type=SolverType.Linear,
@@ -114,7 +122,7 @@ def helm_contingency_analysis(grid: MultiCircuit,
                                contingency_loadings=np.abs(loading),
                                contingency_idx=ic,
                                contingency_group=contingency_group,
-                               srap_ratings=nc.passive_branch_data.protection_rates,)
+                               srap_ratings=nc.passive_branch_data.protection_rates, )
 
         # revert the states for the next run
         nc.passive_branch_data.active = original_br_active.copy()

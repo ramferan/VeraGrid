@@ -82,7 +82,7 @@ class LineEditor(QDialog):
         r_ohm = self.line.R * Zbase / length
         x_ohm = self.line.X * Zbase / length
         b_us = self.line.B * Ybase / length * 1e6
-        I_KA = np.round(self.line.rate / (Vf * 1.73205080757), 6)  # current in KA
+        I_KA = np.round(self.line.rate / (Vf * 1.73205080757), 6)  # current in kA
 
         # ------------------------------------------------------------------------------------------
 
@@ -136,7 +136,7 @@ class LineEditor(QDialog):
         self.l_spinner.setMaximum(9999999)
         self.l_spinner.setDecimals(6)
         self.l_spinner.setValue(length)
-        self.l_spinner.setSuffix(' Km')
+        self.l_spinner.setSuffix(' km')
 
         # Max current
         self.i_spinner = QDoubleSpinBox()
@@ -144,7 +144,7 @@ class LineEditor(QDialog):
         self.i_spinner.setMaximum(9999999)
         self.i_spinner.setDecimals(6)
         self.i_spinner.setValue(I_KA)
-        self.i_spinner.setSuffix(' KA')
+        self.i_spinner.setSuffix(' kA')
 
         # R
         self.r_spinner = QDoubleSpinBox()
@@ -152,7 +152,7 @@ class LineEditor(QDialog):
         self.r_spinner.setMaximum(9999999)
         self.r_spinner.setDecimals(6)
         self.r_spinner.setValue(r_ohm)
-        self.r_spinner.setSuffix(' Ω/Km')
+        self.r_spinner.setSuffix(' Ω/km')
 
         # X
         self.x_spinner = QDoubleSpinBox()
@@ -160,7 +160,7 @@ class LineEditor(QDialog):
         self.x_spinner.setMaximum(9999999)
         self.x_spinner.setDecimals(6)
         self.x_spinner.setValue(x_ohm)
-        self.x_spinner.setSuffix(' Ω/Km')
+        self.x_spinner.setSuffix(' Ω/km')
 
         # B
         self.b_spinner = QDoubleSpinBox()
@@ -204,7 +204,7 @@ class LineEditor(QDialog):
         self.layout.addWidget(QLabel("L: Line length"))
         self.layout.addWidget(self.l_spinner)
 
-        self.layout.addWidget(QLabel("Imax: Max. current @" + str(int(Vf)) + " [KV]"))
+        self.layout.addWidget(QLabel("Imax: Max. current @" + str(int(Vf)) + " [kV]"))
         self.layout.addWidget(self.i_spinner)
 
         self.layout.addWidget(QLabel("R: Resistance"))
@@ -258,7 +258,7 @@ class LineEditor(QDialog):
                         x_ohm=self.x_spinner.value(),  # ohm / km
                         c_nf=self.b_spinner.value() * 1e3 / wf,  # nF / km
                         length=length,  # km
-                        Imax=self.i_spinner.value(),  # KA
+                        Imax=self.i_spinner.value(),  # kA
                         freq=self.frequency,  # Hz
                         Sbase=self.Sbase,  # MVA
                         apply_to_profile=self.apply_to_profile.isChecked()

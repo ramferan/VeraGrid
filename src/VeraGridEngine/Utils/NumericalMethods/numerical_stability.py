@@ -16,7 +16,7 @@ def sparse_instability_svd_test(A: csc_matrix, condition_number_thrshold: float 
     :return: condition_number (float): The condition number of the matrix
              unstable (bool): 'stable' or 'unstable' based on the condition number
     """
-    if A.shape[0] != 0:
+    if A.shape[0] > 2:  # 0 < k < A.shape[0]
         # Compute the singular values using the svds function (k=2 to get largest and smallest)
         u, s, vt = svds(A, k=2)  # Gets the smallest and largest singular values
 

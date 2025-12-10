@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'rms_model_editor.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.2
+## Created by: Qt User Interface Compiler version 6.7.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -16,10 +16,9 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QIcon, QImage, QKeySequence, QLinearGradient,
     QPainter, QPalette, QPixmap, QRadialGradient,
     QTransform)
-from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QHeaderView,
-    QListWidget, QListWidgetItem, QMainWindow, QSizePolicy,
-    QSplitter, QTabWidget, QTableView, QToolBar,
-    QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QComboBox, QFrame, QHBoxLayout,
+    QLabel, QMainWindow, QPushButton, QSizePolicy,
+    QSpacerItem, QVBoxLayout, QWidget)
 from .icons_rc import *
 
 class Ui_MainWindow(object):
@@ -34,75 +33,75 @@ class Ui_MainWindow(object):
         self.centralwidget.setObjectName(u"centralwidget")
         self.verticalLayout = QVBoxLayout(self.centralwidget)
         self.verticalLayout.setObjectName(u"verticalLayout")
-        self.verticalLayout.setContentsMargins(0, 0, 0, 0)
-        self.tabWidget = QTabWidget(self.centralwidget)
-        self.tabWidget.setObjectName(u"tabWidget")
-        self.tab = QWidget()
-        self.tab.setObjectName(u"tab")
-        self.verticalLayout_4 = QVBoxLayout(self.tab)
-        self.verticalLayout_4.setObjectName(u"verticalLayout_4")
-        self.editorLayout = QVBoxLayout()
-        self.editorLayout.setObjectName(u"editorLayout")
-
-        self.verticalLayout_4.addLayout(self.editorLayout)
-
-        self.tabWidget.addTab(self.tab, "")
-        self.tab_2 = QWidget()
-        self.tab_2.setObjectName(u"tab_2")
-        self.verticalLayout_3 = QVBoxLayout(self.tab_2)
-        self.verticalLayout_3.setObjectName(u"verticalLayout_3")
-        self.splitter_3 = QSplitter(self.tab_2)
-        self.splitter_3.setObjectName(u"splitter_3")
-        self.splitter_3.setOrientation(Qt.Orientation.Horizontal)
-        self.frame_8 = QFrame(self.splitter_3)
-        self.frame_8.setObjectName(u"frame_8")
-        self.frame_8.setMaximumSize(QSize(400, 16777215))
-        self.frame_8.setFrameShape(QFrame.Shape.NoFrame)
-        self.frame_8.setFrameShadow(QFrame.Shadow.Raised)
-        self.verticalLayout_7 = QVBoxLayout(self.frame_8)
-        self.verticalLayout_7.setObjectName(u"verticalLayout_7")
-        self.verticalLayout_7.setContentsMargins(-1, 8, -1, -1)
-        self.datalistWidget = QListWidget(self.frame_8)
-        QListWidgetItem(self.datalistWidget)
-        QListWidgetItem(self.datalistWidget)
-        QListWidgetItem(self.datalistWidget)
-        self.datalistWidget.setObjectName(u"datalistWidget")
-
-        self.verticalLayout_7.addWidget(self.datalistWidget)
-
-        self.splitter_3.addWidget(self.frame_8)
-        self.PlotFrame = QFrame(self.splitter_3)
-        self.PlotFrame.setObjectName(u"PlotFrame")
-        self.PlotFrame.setFrameShape(QFrame.Shape.NoFrame)
-        self.PlotFrame.setFrameShadow(QFrame.Shadow.Raised)
-        self.horizontalLayout = QHBoxLayout(self.PlotFrame)
+        self.frame = QFrame(self.centralwidget)
+        self.frame.setObjectName(u"frame")
+        self.frame.setMaximumSize(QSize(16777215, 40))
+        self.frame.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame.setFrameShadow(QFrame.Shadow.Raised)
+        self.horizontalLayout = QHBoxLayout(self.frame)
         self.horizontalLayout.setObjectName(u"horizontalLayout")
-        self.horizontalLayout.setContentsMargins(8, 8, 8, 8)
-        self.datatableView = QTableView(self.PlotFrame)
-        self.datatableView.setObjectName(u"datatableView")
+        self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
+        self.model_selector_comboBox = QComboBox(self.frame)
+        self.model_selector_comboBox.addItem("")
+        self.model_selector_comboBox.addItem("")
+        self.model_selector_comboBox.addItem("")
+        self.model_selector_comboBox.setObjectName(u"model_selector_comboBox")
 
-        self.horizontalLayout.addWidget(self.datatableView)
+        self.horizontalLayout.addWidget(self.model_selector_comboBox)
 
-        self.splitter_3.addWidget(self.PlotFrame)
+        self.horizontalSpacer = QSpacerItem(856, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
-        self.verticalLayout_3.addWidget(self.splitter_3)
+        self.horizontalLayout.addItem(self.horizontalSpacer)
 
-        self.tabWidget.addTab(self.tab_2, "")
+        self.currently_editing_block_label = QLabel(self.frame)
+        self.currently_editing_block_label.setObjectName(u"currently_editing_block_label")
 
-        self.verticalLayout.addWidget(self.tabWidget)
+        self.horizontalLayout.addWidget(self.currently_editing_block_label)
+
+        self.horizontalSpacer_2 = QSpacerItem(48, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.horizontalLayout.addItem(self.horizontalSpacer_2)
+
+        self.currently_editing_object_label = QLabel(self.frame)
+        self.currently_editing_object_label.setObjectName(u"currently_editing_object_label")
+
+        self.horizontalLayout.addWidget(self.currently_editing_object_label)
+
+
+        self.verticalLayout.addWidget(self.frame)
+
+        self.mainLayout = QVBoxLayout()
+        self.mainLayout.setObjectName(u"mainLayout")
+
+        self.verticalLayout.addLayout(self.mainLayout)
+
+        self.frame_2 = QFrame(self.centralwidget)
+        self.frame_2.setObjectName(u"frame_2")
+        self.frame_2.setMaximumSize(QSize(16777215, 40))
+        self.frame_2.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame_2.setFrameShadow(QFrame.Shadow.Raised)
+        self.horizontalLayout_2 = QHBoxLayout(self.frame_2)
+        self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
+        self.InitGuessButton = QPushButton(self.frame_2)
+        self.InitGuessButton.setObjectName(u"InitGuessButton")
+
+        self.horizontalLayout_2.addWidget(self.InitGuessButton)
+
+        self.horizontalSpacer_3 = QSpacerItem(859, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.horizontalLayout_2.addItem(self.horizontalSpacer_3)
+
+        self.doItButton = QPushButton(self.frame_2)
+        self.doItButton.setObjectName(u"doItButton")
+
+        self.horizontalLayout_2.addWidget(self.doItButton)
+
+
+        self.verticalLayout.addWidget(self.frame_2)
 
         MainWindow.setCentralWidget(self.centralwidget)
-        self.toolBar = QToolBar(MainWindow)
-        self.toolBar.setObjectName(u"toolBar")
-        self.toolBar.setMovable(False)
-        MainWindow.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolBar)
-
-        self.toolBar.addAction(self.actionCheckModel)
 
         self.retranslateUi(MainWindow)
-
-        self.tabWidget.setCurrentIndex(0)
-
 
         QMetaObject.connectSlotsByName(MainWindow)
     # setupUi
@@ -110,19 +109,14 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
         self.actionCheckModel.setText(QCoreApplication.translate("MainWindow", u"CheckModel", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QCoreApplication.translate("MainWindow", u"Block editor", None))
+        self.model_selector_comboBox.setItemText(0, QCoreApplication.translate("MainWindow", u"Template model", None))
+        self.model_selector_comboBox.setItemText(1, QCoreApplication.translate("MainWindow", u"Block editor model", None))
+        self.model_selector_comboBox.setItemText(2, QCoreApplication.translate("MainWindow", u"Equations editor model", None))
 
-        __sortingEnabled = self.datalistWidget.isSortingEnabled()
-        self.datalistWidget.setSortingEnabled(False)
-        ___qlistwidgetitem = self.datalistWidget.item(0)
-        ___qlistwidgetitem.setText(QCoreApplication.translate("MainWindow", u"State variables", None));
-        ___qlistwidgetitem1 = self.datalistWidget.item(1)
-        ___qlistwidgetitem1.setText(QCoreApplication.translate("MainWindow", u"Algebraic variables", None));
-        ___qlistwidgetitem2 = self.datalistWidget.item(2)
-        ___qlistwidgetitem2.setText(QCoreApplication.translate("MainWindow", u"Constants", None));
-        self.datalistWidget.setSortingEnabled(__sortingEnabled)
-
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QCoreApplication.translate("MainWindow", u"Data", None))
-        self.toolBar.setWindowTitle(QCoreApplication.translate("MainWindow", u"toolBar", None))
+        self.model_selector_comboBox.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Select model to apply", None))
+        self.currently_editing_block_label.setText(QCoreApplication.translate("MainWindow", u"Submodel:", None))
+        self.currently_editing_object_label.setText(QCoreApplication.translate("MainWindow", u"Device:", None))
+        self.InitGuessButton.setText(QCoreApplication.translate("MainWindow", u"Add Initial Values", None))
+        self.doItButton.setText(QCoreApplication.translate("MainWindow", u"Do it!", None))
     # retranslateUi
 

@@ -158,8 +158,10 @@ class TimeEventsMain(DataBaseTableMain):
                                         if self.profile_input_dialogue.has_profile(i):
                                             # if there was a profile, we want the generator not dispatchable
                                             elm.enabled_dispatch = False
+                                            elm.enabled_dispatch_prof.fill(False)
                                         else:
                                             elm.enabled_dispatch = True
+                                            elm.enabled_dispatch_prof.fill(True)
 
                                     self.show_info_toast("Generators dispatchable status set")
 
@@ -203,6 +205,8 @@ class TimeEventsMain(DataBaseTableMain):
                     self.setup_sim_indices(st=self.start_end_dialogue_window.start_value,
                                            en=self.start_end_dialogue_window.end_value)
 
+                    self.view_objects_data()
+
                     self.show_info_toast("Resampled!")
             else:
                 self.show_error_toast("Empty time series :/")
@@ -239,6 +243,8 @@ class TimeEventsMain(DataBaseTableMain):
 
                             # we need to remove the clustering simulation because it no longer matches the time data
                             self.session.delete_driver(driver_type=SimulationTypes.ClusteringAnalysis_run)
+
+                            self.view_objects_data()
                             self.show_info_toast("Resampled!")
                 else:
                     self.show_error_toast("Run clustering simulation first")

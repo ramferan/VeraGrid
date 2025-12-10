@@ -6,7 +6,28 @@ from __future__ import annotations
 from VeraGridEngine.basic_structures import Logger
 
 
-def sub_float(line: str, a: int, b: int, device: str, prop_name: str, logger: Logger) -> float:
+def try_float(val: str, device: str, prop_name: str, logger: Logger, fallback_value: float = 0):
+    """
+
+    :param val:
+    :param device:
+    :param prop_name:
+    :param logger:
+    :param fallback_value:
+    :return:
+    """
+    try:
+        return float(val)
+    except ValueError as e:
+        logger.add_error(msg=str(e),
+                         device=device,
+                         device_property=prop_name,
+                         value=val)
+        return fallback_value
+
+
+def sub_float(line: str, a: int, b: int, device: str, prop_name: str, logger: Logger,
+              fallback_value: float = 0.0) -> float:
     """
     Try to get a value from a substring
     :param line: string
@@ -15,6 +36,7 @@ def sub_float(line: str, a: int, b: int, device: str, prop_name: str, logger: Lo
     :param device: device type name
     :param prop_name: property name
     :param logger: Logger to record issues
+    :param fallback_value: Value to set on error
     :return: float
     """
     if len(line) > b:
@@ -27,17 +49,38 @@ def sub_float(line: str, a: int, b: int, device: str, prop_name: str, logger: Lo
                              device=device,
                              device_property=prop_name,
                              value=chunk)
-            return 0.0
+            return fallback_value
     else:
         logger.add_error(msg=f"Could not parse {prop_name} because the file row is too short",
                          device=device,
                          device_property=prop_name,
                          value=line,
                          expected_value=b)
-        return 0.0
+        return fallback_value
 
 
-def sub_int(line: str, a: int, b: int, device: str, prop_name: str,  logger: Logger) -> int:
+def try_int(val: str, device: str, prop_name: str, logger: Logger, fallback_value: int = 0):
+    """
+
+    :param val:
+    :param device:
+    :param prop_name:
+    :param logger:
+    :param fallback_value:
+    :return:
+    """
+    try:
+        return int(val)
+    except ValueError as e:
+        logger.add_error(msg=str(e),
+                         device=device,
+                         device_property=prop_name,
+                         value=val)
+        return fallback_value
+
+
+def sub_int(line: str, a: int, b: int, device: str, prop_name: str, logger: Logger,
+            fallback_value: int = 0) -> int:
     """
     Try to get a value from a substring
     :param line: string
@@ -46,6 +89,7 @@ def sub_int(line: str, a: int, b: int, device: str, prop_name: str,  logger: Log
     :param device: device type name
     :param prop_name: property name
     :param logger: Logger to record issues
+    :param fallback_value: Value to set on error
     :return: int
     """
     if len(line) > b:
@@ -58,18 +102,18 @@ def sub_int(line: str, a: int, b: int, device: str, prop_name: str,  logger: Log
                              device=device,
                              device_property=prop_name,
                              value=chunk)
-            return 0
+            return fallback_value
     else:
         logger.add_error(msg=f"Could not parse {prop_name} because the file row is too short",
                          device=device,
                          device_property=prop_name,
                          value=line,
                          expected_value=b)
-        return 0
+        return fallback_value
 
 
-
-def sub_str(line: str, a: int, b: int, device: str, prop_name: str,  logger: Logger) -> str:
+def sub_str(line: str, a: int, b: int, device: str, prop_name: str, logger: Logger,
+            fallback_value: str = "") -> str:
     """
     Try to get a value from a substring
     :param line: string
@@ -78,6 +122,7 @@ def sub_str(line: str, a: int, b: int, device: str, prop_name: str,  logger: Log
     :param device: device type name
     :param prop_name: property name
     :param logger: Logger to record issues
+    :param fallback_value: Value to set on error
     :return: string
     """
 
@@ -90,4 +135,4 @@ def sub_str(line: str, a: int, b: int, device: str, prop_name: str,  logger: Log
                          device_property=prop_name,
                          value=line,
                          expected_value=b)
-        return ""
+        return fallback_value

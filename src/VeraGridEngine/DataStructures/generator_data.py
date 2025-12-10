@@ -60,6 +60,7 @@ class GeneratorData:
         self.x2: Vec = np.zeros(nelm, dtype=float)
 
         self.dispatchable: BoolVec = np.zeros(nelm, dtype=bool)
+        self.must_run: BoolVec = np.zeros(nelm, dtype=bool)
         self.pmax: Vec = np.zeros(nelm, dtype=float)
         self.pmin: Vec = np.zeros(nelm, dtype=float)
 
@@ -138,6 +139,7 @@ class GeneratorData:
         data.x2 = self.x2[elm_idx]
 
         data.dispatchable = self.dispatchable[elm_idx]
+        data.must_run = self.must_run[elm_idx]
         data.pmax = self.pmax[elm_idx]
         data.pmin = self.pmin[elm_idx]
 
@@ -219,6 +221,7 @@ class GeneratorData:
         data.x2 = self.x2.copy()
 
         data.dispatchable = self.dispatchable.copy()
+        data.must_run = self.must_run.copy()
         data.pmax = self.pmax.copy()
         data.pmin = self.pmin.copy()
 

@@ -59,9 +59,10 @@ def delta2StarAdmittance(Yab: complex,
     :return: Ya, Yb, Yc
     """
     return 1 / 3 * np.array([
-        [Yab + Yca, -Yab, -Yca],
-        [-Yab, Yab + Ybc, -Ybc],
-        [-Yca, -Ybc, Ybc + Yca]
+        [0, 0, 0, 0],
+        [0, Yab + Yca, -Yab, -Yca],
+        [0, -Yab, Yab + Ybc, -Ybc],
+        [0, -Yca, -Ybc, Ybc + Yca]
     ])
 
 
@@ -392,38 +393,124 @@ def get_load_data(data: LoadData,
                 data.S[ii] = elm.get_S_at(t_idx)
 
             if fill_three_phase:
-                if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
-                    data.S3_star[3 * ii + 0] = elm.get_Sa_at(t_idx)
-                    data.S3_star[3 * ii + 1] = elm.get_Sb_at(t_idx)
-                    data.S3_star[3 * ii + 2] = elm.get_Sc_at(t_idx)
+                if elm.conn == ShuntConnectionType.GroundedStar:
 
-                    data.I3_star[3 * ii + 0] = elm.get_I1_at(t_idx)
-                    data.I3_star[3 * ii + 1] = elm.get_I2_at(t_idx)
-                    data.I3_star[3 * ii + 2] = elm.get_I3_at(t_idx)
+                    data.S3_star[4 * ii + 1] = elm.get_Sa_at(t_idx)
+                    data.S3_star[4 * ii + 2] = elm.get_Sb_at(t_idx)
+                    data.S3_star[4 * ii + 3] = elm.get_Sc_at(t_idx)
 
-                    data.Y3_star[3 * ii + 0, 0] = elm.get_Y1_conj_at(t_idx)
-                    data.Y3_star[3 * ii + 1, 1] = elm.get_Y2_conj_at(t_idx)
-                    data.Y3_star[3 * ii + 2, 2] = elm.get_Y3_conj_at(t_idx)
+                    data.I3_star[4 * ii + 1] = elm.get_I1_at(t_idx)
+                    data.I3_star[4 * ii + 2] = elm.get_I2_at(t_idx)
+                    data.I3_star[4 * ii + 3] = elm.get_I3_at(t_idx)
+
+                    data.Y3_star[4 * ii + 0, 1] = -1 * elm.get_Y1_conj_at(t_idx)
+                    data.Y3_star[4 * ii + 0, 2] = -1 * elm.get_Y2_conj_at(t_idx)
+                    data.Y3_star[4 * ii + 0, 3] = -1 * elm.get_Y3_conj_at(t_idx)
+                    data.Y3_star[4 * ii + 1, 1] = elm.get_Y1_conj_at(t_idx)
+                    data.Y3_star[4 * ii + 2, 2] = elm.get_Y2_conj_at(t_idx)
+                    data.Y3_star[4 * ii + 3, 3] = elm.get_Y3_conj_at(t_idx)
+
+                elif elm.conn == ShuntConnectionType.FloatingStar:
+
+                    # Admittances
+                    Ya = elm.get_Y1_conj_at(t_idx)
+                    Yb = elm.get_Y2_conj_at(t_idx)
+                    Yc = elm.get_Y3_conj_at(t_idx)
+
+                    if Ya != 0.0+0.0j and Yb != 0.0+0.0j and Yc != 0.0+0.0j:
+                        data.A_floatingstar[ii] = Ya / (Ya + Yb + Yc)
+                        data.B_floatingstar[ii] = Yb / (Ya + Yb + Yc)
+                        data.C_floatingstar[ii] = Yc / (Ya + Yb + Yc)
+
+                        A = Ya / (Ya + Yb + Yc)
+                        B = Yb / (Ya + Yb + Yc)
+                        C = Yc / (Ya + Yb + Yc)
+
+                        # First row
+                        data.Y3_star[4 * ii + 1, 1] = (1 - A) * Ya
+                        data.Y3_star[4 * ii + 1, 2] = -B * Ya
+                        data.Y3_star[4 * ii + 1, 3] = -C * Ya
+
+                        # Second row
+                        data.Y3_star[4 * ii + 2, 1] = -A * Yb
+                        data.Y3_star[4 * ii + 2, 2] = (1 - B) * Yb
+                        data.Y3_star[4 * ii + 2, 3] = -C * Yb
+
+                        # Third row
+                        data.Y3_star[4 * ii + 3, 1] = -A * Yc
+                        data.Y3_star[4 * ii + 3, 2] = -B * Yc
+                        data.Y3_star[4 * ii + 3, 3] = (1 - C) * Yc
+
+                    # Currents
+                    Ia = elm.get_I1_at(t_idx)
+                    Ib = elm.get_I2_at(t_idx)
+                    Ic = elm.get_I3_at(t_idx)
+
+                    if Ia != 0.0+0.0j and Ib != 0.0+0.0j and Ic != 0.0+0.0j:
+
+                        data.I3_floatingstar[4 * ii + 1] = Ia
+                        data.I3_floatingstar[4 * ii + 2] = Ib
+                        data.I3_floatingstar[4 * ii + 3] = Ic
+
+                    # Powers
+                    Sa = elm.get_Sa_at(t_idx)
+                    Sb = elm.get_Sb_at(t_idx)
+                    Sc = elm.get_Sc_at(t_idx)
+
+                    if Sa != 0.0+0.0j and Sb != 0.0+0.0j and Sc != 0.0+0.0j:
+
+                        data.S3_floatingstar[4 * ii + 1] = Sa
+                        data.S3_floatingstar[4 * ii + 2] = Sb
+                        data.S3_floatingstar[4 * ii + 3] = Sc
+
+                elif elm.conn == ShuntConnectionType.NeutralStar:
+
+                    # Admittance
+                    Ya = elm.get_Y1_conj_at(t_idx)
+                    Yb = elm.get_Y2_conj_at(t_idx)
+                    Yc = elm.get_Y3_conj_at(t_idx)
+                    # First row
+                    data.Y3_star[4 * ii + 0, 0] = Ya + Yb + Yc + 1e-4
+                    data.Y3_star[4 * ii + 0, 1] = -Ya
+                    data.Y3_star[4 * ii + 0, 2] = -Yb
+                    data.Y3_star[4 * ii + 0, 3] = -Yc
+                    # Second row
+                    data.Y3_star[4 * ii + 1, 0] = -Ya
+                    data.Y3_star[4 * ii + 1, 1] = Ya
+                    # Third row
+                    data.Y3_star[4 * ii + 2, 0] = -Yb
+                    data.Y3_star[4 * ii + 2, 2] = Yb
+                    # Fourth row
+                    data.Y3_star[4 * ii + 3, 0] = -Yc
+                    data.Y3_star[4 * ii + 3, 3] = Yc
+
+                    # Current
+                    data.I3_star[4 * ii + 0] = -elm.get_I1_at(t_idx) - elm.get_I2_at(t_idx) - elm.get_I3_at(t_idx)
+                    data.I3_star[4 * ii + 1] = elm.get_I1_at(t_idx)
+                    data.I3_star[4 * ii + 2] = elm.get_I2_at(t_idx)
+                    data.I3_star[4 * ii + 3] = elm.get_I3_at(t_idx)
+
+                    # Current
+                    data.S3_star[4 * ii + 0] = -elm.get_Sa_at(t_idx) - elm.get_Sb_at(t_idx) - elm.get_Sc_at(t_idx)
+                    data.S3_star[4 * ii + 1] = elm.get_Sa_at(t_idx)
+                    data.S3_star[4 * ii + 2] = elm.get_Sb_at(t_idx)
+                    data.S3_star[4 * ii + 3] = elm.get_Sc_at(t_idx)
 
                 elif elm.conn == ShuntConnectionType.Delta:
-                    data.S3_delta[3 * ii + 0] = elm.get_Sa_at(t_idx)
-                    data.S3_delta[3 * ii + 1] = elm.get_Sb_at(t_idx)
-                    data.S3_delta[3 * ii + 2] = elm.get_Sc_at(t_idx)
 
-                    if elm.G1 > 0 and elm.G2 > 0 and elm.G3 > 0:
-                        data.Y3_star[3 * ii:3 * ii + 3, [0, 1, 2]] = delta2StarAdmittance(
-                            Yab=elm.get_Y1_conj_at(t_idx),
-                            Ybc=elm.get_Y2_conj_at(t_idx),
-                            Yca=elm.get_Y3_conj_at(t_idx)
-                        )
-                    else:
-                        data.Y3_delta[3 * ii + 0] = elm.get_Y1_conj_at(t_idx)
-                        data.Y3_delta[3 * ii + 1] = elm.get_Y2_conj_at(t_idx)
-                        data.Y3_delta[3 * ii + 2] = elm.get_Y3_conj_at(t_idx)
+                    data.S3_delta[4 * ii + 1] = elm.get_Sa_at(t_idx)
+                    data.S3_delta[4 * ii + 2] = elm.get_Sb_at(t_idx)
+                    data.S3_delta[4 * ii + 3] = elm.get_Sc_at(t_idx)
 
-                    data.I3_delta[3 * ii + 0] = elm.get_I1_at(t_idx)
-                    data.I3_delta[3 * ii + 1] = elm.get_I2_at(t_idx)
-                    data.I3_delta[3 * ii + 2] = elm.get_I3_at(t_idx)
+                    data.I3_delta[4 * ii + 1] = elm.get_I1_at(t_idx)
+                    data.I3_delta[4 * ii + 2] = elm.get_I2_at(t_idx)
+                    data.I3_delta[4 * ii + 3] = elm.get_I3_at(t_idx)
+
+                    data.Y3_star[4 * ii:4 * ii + 4, [0, 1, 2, 3]] = delta2StarAdmittance(
+                        Yab=elm.get_Y1_conj_at(t_idx),
+                        Ybc=elm.get_Y2_conj_at(t_idx),
+                        Yca=elm.get_Y3_conj_at(t_idx)
+                    )
 
                 else:
                     raise Exception(f"Unhandled connection type {elm.conn}")
@@ -469,15 +556,15 @@ def get_load_data(data: LoadData,
             data.shift_key[ii] = elm.get_shift_key_at(t_idx)
 
             if fill_three_phase:
-                if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
-                    data.S3_star[3 * ii + 0] -= elm.get_Sa_at(t_idx)
-                    data.S3_star[3 * ii + 1] -= elm.get_Sb_at(t_idx)
-                    data.S3_star[3 * ii + 2] -= elm.get_Sc_at(t_idx)
+                if elm.conn == ShuntConnectionType.GroundedStar:
+                    data.S3_star[3 * ii + 1] -= elm.get_Sa_at(t_idx)
+                    data.S3_star[3 * ii + 2] -= elm.get_Sb_at(t_idx)
+                    data.S3_star[3 * ii + 3] -= elm.get_Sc_at(t_idx)
 
                 elif elm.conn == ShuntConnectionType.Delta:
-                    data.S3_delta[3 * ii + 0] -= elm.get_Sa_at(t_idx)
-                    data.S3_delta[3 * ii + 1] -= elm.get_Sb_at(t_idx)
-                    data.S3_delta[3 * ii + 2] -= elm.get_Sc_at(t_idx)
+                    data.S3_delta[3 * ii + 1] -= elm.get_Sa_at(t_idx)
+                    data.S3_delta[3 * ii + 2] -= elm.get_Sb_at(t_idx)
+                    data.S3_delta[3 * ii + 3] -= elm.get_Sc_at(t_idx)
 
                 else:
                     raise Exception(f"Unhandled connection type {elm.conn}")
@@ -539,15 +626,15 @@ def get_load_data(data: LoadData,
             data.S[ii] += elm.get_S_at(t_idx)
 
             if fill_three_phase:
-                if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
-                    data.S3_star[3 * ii + 0] += elm.get_Sa_at(t_idx)
-                    data.S3_star[3 * ii + 1] += elm.get_Sb_at(t_idx)
-                    data.S3_star[3 * ii + 2] += elm.get_Sc_at(t_idx)
+                if elm.conn == ShuntConnectionType.GroundedStar:
+                    data.S3_star[3 * ii + 1] += elm.get_Sa_at(t_idx)
+                    data.S3_star[3 * ii + 2] += elm.get_Sb_at(t_idx)
+                    data.S3_star[3 * ii + 3] += elm.get_Sc_at(t_idx)
 
                 elif elm.conn == ShuntConnectionType.Delta:
-                    data.S3_delta[3 * ii + 0] += elm.get_Sa_at(t_idx)
-                    data.S3_delta[3 * ii + 1] += elm.get_Sb_at(t_idx)
-                    data.S3_delta[3 * ii + 2] += elm.get_Sc_at(t_idx)
+                    data.S3_delta[3 * ii + 1] += elm.get_Sa_at(t_idx)
+                    data.S3_delta[3 * ii + 2] += elm.get_Sb_at(t_idx)
+                    data.S3_delta[3 * ii + 3] += elm.get_Sc_at(t_idx)
 
                 else:
                     raise Exception(f"Unhandled connection type {elm.conn}")
@@ -587,17 +674,17 @@ def get_load_data(data: LoadData,
             data.I[ii] += elm.get_I_at(t_idx)
 
             if fill_three_phase:
-                if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
+                if elm.conn == ShuntConnectionType.GroundedStar:
 
-                    data.I3_star[3 * ii + 0] += elm.get_I1_at(t_idx)
-                    data.I3_star[3 * ii + 1] += elm.get_I2_at(t_idx)
-                    data.I3_star[3 * ii + 2] += elm.get_I3_at(t_idx)
+                    data.I3_star[3 * ii + 1] += elm.get_I1_at(t_idx)
+                    data.I3_star[3 * ii + 2] += elm.get_I2_at(t_idx)
+                    data.I3_star[3 * ii + 3] += elm.get_I3_at(t_idx)
 
                 elif elm.conn == ShuntConnectionType.Delta:
 
-                    data.I3_delta[3 * ii + 0] += elm.get_I1_at(t_idx)
-                    data.I3_delta[3 * ii + 1] += elm.get_I2_at(t_idx)
-                    data.I3_delta[3 * ii + 2] += elm.get_I3_at(t_idx)
+                    data.I3_delta[3 * ii + 1] += elm.get_I1_at(t_idx)
+                    data.I3_delta[3 * ii + 2] += elm.get_I2_at(t_idx)
+                    data.I3_delta[3 * ii + 3] += elm.get_I3_at(t_idx)
 
                 else:
                     raise Exception(f"Unhandled connection type {elm.conn}")
@@ -670,15 +757,71 @@ def get_shunt_data(
             data.Y[k] = elm.get_Y_at(t_idx)
 
             if fill_three_phase:
-                if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
 
-                    data.Y3_star[3 * ii + 0, 0] = elm.get_Ya_at(t_idx)
-                    data.Y3_star[3 * ii + 1, 1] = elm.get_Yb_at(t_idx)
-                    data.Y3_star[3 * ii + 2, 2] = elm.get_Yc_at(t_idx)
+                if elm.conn == ShuntConnectionType.GroundedStar:
+
+                    data.Y3_star[4 * ii + 0, 1] = -1 * elm.get_Ya_at(t_idx)
+                    data.Y3_star[4 * ii + 0, 2] = -1 * elm.get_Yb_at(t_idx)
+                    data.Y3_star[4 * ii + 0, 3] = -1 * elm.get_Yc_at(t_idx)
+                    data.Y3_star[4 * ii + 1, 1] = elm.get_Ya_at(t_idx)
+                    data.Y3_star[4 * ii + 2, 2] = elm.get_Yb_at(t_idx)
+                    data.Y3_star[4 * ii + 3, 3] = elm.get_Yc_at(t_idx)
+
+                elif elm.conn == ShuntConnectionType.FloatingStar:
+
+                    # Admittances
+                    Ya = elm.get_Ya_at(t_idx)
+                    Yb = elm.get_Yb_at(t_idx)
+                    Yc = elm.get_Yc_at(t_idx)
+
+                    if Ya != 0.0+0.0j and Yb != 0.0+0.0j and Yc != 0.0+0.0j:
+                        data.A_floatingstar[ii] = Ya / (Ya + Yb + Yc)
+                        data.B_floatingstar[ii] = Yb / (Ya + Yb + Yc)
+                        data.C_floatingstar[ii] = Yc / (Ya + Yb + Yc)
+
+                        A = Ya / (Ya + Yb + Yc)
+                        B = Yb / (Ya + Yb + Yc)
+                        C = Yc / (Ya + Yb + Yc)
+
+                        # First row
+                        data.Y3_star[4 * ii + 1, 1] = (1 - A) * Ya
+                        data.Y3_star[4 * ii + 1, 2] = -B * Ya
+                        data.Y3_star[4 * ii + 1, 3] = -C * Ya
+
+                        # Second row
+                        data.Y3_star[4 * ii + 2, 1] = -A * Yb
+                        data.Y3_star[4 * ii + 2, 2] = (1 - B) * Yb
+                        data.Y3_star[4 * ii + 2, 3] = -C * Yb
+
+                        # Third row
+                        data.Y3_star[4 * ii + 3, 1] = -A * Yc
+                        data.Y3_star[4 * ii + 3, 2] = -B * Yc
+                        data.Y3_star[4 * ii + 3, 3] = (1 - C) * Yc
+
+                elif elm.conn == ShuntConnectionType.NeutralStar:
+
+                    # Admittance
+                    Ya = elm.get_Ya_at(t_idx)
+                    Yb = elm.get_Yb_at(t_idx)
+                    Yc = elm.get_Yc_at(t_idx)
+                    # First row
+                    data.Y3_star[4 * ii + 0, 0] = Ya + Yb + Yc + 1e-10j
+                    data.Y3_star[4 * ii + 0, 1] = -Ya
+                    data.Y3_star[4 * ii + 0, 2] = -Yb
+                    data.Y3_star[4 * ii + 0, 3] = -Yc
+                    # Second row
+                    data.Y3_star[4 * ii + 1, 0] = -Ya
+                    data.Y3_star[4 * ii + 1, 1] = Ya
+                    # Third row
+                    data.Y3_star[4 * ii + 2, 0] = -Yb
+                    data.Y3_star[4 * ii + 2, 2] = Yb
+                    # Fourth row
+                    data.Y3_star[4 * ii + 3, 0] = -Yc
+                    data.Y3_star[4 * ii + 3, 3] = Yc
 
                 elif elm.conn == ShuntConnectionType.Delta:
 
-                    data.Y3_star[3 * ii:3 * ii + 3, [0, 1, 2]] = delta2StarAdmittance(
+                    data.Y3_star[4 * ii:4 * ii + 4, [0, 1, 2, 3]] = delta2StarAdmittance(
                         Yab=elm.get_Ya_at(t_idx),
                         Ybc=elm.get_Yb_at(t_idx),
                         Yca=elm.get_Yc_at(t_idx)
@@ -722,15 +865,15 @@ def get_shunt_data(
             data.cost[ii] = elm.get_Cost_at(t_idx)
 
             if fill_three_phase:
-                if elm.conn == ShuntConnectionType.Star or elm.conn == ShuntConnectionType.GroundedStar:
+                if elm.conn == ShuntConnectionType.GroundedStar:
 
-                    data.Y3_star[3 * ii + 0, 0] = elm.get_Ya_at(t_idx)
-                    data.Y3_star[3 * ii + 1, 1] = elm.get_Yb_at(t_idx)
-                    data.Y3_star[3 * ii + 2, 2] = elm.get_Yc_at(t_idx)
+                    data.Y3_star[3 * ii + 0, 1] = elm.get_Ya_at(t_idx)
+                    data.Y3_star[3 * ii + 1, 2] = elm.get_Yb_at(t_idx)
+                    data.Y3_star[3 * ii + 2, 3] = elm.get_Yc_at(t_idx)
 
                 elif elm.conn == ShuntConnectionType.Delta:
 
-                    data.Y3_star[3 * ii:3 * ii + 3, [0, 1, 2]] = delta2StarAdmittance(
+                    data.Y3_star[4 * ii:4 * ii + 4, [0, 1, 2, 3]] = delta2StarAdmittance(
                         Yab=elm.get_Ya_at(t_idx),
                         Ybc=elm.get_Yb_at(t_idx),
                         Yca=elm.get_Yc_at(t_idx)
@@ -837,7 +980,8 @@ def fill_generator_parent(
     data.min_time_up[k] = elm.MinTimeUp
     data.min_time_down[k] = elm.MinTimeDown
 
-    data.dispatchable[k] = elm.enabled_dispatch
+    data.dispatchable[k] = elm.get_enabled_dispatch_at(t_idx)
+    data.must_run[k] = elm.get_must_run_at(t_idx)
     data.capex[k] = elm.capex
 
     data.snom[k] = elm.Snom
@@ -917,6 +1061,8 @@ def fill_generator_parent(
             # data.q_share[k] = data.p[k]
         else:
             bus_data.q_fixed[i] += data.get_q_at(k)
+
+
 
 
 def get_generator_data(
@@ -1246,7 +1392,7 @@ def get_branch_data(
     """
 
     branch_dict: Dict[BRANCH_TYPES, int] = dict()
-    idx3 = np.array(range(3))
+    idx4 = np.array(range(4))
 
     ii = 0
 
@@ -1287,15 +1433,16 @@ def get_branch_data(
             ytf = - ys_abc
             ytt = ys_abc + ysh_abc / 2
             """
-            k3 = 3 * ii + idx3
+            k4 = 4 * ii + idx4
             y1 = elm.ys.values + elm.ysh.values / 2.0 * 1e-6
             y2 = - elm.ys.values
-            data.Yff3[k3, :] = y1
-            data.Yft3[k3, :] = y2
-            data.Ytf3[k3, :] = y2
-            data.Ytt3[k3, :] = y1
+            data.Yff3[k4, :] = y1
+            data.Yft3[k4, :] = y2
+            data.Ytf3[k4, :] = y2
+            data.Ytt3[k4, :] = y1
 
             """ Save the phases of each line """
+            data.phN[ii] = elm.ys.phN
             data.phA[ii] = elm.ys.phA
             data.phB[ii] = elm.ys.phB
             data.phC[ii] = elm.ys.phC
@@ -1376,18 +1523,21 @@ def get_branch_data(
         data.B2[ii] = elm.B2
 
         if fill_three_phase:
-            k3 = 3 * ii + idx3
-            (data.Yff3[k3, :],
-             data.Yft3[k3, :],
-             data.Ytf3[k3, :],
-             data.Ytt3[k3, :]) = elm.transformer_admittance(vtap_f=data.virtual_tap_f[ii],
+            k4 = 4 * ii + idx4
+            (data.Yff3[k4, :],
+             data.Yft3[k4, :],
+             data.Ytf3[k4, :],
+             data.Ytt3[k4, :]) = elm.transformer_admittance(vtap_f=data.virtual_tap_f[ii],
                                                             vtap_t=data.virtual_tap_t[ii],
                                                             logger=logger)
-            data.phA[ii] = 1
-            data.phB[ii] = 1
-            data.phC[ii] = 1
+            (data.phN[ii],
+            data.phA[ii],
+            data.phB[ii],
+            data.phC[ii]) = elm.transformer_phases(logger=logger)
 
         data.conn[ii] = elm.conn
+        data.conn_f[ii] = elm.conn_f
+        data.conn_t[ii] = elm.conn_t
         data.m_taps[ii] = elm.tap_changer.tap_modules_array
         data.tau_taps[ii] = elm.tap_changer.tap_angles_array
 
@@ -1546,6 +1696,7 @@ def get_branch_data(
                            t_idx=t_idx)
 
         if fill_three_phase:
+            data.phN[ii] = 1
             data.phA[ii] = 1
             data.phB[ii] = 1
             data.phC[ii] = 1

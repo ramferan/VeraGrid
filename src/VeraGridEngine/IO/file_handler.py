@@ -17,8 +17,10 @@ from VeraGridEngine.IO.cim.cgmes.cgmes_data_parser import CgmesDataParser
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.IO.veragrid.json_parser import save_json_file_v3
-from VeraGridEngine.IO.veragrid.excel_interface import save_excel, load_from_xls, interpret_excel_v3, interprete_excel_v2
-from VeraGridEngine.IO.veragrid.pack_unpack import gather_model_as_data_frames, parse_veragrid_data, gather_model_as_jsons
+from VeraGridEngine.IO.veragrid.excel_interface import (save_excel, load_from_xls, interpret_excel_v3,
+                                                        interprete_excel_v2)
+from VeraGridEngine.IO.veragrid.pack_unpack import (gather_model_as_data_frames, parse_veragrid_data,
+                                                    gather_model_as_jsons)
 from VeraGridEngine.IO.matpower.legacy.matpower_parser import interpret_data_v1
 from VeraGridEngine.IO.matpower.matpower_circuit import MatpowerCircuit
 from VeraGridEngine.IO.matpower.matpower_to_veragrid import matpower_to_veragrid
@@ -119,7 +121,7 @@ class FileSavingOptions:
         :return: None or PowerFlowResults
         """
         for data in self.sessions_data:
-            if data.tpe == SimulationTypes.PowerFlow_run:
+            if data.tpe == SimulationTypes.PowerFlow_run and isinstance(data.results, PowerFlowResults):
                 return data.results
 
         return None
@@ -255,7 +257,7 @@ class FileOpen:
                 # print(name, file_extension)
                 if file_extension.lower() in ['.xls', '.xlsx']:
 
-                    data_dictionary = load_from_xls(self.file_name)
+                    data_dictionary = load_from_xls(self.file_name, self.logger)
 
                     # Pass the table-like data dictionary to objects in this circuit
                     if 'version' not in data_dictionary:
@@ -739,11 +741,11 @@ class FileSave:
         time_series = self.circuit.time_profile is not None
 
         if time_series:
-            tidx = list(range(len(self.circuit.time_profile)))
+            t_idx = list(range(self.circuit.get_time_number()))
         else:
-            tidx = None
+            t_idx = None
 
-        newton_grid, _ = to_newton_pa(self.circuit, use_time_series=time_series, time_indices=tidx)
+        newton_grid, _ = to_newton_pa(self.circuit, use_time_series=time_series, time_indices=t_idx)
 
         npa.FileHandler().save(newton_grid, self.file_name)
 

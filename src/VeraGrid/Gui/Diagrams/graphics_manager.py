@@ -27,7 +27,11 @@ from VeraGrid.Gui.Diagrams.MapWidget.Substation.voltage_level_graphic_item impor
 from VeraGrid.Gui.Diagrams.MapWidget.Branches.line_location_graphic_item import LineLocationGraphicItem
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
 from VeraGrid.Gui.Diagrams.MapWidget.Branches.map_line_segment import MapLineSegment
-
+from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_battery_graphics import MapBatteryGraphicItem
+from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_generator_graphics import MapGeneratorGraphicItem
+from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_load_graphics import MapLoadGraphicItem
+from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_external_grid_graphics import MapExternalGridGraphicItem
+from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_static_generator_graphics import MapStaticGeneratorGraphicItem
 
 ALL_BUS_BRACH_GRAPHICS = Union[
     BusGraphicItem,
@@ -51,7 +55,12 @@ ALL_MAP_GRAPHICS = Union[
     VoltageLevelGraphicItem,
     LineLocationGraphicItem,
     SubstationGraphicItem,
-    MapLineSegment
+    MapLineSegment,
+    MapBatteryGraphicItem,
+    MapGeneratorGraphicItem,
+    MapLoadGraphicItem,
+    MapExternalGridGraphicItem,
+    MapStaticGeneratorGraphicItem
 ]
 
 ALL_GRAPHICS = Union[ALL_BUS_BRACH_GRAPHICS, ALL_MAP_GRAPHICS]
@@ -85,14 +94,18 @@ class GraphicsManager:
             elm_dict: Dict[str, ALL_GRAPHICS] = self.graphic_dict.get(elm.device_type, None)
 
             if elm_dict is None:
+                # the graphic category did not exist
                 self.graphic_dict[elm.device_type] = {elm.idtag: graphic}
             else:
-                graphic_0 = elm_dict.get(elm.idtag, None)  # try to get the existing element
+                # The category exits, try to get the existing element
+                graphic_0 = elm_dict.get(elm.idtag, None)
                 if graphic_0 is None:
+                    # the element did not exist, add it
                     elm_dict[elm.idtag] = graphic
                 else:
+                    # the element existed, and maybe we're going to replace it with something else
                     if graphic_0 != graphic:
-                        warn(f"Replacing {graphic} with {graphic}, this could be a sign of an idtag bug")
+                        print(f"Replacing {graphic} with {graphic}, this could be a sign of an idtag bug")
                     elm_dict[elm.idtag] = graphic
 
         else:

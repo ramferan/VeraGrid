@@ -2,33 +2,41 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from VeraGridEngine.IO.base.units import UnitMultiplier, UnitSymbol
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.identified_object import IdentifiedObject
 from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
 
+# if TYPE_CHECKING:
+from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.sv_injection import SvInjection
+from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.sv_voltage import SvVoltage
+from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.topological_island import TopologicalIsland
+from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.topological_island import TopologicalIsland
+from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.base_voltage import BaseVoltage
+from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.connectivity_node import ConnectivityNode
+from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.connectivity_node_container import ConnectivityNodeContainer
+from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.reporting_group import ReportingGroup
+from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.terminal import Terminal
+
 
 class TopologicalNode(IdentifiedObject):
 	def __init__(self, rdfid='', tpe='TopologicalNode'):
+		"""
+
+		:param rdfid:
+		:param tpe:
+		"""
 		IdentifiedObject.__init__(self, rdfid, tpe)
 
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.sv_injection import SvInjection
 		self.SvInjection: SvInjection | None = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.sv_voltage import SvVoltage
 		self.SvVoltage: SvVoltage | None = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.topological_island import TopologicalIsland
 		self.AngleRefTopologicalIsland: TopologicalIsland | None = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.topological_island import TopologicalIsland
 		self.TopologicalIsland: TopologicalIsland | None = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.base_voltage import BaseVoltage
-		self.BaseVoltage: BaseVoltage | None = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.connectivity_node import ConnectivityNode
+		self._BaseVoltage: BaseVoltage | None = None
 		self.ConnectivityNodes: ConnectivityNode | None = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.connectivity_node_container import ConnectivityNodeContainer
 		self.ConnectivityNodeContainer: ConnectivityNodeContainer | None = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.reporting_group import ReportingGroup
 		self.ReportingGroup: ReportingGroup | None = None
-		from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.terminal import Terminal
 		self.Terminal: Terminal | None = None
 
 		self.register_property(
@@ -103,3 +111,17 @@ class TopologicalNode(IdentifiedObject):
 			description='''The topological node associated with the terminal.   This can be used as an alternative to the connectivity node path to topological node, thus making it unneccesary to model connectivity nodes in some cases.   Note that the if connectivity nodes are in the model, this association would probably not be used as an input specification.''',
 			profiles=[]
 		)
+
+	@property
+	def BaseVoltage(self):
+		"""
+
+		:return:
+		"""
+		return self._BaseVoltage
+
+	@BaseVoltage.setter
+	def BaseVoltage(self, val: BaseVoltage):
+		# if isinstance(val, str):
+		# 	raise ValueError("BaseVoltage Cannot be a string")
+		self._BaseVoltage = val

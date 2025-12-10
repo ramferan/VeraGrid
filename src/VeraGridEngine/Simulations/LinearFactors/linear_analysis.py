@@ -24,7 +24,7 @@ from VeraGridEngine.Simulations.Derivatives.csc_derivatives import dSf_dV_csc
 from VeraGridEngine.Utils.Sparse.csc import dense_to_csc
 import VeraGridEngine.Utils.Sparse.csc2 as csc
 from VeraGridEngine.Utils.MIP.selected_interface import lpDot1D_changes
-from VeraGridEngine.enumerations import ContingencyOperationTypes
+from VeraGridEngine.enumerations import ContingencyOperationTypes, ConverterControlType
 from VeraGridEngine.Topology.topology import find_different_states
 
 if TYPE_CHECKING:
@@ -179,6 +179,8 @@ def make_ptdf(Bpqpv: sp.csc_matrix,
     # Bf is a sparse matrix
     H = Bf @ dTheta
 
+    # PTDF = Bf x (B^-1 x P)
+
     return H
 
 
@@ -225,7 +227,16 @@ def make_acdc_ptdf(nc: NumericalCircuit, logger: Logger,
     for k in range(nc.nvsc):
         f = nc.vsc_data.F[k]
         t = nc.vsc_data.T[k]
-        ys = 1e15
+
+        if nc.vsc_data.control1[k] == ConverterControlType.Pdc_angle_droop:
+            # P-MODE 3: The VSC behaves as a droop control
+            # P = P0 + k * (theta_f - theta_t)
+            # k is in MW/deg, we need it in p.u./rad
+            droop_mw_deg = nc.vsc_data.control1_val[k]
+            ys = droop_mw_deg * 57.295779513 / nc.Sbase
+        else:
+            ys = 1e15
+
         A[f, f] += ys
         A[f, t] -= ys
         A[t, f] -= ys
@@ -1013,19 +1024,23 @@ class LinearAnalysisTs:
 
     def __init__(self, grid: MultiCircuit,
                  distributed_slack: bool = True,
-                 correct_values: bool = False):
+                 correct_values: bool = False,
+                 time_indices: IntVec | None = None):
         """
         Constructor
         :param grid: MultiCircuit instance
         :param distributed_slack: boolean to distribute slack
         :param correct_values: boolean to fix out layer values
+        :param time_indices: Array of time indices
         """
 
         if not grid.has_time_series:
             raise Exception("The grid does not have any time series :(")
 
+        self.time_indices = grid.get_all_time_indices() if time_indices is None else time_indices
+
         # get the states matrix
-        mat: IntMat = grid.get_branch_active_time_array()
+        mat: IntMat = grid.get_branch_active_time_array()[self.time_indices, :]
 
         # analyze how many PTDF's we need to get
         self.groups, self.mapping = find_different_states(mat)
@@ -1041,7 +1056,7 @@ class LinearAnalysisTs:
 
         self.nbr = grid.get_branch_number()
         self.nbus = grid.get_bus_number()
-        self.nt = grid.get_time_number()
+        self.nt = len(self.time_indices)
 
     def get_linear_analysis_at(self, t_idx: int) -> LinearAnalysis:
         """

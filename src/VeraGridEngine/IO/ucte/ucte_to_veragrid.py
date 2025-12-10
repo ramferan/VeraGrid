@@ -37,14 +37,28 @@ def parse_nodes(ucte_grid: UcteCircuit, grid: MultiCircuit) -> Dict[str, dev.Bus
     for key, elm in tech_dict.items():
         grid.add_technology(obj=elm)
 
+    country_dict = dict()
+
     # create buses
     for ucte_elm in ucte_grid.nodes:
+
+        if ucte_elm.current_country != "":
+            country = country_dict.get(ucte_elm.current_country, None)
+
+            if country is None:
+                country = dev.Country(name=ucte_elm.current_country)
+                country_dict[ucte_elm.current_country] = country
+                grid.add_country(country)
+        else:
+            country = None
+
         elm = dev.Bus(
             name=ucte_elm.geo_name,
             code=ucte_elm.node_code,
             active=True,  # ucte_elm.status doesn't seem to mean anything useful
             is_slack=ucte_elm.node_type == 3,
-            Vnom=ucte_elm.voltage
+            Vnom=ucte_elm.voltage,
+            country=country
         )
         elm.comment = "real" if ucte_elm.status == 0 else "equivalent"
 
@@ -62,7 +76,7 @@ def parse_nodes(ucte_grid: UcteCircuit, grid: MultiCircuit) -> Dict[str, dev.Bus
             # Create generator
             gen = dev.Generator(
                 name=elm.code,
-                P=ucte_elm.active_gen,
+                P=-ucte_elm.active_gen,  # the - is because they have minus for positive injection...
                 Pmin=ucte_elm.min_gen_mw,
                 Pmax=ucte_elm.max_gen_mw,
                 Qmin=ucte_elm.min_gen_mvar,
@@ -119,14 +133,24 @@ def parse_lines(ucte_grid: UcteCircuit, grid: MultiCircuit, bus_dict: Dict[str, 
                 x_ohm=ucte_elm.reactance,
                 c_nf=c_nf,
                 length=1.0,
-                Imax=ucte_elm.current_limit,
+                Imax=ucte_elm.current_limit / 1000.0,  # A to kA
                 freq=grid.fBase,
                 Sbase=grid.Sbase,
             )
 
             grid.add_line(obj=elm, logger=logger)
         else:
-            logger.add_error("Disconnected line", value=ucte_elm.name)
+
+            if bus_f is None:
+                logger.add_error("Line from bus not found",
+                                 device=ucte_elm.name,
+                                 device_property="node1",
+                                 value=ucte_elm.node1)
+            if bus_t is None:
+                logger.add_error("Line to bus not found",
+                                 device=ucte_elm.name,
+                                 device_property="node2",
+                                 value=ucte_elm.node2)
 
 
 def parse_transformer(ucte_grid: UcteCircuit, grid: MultiCircuit, bus_dict: Dict[str, dev.Bus], logger: Logger):
@@ -212,6 +236,17 @@ def parse_transformer(ucte_grid: UcteCircuit, grid: MultiCircuit, bus_dict: Dict
 
 
 def parse_exchange_power(ucte_grid: UcteCircuit, grid: MultiCircuit, bus_dict: Dict[str, dev.Bus], logger: Logger):
+    """
+
+    :param ucte_grid:
+    :param grid:
+    :param bus_dict:
+    :param logger:
+    """
+
+    # NOTE: how is this dealt with? the standard provides from and to countries
+    #       which makes zero sense, unless those are nodes
+
     pass
 
 

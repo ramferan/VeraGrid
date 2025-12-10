@@ -111,6 +111,6 @@ to their respective owners.
 .. |Downloads| image:: https://static.pepy.tech/personalized-badge/veragrid?period=total&units=abbreviation&left_color=grey&right_color=green&left_text=Downloads
    :target: https://pepy.tech/project/veragrid
 .. |Discord| image:: https://img.shields.io/badge/Discord-%235865F2.svg
-   :target: https://discord.gg/sVnwkaxN
+   :target: https://discord.gg/q6qENNJd
 
 

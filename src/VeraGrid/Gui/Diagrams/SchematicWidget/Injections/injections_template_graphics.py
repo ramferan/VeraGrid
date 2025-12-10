@@ -81,6 +81,10 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
 
     @property
     def parent(self) -> NODE_GRAPHIC:
+        """
+
+        :return:
+        """
         return self._parent
 
     @property

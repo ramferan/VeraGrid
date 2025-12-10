@@ -91,7 +91,11 @@ class SparseArray:
     @default_value.setter
     def default_value(self, val):
         """
+        Set the default value, updating the map to maintain consistency.
 
+        When the default value changes, we need to:
+        1. Store the old default for positions that were using it (not in map)
+        2. Remove positions from the map that now equal the new default
         :param val:
         :return:
         """
@@ -107,6 +111,27 @@ class SparseArray:
             val2 = val
 
         check_type(dtype=self.dtype, value=val2)
+
+        # If the value is the same, do nothing
+        if val2 == self._default_value:
+            return
+
+        # If the map has entries and we are changing the default, we need to update the map
+        # to maintain consistency
+        if self._size > 0 and len(self._map) < self._size:
+            old_default = self._default_value
+
+            # Add the old default to all positions not currently in the map
+            # These positions implicitly had the old default value
+            for i in range(self._size):
+                if i not in self._map:
+                    self._map[i] = old_default
+
+        # Now remove any entries from the map that equal the new default
+        keys_to_remove = [k for k, v in self._map.items() if v == val2]
+        for k in keys_to_remove:
+            del self._map[k]
+
         self._default_value = val2
 
     def info(self):

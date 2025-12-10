@@ -16,18 +16,21 @@ from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.IO.veragrid.pack_unpack import gather_model_as_data_frames, get_objects_dictionary
 
 
-def check_names(names: List[str]) -> None:
+def check_names(names: List[str], logger: Logger) -> None:
     """
     Check that the names are allowed
     :param names:
+    :param logger:
     :return:
     """
-    allowed_data_sheets = get_allowed_sheets()
+    allowed_data_sheets = shorten_dict_keys(get_allowed_sheets(), max_size=30)
 
     for name in names:
         if name not in allowed_data_sheets.keys():
-            raise Exception('The file sheet ' + name + ' is not allowed.\n'
-                                                       'Did you create this file manually? Use VeraGrid instead.')
+            # raise Exception('The file sheet ' + name + ' is not allowed.\n'
+            #                                            'Did you create this file manually? Use VeraGrid instead.')
+            logger.add_error("Excel sheet not recognized",
+                             value=name)
 
 
 def get_allowed_sheets() -> Dict[str, Any]:
@@ -78,8 +81,8 @@ def get_allowed_sheets() -> Dict[str, Any]:
 
             if profile_property not in allowed_data_sheets.keys():
                 # create the profile
-                allowed_data_sheets[object_type_name + '_' + profile_property] = object_sample.registered_properties[
-                    main_property].tpe
+                key = object_type_name + '_' + profile_property
+                allowed_data_sheets[key] = object_sample.registered_properties[main_property].tpe
 
         # declare the DataFrames for the normal data
         allowed_data_sheets[object_type_name] = None
@@ -87,7 +90,22 @@ def get_allowed_sheets() -> Dict[str, Any]:
     return allowed_data_sheets
 
 
-def load_from_xls(filename: str) -> Dict[str, pd.DataFrame]:
+def shorten_dict_keys(d: Dict[str, Any], max_size=30):
+    """
+    Change dict keys to match the Excel 30 char limit
+    :param d:
+    :param max_size:
+    :return:
+    """
+    d2 = dict()
+
+    for key, value in d.items():
+        key2 = key[:max_size]
+        d2[key2] = value
+    return d2
+
+
+def load_from_xls(filename: str, logger: Logger) -> Dict[str, pd.DataFrame]:
     """
     Loads the excel file content to a dictionary for parsing the data
     """
@@ -96,7 +114,7 @@ def load_from_xls(filename: str) -> Dict[str, pd.DataFrame]:
     names = xl.sheet_names
 
     # check the validity of this excel file
-    check_names(names=names)
+    check_names(names=names, logger=logger)
 
     # parse the file
     if 'Conf' in names:  # version 1
@@ -154,7 +172,7 @@ def load_from_xls(filename: str) -> Dict[str, pd.DataFrame]:
 
     elif 'config' in names:  # version 2 / 3
 
-        allowed_data_sheets = get_allowed_sheets()
+        allowed_data_sheets = shorten_dict_keys(get_allowed_sheets(), max_size=30)
 
         for name in names:
 

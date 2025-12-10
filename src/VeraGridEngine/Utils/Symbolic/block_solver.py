@@ -293,7 +293,7 @@ class SymbolicParamsVector:
 
         self.data = np.zeros(len(eqs))
 
-    def __call__(self, glob_time: Vec) -> Vec:
+    def __call__(self, glob_time: float) -> Vec:
         """
         Call the compiled function
         :param glob_time:
@@ -325,8 +325,8 @@ class BlockSolver:
         self._algebraic_eqs: List[Expr] = list()
         self._state_vars: List[Var] = list()
         self._state_eqs: List[Expr] = list()
-        self._parameters: List[Const] = list()
-        self._parameters_eqs: List[Expr] = list()
+        self._event_parameters: List[Var] = list()
+        self._event_parameters_eqs: List[Expr] = list()
         self.glob_time: Var = glob_time
         self.vars2device = block_system.vars2device
         self.v_glob_name2uid = block_system.vars_glob_name2uid
@@ -336,25 +336,26 @@ class BlockSolver:
             self._algebraic_eqs.extend(b.algebraic_eqs)
             self._state_vars.extend(b.state_vars)
             self._state_eqs.extend(b.state_eqs)
-            self._parameters.extend(b.parameters)
-            self._parameters_eqs.extend(b.parameters_eqs)
+            for param, eq in b.event_dict.items():
+                self._event_parameters.append(param)
+                self._event_parameters_eqs.append(eq)
+
 
         self._n_state = len(self._state_vars)
         self._n_alg = len(self._algebraic_vars)
         self._n_vars = self._n_state + self._n_alg
-        self._n_params = len(self._parameters)
-
+        self._n_event_params = len(self._event_parameters)
 
         # generate the in-code names for each variable
         # inside the compiled functions the variables are
         # going to be represented by an array called vars[]
 
         uid2sym_vars: Dict[int, str] = dict()
-        uid2sym_params: Dict[int, str] = dict()
+        uid2sym_event_params: Dict[int, str] = dict()
         uid2sym_t: Dict[int, str] = dict()
         self.uid2var: Dict[int, Var] = dict()
         self.uid2idx_vars: Dict[int, int] = dict()
-        self.uid2idx_params: Dict[int, int] = dict()
+        self.uid2idx_event_params: Dict[int, int] = dict()
         self.uid2idx_t: Dict[int, int] = dict()
         i = 0
         for v in self._state_vars:
@@ -371,9 +372,9 @@ class BlockSolver:
             i += 1
 
         j = 0
-        for j, ep in enumerate(self._parameters):
-            uid2sym_params[ep.uid] = f"params[{j}]"
-            self.uid2idx_params[ep.uid] = j
+        for j, ep in enumerate(self._event_parameters):
+            uid2sym_event_params[ep.uid] = f"params[{j}]"
+            self.uid2idx_event_params[ep.uid] = j
             j += 1
 
         k = 0
@@ -403,45 +404,53 @@ class BlockSolver:
 
         self._rhs_state_fn = SymbolicVector(eqs=self._state_eqs,
                                             uid2sym_vars=uid2sym_vars,
-                                            uid2sym_params=uid2sym_params,
+                                            uid2sym_params=uid2sym_event_params,
                                             use_jit=use_jit)
 
         self._rhs_algeb_fn = SymbolicVector(eqs=self._algebraic_eqs,
                                             uid2sym_vars=uid2sym_vars,
-                                            uid2sym_params=uid2sym_params,
+                                            uid2sym_params=uid2sym_event_params,
                                             use_jit=use_jit)
 
-        self._params_fn = SymbolicParamsVector(eqs=self._parameters_eqs,
+        self._params_fn = SymbolicParamsVector(eqs=self._event_parameters_eqs,
                                                uid2sym_t=uid2sym_t)
 
         self._j11_fn = SymbolicJacobian(eqs=self._state_eqs,
                                         variables=self._state_vars,
                                         uid2sym_vars=uid2sym_vars,
-                                        uid2sym_params=uid2sym_params,
+                                        uid2sym_params=uid2sym_event_params,
                                         use_jit=use_jit)
 
         self._j12_fn = SymbolicJacobian(eqs=self._state_eqs,
                                         variables=self._algebraic_vars,
                                         uid2sym_vars=uid2sym_vars,
-                                        uid2sym_params=uid2sym_params,
+                                        uid2sym_params=uid2sym_event_params,
                                         use_jit=use_jit)
 
         self._j21_fn = SymbolicJacobian(eqs=self._algebraic_eqs,
                                         variables=self._state_vars,
                                         uid2sym_vars=uid2sym_vars,
-                                        uid2sym_params=uid2sym_params,
+                                        uid2sym_params=uid2sym_event_params,
                                         use_jit=use_jit)
 
         self._j22_fn = SymbolicJacobian(eqs=self._algebraic_eqs,
                                         variables=self._algebraic_vars,
                                         uid2sym_vars=uid2sym_vars,
-                                        uid2sym_params=uid2sym_params,
+                                        uid2sym_params=uid2sym_event_params,
                                         use_jit=use_jit)
 
         print("done!")
         end_compiling = time.time()
         compilation_time = end_compiling - start_compiling
         print(f"all compilation time = {compilation_time:.6f} [s]")
+
+    @property
+    def params_fn(self) -> SymbolicParamsVector:
+        """
+        state eq / state var jacobian
+        :return: SymbolicJacobian
+        """
+        return self._params_fn
 
     @property
     def j11(self) -> SymbolicJacobian:
@@ -569,10 +578,10 @@ class BlockSolver:
         :param mapping: var->initial value mapping
         :return: array matching with the mapping, matching the solver ordering
         """
-        x = np.zeros(self._n_params)
+        x = np.zeros(self._n_event_params)
 
         for key, val in mapping.items():
-            i = self.uid2idx_params[key.uid]
+            i = self.uid2idx_event_params[key.uid]
 
             x[i] = val
 
@@ -669,390 +678,11 @@ class BlockSolver:
         J22 = self._j22_fn(z, params)  # ∂g/∂y
         return pack_4_by_4_scipy(J11, J12, J21, J22)  # → sparse 2×2 block Jacobian
 
-    def initialize_with_newton(self, x0: np.ndarray, params0: np.ndarray,
-                               tol=1e-6, max_it=20, use_preconditioner: bool = True):
-        """
-        DAE system initialization using a Newton-Krylov method
-        :param x0: base solution (rough)
-        :param params0: base parameters array
-        :param tol: Tolerance
-        :param max_it: maximum newton iterations
-        :param use_preconditioner: Use a GMRES preconditioner?
-        :return: new, hopefully better initial point
-        """
-        x_vec = x0.copy()  # initial guess vector
-
-        for k in range(max_it):
-            F = self.residual_init(x_vec,
-                                   params=params0)  # F is a numpy array containing the f and g functions residuals
-            if np.linalg.norm(F,
-                              np.inf) < tol:  # use infinit norm: The maximum absolute value of the components of the vector
-                print(f"Converged in {k} iterations :", x_vec)
-                break
-
-            J = self.jacobian_init(x_vec, params=params0)
-
-            # --------- iterative GMRES  ------------------------------------------
-            # Build an ILU(0) factorisation as a right-preconditioner
-
-            if use_preconditioner:
-                eps = 1e-8 * sp.linalg.norm(J, np.inf)
-                Jreg = J + eps * sp.eye(J.shape[0], format='csc')
-                ilu = spilu(Jreg, drop_tol=1e-6, fill_factor=10)
-                M = LinearOperator(J.shape, ilu.solve)  # M ≈ J⁻¹
-                dx, info = gmres(A=J, b=-F, M=M, atol=1e-9, restart=200)
-            else:
-                dx, info = gmres(A=J, b=-F, atol=1e-9, restart=500)
-
-            if info != 0:
-                raise RuntimeError(f"GMRES failed (info = {info}) at Newton iter {k}")
-
-            x_vec += dx
-
-        else:
-            raise RuntimeError("Initialisation did not converge")
-
-        return x_vec
-
-    def resid_gamma(self, z, z_prev, dt, n_s, params0):
-        """
-        Pseudo-transient residual  R(z) = 0  (index-1 semi-explicit DAE).
-        :param z:
-        :param z_prev:
-        :param dt:
-        :param n_s:
-        :param params0:
-        :return:
-        """
-
-        f_s = np.array(self._rhs_state_fn(z, params0))  # f(x,y)
-        f_a = np.array(self._rhs_algeb_fn(z, params0))  # g(x,y)
-        return np.r_[
-            (z[:n_s] - z_prev[:n_s]) / dt - f_s,  # BE for states
-            f_a
-        ]
-
-    def jacob_gamma(self, z, dt, I_s, params0):
-        """
-        Block Jacobian of the Ψtc residual.
-        :param z:
-        :param dt:
-        :param I_s:
-        :param params0:
-        :return:
-        """
-        J11 = self._j11_fn(z, params0)  # ∂f_state/∂x
-        J12 = self._j12_fn(z, params0)  # ∂f_state/∂y
-        J21 = self._j21_fn(z, params0)  # ∂g/∂x
-        J22 = self._j22_fn(z, params0)  # ∂g/∂y
-
-        # Assemble:  [ I/dt -J11   -J12 ]
-        #            [   J21        J22 ]
-        top_left = I_s / dt - J11
-        top_right = -J12
-        bottom = sp.hstack([J21, J22], format='csc')
-        return sp.vstack([sp.hstack([top_left, top_right], format='csc'),
-                          bottom], format='csc')
-
-    def initialize_with_pseudo_transient_gamma(self, x0: np.ndarray, params0: np.ndarray,
-                                               dt0=1.0, beta=0.5,
-                                               tol=1e-6, max_it=20):
-        """
-        DAE system initialization using a Pseudo-transient (Ψtc) continuation method
-        :param x0: base solution (rough)
-        :param params0: base parameters array
-        :param dt0: starting pseudo-time step (s)
-        :param beta: step-length reduction factor (< 1)
-        :param tol: Tolerance
-        :param max_it: maximum newton iterations
-        :return: new, hopefully better initial point
-        """
-        x_vec = x0.copy()
-
-        z_vec = x0.copy()  # internal ordering
-        n_s = self._n_state
-        I_s = sp.eye(n_s, format='csc')  # identity for ∂x/∂x
-
-        dt = dt0
-        step = 0
-        while True:
-            # Newton on    R(z) = 0   with current Δτ
-            z_prev = z_vec.copy()
-            for it in range(max_it):
-                R = self.resid_gamma(z_vec, z_prev, dt, n_s, params0)
-
-                if np.linalg.norm(R, np.inf) < tol:
-                    break
-
-                J = self.jacob_gamma(z_vec, dt, I_s, params0)
-
-                # ILU-preconditioned GMRES  (robust & memory-friendly)
-                try:
-                    M = LinearOperator(J.shape, spilu(J, drop_tol=1e-5,
-                                                      fill_factor=10).solve)
-                except RuntimeError:
-                    M = None  # fallback – still works thanks to I/dt term
-
-                dz, info = gmres(A=J, b=-R, M=M, atol=1e-9, restart=200)
-                if info != 0:
-                    raise RuntimeError(f"GMRES failed at Ψtc step {step}, "
-                                       f"Newton iter {it} (info={info})")
-                z_vec += dz
-
-            # Check global convergence
-            res_norm = np.linalg.norm(self._rhs_state_fn(z_vec, params0), np.inf)
-            res_norm = max(res_norm,
-                           np.linalg.norm(self._rhs_algeb_fn(z_vec, params0), np.inf))
-
-            if res_norm < tol:
-                print(f"Ψtc converged in {step + 1} steps, residual {res_norm:.2e}")
-                break
-
-            # Reduce pseudo-time-step and continue
-            dt *= beta
-            step += 1
-            if dt < 1e-9:
-                raise RuntimeError("Ψtc failed: Δτ became too small "
-                                   "(model may be ill-posed)")
-
-        return z_vec
-
-    @staticmethod
-    def _apply_lambda(params: np.ndarray,
-                      ramps_descr: list[tuple[int, float, float, Const]],
-                      lam: float) -> None:
-        """
-        Update the parameter vector *in-place* for a given λ ∈ [0,1].
-
-        Some Const implementations expose a writable .value, others make it
-        read-only.  We therefore update the associated Const object only if
-        it provides a usable mutator; otherwise we rely on the explicit
-        'params' array that is already passed to every RHS / Jacobian call.
-        """
-        for idx, start, end, const_ref in ramps_descr:
-            val = start + lam * (end - start)
-            params[idx] = val
-
-    def _psi_tc(self,
-                z_init: np.ndarray,
-                params: np.ndarray,
-                dt0: float,
-                beta: float,
-                psi_tol: float,
-                newton_tol: float,
-                newton_max: int) -> np.ndarray:
-        """
-        Pseudo-transient continuation inner solver (index-1 semi-explicit DAE).
-        Returns a *consistent* z vector for the **current** parameter set.
-        """
-        n_s = self._n_state
-        I_s = sp.eye(n_s, format="csc") if n_s else None
-        z = z_init.copy()
-        dt = dt0
-
-        while True:
-            z_prev = z.copy()
-            # ------------ Newton on Ψtc residual -----------------------------
-            for _ in range(newton_max):
-                f_a = np.array(self._rhs_algeb_fn(z, params))
-                if n_s:
-                    f_s = np.array(self._rhs_state_fn(z, params))
-                    R = np.r_[(z[:n_s] - z_prev[:n_s]) / dt - f_s, f_a]
-                else:
-                    R = f_a
-
-                if np.linalg.norm(R, np.inf) < newton_tol:
-                    break
-
-                J22 = self._j22_fn(z, params)
-                J12 = self._j12_fn(z, params)
-                J21 = self._j21_fn(z, params)
-
-                if n_s:
-                    J11 = self._j11_fn(z, params)
-                    JL = I_s / dt - J11
-                    JR = -J12
-                    top = sp.hstack([JL, JR], format="csc")
-                    bot = sp.hstack([J21, J22], format="csc")
-                    J = sp.vstack([top, bot], format="csc")
-                else:
-                    J = J22
-
-                try:
-                    M = LinearOperator(J.shape,
-                                       spilu(J, drop_tol=1e-5, fill_factor=10).solve)
-                except RuntimeError:
-                    M = None
-
-                dz, info = gmres(J, -R, M=M, atol=1e-9, restart=200)
-                if info != 0:
-                    raise RuntimeError("GMRES failed during Ψtc")
-                z += dz
-
-            # ------------ stop when original residual is small ---------------
-            res = np.linalg.norm(self._rhs_algeb_fn(z, params), np.inf)
-            if n_s:
-                res = max(res, np.linalg.norm(self._rhs_state_fn(z, params), np.inf))
-            if res < psi_tol:
-                return z
-
-            dt *= beta
-            if dt < 1e-9:
-                raise RuntimeError("Ψtc stalled ⇒ no equilibrium?")
-
-    def initialise_homotopy(self,
-                            z0,
-                            params,
-                            ramps: list[tuple[Const | Var, float]] | None = None,
-                            lam_steps: int = 21,
-                            psi_dt0: float = 5.0,
-                            psi_beta: float = 0.4,
-                            psi_tol: float = 1e-10,
-                            newton_tol: float = 1e-12,
-                            newton_max: int = 10) -> tuple[np.ndarray, np.ndarray]:
-        """
-        Robust, guess-free initialiser:
-          • cold start  →  Ψtc  →  homotopy λ∈[0,1]
-        Returns (x0, param_vector).
-        """
-
-        # 1 ── cold start
-        z = z0.copy()
-
-        # 2 ── ramp description
-        if ramps is None:  # ramp all Consts 0 → nominal
-            ramps = [(p, 0.0) for p in self._parameters]
-
-        # params = np.zeros(self._n_params)
-        # for p in self._parameters:
-        #     params[self.uid2idx_params[p.uid]] = p.value  # :contentReference[oaicite:2]{index=2}
-
-        ramps_descr = []
-        # for const_obj, start_val in ramps:
-        #     idx = self.uid2idx_params[const_obj.uid]
-        #     ramps_descr.append((idx, start_val, const_obj.value, const_obj))
-
-        # 3 ── homotopy outer loop
-        for lam in np.linspace(0.0, 1.0, lam_steps):
-            self._apply_lambda(params, ramps_descr, lam)
-            z = self._psi_tc(z, params, psi_dt0, psi_beta,
-                             psi_tol, newton_tol, newton_max)
-
-        print("Homotopy initialisation succeeded ✔")
-        return z, params
-
-    def initialise_homotopy_adaptive_lambda(self,
-                                            z0,
-                                            params,
-                                            ramps: list[tuple[Const | Var, float]] | None = None,
-                                            psi_dt0: float = 5.0,
-                                            psi_beta: float = 0.4,
-                                            psi_tol: float = 1e-10,
-                                            newton_tol: float = 1e-12,
-                                            newton_max: int = 10,
-                                            delta_lam_init: float = 0.05,
-                                            min_step: float = 1e-4,
-                                            max_step: float = 0.2) -> tuple[np.ndarray, np.ndarray]:
-        """
-        Homotopy with adaptive lambda stepping.
-        :param z0:
-        :param params:
-        :param ramps:
-        :param psi_dt0:
-        :param psi_beta:
-        :param psi_tol:
-        :param newton_tol:
-        :param newton_max:
-        :param delta_lam_init:
-        :param min_step:
-        :param max_step:
-        :return:
-        """
-        z = z0.copy()
-
-        if ramps is None:
-            ramps = [(p, 0.0) for p in self._parameters]
-
-        ramps_descr = []
-        for const_obj, start_val in ramps:
-            idx = self.uid2idx_params[const_obj.uid]
-            ramps_descr.append((idx, start_val, const_obj.value, const_obj))
-
-        lam = 0.0
-        lam_eps = 1e-6
-        delta_lam = delta_lam_init
-
-        while lam < 1.0 - lam_eps:
-            try:
-                self._apply_lambda(params, ramps_descr, lam)
-                z = self._psi_tc(z, params, psi_dt0, psi_beta,
-                                 psi_tol, newton_tol, newton_max)
-
-                lam_new = min(lam + delta_lam, 1.0)
-                self._apply_lambda(params, ramps_descr, lam_new)
-                z_new = self._psi_tc(z, params, psi_dt0, psi_beta,
-                                     psi_tol, newton_tol, newton_max)
-
-                # Step succeeded, accept and increase step size
-                lam = lam_new
-                z = z_new
-                delta_lam = min(delta_lam * 1.5, max_step)
-                print(f"Adaptive λ stepping: λ={lam:.4f}, step={delta_lam:.4f}")
-
-            except RuntimeError as e:
-                # Step failed, reduce step size and retry
-                delta_lam *= 0.5
-                print(f"Step failed at λ={lam:.4f}, reducing step to {delta_lam:.4f}")
-                if delta_lam < min_step:
-                    raise RuntimeError(f"Adaptive homotopy failed at λ={lam:.4f}") from e
-
-        # Ensure final λ=1
-        self._apply_lambda(params, ramps_descr, 1.0)
-        z = self._psi_tc(z, params, psi_dt0, psi_beta,
-                         psi_tol, newton_tol, newton_max)
-
-        print("Homotopy initialisation (adaptive lambda) succeeded ✔")
-        return z, params
-
-    def get_dummy_x0(self):
-        return np.zeros(self._n_state)
-
     def equations(self) -> Tuple[List[Expr], List[Expr]]:
         """
         Return (algebraic_eqs, state_eqs) as *originally declared* (no substitution).
         """
         return self._algebraic_eqs, self._state_eqs
-
-    def build_params_matrix(self, n_steps: int, params0: np.ndarray, events_list: RmsEvents) -> csr_matrix:
-        """
-
-        :param n_steps:
-        :param params0:
-        :param events_list:
-        :return:
-        """
-        # TODO: reconsider this algorithm entirely,
-        #  this all looks like it can be built from the rows, cols, values info
-
-        diff_params_matrix = np.zeros((n_steps, len(params0)))
-        params_matrix_current = params0.copy()
-
-        # get events info
-        rows, cols, values = events_list.build_triplets_list()
-
-        # build diff sparse matrix
-        for time_step in range(n_steps):
-            if time_step in rows:  # TODO: very expensive
-                for position in np.where(rows == time_step):
-                    prop_idx = self.uid2idx_params[cols[position][0].uid]
-                    value = values[position]
-                    diff_val = value - params_matrix_current[prop_idx]
-                    diff_params_matrix[time_step, prop_idx] += diff_val
-                    params_matrix_current[prop_idx] = value
-
-        # make params matrix sparse
-        diff_params_matrix_spa = csr_matrix(diff_params_matrix)
-        return diff_params_matrix_spa
 
     def simulate(
             self,
@@ -1067,7 +697,6 @@ class BlockSolver:
 
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
-        :param events_list:
         :param params0:
         :param t0: start time
         :param t_end: end time

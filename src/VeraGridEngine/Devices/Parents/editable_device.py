@@ -5,6 +5,7 @@
 import random
 import uuid
 import numpy as np
+import pandas as pd
 
 from VeraGridEngine.Devices.profile import Profile
 from typing import List, Dict, AnyStr, Any, Union, Type, Tuple
@@ -17,7 +18,7 @@ from VeraGridEngine.enumerations import (DeviceType, TimeFrame, BuildStatus, Win
                                          ZonalGrouping, MIPSolvers, AcOpfMode, VoltageLevelTypes, BranchGroupTypes,
                                          BranchImpedanceMode, FaultType, TapChangerTypes, ContingencyOperationTypes,
                                          WindingType, MethodShortCircuit, PhasesShortCircuit, ShuntConnectionType,
-                                         BusGraphicType, SwitchGraphicType, DynamicIntegrationMethod)
+                                         BusGraphicType, SwitchGraphicType, DynamicIntegrationMethod, OpfDispatchMode)
 
 # types that can be assigned to a VeraGrid property
 GCPROP_TYPES = Union[
@@ -59,7 +60,8 @@ GCPROP_TYPES = Union[
     Type[ShuntConnectionType],
     Type[BusGraphicType],
     Type[SwitchGraphicType],
-    Type[DynamicIntegrationMethod]
+    Type[DynamicIntegrationMethod],
+    Type[OpfDispatchMode]
 ]
 
 
@@ -309,7 +311,7 @@ class EditableDevice:
 
         # some devices have an auto update of a property when another property changes
         # (i.e. Line's R, X, B when the length changes) this controls that behaviour and disables it during loading
-        self.__auto_update_enabled = False
+        self.__auto_update_enabled = True
 
         self.register(key='idtag', units='', tpe=str, definition='Unique ID', editable=False)
         self.register(key='name', units='', tpe=str, definition='Name of the device.')
@@ -367,7 +369,8 @@ class EditableDevice:
 
     def __hash__(self) -> int:
         # alternatively, return hash(repr(self))
-        return int(self.idtag, 16)  # hex string to int
+        # return int(self.idtag, 16)  # hex string to int
+        return hash(repr(self))
 
     def __lt__(self, other) -> bool:
         return self.__hash__() < other.__hash__()
@@ -813,11 +816,12 @@ class EditableDevice:
         # set the profile variable associated with the magnitude
         # setattr(self, self.properties_with_profile[magnitude], prof)
 
-    def ensure_profiles_exist(self, index):
+    def ensure_profiles_exist(self, index: pd.DatetimeIndex, set_profile_default_as_snapshot: bool = False):
         """
         It might be that when loading the VeraGrid Model has properties that the file has not.
         Those properties must be initialized as well
         :param index: Time series index (timestamps)
+        :param set_profile_default_as_snapshot: set the bool default profile value as the snapshot
         """
         if index is not None:
             for magnitude, prof_attr in self.properties_with_profile.items():
@@ -837,6 +841,11 @@ class EditableDevice:
                     # there is no profile, create a new one with the default values
                     # print(self.name, ': created profile for ' + prof_attr)
                     self.create_profile(magnitude=magnitude, index=index)
+
+                if set_profile_default_as_snapshot:
+                    prop = self.registered_properties[magnitude]
+                    val = getattr(self, magnitude)
+                    profile.default_value = val
 
         else:
             raise Exception("ensure_profiles_exist: No index provided")

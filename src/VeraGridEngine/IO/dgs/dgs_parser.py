@@ -3,12 +3,12 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+from typing import Dict, Tuple, List
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 import VeraGridEngine.Devices as dev
 import math
 import numpy as np
-from numpy import array
-from pandas import DataFrame as df
+import pandas as pd
 from warnings import warn
 
 
@@ -128,18 +128,15 @@ def read_DGS(filename):
 
     """
     types_dict = dict()
-    types_dict["a"] = "|S32"
-    types_dict["p"] = "|S32"
-    types_dict["i"] = "<i4"
-    types_dict["r"] = "<f4"
-    types_dict["d"] = "<f4"
+    types_dict["a"] = str
+    types_dict["p"] = str
+    types_dict["i"] = int
+    types_dict["r"] = float
+    types_dict["d"] = float
 
-    types_dict2 = dict()
+    types_dict2: Dict[str, List[Tuple[str, str]]] = dict()
 
     current_type = None
-    data_types = None
-    header = None
-
     Headers = dict()
     # parse the file lines
     for line in lines:
@@ -149,7 +146,6 @@ def read_DGS(filename):
             chnks = line.split(";")
             current_type = chnks[0]
             data[current_type] = list()
-            # print(current_type)
 
             # analyze types
             data_types = list()
@@ -173,15 +169,59 @@ def read_DGS(filename):
                 line = line.strip()
                 chnks = line.split(";")
                 chnks = ["0" if x == "" else x for x in chnks]
-                data[current_type].append(array(tuple(chnks)))
+                data[current_type].append(np.array(tuple(chnks)))
 
+    '''
     # format keys
     for key in data.keys():
-        # print("Converting " + str(key))
-        table = array([tuple(x) for x in data[key]], dtype=types_dict2[key])
-        table = array([list(x) for x in table], dtype=np.object)
         header = Headers[key]
-        data[key] = df(data=table, columns=header)
+        df = pd.DataFrame(data=data[key], columns=header)
+
+        # parse the stupid numbers separated by comma
+        for col_name, tpe in types_dict2[key]:
+            if tpe == float:
+                df[col_name] = df[col_name].str.replace(',', '.').astype(float)
+            elif tpe == int:
+                df[col_name] = df[col_name].str.replace(',', '.').astype(int)
+            else:
+                pass
+        data[key] = df
+    '''
+    for key in data.keys():
+        header = Headers[key]
+        rows = data[key]
+
+        fixed_rows = []
+        n_cols = len(header)
+
+        for row in rows:
+
+            # --- skip empty rows safely ---
+            if row is None or len(row) == 0:
+                continue
+
+            # convert np.array rows to list (safe)
+            if not isinstance(row, list):
+                row = list(row)
+
+            if len(row) > n_cols:
+                row = row[:n_cols]
+
+            elif len(row) < n_cols:
+                row = row + [None] * (n_cols - len(row))
+
+            fixed_rows.append(row)
+
+        df = pd.DataFrame(fixed_rows, columns=header)
+
+        # parse numbers with commas
+        for col_name, tpe in types_dict2[key]:
+            if tpe == float:
+                df[col_name] = df[col_name].astype(str).str.replace(',', '.').astype(float)
+            elif tpe == int:
+                df[col_name] = df[col_name].astype(str).str.replace(',', '.').astype(int)
+
+        data[key] = df
 
     # positions dictionary
     obj_id = data['IntGrf']['pDataObj'].values
@@ -194,12 +234,15 @@ def read_DGS(filename):
     return data, pos_dict
 
 
-def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
+def data_to_grid_object(data: Dict[str, pd.DataFrame],
+                        pos_dict: Dict[str, Tuple[float, float]],
+                        codification: str = "utf-8") -> MultiCircuit:
     """
     Turns the read data dictionary into a VeraGrid MultiCircuit object
     Args:
         data: Dictionary of data read from a DGS file
         pos_dict: Dictionary of objects and their positions read from a DGS file
+        codification: codification type
     Returns: VeraGrid MultiCircuit object
     """
     ###############################################################################
@@ -571,14 +614,18 @@ def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
     cub_obj_idx = cubicles['obj_id'].values
     cub_term_idx = cubicles['fold_id'].values
 
-    # for i, elm_id in enumerate(cub_obj_idx):
-    #     elm_idx = cub_term_idx[i]
-    #     terminals_dict[elm_id] = elm_idx
-
     ID_idx = 0
     for cla in classes:
         if cla.__len__() > 0:
-            for ID in cla['ID'].values:
+
+            if "ID" in cla:
+                arr = cla['ID'].values
+            elif "FID" in cla:
+                arr = cla['FID'].values
+            else:
+                raise ValueError("No bus ID, FID could be found...")
+
+            for ID in arr:
                 idx = np.where(cubicles == ID)[0]
                 terminals_dict[ID] = cub_term_idx[idx]
 
@@ -612,11 +659,19 @@ def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
     """
     # print('Parsing terminals')
     buses_dict = dict()
+
+    if "ID" in buses:
+        id_arr = buses['ID'].values
+    elif "FID" in buses:
+        id_arr = buses['FID'].values
+    else:
+        raise ValueError("No bus ID, FID could be found...")
+
     for i in range(len(buses)):
-        ID = buses['ID'][i]
+        ID = int(id_arr[i])
         x, y = pos_dict[ID]
         buses_dict[ID] = i
-        bus_name = buses['loc_name'][i].decode(codification)  # BUS_Name
+        bus_name = buses['loc_name'][i] # .decode(codification)  # BUS_Name
         vnom = buses['uknom'][i]
         bus = dev.Bus(name=bus_name, Vnom=vnom, vmin=0.9, vmax=1.1, xpos=x, ypos=-y, active=True)
         circuit.add_bus(bus)
@@ -1097,7 +1152,12 @@ def data_to_grid_object(data, pos_dict, codification="utf-8") -> MultiCircuit:
     return circuit
 
 
-def dgs_to_circuit(filename) -> MultiCircuit:
+def dgs_to_circuit(filename: str) -> MultiCircuit:
+    """
+
+    :param filename:
+    :return:
+    """
     data, pos_dict = read_DGS(filename)
 
     return data_to_grid_object(data, pos_dict)

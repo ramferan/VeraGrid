@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
 
 from typing import Union
 import numpy as np
@@ -487,7 +488,7 @@ class ShuntParent(InjectionParent):
         Fill the admittance
         :return:
         """
-        self.ysh = AdmittanceMatrix(3)
+        self.ysh = AdmittanceMatrix(size=4)
 
         y1 = self.G + 1j * self.B
         y0 = self.G0 + 1j * self.B0
@@ -495,7 +496,7 @@ class ShuntParent(InjectionParent):
         diag = (2.0 * y1 + y0) / 3.0
         off_diag = (y0 - y1) / 3.0
 
-        yabc = np.full((3, 3), off_diag)
+        yabc = np.full((4, 4), off_diag)
         np.fill_diagonal(yabc, diag)
 
         self.ysh.values = yabc

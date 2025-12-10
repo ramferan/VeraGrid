@@ -714,9 +714,9 @@ class Transformer3W(PhysicalDevice):
                                 Pfe: float, I0: float, Sbase: float, ):
         """
         Fill winding per unit impedances from the short circuit study values
-        :param V1: Primary voltage (KV)
-        :param V2: Secondary voltage (KV)
-        :param V3: Tertiary Voltage (KV)
+        :param V1: Primary voltage (kV)
+        :param V2: Secondary voltage (kV)
+        :param V3: Tertiary Voltage (kV)
         :param Sn1: Primary power (MVA)
         :param Sn2: Secondary power (MVA)
         :param Sn3: Tertiary power (MVA)

@@ -446,6 +446,20 @@ class BaseDiagram:
                 node_devices.append(location.api_object)
                 node_count += 1
 
+        # Add 3W-transformers ------------------------------------------------------------------------------------------
+        tr3_groups = self.data.get(DeviceType.Transformer3WDevice.value, None)
+        if tr3_groups:
+            for i, (idtag, location) in enumerate(tr3_groups.locations.items()):
+                graph.add_node(node_count)
+                graph_node_dictionary[idtag] = node_count
+
+                if location.api_object.bus0 is not None:
+                    # the electrical bus location is the same
+                    graph_node_dictionary[location.api_object.bus0.idtag] = node_count
+
+                node_devices.append(location.api_object)
+                node_count += 1
+
         # Add the electrical branches ----------------------------------------------------------------------------------
         tuples = list()
         for dev_type in [DeviceType.LineDevice,

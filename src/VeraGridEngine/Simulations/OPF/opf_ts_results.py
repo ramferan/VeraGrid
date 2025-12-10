@@ -810,7 +810,7 @@ class OptimalPowerFlowTimeSeriesResults(ResultsTemplate):
             return ResultsTable(data=np.array(y, dtype=object),
                                 index=index,
                                 idx_device_type=DeviceType.NoDevice,
-                                columns=columns,
+                                columns=np.array(columns),
                                 cols_device_type=DeviceType.NoDevice,
                                 title=str(result_type.value))
 

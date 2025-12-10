@@ -21,6 +21,7 @@ from VeraGridEngine.Simulations.OPF.opf_driver import OptimalPowerFlowDriver, Op
 from VeraGridEngine.Simulations.OPF.opf_ts_driver import (OptimalPowerFlowTimeSeriesDriver,
                                                           OptimalPowerFlowTimeSeriesResults)
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver, PowerFlowResults
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph, PowerFlowResults3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_ts_driver import (PowerFlowTimeSeriesDriver,
                                                                        PowerFlowTimeSeriesResults)
 from VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_driver import ShortCircuitDriver, ShortCircuitResults
@@ -43,6 +44,8 @@ from VeraGridEngine.Simulations.Reliability.reliability_driver import Reliabilit
 
 from VeraGridEngine.Simulations.Rms.rms_driver import RmsSimulationDriver
 from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import SmallSignalStabilityDriver
+from VeraGridEngine.Simulations.StateEstimation.state_stimation_driver import (StateEstimationDriver,
+                                                                               StateEstimationResults)
 
 DRIVER_OBJECTS = Union[
     AvailableTransferCapacityDriver,
@@ -55,7 +58,9 @@ DRIVER_OBJECTS = Union[
     OptimalPowerFlowDriver,
     OptimalPowerFlowTimeSeriesDriver,
     PowerFlowDriver,
+    PowerFlowDriver3Ph,
     PowerFlowTimeSeriesDriver,
+    StateEstimationDriver,
     ShortCircuitDriver,
     StochasticPowerFlowDriver,
     ClusteringDriver,
@@ -83,6 +88,7 @@ RESULTS_OBJECTS = Union[
     OptimalPowerFlowResults,
     OptimalPowerFlowTimeSeriesResults,
     PowerFlowResults,
+    PowerFlowResults3Ph,
     PowerFlowTimeSeriesResults,
     ShortCircuitResults,
     StochasticPowerFlowResults,
@@ -94,5 +100,6 @@ RESULTS_OBJECTS = Union[
     InputsAnalysisResults,
     InvestmentsEvaluationResults,
     NodalCapacityTimeSeriesResults,
-    ReliabilityResults
+    ReliabilityResults,
+    StateEstimationResults
 ]

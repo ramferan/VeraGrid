@@ -697,11 +697,11 @@ class FaultType(Enum):
     """
     Short circuit type
     """
-    ph3 = '3x'
     LG = 'LG'
     LL = 'LL'
     LLG = 'LLG'
     LLL = 'LLL'
+    LLLG = 'LLLG'
 
     def __str__(self):
         return str(self.value)
@@ -884,8 +884,9 @@ class WindingType(Enum):
     """
     Transformer windings connection types
     """
-    Star = "Y"
-    GroundedStar = "Yn"
+    FloatingStar = "Y"
+    GroundedStar = "Yg"
+    NeutralStar = "Yn"
     Delta = "D"
     ZigZag = "Z"
 
@@ -920,8 +921,9 @@ class ShuntConnectionType(Enum):
     """
     Loads, shunts, etc.. connection types
     """
-    Star = "Y"
-    GroundedStar = "Yn"
+    FloatingStar = "Y"
+    GroundedStar = "Yg"
+    NeutralStar = "Yn"
     Delta = "D"
 
     def __str__(self) -> str:
@@ -1104,6 +1106,8 @@ class DeviceType(Enum):
     RemedialActionDevice = 'Remedial action'
     RemedialActionGroupDevice = 'Remedial action Group'
 
+    ShortCircuitEvent = 'Short circuit event'
+
     InvestmentDevice = 'Investment'
     InvestmentsGroupDevice = 'Investments Group'
 
@@ -1185,6 +1189,7 @@ class SubObjectType(Enum):
     ListOfWires = 'ListOfWires'
     AdmittanceMatrix = "Admittance Matrix"
     DynamicModelHostType = "DynamicModuleHost"
+    DaeBlockType = "DaeBlock"
 
     def __str__(self) -> str:
         return str(self.value)
@@ -1684,6 +1689,7 @@ class ResultTypes(Enum):
     LoadPower = 'Load power'
     LoadShedding = 'Load shedding'
     LoadSheddingCost = "Load shedding cost"
+    LoadNeutralVoltage = 'Load neutral voltage'
 
     GeneratorShedding = 'Generator shedding'
     GeneratorPower = 'Generator power'
@@ -1712,6 +1718,7 @@ class ResultTypes(Enum):
     ShuntReactivePowerA = 'Shunt reactive power A'
     ShuntReactivePowerB = 'Shunt reactive power B'
     ShuntReactivePowerC = 'Shunt reactive power C'
+    ShuntNeutralVoltage = 'Shunt neutral voltage'
 
     BusVoltagePolarPlot = 'Voltage plot'
     BusNodalCapacity = "Nodal capacity"
@@ -1993,8 +2000,6 @@ class ResultTypes(Enum):
     ReliabilityLOLETResults = "LOLET"
     ReliabilityLOLFTResults = "LOLFT"
 
-
-
     def __str__(self):
         return self.value
 
@@ -2021,6 +2026,8 @@ class SimulationTypes(Enum):
     DesignView = 'Design View'
     TemplateDriver = 'Template'
     PowerFlow_run = 'Power flow'
+    PowerFlow3ph_run = 'Power flow 3ph'
+    StateEstimation_run = 'State estimation'
     ShortCircuit_run = 'Short circuit'
     MonteCarlo_run = 'Monte Carlo'
     PowerFlowTimeSeries_run = 'Power flow time series'
@@ -2109,10 +2116,14 @@ class ContingencyFilteringMethods(Enum):
     """
     Contingency filtering methods
     """
-    All = "All contingencies"
+    AllActive = "All active contingencies"
     Country = "Country"
+    Community = "Community"
+    Region = "Region"
+    Municipality = "Municipality"
     Zone = "Zone"
     Area = "Area"
+    SensitiveToMonitored = "Sensitive to monitored"
 
     def __str__(self):
         return self.value
@@ -2371,19 +2382,12 @@ class GridReductionMethod(Enum):
             return s
 
 
-class DynamicVarType(Enum):
+class BusReductionMethod(Enum):
     """
-       GridReductionMethod
-       """
-    T = "T"
-    Vm = "Vm"
-    Va = "Va"
-    P = "P"
-    Q = "Q"
-    Pf = "Pf"
-    Qf = "Qf"
-    Pt = "Pt"
-    Qt = "Qt"
+    GridReductionMethod
+    """
+    Reduce = "Reduce"
+    Keep = "Keep"
 
     def __str__(self):
         return self.value
@@ -2399,7 +2403,44 @@ class DynamicVarType(Enum):
         :return:
         """
         try:
-            return DynamicVarType[s]
+            return BusReductionMethod[s]
+        except KeyError:
+            return s
+
+
+class VarPowerFlowRefferenceType(Enum):
+    """
+    GridReductionMethod
+    """
+    NOTHING = "nothing"
+    Vm = "Vm"  # Bus voltage module in p.u.
+    Va = "Va"  # Bus voltage angle in rad
+    Vmf = "Vm"  # Bus voltage module in p.u.
+    Vaf = "Va"  # Bus voltage angle in rad
+    Vmt = "Vm"  # Bus voltage module in p.u.
+    Vat = "Va"  # Bus voltage angle in rad
+    P = "P"  # Bus active power in p.u.
+    Q = "Q"  # Bus reactive power in p.u.
+    Pf = "Pf"  # Branch active power from in p.u.
+    Qf = "Qf"  # Branch reactive power from in p.u.
+    Pt = "Pt"  # Branch active power to in p.u.
+    Qt = "Qt"  # Branch reactive power to in p.u.
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return VarPowerFlowRefferenceType[s]
         except KeyError:
             return s
 
@@ -2425,5 +2466,33 @@ class ReliabilityMode(Enum):
         """
         try:
             return ReliabilityMode[s]
+        except KeyError:
+            return s
+
+
+class OpfDispatchMode(Enum):
+    """
+    OpfGenerationMode
+    """
+    Normal = "Normal"
+    InterAreaRedispatch = "Inter-area redispatch"
+    UnitCommitment = "Unit commitment"
+    NodalCapacity = "Nodal capacity"
+    GenerationExpansionPlanning = "Generation expansion planning"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        :param s:
+        :return:
+        """
+        try:
+            return OpfDispatchMode[s]
         except KeyError:
             return s

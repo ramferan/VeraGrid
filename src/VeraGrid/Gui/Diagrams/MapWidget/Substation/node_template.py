@@ -52,6 +52,7 @@ class NodeTemplate(GenericDiagramWidget):
     def add_position_change_callback(self, obj: MapLineSegment, fcn: Callable[[float, float], None]):
         """
         Add callable function
+        :param obj:
         :param fcn: Function that accepts two floats (x, y) to update the positions
         :return:
         """
@@ -79,14 +80,6 @@ class NodeTemplate(GenericDiagramWidget):
         :return:
         """
         return QPointF(0, 0)
-
-    def setBrush(self, brush: QBrush):
-        """
-        Dummy placeholder function
-        :param brush:
-        :return:
-        """
-        pass
 
     def delete_hosting_connection(self, graphic_obj: MapLineSegment):
         """

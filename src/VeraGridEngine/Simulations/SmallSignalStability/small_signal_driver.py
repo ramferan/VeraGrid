@@ -23,12 +23,12 @@ from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.enumerations import  ResultTypes
 
 
-def compute_state_matrix(slv: BlockSolver, x: Vec, params: Vec,):
+def compute_state_matrix(slv: BlockSolver, x: Vec, time: float,):
     """
     Small Signal Stability analysis
     :param slv: BlockSolver
     :param x: variables (1D numpy array)
-    :param params: parameters (1D numpy array)
+    :param time: time (float)
 
     :return: np array state matrix(A)
 
@@ -39,10 +39,13 @@ def compute_state_matrix(slv: BlockSolver, x: Vec, params: Vec,):
         the A matrix is computed as:
         A = T^-1(f_x - f_y * g_y^{-1} * g_x)   #T is implicit in the jacobian!
     """
-    fx = slv.j11(x, params)  # ∂f/∂x
-    fy = slv.j12(x, params)  # ∂f/∂y
-    gx = slv.j21(x, params)  # ∂g/∂x
-    gy = slv.j22(x, params)  # ∂g/∂y
+
+    params_current = slv.params_fn(time)
+
+    fx = slv.j11(x, params_current)  # ∂f/∂x
+    fy = slv.j12(x, params_current)  # ∂f/∂y
+    gx = slv.j21(x, params_current)  # ∂g/∂x
+    gy = slv.j22(x, params_current)  # ∂g/∂y
 
     gyx = spsolve(gy, gx)
     return fx - fy @ gyx
@@ -170,12 +173,12 @@ def plot_stability(eigenvalues, plot_units = "rad/s" ):
     plt.show()
 
 
-def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, verbose: int = 0):
+def run_small_signal_stability(slv: BlockSolver, x: Vec, time: float, verbose: int = 0):
     """
     Small Signal Stability analysis
     :param slv: BlockSolver
     :param x: variables (1D numpy array)
-    :param params: parameters (1D numpy array)
+    :param time: time (float)
     :param plot: True(default) if S-domain eigenvalues plot wanted. Else: False
     :param verbose: verbosity level (0 for none)
     :return:
@@ -200,7 +203,7 @@ def run_small_signal_stability(slv: BlockSolver, x: Vec, params: Vec, verbose: i
     """
     A = compute_state_matrix(slv,
                              x,
-                             params) # sparse state matrix csc matrix
+                             time) # sparse state matrix csc matrix
     num_states = A.shape[0]
 
     # Note: The eigenvalue solution is dense in practice and apparently there is no sparse way around it
@@ -289,8 +292,8 @@ class SmallSignalStabilityDriver(DriverTemplate):
 
         params_mapping: Dict = dict()
 
-        ss, init_guess = initialize_rms(self.grid, self.pf_results)
-        slv = BlockSolver(ss, self.grid.time)
+        time, ss, init_guess = initialize_rms(self.grid, self.pf_results)
+        slv = BlockSolver(ss, time)
 
         params0 = slv.build_init_params_vector(params_mapping)
         x0 = slv.build_init_vars_vector_from_uid(init_guess)
@@ -318,7 +321,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
              participation_factors,
              damping_ratios,
              conjugate_frequencies,
-             state_matrix) = run_small_signal_stability(slv=slv, x=y[i], params=params0)
+             state_matrix) = run_small_signal_stability(slv=slv, x=y[i], time = self.options.ss_assessment_time)
 
         else:
 
@@ -326,7 +329,7 @@ class SmallSignalStabilityDriver(DriverTemplate):
              participation_factors,
              damping_ratios,
              conjugate_frequencies,
-             state_matrix) = run_small_signal_stability(slv=slv, x=x0, params=params0)
+             state_matrix) = run_small_signal_stability(slv=slv, x=x0, time = 0)
 
         self.results: SmallSignalStabilityResults = SmallSignalStabilityResults(
             eigenvalues = eigenvalues,

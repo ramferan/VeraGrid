@@ -169,10 +169,14 @@ $$
 import VeraGridEngine.api as gce
 from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, PhasesShortCircuit
 
-sc_options = gce.ShortCircuitOptions(bus_index=4,
-                                     fault_type=FaultType.LG,
-                                     method=MethodShortCircuit.phases,
-                                     phases=PhasesShortCircuit.a)
+grid.add_short_circuit_definition(
+    gce.ShortCircuitEvent(
+        device=grid.buses[4],
+        fault_type=FaultType.LG,
+        method=MethodShortCircuit.phases,
+        phases=PhasesShortCircuit.a
+    )
+)
 ```
 
 ### Line-to-Line Fault (LL)
@@ -200,10 +204,14 @@ $$
 import VeraGridEngine.api as gce
 from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, PhasesShortCircuit
 
-sc_options = gce.ShortCircuitOptions(bus_index=4,
-                                     fault_type=FaultType.LL,
-                                     method=MethodShortCircuit.phases,
-                                     phases=PhasesShortCircuit.ca)
+grid.add_short_circuit_definition(
+    gce.ShortCircuitEvent(
+        device=grid.buses[4],
+        fault_type=FaultType.LL,
+        method=MethodShortCircuit.phases,
+        phases=PhasesShortCircuit.ca
+    )
+)
 ```
 
 ### Double Line-to-Ground Fault (DLG)
@@ -232,10 +240,14 @@ $$
 import VeraGridEngine.api as gce
 from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, PhasesShortCircuit
 
-sc_options = gce.ShortCircuitOptions(bus_index=4,
-                                     fault_type=FaultType.LLG,
-                                     method=MethodShortCircuit.phases,
-                                     phases=PhasesShortCircuit.ca)
+grid.add_short_circuit_definition(
+    gce.ShortCircuitEvent(
+        device=grid.buses[4],
+        fault_type=FaultType.LLG,
+        method=MethodShortCircuit.phases,
+        phases=PhasesShortCircuit.ca
+    )
+)
 ```
 
 ### Three-Phase Fault (LLL)
@@ -265,10 +277,14 @@ $$
 import VeraGridEngine.api as gce
 from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, PhasesShortCircuit
 
-sc_options = gce.ShortCircuitOptions(bus_index=4,
-                                     fault_type=FaultType.LLL,
-                                     method=MethodShortCircuit.phases,
-                                     phases=PhasesShortCircuit.abc)
+grid.add_short_circuit_definition(
+    gce.ShortCircuitEvent(
+        device=grid.buses[4],
+        fault_type=FaultType.LLL,
+        method=MethodShortCircuit.phases,
+        phases=PhasesShortCircuit.abc
+    )
+)
 ```
 
 ### Three-Phase-to-Ground Fault (LLLG)
@@ -297,10 +313,14 @@ $$
 import VeraGridEngine.api as gce
 from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, PhasesShortCircuit
 
-sc_options = gce.ShortCircuitOptions(bus_index=4,
-                                     fault_type=FaultType.ph3,
-                                     method=MethodShortCircuit.phases,
-                                     phases=PhasesShortCircuit.abc)
+grid.add_short_circuit_definition(
+    gce.ShortCircuitEvent(
+        device=grid.buses[4],
+        fault_type=FaultType.LLLG,
+        method=MethodShortCircuit.phases,
+        phases=PhasesShortCircuit.abc
+    )
+)
 ```
 
 ### Benchmark - SLG Fault in the IEEE 13 Node Test Feeder
@@ -695,15 +715,21 @@ res_pf = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unba
 # ----------------------------------------------------------------------------------------------------------------------
 # Short-circuit
 # ----------------------------------------------------------------------------------------------------------------------
-sc_options = gce.ShortCircuitOptions(bus_index=4,
-                                     fault_type=FaultType.LG,
-                                     method=MethodShortCircuit.phases,
-                                     phases=PhasesShortCircuit.a)
+
+grid.add_short_circuit_definition(
+    gce.ShortCircuitEvent(
+        device=grid.buses[4],
+        fault_type=FaultType.LG,
+        method=MethodShortCircuit.phases,
+        phases=PhasesShortCircuit.a
+    )
+)
 
 sc_driver = gce.ShortCircuitDriver(grid=grid,
-                                   options=sc_options,
+                                   options=gce.ShortCircuitOptions(),
                                    pf_options=gce.PowerFlowOptions(three_phase_unbalanced=True),
-                                   pf_results=res_pf)
+                                   pf_results=res_pf,
+                                   pf_results3ph=None)
 sc_driver.run()
 
 res_sc = sc_driver.results
@@ -784,8 +810,15 @@ pf = gce.PowerFlowDriver(grid, pf_options)
 pf.run()
 
 fault_index = 2
-sc_options = gce.ShortCircuitOptions(bus_index=fault_index,
-                                     fault_type=gce.FaultType.LG)
+
+grid.add_short_circuit_definition(
+    gce.ShortCircuitEvent(
+        device=grid.buses[fault_index],
+        fault_type=FaultType.LG,
+        method=MethodShortCircuit.phases,
+        phases=PhasesShortCircuit.a
+    )
+)
 
 sc = gce.ShortCircuitDriver(grid, options=sc_options,
                             pf_options=pf_options,

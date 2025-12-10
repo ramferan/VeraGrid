@@ -29,13 +29,14 @@
 |modelling_authority     |Modelling Authority     |       |False    |         |Modelling authority of this asset                                         |False      |       |
 |commissioned_date       |int                     |       |False    |         |Commissioned date of the asset                                            |False      |       |
 |decommissioned_date     |int                     |       |False    |         |Decommissioned date of the asset                                          |False      |       |
+|build_status            |enum BuildStatus        |       |False    |         |Device build status. Used in expansion planning.                          |False      |       |
 |bus                     |Bus                     |       |False    |         |Connection bus                                                            |False      |       |
 |active                  |bool                    |       |False    |         |Is the load active?                                                       |True       |       |
+|color                   |str                     |       |False    |         |Color to paint the element in the map diagram                             |False      |       |
 |mttf                    |float                   |h      |False    |         |Mean time to failure                                                      |False      |       |
 |mttr                    |float                   |h      |False    |         |Mean time to recovery                                                     |False      |       |
 |capex                   |float                   |e/MW   |False    |         |Cost of investment. Used in expansion planning.                           |False      |       |
 |opex                    |float                   |e/MWh  |False    |         |Cost of operation. Used in expansion planning.                            |False      |       |
-|build_status            |enum BuildStatus        |       |False    |         |Branch build status. Used in expansion planning.                          |False      |       |
 |Cost                    |float                   |e/MWh  |False    |         |Cost of not served energy. Used in OPF.                                   |True       |       |
 |facility                |Facility                |       |False    |         |Facility where this is located                                            |False      |       |
 |technologies            |AssociationsList        |p.u.   |False    |         |List of technologies                                                      |False      |       |
@@ -74,7 +75,8 @@
 |MinTimeDown             |float                   |h      |False    |         |Minimum time that the generator has to be off when shut down. Used in OPF.|False      |       |
 |RampUp                  |float                   |MW/h   |False    |         |Maximum amount of generation increase per hour.                           |False      |       |
 |RampDown                |float                   |MW/h   |False    |         |Maximum amount of generation decrease per hour.                           |False      |       |
-|enabled_dispatch        |bool                    |       |False    |         |Enabled for dispatch? Used in OPF.                                        |False      |       |
+|enabled_dispatch        |bool                    |       |False    |         |Enabled for dispatch? Used in OPF.                                        |True       |       |
+|must_run                |bool                    |       |False    |         |P >= Pmin constraint. Used in OPF with unit commitment active.            |True       |       |
 |emissions               |AssociationsList        |t/MWh  |False    |         |List of emissions                                                         |False      |       |
 |fuels                   |AssociationsList        |t/MWh  |False    |         |List of fuels                                                             |False      |       |
 |Enom                    |float                   |MWh    |False    |         |Nominal energy capacity.                                                  |False      |       |
@@ -99,6 +101,7 @@
 |modelling_authority     |Modelling Authority|     |False    |         |Modelling authority of this asset                                                                                                                                                                                                        |False      |       |
 |commissioned_date       |int                |     |False    |         |Commissioned date of the asset                                                                                                                                                                                                           |False      |       |
 |decommissioned_date     |int                |     |False    |         |Decommissioned date of the asset                                                                                                                                                                                                         |False      |       |
+|build_status            |enum BuildStatus   |     |False    |         |Device build status. Used in expansion planning.                                                                                                                                                                                         |False      |       |
 |bus_from                |Bus                |     |False    |         |Name of the bus at the "from" side                                                                                                                                                                                                       |False      |       |
 |bus_to                  |Bus                |     |False    |         |Name of the bus at the "to" side                                                                                                                                                                                                         |False      |       |
 |active                  |bool               |     |False    |         |Is active?                                                                                                                                                                                                                               |True       |       |
@@ -110,7 +113,6 @@
 |mttf                    |float              |h    |False    |         |Mean time to failure                                                                                                                                                                                                                     |False      |       |
 |mttr                    |float              |h    |False    |         |Mean time to repair                                                                                                                                                                                                                      |False      |       |
 |Cost                    |float              |e/MWh|False    |         |Cost of overloads. Used in OPF                                                                                                                                                                                                           |True       |       |
-|build_status            |enum BuildStatus   |     |False    |         |Branch build status. Used in expansion planning.                                                                                                                                                                                         |False      |       |
 |capex                   |float              |e/MW |False    |         |Cost of investment. Used in expansion planning.                                                                                                                                                                                          |False      |       |
 |opex                    |float              |e/MWh|False    |         |Cost of operation. Used in expansion planning.                                                                                                                                                                                           |False      |       |
 |group                   |Branch group       |     |False    |         |Group where this branch belongs                                                                                                                                                                                                          |False      |       |
@@ -147,6 +149,7 @@
 |action    |enum ActionType      |    |False    |         |Object action to perform. Only used for model merging.|False      |       |
 |comment   |str                  |    |False    |         |User comment                                          |False      |       |
 |group_type|enum BranchGroupTypes|    |False    |         |Type of branch group                                  |False      |       |
+|color     |str                  |    |False    |         |Color to paint                                        |False      |       |
 
 
 ### Bus
@@ -162,6 +165,7 @@
 |modelling_authority|Modelling Authority|      |False    |         |Modelling authority of this asset                              |False      |       |
 |commissioned_date  |int                |      |False    |         |Commissioned date of the asset                                 |False      |       |
 |decommissioned_date|int                |      |False    |         |Decommissioned date of the asset                               |False      |       |
+|build_status       |enum BuildStatus   |      |False    |         |Device build status. Used in expansion planning.               |False      |       |
 |active             |bool               |      |False    |         |Is the bus active? used to disable the bus.                    |True       |       |
 |is_slack           |bool               |      |False    |         |Force the bus to be of slack type.                             |False      |       |
 |is_dc              |bool               |      |False    |         |Is this bus of DC type?.                                       |False      |       |
@@ -210,6 +214,7 @@
 |modelling_authority|Modelling Authority|    |False    |         |Modelling authority of this asset                     |False      |       |
 |commissioned_date  |int                |    |False    |         |Commissioned date of the asset                        |False      |       |
 |decommissioned_date|int                |    |False    |         |Decommissioned date of the asset                      |False      |       |
+|build_status       |enum BuildStatus   |    |False    |         |Device build status. Used in expansion planning.      |False      |       |
 |voltage_level      |Bus                |    |False    |         |Voltage level of this BusBar                          |False      |       |
 
 
@@ -241,6 +246,7 @@
 |comment     |str                           |    |False    |         |User comment                                          |False      |       |
 |device_idtag|str                           |    |False    |         |Unique ID                                             |False      |       |
 |tpe         |enum DeviceType               |    |False    |         |Device type                                           |False      |       |
+|device_name |str                           |    |False    |         |Device name                                           |False      |       |
 |prop        |enum ContingencyOperationTypes|    |False    |         |Object property to change                             |False      |       |
 |value       |float                         |    |False    |         |Property value                                        |False      |       |
 |group       |Contingency Group             |    |False    |         |Contingency group                                     |False      |       |
@@ -257,6 +263,7 @@
 |action  |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
 |comment |str            |    |False    |         |User comment                                          |False      |       |
 |category|str            |    |False    |         |Some tag to category the contingency group            |False      |       |
+|active  |bool           |    |False    |         |Is the contingency group active for consideration?    |False      |       |
 
 
 ### ControllableShunt
@@ -272,13 +279,14 @@
 |modelling_authority|Modelling Authority     |            |False    |         |Modelling authority of this asset                                    |False      |       |
 |commissioned_date  |int                     |            |False    |         |Commissioned date of the asset                                       |False      |       |
 |decommissioned_date|int                     |            |False    |         |Decommissioned date of the asset                                     |False      |       |
+|build_status       |enum BuildStatus        |            |False    |         |Device build status. Used in expansion planning.                     |False      |       |
 |bus                |Bus                     |            |False    |         |Connection bus                                                       |False      |       |
 |active             |bool                    |            |False    |         |Is the load active?                                                  |True       |       |
+|color              |str                     |            |False    |         |Color to paint the element in the map diagram                        |False      |       |
 |mttf               |float                   |h           |False    |         |Mean time to failure                                                 |False      |       |
 |mttr               |float                   |h           |False    |         |Mean time to recovery                                                |False      |       |
 |capex              |float                   |e/MW        |False    |         |Cost of investment. Used in expansion planning.                      |False      |       |
 |opex               |float                   |e/MWh       |False    |         |Cost of operation. Used in expansion planning.                       |False      |       |
-|build_status       |enum BuildStatus        |            |False    |         |Branch build status. Used in expansion planning.                     |False      |       |
 |Cost               |float                   |e/MWh       |False    |         |Cost of not served energy. Used in OPF.                              |True       |       |
 |facility           |Facility                |            |False    |         |Facility where this is located                                       |False      |       |
 |technologies       |AssociationsList        |p.u.        |False    |         |List of technologies                                                 |False      |       |
@@ -342,13 +350,14 @@
 |modelling_authority|Modelling Authority     |     |False    |         |Modelling authority of this asset                     |False      |       |
 |commissioned_date  |int                     |     |False    |         |Commissioned date of the asset                        |False      |       |
 |decommissioned_date|int                     |     |False    |         |Decommissioned date of the asset                      |False      |       |
+|build_status       |enum BuildStatus        |     |False    |         |Device build status. Used in expansion planning.      |False      |       |
 |bus                |Bus                     |     |False    |         |Connection bus                                        |False      |       |
 |active             |bool                    |     |False    |         |Is the load active?                                   |True       |       |
+|color              |str                     |     |False    |         |Color to paint the element in the map diagram         |False      |       |
 |mttf               |float                   |h    |False    |         |Mean time to failure                                  |False      |       |
 |mttr               |float                   |h    |False    |         |Mean time to recovery                                 |False      |       |
 |capex              |float                   |e/MW |False    |         |Cost of investment. Used in expansion planning.       |False      |       |
 |opex               |float                   |e/MWh|False    |         |Cost of operation. Used in expansion planning.        |False      |       |
-|build_status       |enum BuildStatus        |     |False    |         |Branch build status. Used in expansion planning.      |False      |       |
 |Cost               |float                   |e/MWh|False    |         |Cost of not served energy. Used in OPF.               |True       |       |
 |facility           |Facility                |     |False    |         |Facility where this is located                        |False      |       |
 |technologies       |AssociationsList        |p.u. |False    |         |List of technologies                                  |False      |       |
@@ -383,6 +392,7 @@
 |modelling_authority     |Modelling Authority|     |False    |         |Modelling authority of this asset                                                                                                                                                                                                        |False      |       |
 |commissioned_date       |int                |     |False    |         |Commissioned date of the asset                                                                                                                                                                                                           |False      |       |
 |decommissioned_date     |int                |     |False    |         |Decommissioned date of the asset                                                                                                                                                                                                         |False      |       |
+|build_status            |enum BuildStatus   |     |False    |         |Device build status. Used in expansion planning.                                                                                                                                                                                         |False      |       |
 |bus_from                |Bus                |     |False    |         |Name of the bus at the "from" side                                                                                                                                                                                                       |False      |       |
 |bus_to                  |Bus                |     |False    |         |Name of the bus at the "to" side                                                                                                                                                                                                         |False      |       |
 |active                  |bool               |     |False    |         |Is active?                                                                                                                                                                                                                               |True       |       |
@@ -394,7 +404,6 @@
 |mttf                    |float              |h    |False    |         |Mean time to failure                                                                                                                                                                                                                     |False      |       |
 |mttr                    |float              |h    |False    |         |Mean time to repair                                                                                                                                                                                                                      |False      |       |
 |Cost                    |float              |e/MWh|False    |         |Cost of overloads. Used in OPF                                                                                                                                                                                                           |True       |       |
-|build_status            |enum BuildStatus   |     |False    |         |Branch build status. Used in expansion planning.                                                                                                                                                                                         |False      |       |
 |capex                   |float              |e/MW |False    |         |Cost of investment. Used in expansion planning.                                                                                                                                                                                          |False      |       |
 |opex                    |float              |e/MWh|False    |         |Cost of operation. Used in expansion planning.                                                                                                                                                                                           |False      |       |
 |group                   |Branch group       |     |False    |         |Group where this branch belongs                                                                                                                                                                                                          |False      |       |
@@ -440,13 +449,14 @@
 |modelling_authority  |Modelling Authority     |       |False    |         |Modelling authority of this asset                                        |False      |       |
 |commissioned_date    |int                     |       |False    |         |Commissioned date of the asset                                           |False      |       |
 |decommissioned_date  |int                     |       |False    |         |Decommissioned date of the asset                                         |False      |       |
+|build_status         |enum BuildStatus        |       |False    |         |Device build status. Used in expansion planning.                         |False      |       |
 |bus                  |Bus                     |       |False    |         |Connection bus                                                           |False      |       |
 |active               |bool                    |       |False    |         |Is the load active?                                                      |True       |       |
+|color                |str                     |       |False    |         |Color to paint the element in the map diagram                            |False      |       |
 |mttf                 |float                   |h      |False    |         |Mean time to failure                                                     |False      |       |
 |mttr                 |float                   |h      |False    |         |Mean time to recovery                                                    |False      |       |
 |capex                |float                   |e/MW   |False    |         |Cost of investment. Used in expansion planning.                          |False      |       |
 |opex                 |float                   |e/MWh  |False    |         |Cost of operation. Used in expansion planning.                           |False      |       |
-|build_status         |enum BuildStatus        |       |False    |         |Branch build status. Used in expansion planning.                         |False      |       |
 |Cost                 |float                   |e/MWh  |False    |         |Cost of not served energy. Used in OPF.                                  |True       |       |
 |facility             |Facility                |       |False    |         |Facility where this is located                                           |False      |       |
 |technologies         |AssociationsList        |p.u.   |False    |         |List of technologies                                                     |False      |       |
@@ -500,13 +510,13 @@
 |modelling_authority|Modelling Authority|        |False    |         |Modelling authority of this asset                     |False      |       |
 |commissioned_date  |int                |        |False    |         |Commissioned date of the asset                        |False      |       |
 |decommissioned_date|int                |        |False    |         |Decommissioned date of the asset                      |False      |       |
+|build_status       |enum BuildStatus   |        |False    |         |Device build status. Used in expansion planning.      |False      |       |
 |min_level          |float              |hm3     |False    |         |Minimum amount of fluid at the node/reservoir         |False      |       |
 |max_level          |float              |hm3     |False    |         |Maximum amount of fluid at the node/reservoir         |False      |       |
 |min_soc            |float              |p.u.    |False    |         |Minimum SOC of fluid at the node/reservoir            |True       |       |
 |max_soc            |float              |p.u.    |False    |         |Maximum SOC of fluid at the node/reservoir            |True       |       |
 |initial_level      |float              |hm3     |False    |         |Initial level of the node/reservoir                   |False      |       |
 |bus                |Bus                |        |False    |         |Electrical bus.                                       |False      |       |
-|build_status       |enum BuildStatus   |        |False    |         |Branch build status. Used in expansion planning.      |False      |       |
 |spillage_cost      |float              |e/(m3/s)|False    |         |Cost of nodal spillage                                |True       |       |
 |inflow             |float              |m3/s    |False    |         |Flow of fluid coming from the rain                    |True       |       |
 |color              |str                |        |False    |         |Color to paint the device in the map diagram          |False      |       |
@@ -525,12 +535,12 @@
 |modelling_authority|Modelling Authority|      |False    |         |Modelling authority of this asset                     |False      |       |
 |commissioned_date  |int                |      |False    |         |Commissioned date of the asset                        |False      |       |
 |decommissioned_date|int                |      |False    |         |Decommissioned date of the asset                      |False      |       |
+|build_status       |enum BuildStatus   |      |False    |         |Device build status. Used in expansion planning.      |False      |       |
 |active             |bool               |      |False    |         |Is the load active?                                   |True       |       |
 |efficiency         |float              |MWh/m3|False    |         |Power plant energy production per fluid unit          |False      |       |
 |max_flow_rate      |float              |m3/s  |False    |         |maximum fluid flow                                    |False      |       |
 |plant              |Fluid node         |      |False    |         |Connection reservoir/node                             |False      |       |
 |generator          |Generator          |      |False    |         |Electrical machine                                    |False      |       |
-|build_status       |enum BuildStatus   |      |False    |         |Branch build status. Used in expansion planning.      |False      |       |
 |facility           |Facility           |      |False    |         |Facility where this is located                        |False      |       |
 
 
@@ -547,6 +557,7 @@
 |modelling_authority|Modelling Authority|    |False    |         |Modelling authority of this asset                     |False      |       |
 |commissioned_date  |int                |    |False    |         |Commissioned date of the asset                        |False      |       |
 |decommissioned_date|int                |    |False    |         |Decommissioned date of the asset                      |False      |       |
+|build_status       |enum BuildStatus   |    |False    |         |Device build status. Used in expansion planning.      |False      |       |
 |source             |Fluid node         |    |False    |         |Source node                                           |False      |       |
 |target             |Fluid node         |    |False    |         |Target node                                           |False      |       |
 |min_flow           |float              |m3/s|False    |         |Minimum flow                                          |False      |       |
@@ -568,12 +579,12 @@
 |modelling_authority|Modelling Authority|      |False    |         |Modelling authority of this asset                     |False      |       |
 |commissioned_date  |int                |      |False    |         |Commissioned date of the asset                        |False      |       |
 |decommissioned_date|int                |      |False    |         |Decommissioned date of the asset                      |False      |       |
+|build_status       |enum BuildStatus   |      |False    |         |Device build status. Used in expansion planning.      |False      |       |
 |active             |bool               |      |False    |         |Is the load active?                                   |True       |       |
 |efficiency         |float              |MWh/m3|False    |         |Power plant energy production per fluid unit          |False      |       |
 |max_flow_rate      |float              |m3/s  |False    |         |maximum fluid flow                                    |False      |       |
 |plant              |Fluid node         |      |False    |         |Connection reservoir/node                             |False      |       |
 |generator          |Generator          |      |False    |         |Electrical machine                                    |False      |       |
-|build_status       |enum BuildStatus   |      |False    |         |Branch build status. Used in expansion planning.      |False      |       |
 |facility           |Facility           |      |False    |         |Facility where this is located                        |False      |       |
 
 
@@ -590,12 +601,12 @@
 |modelling_authority|Modelling Authority|      |False    |         |Modelling authority of this asset                     |False      |       |
 |commissioned_date  |int                |      |False    |         |Commissioned date of the asset                        |False      |       |
 |decommissioned_date|int                |      |False    |         |Decommissioned date of the asset                      |False      |       |
+|build_status       |enum BuildStatus   |      |False    |         |Device build status. Used in expansion planning.      |False      |       |
 |active             |bool               |      |False    |         |Is the load active?                                   |True       |       |
 |efficiency         |float              |MWh/m3|False    |         |Power plant energy production per fluid unit          |False      |       |
 |max_flow_rate      |float              |m3/s  |False    |         |maximum fluid flow                                    |False      |       |
 |plant              |Fluid node         |      |False    |         |Connection reservoir/node                             |False      |       |
 |generator          |Generator          |      |False    |         |Electrical machine                                    |False      |       |
-|build_status       |enum BuildStatus   |      |False    |         |Branch build status. Used in expansion planning.      |False      |       |
 |facility           |Facility           |      |False    |         |Facility where this is located                        |False      |       |
 
 
@@ -626,13 +637,14 @@
 |modelling_authority     |Modelling Authority     |       |False    |         |Modelling authority of this asset                                         |False      |       |
 |commissioned_date       |int                     |       |False    |         |Commissioned date of the asset                                            |False      |       |
 |decommissioned_date     |int                     |       |False    |         |Decommissioned date of the asset                                          |False      |       |
+|build_status            |enum BuildStatus        |       |False    |         |Device build status. Used in expansion planning.                          |False      |       |
 |bus                     |Bus                     |       |False    |         |Connection bus                                                            |False      |       |
 |active                  |bool                    |       |False    |         |Is the load active?                                                       |True       |       |
+|color                   |str                     |       |False    |         |Color to paint the element in the map diagram                             |False      |       |
 |mttf                    |float                   |h      |False    |         |Mean time to failure                                                      |False      |       |
 |mttr                    |float                   |h      |False    |         |Mean time to recovery                                                     |False      |       |
 |capex                   |float                   |e/MW   |False    |         |Cost of investment. Used in expansion planning.                           |False      |       |
 |opex                    |float                   |e/MWh  |False    |         |Cost of operation. Used in expansion planning.                            |False      |       |
-|build_status            |enum BuildStatus        |       |False    |         |Branch build status. Used in expansion planning.                          |False      |       |
 |Cost                    |float                   |e/MWh  |False    |         |Cost of not served energy. Used in OPF.                                   |True       |       |
 |facility                |Facility                |       |False    |         |Facility where this is located                                            |False      |       |
 |technologies            |AssociationsList        |p.u.   |False    |         |List of technologies                                                      |False      |       |
@@ -671,7 +683,8 @@
 |MinTimeDown             |float                   |h      |False    |         |Minimum time that the generator has to be off when shut down. Used in OPF.|False      |       |
 |RampUp                  |float                   |MW/h   |False    |         |Maximum amount of generation increase per hour.                           |False      |       |
 |RampDown                |float                   |MW/h   |False    |         |Maximum amount of generation decrease per hour.                           |False      |       |
-|enabled_dispatch        |bool                    |       |False    |         |Enabled for dispatch? Used in OPF.                                        |False      |       |
+|enabled_dispatch        |bool                    |       |False    |         |Enabled for dispatch? Used in OPF.                                        |True       |       |
+|must_run                |bool                    |       |False    |         |P >= Pmin constraint. Used in OPF with unit commitment active.            |True       |       |
 |emissions               |AssociationsList        |t/MWh  |False    |         |List of emissions                                                         |False      |       |
 |fuels                   |AssociationsList        |t/MWh  |False    |         |List of fuels                                                             |False      |       |
 
@@ -689,6 +702,7 @@
 |modelling_authority     |Modelling Authority |      |False    |         |Modelling authority of this asset                                                                                                                                                                                                        |False      |       |
 |commissioned_date       |int                 |      |False    |         |Commissioned date of the asset                                                                                                                                                                                                           |False      |       |
 |decommissioned_date     |int                 |      |False    |         |Decommissioned date of the asset                                                                                                                                                                                                         |False      |       |
+|build_status            |enum BuildStatus    |      |False    |         |Device build status. Used in expansion planning.                                                                                                                                                                                         |False      |       |
 |bus_from                |Bus                 |      |False    |         |Name of the bus at the "from" side                                                                                                                                                                                                       |False      |       |
 |bus_to                  |Bus                 |      |False    |         |Name of the bus at the "to" side                                                                                                                                                                                                         |False      |       |
 |active                  |bool                |      |False    |         |Is active?                                                                                                                                                                                                                               |True       |       |
@@ -700,7 +714,6 @@
 |mttf                    |float               |h     |False    |         |Mean time to failure                                                                                                                                                                                                                     |False      |       |
 |mttr                    |float               |h     |False    |         |Mean time to repair                                                                                                                                                                                                                      |False      |       |
 |Cost                    |float               |e/MWh |False    |         |Cost of overloads. Used in OPF                                                                                                                                                                                                           |True       |       |
-|build_status            |enum BuildStatus    |      |False    |         |Branch build status. Used in expansion planning.                                                                                                                                                                                         |False      |       |
 |capex                   |float               |e/MW  |False    |         |Cost of investment. Used in expansion planning.                                                                                                                                                                                          |False      |       |
 |opex                    |float               |e/MWh |False    |         |Cost of operation. Used in expansion planning.                                                                                                                                                                                           |False      |       |
 |group                   |Branch group        |      |False    |         |Group where this branch belongs                                                                                                                                                                                                          |False      |       |
@@ -727,6 +740,23 @@
 |locations               |Line locations      |      |False    |         |                                                                                                                                                                                                                                         |False      |       |
 
 
+### IfMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
+
+
 ### Investment
 
 |    name    |   class_type    |unit|mandatory|max_chars|                                               descriptions                                                |has_profile|comment|
@@ -739,6 +769,7 @@
 |comment     |str              |    |False    |         |User comment                                                                                               |False      |       |
 |device_idtag|str              |    |False    |         |Unique ID                                                                                                  |False      |       |
 |tpe         |enum DeviceType  |    |False    |         |Device type                                                                                                |False      |       |
+|device_name |str              |    |False    |         |Device name                                                                                                |False      |       |
 |CAPEX       |float            |M€  |False    |         |Capital expenditures. This is the investment value, it overrides the CAPEX value of the device if it exits.|False      |       |
 |status      |bool             |    |False    |         |If true the investment activates when applied, otherwise is deactivated.                                   |False      |       |
 |group       |Investments Group|    |False    |         |Investment group                                                                                           |False      |       |
@@ -759,6 +790,23 @@
 |CAPEX        |float          |€   |False    |         |Capital Expenditure of the group (added to the individual investments' capex)|False      |       |
 
 
+### ItMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
+
+
 ### Line
 
 |             name              |    class_type     |unit |mandatory|max_chars|                                                                                                              descriptions                                                                                                               |has_profile|comment|
@@ -772,6 +820,7 @@
 |modelling_authority            |Modelling Authority|     |False    |         |Modelling authority of this asset                                                                                                                                                                                                        |False      |       |
 |commissioned_date              |int                |     |False    |         |Commissioned date of the asset                                                                                                                                                                                                           |False      |       |
 |decommissioned_date            |int                |     |False    |         |Decommissioned date of the asset                                                                                                                                                                                                         |False      |       |
+|build_status                   |enum BuildStatus   |     |False    |         |Device build status. Used in expansion planning.                                                                                                                                                                                         |False      |       |
 |bus_from                       |Bus                |     |False    |         |Name of the bus at the "from" side                                                                                                                                                                                                       |False      |       |
 |bus_to                         |Bus                |     |False    |         |Name of the bus at the "to" side                                                                                                                                                                                                         |False      |       |
 |active                         |bool               |     |False    |         |Is active?                                                                                                                                                                                                                               |True       |       |
@@ -783,7 +832,6 @@
 |mttf                           |float              |h    |False    |         |Mean time to failure                                                                                                                                                                                                                     |False      |       |
 |mttr                           |float              |h    |False    |         |Mean time to repair                                                                                                                                                                                                                      |False      |       |
 |Cost                           |float              |e/MWh|False    |         |Cost of overloads. Used in OPF                                                                                                                                                                                                           |True       |       |
-|build_status                   |enum BuildStatus   |     |False    |         |Branch build status. Used in expansion planning.                                                                                                                                                                                         |False      |       |
 |capex                          |float              |e/MW |False    |         |Cost of investment. Used in expansion planning.                                                                                                                                                                                          |False      |       |
 |opex                           |float              |e/MWh|False    |         |Cost of operation. Used in expansion planning.                                                                                                                                                                                           |False      |       |
 |group                          |Branch group       |     |False    |         |Group where this branch belongs                                                                                                                                                                                                          |False      |       |
@@ -831,13 +879,14 @@
 |modelling_authority|Modelling Authority     |     |False    |         |Modelling authority of this asset                              |False      |       |
 |commissioned_date  |int                     |     |False    |         |Commissioned date of the asset                                 |False      |       |
 |decommissioned_date|int                     |     |False    |         |Decommissioned date of the asset                               |False      |       |
+|build_status       |enum BuildStatus        |     |False    |         |Device build status. Used in expansion planning.               |False      |       |
 |bus                |Bus                     |     |False    |         |Connection bus                                                 |False      |       |
 |active             |bool                    |     |False    |         |Is the load active?                                            |True       |       |
+|color              |str                     |     |False    |         |Color to paint the element in the map diagram                  |False      |       |
 |mttf               |float                   |h    |False    |         |Mean time to failure                                           |False      |       |
 |mttr               |float                   |h    |False    |         |Mean time to recovery                                          |False      |       |
 |capex              |float                   |e/MW |False    |         |Cost of investment. Used in expansion planning.                |False      |       |
 |opex               |float                   |e/MWh|False    |         |Cost of operation. Used in expansion planning.                 |False      |       |
-|build_status       |enum BuildStatus        |     |False    |         |Branch build status. Used in expansion planning.               |False      |       |
 |Cost               |float                   |e/MWh|False    |         |Cost of not served energy. Used in OPF.                        |True       |       |
 |facility           |Facility                |     |False    |         |Facility where this is located                                 |False      |       |
 |technologies       |AssociationsList        |p.u. |False    |         |List of technologies                                           |False      |       |
@@ -874,6 +923,7 @@
 |B2                 |float                   |MVAr |False    |         |Reactive power of the phase 2 impedance component at V=1.0 p.u.|True       |       |
 |B3                 |float                   |MVAr |False    |         |Reactive power of the phase 3 impedance component at V=1.0 p.u.|True       |       |
 |n_customers        |int                     |unit |False    |         |Number of customers represented by this load                   |True       |       |
+|contract_power     |float                   |MW   |False    |         |Nominal contracted power                                       |False      |       |
 
 
 ### ModellingAuthority
@@ -920,6 +970,142 @@
 |wires_in_tower   |ListOfWires    |      |False    |         |List of wires                                         |False      |       |
 
 
+### PfMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
+
+
+### PgMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
+
+
+### PiMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
+
+
+### PtMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
+
+
+### QfMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
+
+
+### QgMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
+
+
+### QiMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
+
+
+### QtMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
+
+
 ### Region
 
 |  name   |  class_type   |unit|mandatory|max_chars|                              descriptions                              |has_profile|comment|
@@ -948,6 +1134,7 @@
 |comment     |str                           |    |False    |         |User comment                                          |False      |       |
 |device_idtag|str                           |    |False    |         |Unique ID                                             |False      |       |
 |tpe         |enum DeviceType               |    |False    |         |Device type                                           |False      |       |
+|device_name |str                           |    |False    |         |Device name                                           |False      |       |
 |prop        |enum ContingencyOperationTypes|    |False    |         |Object property to change                             |False      |       |
 |value       |float                         |    |False    |         |Property value                                        |False      |       |
 |group       |Remedial action Group         |    |False    |         |Remedial action group                                 |False      |       |
@@ -965,6 +1152,22 @@
 |comment   |str              |    |False    |         |User comment                                          |False      |       |
 |category  |str              |    |False    |         |Some tag to category the contingency group            |False      |       |
 |conn_group|Contingency Group|    |False    |         |Contingency group                                     |False      |       |
+
+
+### RmsModelTemplate
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|block       |DaeBlock       |p.u.|False    |         |DAE block                                             |False      |       |
 
 
 ### SequenceLineType
@@ -1004,6 +1207,7 @@
 |modelling_authority     |Modelling Authority|     |False    |         |Modelling authority of this asset                                                                                                                                                                                                        |False      |       |
 |commissioned_date       |int                |     |False    |         |Commissioned date of the asset                                                                                                                                                                                                           |False      |       |
 |decommissioned_date     |int                |     |False    |         |Decommissioned date of the asset                                                                                                                                                                                                         |False      |       |
+|build_status            |enum BuildStatus   |     |False    |         |Device build status. Used in expansion planning.                                                                                                                                                                                         |False      |       |
 |bus_from                |Bus                |     |False    |         |Name of the bus at the "from" side                                                                                                                                                                                                       |False      |       |
 |bus_to                  |Bus                |     |False    |         |Name of the bus at the "to" side                                                                                                                                                                                                         |False      |       |
 |active                  |bool               |     |False    |         |Is active?                                                                                                                                                                                                                               |True       |       |
@@ -1015,7 +1219,6 @@
 |mttf                    |float              |h    |False    |         |Mean time to failure                                                                                                                                                                                                                     |False      |       |
 |mttr                    |float              |h    |False    |         |Mean time to repair                                                                                                                                                                                                                      |False      |       |
 |Cost                    |float              |e/MWh|False    |         |Cost of overloads. Used in OPF                                                                                                                                                                                                           |True       |       |
-|build_status            |enum BuildStatus   |     |False    |         |Branch build status. Used in expansion planning.                                                                                                                                                                                         |False      |       |
 |capex                   |float              |e/MW |False    |         |Cost of investment. Used in expansion planning.                                                                                                                                                                                          |False      |       |
 |opex                    |float              |e/MWh|False    |         |Cost of operation. Used in expansion planning.                                                                                                                                                                                           |False      |       |
 |group                   |Branch group       |     |False    |         |Group where this branch belongs                                                                                                                                                                                                          |False      |       |
@@ -1038,6 +1241,25 @@
 |fault_pos               |float              |p.u. |False    |         |Per-unit positioning of the fault:0 would be at the "from" side,1 would be at the "to" side,therefore 0.5 is at the middle.                                                                                                              |False      |       |
 
 
+### ShortCircuitEvent
+
+|    name    |      class_type       |unit|mandatory|max_chars|                                 descriptions                                 |has_profile|comment|
+|------------|-----------------------|----|---------|---------|------------------------------------------------------------------------------|-----------|-------|
+|idtag       |str                    |    |False    |         |Unique ID                                                                     |False      |       |
+|name        |str                    |    |False    |         |Name of the device.                                                           |False      |       |
+|code        |str                    |    |False    |         |Secondary ID                                                                  |False      |       |
+|rdfid       |str                    |    |False    |         |RDF ID for further compatibility                                              |False      |       |
+|action      |enum ActionType        |    |False    |         |Object action to perform. Only used for model merging.                        |False      |       |
+|comment     |str                    |    |False    |         |User comment                                                                  |False      |       |
+|device_idtag|str                    |    |False    |         |Unique ID                                                                     |False      |       |
+|tpe         |enum DeviceType        |    |False    |         |Device type                                                                   |False      |       |
+|device_name |str                    |    |False    |         |Device name                                                                   |False      |       |
+|fault_type  |enum FaultType         |    |False    |         |Type of short circuit                                                         |False      |       |
+|method      |enum MethodShortCircuit|    |False    |         |Method of short circuit                                                       |False      |       |
+|phases      |enum PhasesShortCircuit|    |False    |         |Phases involved                                                               |False      |       |
+|active      |bool                   |    |False    |         |If true the short-circuit activates when calculated, otherwise is deactivated.|False      |       |
+
+
 ### Shunt
 
 |       name        |       class_type       |unit |mandatory|max_chars|                            descriptions                             |has_profile|comment|
@@ -1051,13 +1273,14 @@
 |modelling_authority|Modelling Authority     |     |False    |         |Modelling authority of this asset                                    |False      |       |
 |commissioned_date  |int                     |     |False    |         |Commissioned date of the asset                                       |False      |       |
 |decommissioned_date|int                     |     |False    |         |Decommissioned date of the asset                                     |False      |       |
+|build_status       |enum BuildStatus        |     |False    |         |Device build status. Used in expansion planning.                     |False      |       |
 |bus                |Bus                     |     |False    |         |Connection bus                                                       |False      |       |
 |active             |bool                    |     |False    |         |Is the load active?                                                  |True       |       |
+|color              |str                     |     |False    |         |Color to paint the element in the map diagram                        |False      |       |
 |mttf               |float                   |h    |False    |         |Mean time to failure                                                 |False      |       |
 |mttr               |float                   |h    |False    |         |Mean time to recovery                                                |False      |       |
 |capex              |float                   |e/MW |False    |         |Cost of investment. Used in expansion planning.                      |False      |       |
 |opex               |float                   |e/MWh|False    |         |Cost of operation. Used in expansion planning.                       |False      |       |
-|build_status       |enum BuildStatus        |     |False    |         |Branch build status. Used in expansion planning.                     |False      |       |
 |Cost               |float                   |e/MWh|False    |         |Cost of not served energy. Used in OPF.                              |True       |       |
 |facility           |Facility                |     |False    |         |Facility where this is located                                       |False      |       |
 |technologies       |AssociationsList        |p.u. |False    |         |List of technologies                                                 |False      |       |
@@ -1095,13 +1318,14 @@
 |modelling_authority|Modelling Authority     |     |False    |         |Modelling authority of this asset                     |False      |       |
 |commissioned_date  |int                     |     |False    |         |Commissioned date of the asset                        |False      |       |
 |decommissioned_date|int                     |     |False    |         |Decommissioned date of the asset                      |False      |       |
+|build_status       |enum BuildStatus        |     |False    |         |Device build status. Used in expansion planning.      |False      |       |
 |bus                |Bus                     |     |False    |         |Connection bus                                        |False      |       |
 |active             |bool                    |     |False    |         |Is the load active?                                   |True       |       |
+|color              |str                     |     |False    |         |Color to paint the element in the map diagram         |False      |       |
 |mttf               |float                   |h    |False    |         |Mean time to failure                                  |False      |       |
 |mttr               |float                   |h    |False    |         |Mean time to recovery                                 |False      |       |
 |capex              |float                   |e/MW |False    |         |Cost of investment. Used in expansion planning.       |False      |       |
 |opex               |float                   |e/MWh|False    |         |Cost of operation. Used in expansion planning.        |False      |       |
-|build_status       |enum BuildStatus        |     |False    |         |Branch build status. Used in expansion planning.      |False      |       |
 |Cost               |float                   |e/MWh|False    |         |Cost of not served energy. Used in OPF.               |True       |       |
 |facility           |Facility                |     |False    |         |Facility where this is located                        |False      |       |
 |technologies       |AssociationsList        |p.u. |False    |         |List of technologies                                  |False      |       |
@@ -1133,6 +1357,10 @@
 |rdfid              |str                |     |False    |         |RDF ID for further compatibility                                                                                                                                                                                              |False      |       |
 |action             |enum ActionType    |     |False    |         |Object action to perform. Only used for model merging.                                                                                                                                                                        |False      |       |
 |comment            |str                |     |False    |         |User comment                                                                                                                                                                                                                  |False      |       |
+|modelling_authority|Modelling Authority|     |False    |         |Modelling authority of this asset                                                                                                                                                                                             |False      |       |
+|commissioned_date  |int                |     |False    |         |Commissioned date of the asset                                                                                                                                                                                                |False      |       |
+|decommissioned_date|int                |     |False    |         |Decommissioned date of the asset                                                                                                                                                                                              |False      |       |
+|build_status       |enum BuildStatus   |     |False    |         |Device build status. Used in expansion planning.                                                                                                                                                                              |False      |       |
 |longitude          |float              |deg  |False    |         |longitude.                                                                                                                                                                                                                    |False      |       |
 |latitude           |float              |deg  |False    |         |latitude.                                                                                                                                                                                                                     |False      |       |
 |color              |str                |     |False    |         |Color to paint the element in the map diagram                                                                                                                                                                                 |False      |       |
@@ -1142,7 +1370,6 @@
 |community          |Community          |     |False    |         |Substation community, altenativelly this can be obtained from the region                                                                                                                                                      |False      |       |
 |region             |Region             |     |False    |         |Substation region, altenativelly this can be obtained from the municipality                                                                                                                                                   |False      |       |
 |municipality       |Municipality       |     |False    |         |Substation municipality                                                                                                                                                                                                       |False      |       |
-|modelling_authority|Modelling Authority|     |False    |         |Modelling authority of this asset                                                                                                                                                                                             |False      |       |
 |address            |str                |     |False    |         |Substation address                                                                                                                                                                                                            |False      |       |
 |irradiation        |float              |W/m^2|False    |         |Substation solar irradiation                                                                                                                                                                                                  |True       |       |
 |temperature        |float              |ºC   |False    |         |Substation temperature                                                                                                                                                                                                        |True       |       |
@@ -1163,6 +1390,7 @@
 |modelling_authority     |Modelling Authority   |     |False    |         |Modelling authority of this asset                                                                                                                                                                                                        |False      |       |
 |commissioned_date       |int                   |     |False    |         |Commissioned date of the asset                                                                                                                                                                                                           |False      |       |
 |decommissioned_date     |int                   |     |False    |         |Decommissioned date of the asset                                                                                                                                                                                                         |False      |       |
+|build_status            |enum BuildStatus      |     |False    |         |Device build status. Used in expansion planning.                                                                                                                                                                                         |False      |       |
 |bus_from                |Bus                   |     |False    |         |Name of the bus at the "from" side                                                                                                                                                                                                       |False      |       |
 |bus_to                  |Bus                   |     |False    |         |Name of the bus at the "to" side                                                                                                                                                                                                         |False      |       |
 |active                  |bool                  |     |False    |         |Is active?                                                                                                                                                                                                                               |True       |       |
@@ -1174,7 +1402,6 @@
 |mttf                    |float                 |h    |False    |         |Mean time to failure                                                                                                                                                                                                                     |False      |       |
 |mttr                    |float                 |h    |False    |         |Mean time to repair                                                                                                                                                                                                                      |False      |       |
 |Cost                    |float                 |e/MWh|False    |         |Cost of overloads. Used in OPF                                                                                                                                                                                                           |True       |       |
-|build_status            |enum BuildStatus      |     |False    |         |Branch build status. Used in expansion planning.                                                                                                                                                                                         |False      |       |
 |capex                   |float                 |e/MW |False    |         |Cost of investment. Used in expansion planning.                                                                                                                                                                                          |False      |       |
 |opex                    |float                 |e/MWh|False    |         |Cost of operation. Used in expansion planning.                                                                                                                                                                                           |False      |       |
 |group                   |Branch group          |     |False    |         |Group where this branch belongs                                                                                                                                                                                                          |False      |       |
@@ -1222,6 +1449,7 @@
 |modelling_authority     |Modelling Authority    |     |False    |         |Modelling authority of this asset                                                                                                                                                                                                        |False      |       |
 |commissioned_date       |int                    |     |False    |         |Commissioned date of the asset                                                                                                                                                                                                           |False      |       |
 |decommissioned_date     |int                    |     |False    |         |Decommissioned date of the asset                                                                                                                                                                                                         |False      |       |
+|build_status            |enum BuildStatus       |     |False    |         |Device build status. Used in expansion planning.                                                                                                                                                                                         |False      |       |
 |bus_from                |Bus                    |     |False    |         |Name of the bus at the "from" side                                                                                                                                                                                                       |False      |       |
 |bus_to                  |Bus                    |     |False    |         |Name of the bus at the "to" side                                                                                                                                                                                                         |False      |       |
 |active                  |bool                   |     |False    |         |Is active?                                                                                                                                                                                                                               |True       |       |
@@ -1233,7 +1461,6 @@
 |mttf                    |float                  |h    |False    |         |Mean time to failure                                                                                                                                                                                                                     |False      |       |
 |mttr                    |float                  |h    |False    |         |Mean time to repair                                                                                                                                                                                                                      |False      |       |
 |Cost                    |float                  |e/MWh|False    |         |Cost of overloads. Used in OPF                                                                                                                                                                                                           |True       |       |
-|build_status            |enum BuildStatus       |     |False    |         |Branch build status. Used in expansion planning.                                                                                                                                                                                         |False      |       |
 |capex                   |float                  |e/MW |False    |         |Cost of investment. Used in expansion planning.                                                                                                                                                                                          |False      |       |
 |opex                    |float                  |e/MWh|False    |         |Cost of operation. Used in expansion planning.                                                                                                                                                                                           |False      |       |
 |group                   |Branch group           |     |False    |         |Group where this branch belongs                                                                                                                                                                                                          |False      |       |
@@ -1297,6 +1524,7 @@
 |modelling_authority|Modelling Authority|    |False    |         |Modelling authority of this asset                     |False      |       |
 |commissioned_date  |int                |    |False    |         |Commissioned date of the asset                        |False      |       |
 |decommissioned_date|int                |    |False    |         |Decommissioned date of the asset                      |False      |       |
+|build_status       |enum BuildStatus   |    |False    |         |Device build status. Used in expansion planning.      |False      |       |
 |bus0               |Bus                |    |False    |         |Middle point connection bus.                          |False      |       |
 |bus1               |Bus                |    |False    |         |Bus 1.                                                |False      |       |
 |bus2               |Bus                |    |False    |         |Bus 2.                                                |False      |       |
@@ -1373,6 +1601,7 @@
 |modelling_authority     |Modelling Authority|     |False    |         |Modelling authority of this asset                                                                                                                                                                                                        |False      |       |
 |commissioned_date       |int                |     |False    |         |Commissioned date of the asset                                                                                                                                                                                                           |False      |       |
 |decommissioned_date     |int                |     |False    |         |Decommissioned date of the asset                                                                                                                                                                                                         |False      |       |
+|build_status            |enum BuildStatus   |     |False    |         |Device build status. Used in expansion planning.                                                                                                                                                                                         |False      |       |
 |bus_from                |Bus                |     |False    |         |Name of the bus at the "from" side                                                                                                                                                                                                       |False      |       |
 |bus_to                  |Bus                |     |False    |         |Name of the bus at the "to" side                                                                                                                                                                                                         |False      |       |
 |active                  |bool               |     |False    |         |Is active?                                                                                                                                                                                                                               |True       |       |
@@ -1384,7 +1613,6 @@
 |mttf                    |float              |h    |False    |         |Mean time to failure                                                                                                                                                                                                                     |False      |       |
 |mttr                    |float              |h    |False    |         |Mean time to repair                                                                                                                                                                                                                      |False      |       |
 |Cost                    |float              |e/MWh|False    |         |Cost of overloads. Used in OPF                                                                                                                                                                                                           |True       |       |
-|build_status            |enum BuildStatus   |     |False    |         |Branch build status. Used in expansion planning.                                                                                                                                                                                         |False      |       |
 |capex                   |float              |e/MW |False    |         |Cost of investment. Used in expansion planning.                                                                                                                                                                                          |False      |       |
 |opex                    |float              |e/MWh|False    |         |Cost of operation. Used in expansion planning.                                                                                                                                                                                           |False      |       |
 |group                   |Branch group       |     |False    |         |Group where this branch belongs                                                                                                                                                                                                          |False      |       |
@@ -1414,23 +1642,26 @@
 
 ### UndergroundLineType
 
-|   name   |  class_type   | unit |mandatory|max_chars|                     descriptions                     |has_profile|comment|
-|----------|---------------|------|---------|---------|------------------------------------------------------|-----------|-------|
-|idtag     |str            |      |False    |         |Unique ID                                             |False      |       |
-|name      |str            |      |False    |         |Name of the device.                                   |False      |       |
-|code      |str            |      |False    |         |Secondary ID                                          |False      |       |
-|rdfid     |str            |      |False    |         |RDF ID for further compatibility                      |False      |       |
-|action    |enum ActionType|      |False    |         |Object action to perform. Only used for model merging.|False      |       |
-|comment   |str            |      |False    |         |User comment                                          |False      |       |
-|Imax      |float          |kA    |False    |         |Current rating of the line                            |False      |       |
-|Vnom      |float          |kV    |False    |         |Voltage rating of the line                            |False      |       |
-|R         |float          |Ohm/km|False    |         |Positive-sequence resistance per km                   |False      |       |
-|X         |float          |Ohm/km|False    |         |Positive-sequence reactance per km                    |False      |       |
-|B         |float          |uS/km |False    |         |Positive-sequence shunt susceptance per km            |False      |       |
-|R0        |float          |Ohm/km|False    |         |Zero-sequence resistance per km                       |False      |       |
-|X0        |float          |Ohm/km|False    |         |Zero-sequence reactance per km                        |False      |       |
-|B0        |float          |uS/km |False    |         |Zero-sequence shunt susceptance per km                |False      |       |
-|n_circuits|int            |      |False    |         |number of circuits                                    |False      |       |
+|   name   |  class_type   | unit |mandatory|max_chars|                        descriptions                        |has_profile|comment|
+|----------|---------------|------|---------|---------|------------------------------------------------------------|-----------|-------|
+|idtag     |str            |      |False    |         |Unique ID                                                   |False      |       |
+|name      |str            |      |False    |         |Name of the device.                                         |False      |       |
+|code      |str            |      |False    |         |Secondary ID                                                |False      |       |
+|rdfid     |str            |      |False    |         |RDF ID for further compatibility                            |False      |       |
+|action    |enum ActionType|      |False    |         |Object action to perform. Only used for model merging.      |False      |       |
+|comment   |str            |      |False    |         |User comment                                                |False      |       |
+|Imax      |float          |kA    |False    |         |Current rating of the line                                  |False      |       |
+|Vnom      |float          |kV    |False    |         |Voltage rating of the line                                  |False      |       |
+|freq      |float          |Hz    |False    |         |Cable frequency                                             |False      |       |
+|R         |float          |Ohm/km|False    |         |Positive-sequence resistance per km                         |False      |       |
+|X         |float          |Ohm/km|False    |         |Positive-sequence reactance per km                          |False      |       |
+|B         |float          |uS/km |False    |         |Positive-sequence shunt susceptance per km                  |False      |       |
+|C         |float          |uF/km |False    |         |Positive-sequence shunt capacitance per km (alternative to B|False      |       |
+|R0        |float          |Ohm/km|False    |         |Zero-sequence resistance per km                             |False      |       |
+|X0        |float          |Ohm/km|False    |         |Zero-sequence reactance per km                              |False      |       |
+|B0        |float          |uS/km |False    |         |Zero-sequence shunt susceptance per km                      |False      |       |
+|C0        |float          |uF/km |False    |         |Zero-sequence shunt capacitance per km (alternative to B0   |False      |       |
+|n_circuits|int            |      |False    |         |number of circuits                                          |False      |       |
 
 
 ### VSC
@@ -1446,6 +1677,7 @@
 |modelling_authority     |Modelling Authority      |         |False    |         |Modelling authority of this asset                                                                                                                                                                                                        |False      |       |
 |commissioned_date       |int                      |         |False    |         |Commissioned date of the asset                                                                                                                                                                                                           |False      |       |
 |decommissioned_date     |int                      |         |False    |         |Decommissioned date of the asset                                                                                                                                                                                                         |False      |       |
+|build_status            |enum BuildStatus         |         |False    |         |Device build status. Used in expansion planning.                                                                                                                                                                                         |False      |       |
 |bus_from                |Bus                      |         |False    |         |Name of the bus at the "from" side                                                                                                                                                                                                       |False      |       |
 |bus_to                  |Bus                      |         |False    |         |Name of the bus at the "to" side                                                                                                                                                                                                         |False      |       |
 |active                  |bool                     |         |False    |         |Is active?                                                                                                                                                                                                                               |True       |       |
@@ -1457,7 +1689,6 @@
 |mttf                    |float                    |h        |False    |         |Mean time to failure                                                                                                                                                                                                                     |False      |       |
 |mttr                    |float                    |h        |False    |         |Mean time to repair                                                                                                                                                                                                                      |False      |       |
 |Cost                    |float                    |e/MWh    |False    |         |Cost of overloads. Used in OPF                                                                                                                                                                                                           |True       |       |
-|build_status            |enum BuildStatus         |         |False    |         |Branch build status. Used in expansion planning.                                                                                                                                                                                         |False      |       |
 |capex                   |float                    |e/MW     |False    |         |Cost of investment. Used in expansion planning.                                                                                                                                                                                          |False      |       |
 |opex                    |float                    |e/MWh    |False    |         |Cost of operation. Used in expansion planning.                                                                                                                                                                                           |False      |       |
 |group                   |Branch group             |         |False    |         |Group where this branch belongs                                                                                                                                                                                                          |False      |       |
@@ -1483,6 +1714,40 @@
 |y                       |float                    |px       |False    |         |y position                                                                                                                                                                                                                               |False      |       |
 
 
+### VaMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
+
+
+### VmMeasurement
+
+|    name    |  class_type   |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
+|------------|---------------|----|---------|---------|------------------------------------------------------|-----------|-------|
+|idtag       |str            |    |False    |         |Unique ID                                             |False      |       |
+|name        |str            |    |False    |         |Name of the device.                                   |False      |       |
+|code        |str            |    |False    |         |Secondary ID                                          |False      |       |
+|rdfid       |str            |    |False    |         |RDF ID for further compatibility                      |False      |       |
+|action      |enum ActionType|    |False    |         |Object action to perform. Only used for model merging.|False      |       |
+|comment     |str            |    |False    |         |User comment                                          |False      |       |
+|device_idtag|str            |    |False    |         |Unique ID                                             |False      |       |
+|tpe         |enum DeviceType|    |False    |         |Device type                                           |False      |       |
+|device_name |str            |    |False    |         |Device name                                           |False      |       |
+|value       |float          |    |False    |         |Value of the measurement                              |True       |       |
+|sigma       |float          |    |False    |         |Uncertainty of the measurement                        |True       |       |
+
+
 ### VoltageLevel
 
 |       name        |    class_type     |unit|mandatory|max_chars|                     descriptions                     |has_profile|comment|
@@ -1496,7 +1761,8 @@
 |modelling_authority|Modelling Authority|    |False    |         |Modelling authority of this asset                     |False      |       |
 |commissioned_date  |int                |    |False    |         |Commissioned date of the asset                        |False      |       |
 |decommissioned_date|int                |    |False    |         |Decommissioned date of the asset                      |False      |       |
-|Vnom               |float              |KV  |False    |         |Nominal voltage                                       |False      |       |
+|build_status       |enum BuildStatus   |    |False    |         |Device build status. Used in expansion planning.      |False      |       |
+|Vnom               |float              |kV  |False    |         |Nominal voltage                                       |False      |       |
 |substation         |Substation         |    |False    |         |Substation of this Voltage level (optional)           |False      |       |
 
 
@@ -1513,6 +1779,7 @@
 |modelling_authority     |Modelling Authority    |     |False    |         |Modelling authority of this asset                                                                                                                                                                                                        |False      |       |
 |commissioned_date       |int                    |     |False    |         |Commissioned date of the asset                                                                                                                                                                                                           |False      |       |
 |decommissioned_date     |int                    |     |False    |         |Decommissioned date of the asset                                                                                                                                                                                                         |False      |       |
+|build_status            |enum BuildStatus       |     |False    |         |Device build status. Used in expansion planning.                                                                                                                                                                                         |False      |       |
 |bus_from                |Bus                    |     |False    |         |Name of the bus at the "from" side                                                                                                                                                                                                       |False      |       |
 |bus_to                  |Bus                    |     |False    |         |Name of the bus at the "to" side                                                                                                                                                                                                         |False      |       |
 |active                  |bool                   |     |False    |         |Is active?                                                                                                                                                                                                                               |True       |       |
@@ -1524,7 +1791,6 @@
 |mttf                    |float                  |h    |False    |         |Mean time to failure                                                                                                                                                                                                                     |False      |       |
 |mttr                    |float                  |h    |False    |         |Mean time to repair                                                                                                                                                                                                                      |False      |       |
 |Cost                    |float                  |e/MWh|False    |         |Cost of overloads. Used in OPF                                                                                                                                                                                                           |True       |       |
-|build_status            |enum BuildStatus       |     |False    |         |Branch build status. Used in expansion planning.                                                                                                                                                                                         |False      |       |
 |capex                   |float                  |e/MW |False    |         |Cost of investment. Used in expansion planning.                                                                                                                                                                                          |False      |       |
 |opex                    |float                  |e/MWh|False    |         |Cost of operation. Used in expansion planning.                                                                                                                                                                                           |False      |       |
 |group                   |Branch group           |     |False    |         |Group where this branch belongs                                                                                                                                                                                                          |False      |       |

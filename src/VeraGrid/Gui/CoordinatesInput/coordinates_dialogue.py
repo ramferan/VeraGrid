@@ -438,26 +438,34 @@ class CoordinatesInputGUI(QtWidgets.QDialog):
             if self.ui.longitudeCheckBox.isChecked():
                 bus.longitude = self.associations.get_longitude_at(i)
 
+                if bus.substation is not None:
+                    if bus.substation.longitude == 0.0:
+                        bus.substation.longitude = bus.longitude
+
             if self.ui.latitudeCheckBox.isChecked():
                 bus.latitude = self.associations.get_latitude_at(i)
+
+                if bus.substation is not None:
+                    if bus.substation.latitude == 0.0:
+                        bus.substation.latitude = bus.latitude
 
         self.close()
 
 
-if __name__ == "__main__":
-    app = QtWidgets.QApplication(sys.argv)
-
-    class TestObj:
-        def __init__(self, name, code, x=0, y=0, latitude=0, longitude=0):
-            self.name = name
-            self.code = code
-            self.x = x
-            self.y = y
-            self.latitude = latitude
-            self.longitude = longitude
-
-
-    window = CoordinatesInputGUI(list_of_objects=[TestObj('Test object', 'code')] * 10)
-    window.resize(1.61 * 700.0, 600.0)  # golden ratio
-    window.show()
-    sys.exit(app.exec())
+# if __name__ == "__main__":
+#     app = QtWidgets.QApplication(sys.argv)
+#
+#     class TestObj:
+#         def __init__(self, name, code, x=0, y=0, latitude=0, longitude=0):
+#             self.name = name
+#             self.code = code
+#             self.x = x
+#             self.y = y
+#             self.latitude = latitude
+#             self.longitude = longitude
+#
+#
+#     window = CoordinatesInputGUI(list_of_objects=[TestObj('Test object', 'code')] * 10)
+#     window.resize(1.61 * 700.0, 600.0)  # golden ratio
+#     window.show()
+#     sys.exit(app.exec())

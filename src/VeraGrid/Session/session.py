@@ -30,6 +30,7 @@ from VeraGridEngine.Simulations.OPF.opf_driver import OptimalPowerFlowDriver, Op
 from VeraGridEngine.Simulations.OPF.opf_ts_driver import (OptimalPowerFlowTimeSeriesDriver,
                                                           OptimalPowerFlowTimeSeriesResults)
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver, PowerFlowResults
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph, PowerFlowResults3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_ts_driver import (PowerFlowTimeSeriesDriver,
                                                                        PowerFlowTimeSeriesResults)
 from VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_driver import ShortCircuitDriver, ShortCircuitResults
@@ -41,10 +42,15 @@ from VeraGridEngine.Simulations.InputsAnalysis.inputs_analysis_driver import Inp
 from VeraGridEngine.Simulations.InvestmentsEvaluation.investments_evaluation_driver import (InvestmentsEvaluationDriver,
                                                                                             InvestmentsEvaluationResults)
 from VeraGridEngine.Simulations.SigmaAnalysis.sigma_analysis_driver import SigmaAnalysisResults
-from VeraGridEngine.Simulations.NTC.ntc_driver import OptimalNetTransferCapacityResults, OptimalNetTransferCapacityDriver
+from VeraGridEngine.Simulations.NTC.ntc_driver import OptimalNetTransferCapacityResults, \
+    OptimalNetTransferCapacityDriver
 from VeraGridEngine.Simulations.NodalCapacity.nodal_capacity_ts_driver import (NodalCapacityTimeSeriesDriver,
                                                                                NodalCapacityTimeSeriesResults)
 from VeraGridEngine.Simulations.Reliability.reliability_driver import ReliabilityStudyDriver, ReliabilityResults
+from VeraGridEngine.Simulations.StateEstimation.state_stimation_driver import StateEstimationDriver, \
+    StateEstimationResults
+from VeraGridEngine.Simulations.SmallSignalStability.small_signal_driver import (SmallSignalStabilityDriver,
+                                                                                 SmallSignalStabilityResults)
 from VeraGridEngine.Simulations.Rms.rms_driver import RmsSimulationDriver, RmsResults
 from VeraGridEngine.Simulations.Topology.node_groups_driver import NodeGroupsDriver
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
@@ -232,8 +238,9 @@ class SimulationSession:
         """
         return driver_type in self.drivers.keys()
 
-    def get_driver_results(self, driver_type: SimulationTypes) -> Tuple[
-        Union[None, DRIVER_OBJECTS], Union[None, RESULTS_OBJECTS]]:
+    def get_driver_results(
+            self,
+            driver_type: SimulationTypes) -> Tuple[Union[None, DRIVER_OBJECTS], Union[None, RESULTS_OBJECTS]]:
         """
         Get the results of the driver
         :param driver_type: driver type
@@ -401,6 +408,24 @@ class SimulationSession:
         :return:
         """
         drv, results = self.get_driver_results(SimulationTypes.PowerFlow_run)
+        return drv, results
+
+    @property
+    def power_flow_3ph(self) -> Tuple[PowerFlowDriver3Ph, PowerFlowResults3Ph]:
+        """
+
+        :return:
+        """
+        drv, results = self.get_driver_results(SimulationTypes.PowerFlow3ph_run)
+        return drv, results
+
+    @property
+    def state_estimation(self) -> Tuple[StateEstimationDriver, StateEstimationResults]:
+        """
+
+        :return:
+        """
+        drv, results = self.get_driver_results(SimulationTypes.StateEstimation_run)
         return drv, results
 
     @property
@@ -605,7 +630,7 @@ class SimulationSession:
         return drv, None
 
     @property
-    def small_signal_stability_simulation(self) -> Tuple[SmallSignal_Stability_Driver, SmallSignal_Stability_Results]:
+    def small_signal_stability_simulation(self) -> Tuple[SmallSignalStabilityDriver, SmallSignalStabilityResults]:
         """
 
         :return:

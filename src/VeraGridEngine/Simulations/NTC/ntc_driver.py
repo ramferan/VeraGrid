@@ -52,7 +52,7 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
         self.report_text('Formulating NTC OPF...')
 
         if self.options.strict_formulation:
-            opf_vars = run_linear_ntc_opf_strict(
+            opf_vars, model = run_linear_ntc_opf_strict(
                 grid=self.grid,
                 t=None,
                 solver_type=self.options.opf_options.mip_solver,
@@ -71,12 +71,11 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 logger=self.logger,
                 progress_text=self.report_text,
                 progress_func=self.report_progress,
-                export_model_fname=self.options.opf_options.export_model_fname,
                 verbose=self.options.opf_options.verbose,
                 robust=self.options.opf_options.robust
             )
         else:
-            opf_vars = run_linear_ntc_opf(
+            opf_vars, model = run_linear_ntc_opf(
                 grid=self.grid,
                 t=None,
                 solver_type=self.options.opf_options.mip_solver,
@@ -95,7 +94,6 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 logger=self.logger,
                 progress_text=self.report_text,
                 progress_func=self.report_progress,
-                export_model_fname=self.options.opf_options.export_model_fname,
                 verbose=self.options.opf_options.verbose,
                 robust=self.options.opf_options.robust,
                 mip_framework=self.options.opf_options.mip_framework
@@ -150,6 +148,9 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
         self.results.structural_inter_area_flows = opf_vars.structural_ntc[0]
 
         self.results.converged = opf_vars.acceptable_solution
+
+        if self.options.opf_options.report_formulation:
+            self.results.report_text = model.model_as_string()
 
         self.report_text('Done!')
 

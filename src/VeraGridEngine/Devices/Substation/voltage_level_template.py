@@ -33,7 +33,7 @@ class VoltageLevelTemplate(EditableDevice):
 
         self.register(key='vl_type', units='', tpe=VoltageLevelTypes, definition='Voltage level type', editable=True)
 
-        self.register(key='voltage', units='KV', tpe=float, definition='Voltage.', editable=True)
+        self.register(key='voltage', units='kV', tpe=float, definition='Voltage.', editable=True)
 
         self.register(key='n_bays', units='', tpe=int,
                       definition='Number of bays or modules to add.', editable=True)

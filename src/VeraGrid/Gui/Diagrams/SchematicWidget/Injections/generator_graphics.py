@@ -4,9 +4,10 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 import numpy as np
-from PySide6 import QtWidgets
+from PySide6 import QtWidgets, QtCore
 from PySide6.QtWidgets import QMenu
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGrid.Gui.Diagrams.generic_graphics import Circle
@@ -16,9 +17,8 @@ from VeraGrid.Gui.Diagrams.Editors.generator_editor import GeneratorQCurveEditor
 from VeraGrid.Gui.SolarPowerWizard.solar_power_wizzard import SolarPvWizard
 from VeraGrid.Gui.WindPowerWizard.wind_power_wizzard import WindFarmWizard
 from VeraGrid.Gui.gui_functions import add_menu_entry
-from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_dialogue import RmsChoiceDialog
-from VeraGrid.Gui.Diagrams.Editors.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
-from VeraGridEngine.Utils.Symbolic.block import Var, DynamicVarType
+from VeraGrid.Gui.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
+from VeraGridEngine.enumerations import DeviceType
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -129,29 +129,22 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
 
         :return:
         """
-        templates = [t.name for t in
-                     self.editor.circuit.sequence_line_types]  # TODO: find where to build and save the templates
+        # load templates
+        templates = self.editor.circuit.rms_models
 
-        choice_dialog = RmsChoiceDialog(templates, parent=self.editor)
-        if choice_dialog.exec() == QtWidgets.QDialog.Accepted:
-            if choice_dialog.choice == "template":
-                template_name = choice_dialog.selected_template
-                print(f"User chose template: {template_name}")
-                # TODO: missing finding the template object and apply it to self.api_object
-            elif choice_dialog.choice == "editor":
+        # select line templates
+        templ_catalogue = dict()
+        templ_list = []
+        for templ in templates:
+            if templ.tpe == DeviceType.GeneratorDevice:
+                templ_list.append(templ.name)
+                templ_catalogue[templ.name] = templ
 
-                self.api_object.rms_model.model.external_mapping = {
-                    DynamicVarType.P: self.api_object.P_g,
-                    DynamicVarType.Q: self.api_object.Q_g
-                }
-                if self.api_object.P_g not in self.api_object.rms_model.model.algebraic_vars and self.api_object.Q_g not in self.api_object.rms_model.model.algebraic_vars:
-                    self.api_object.rms_model.model.algebraic_vars.append(self.api_object.P_g)
-                    self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Q_g)
+        # prompt RmsModelEditorGUI
 
-                # if self.api_object.Q_g not in self.api_object.rms_model.model.algebraic_vars:
-                #     self.api_object.rms_model.model.algebraic_vars.append(self.api_object.Q_g)
-                dlg = RmsModelEditorGUI(self.api_object.rms_model, parent=self.editor)
-                dlg.show()
+        rms_model_editor = RmsModelEditorGUI(api_object_model_host=self.api_object.rms_model, templates_list=templ_list,
+                                             templates_catalogue=templ_catalogue, api_object_name= self.api_object.name, api_object= self.api_object, main_editor= True, parent=self.editor)
+        rms_model_editor.show()
 
     def to_battery(self):
         """

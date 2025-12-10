@@ -88,26 +88,28 @@ def short_circuit_ph3(nc: NumericalCircuit, Vpf: CxVec, Zf: CxVec, bus_index: in
                                                    Yt=adm.Yt)
 
     # voltage, Sf, loading, losses, error, converged, Qpv
-    results = ShortCircuitResults(n=nc.nbus,
+    results = ShortCircuitResults(nsc=1,
+                                  n=nc.nbus,
                                   m=nc.nbr,
                                   n_hvdc=nc.nhvdc,
                                   bus_names=nc.bus_data.names,
                                   branch_names=nc.passive_branch_data.names,
                                   hvdc_names=nc.hvdc_data.names,
+                                  sc_names=np.array(['SC']),
                                   bus_types=nc.bus_data.bus_types,
                                   area_names=None)
 
-    results.SCpower = SCpower
-    results.ICurrent = ICurrent
-    results.Sbus1 = nc.get_power_injections_pu() * nc.Sbase  # MVA
-    results.voltage1 = V
-    results.Sf1 = Sfb  # in MVA already
-    results.St1 = Stb  # in MVA already
-    results.If1 = If  # in p.u.
-    results.It1 = It  # in p.u.
-    results.Vbranch1 = Vbranch
-    results.loading1 = loading
-    results.losses1 = losses
+    results.SCpower[:, 0] = SCpower
+    results.ICurrent[:, 0] = ICurrent
+    results.Sbus1[:, 0] = nc.get_power_injections_pu() * nc.Sbase  # MVA
+    results.voltage1[:, 0] = V
+    results.Sf1[:, 0] = Sfb  # in MVA already
+    results.St1[:, 0] = Stb  # in MVA already
+    results.If1[:, 0] = If  # in p.u.
+    results.It1[:, 0] = It  # in p.u.
+    results.Vbranch1[:, 0] = Vbranch
+    results.loading1[:, 0] = loading
+    results.losses1[:, 0] = losses
 
     return results
 
@@ -281,43 +283,45 @@ def short_circuit_unbalanced(nc: NumericalCircuit,
                                                      Yt=adm2.Yt)
 
     # voltage, Sf, loading, losses, error, converged, Qpv
-    results = ShortCircuitResults(n=nc.nbus,
+    results = ShortCircuitResults(nsc=1,
+                                  n=nc.nbus,
                                   m=nc.nbr,
                                   n_hvdc=nc.nhvdc,
                                   bus_names=nc.bus_data.names,
                                   branch_names=nc.passive_branch_data.names,
                                   hvdc_names=nc.hvdc_data.names,
+                                  sc_names=np.array(['SC']),
                                   bus_types=nc.bus_data.bus_types,
                                   area_names=None)
 
-    results.SCpower = SCC
-    results.ICurrent = ICC
+    results.SCpower[:, 0] = SCC
+    results.ICurrent[:, 0] = ICC
 
-    results.voltage0 = V0
-    results.Sf0 = Sfb0  # in MVA already
-    results.St0 = Stb0  # in MVA already
-    results.If0 = If0  # in p.u.
-    results.It0 = It0  # in p.u.
-    results.Vbranch0 = Vbranch0
-    results.loading0 = loading0
-    results.losses0 = losses0
+    results.voltage0[:, 0] = V0
+    results.Sf0[:, 0] = Sfb0  # in MVA already
+    results.St0[:, 0] = Stb0  # in MVA already
+    results.If0[:, 0] = If0  # in p.u.
+    results.It0[:, 0] = It0  # in p.u.
+    results.Vbranch0[:, 0] = Vbranch0
+    results.loading0[:, 0] = loading0
+    results.losses0[:, 0] = losses0
 
-    results.voltage1 = V1
-    results.Sf1 = Sfb1  # in MVA already
-    results.St1 = Stb1  # in MVA already
-    results.If1 = If1  # in p.u.
-    results.It1 = It1  # in p.u.
-    results.Vbranch1 = Vbranch1
-    results.loading1 = loading1
-    results.losses1 = losses1
+    results.voltage1[:, 0] = V1
+    results.Sf1[:, 0] = Sfb1  # in MVA already
+    results.St1[:, 0] = Stb1  # in MVA already
+    results.If1[:, 0] = If1  # in p.u.
+    results.It1[:, 0] = It1  # in p.u.
+    results.Vbranch1[:, 0] = Vbranch1
+    results.loading1[:, 0] = loading1
+    results.losses1[:, 0] = losses1
 
-    results.voltage2 = V2
-    results.Sf2 = Sfb2  # in MVA already
-    results.St2 = Stb2  # in MVA already
-    results.If2 = If2  # in p.u.
-    results.It2 = It2  # in p.u.
-    results.Vbranch2 = Vbranch2
-    results.loading2 = loading2
-    results.losses2 = losses2
+    results.voltage2[:, 0] = V2
+    results.Sf2[:, 0] = Sfb2  # in MVA already
+    results.St2[:, 0] = Stb2  # in MVA already
+    results.If2[:, 0] = If2  # in p.u.
+    results.It2[:, 0] = It2  # in p.u.
+    results.Vbranch2[:, 0] = Vbranch2
+    results.loading2[:, 0] = loading2
+    results.losses2[:, 0] = losses2
 
     return results

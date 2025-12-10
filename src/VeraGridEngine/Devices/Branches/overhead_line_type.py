@@ -243,14 +243,14 @@ class OverheadLineType(EditableDevice):
         'earth_resistivity',
         'frequency',
         '_Imax',
-        '_z_abcn',
-        '_z_phases_abcn',
+        '_z_nabc',
+        '_z_phases_nabc',
         '_z_abc',
         '_z_phases_abc',
         '_z_seq',
         '_z_0123',
-        '_y_abcn',
-        '_y_phases_abcn',
+        '_y_nabc',
+        '_y_phases_nabc',
         '_y_abc',
         '_y_phases_abc',
         '_y_seq',
@@ -288,15 +288,15 @@ class OverheadLineType(EditableDevice):
         self._Imax: Vec | None = None
 
         # impedances
-        self._z_abcn: CxMat | None = None
-        self._z_phases_abcn: CxMat | None = None
+        self._z_nabc: CxMat | None = None
+        self._z_phases_nabc: CxMat | None = None
         self._z_abc: CxMat | None = None
         self._z_phases_abc: CxMat | None = None
         self._z_seq: CxMat | None = None
         self._z_0123: CxMat | None = None
 
-        self._y_abcn: CxMat | None = None
-        self._y_phases_abcn: CxMat | None = None
+        self._y_nabc: CxMat | None = None
+        self._y_phases_nabc: CxMat | None = None
         self._y_abc: CxMat | None = None
         self._y_phases_abc: CxMat | None = None
         self._y_seq: CxMat | None = None
@@ -310,6 +310,10 @@ class OverheadLineType(EditableDevice):
 
     @property
     def Vnom(self) -> float:
+        """
+
+        :return:
+        """
         return self._Vnom
 
     @Vnom.setter
@@ -334,15 +338,27 @@ class OverheadLineType(EditableDevice):
         return self._Imax
 
     @property
-    def z_abcn(self) -> CxMat | None:
-        return self._z_abcn
+    def z_nabc(self) -> CxMat | None:
+        """
+
+        :return:
+        """
+        return self._z_nabc
 
     @property
-    def z_phases_abcn(self) -> CxMat | None:
-        return self._z_phases_abcn
+    def z_phases_nabc(self) -> CxMat | None:
+        """
+
+        :return:
+        """
+        return self._z_phases_nabc
 
     @property
     def z_abc(self) -> CxMat:
+        """
+
+        :return:
+        """
         return self._z_abc
 
     @z_abc.setter
@@ -354,26 +370,50 @@ class OverheadLineType(EditableDevice):
 
     @property
     def z_phases_abc(self) -> CxMat | None:
+        """
+
+        :return:
+        """
         return self._z_phases_abc
 
     @property
     def z_seq(self) -> CxMat | None:
+        """
+
+        :return:
+        """
         return self._z_seq
 
     @property
     def z_0123(self) -> CxMat | None:
+        """
+
+        :return:
+        """
         return self._z_0123
 
     @property
-    def y_abcn(self) -> CxMat | None:
-        return self._y_abcn
+    def y_nabc(self) -> CxMat | None:
+        """
+
+        :return:
+        """
+        return self._y_nabc
 
     @property
-    def y_phases_abcn(self) -> CxMat | None:
-        return self._y_phases_abcn
+    def y_phases_nabc(self) -> CxMat | None:
+        """
+
+        :return:
+        """
+        return self._y_phases_nabc
 
     @property
     def y_abc(self) -> CxMat | None:
+        """
+
+        :return:
+        """
         return self._y_abc
 
     @y_abc.setter
@@ -385,32 +425,67 @@ class OverheadLineType(EditableDevice):
 
     @property
     def y_phases_abc(self) -> CxMat | None:
+        """
+
+        :return:
+        """
         return self._y_phases_abc
 
     @property
     def y_seq(self) -> CxMat | None:
+        """
+
+        :return:
+        """
         return self._y_seq
 
     @property
     def y_0123(self) -> CxMat | None:
+        """
+
+        :return:
+        """
         return self._y_0123
 
+    def get_phN(self):
+        """
+
+        :return:
+        """
+        phases = self.y_phases_nabc
+        phN = 0
+        if 0 in phases:
+            phN = 1
+        return phN
+
     def get_phA(self):
-        phases = self.y_phases_abcn
+        """
+
+        :return:
+        """
+        phases = self.y_phases_nabc
         phA = 0
         if 1 in phases:
             phA = 1
         return phA
 
     def get_phB(self):
-        phases = self.y_phases_abcn
+        """
+
+        :return:
+        """
+        phases = self.y_phases_nabc
         phB = 0
         if 2 in phases:
             phB = 1
         return phB
 
     def get_phC(self):
-        phases = self.y_phases_abcn
+        """
+
+        :return:
+        """
+        phases = self.y_phases_nabc
         phC = 0
         if 3 in phases:
             phC = 1
@@ -426,36 +501,39 @@ class OverheadLineType(EditableDevice):
         :return: AdmittanceMatrix with series admittance in p.u.
         """
         Zbase = (Vnom * Vnom) / Sbase
-        rows, columns = self.z_abc.shape
-        adm = AdmittanceMatrix(size=3)
+        rows, columns = self.z_nabc.shape
+        adm = AdmittanceMatrix(size=4)
 
-        if rows % 3 == 0 and columns % 3 == 0:
-            k = (3 * (circuit_idx - 1)) + np.array([0, 1, 2])
-            z = self.z_abc[np.ix_(k, k)] * length / Zbase
+        if rows % 4 == 0 and columns % 4 == 0:
+            k = (4 * (circuit_idx - 1)) + np.array([0, 1, 2, 3])
+            z = self.z_nabc[np.ix_(k, k)] * length / Zbase
             adm.values = np.linalg.inv(z)
+            adm.phN = 1
             adm.phA = 1
             adm.phB = 1
             adm.phC = 1
 
             return adm
 
-        elif rows < 3 and columns < 3:
-            phases = self.z_phases_abc
-            phases = phases[phases > 3*(circuit_idx - 1)]
-            phases = phases[phases <= 3 * circuit_idx]
-            phases = phases - 3 * (circuit_idx - 1) - 1
+        elif rows < 4 and columns < 4:
+            phases = self.z_phases_nabc
+            phases = phases[phases > 4 * (circuit_idx - 1)]
+            phases = phases[phases <= 4 * circuit_idx]
+            phases = phases - 4 * (circuit_idx - 1)
 
-            z = self.z_abc * length / Zbase
+            z = self.z_nabc * length / Zbase
             y = np.linalg.inv(z)
-            y_3x3 = np.zeros((3,3), dtype=complex)
-            y_3x3[np.ix_(phases,phases)] = y
+            y_4x4 = np.zeros((4, 4), dtype=complex)
+            y_4x4[np.ix_(phases, phases)] = y
 
-            adm.values = y_3x3
-            if 1 in self.y_phases_abc:
+            adm.values = y_4x4
+            if 0 in self.y_phases_nabc:
+                adm.phN = 1
+            if 1 in self.y_phases_nabc:
                 adm.phA = 1
-            if 2 in self.y_phases_abc:
+            if 2 in self.y_phases_nabc:
                 adm.phB = 1
-            if 3 in self.y_phases_abc:
+            if 3 in self.y_phases_nabc:
                 adm.phC = 1
 
             return adm
@@ -476,37 +554,40 @@ class OverheadLineType(EditableDevice):
         if circuit_idx == 0:
             circuit_idx = 1
 
-        Zbase = (Vnom * Vnom) / (Sbase)
+        Zbase = (Vnom * Vnom) / Sbase
         Ybase = 1 / Zbase
 
-        rows, columns = self.y_abc.shape
-        adm = AdmittanceMatrix(size=3)
+        rows, columns = self.y_nabc.shape
+        adm = AdmittanceMatrix(size=4)
 
-        if rows % 3 == 0 and columns % 3 == 0:
-            k = (3 * (circuit_idx - 1)) + np.array([0, 1, 2])
-            y = self.y_abc[np.ix_(k, k)] * length * 1e6 / Ybase
+        if rows % 4 == 0 and columns % 4 == 0:
+            k = (4 * (circuit_idx - 1)) + np.array([0, 1, 2, 3])
+            y = self.y_nabc[np.ix_(k, k)] * length * 1e6 / Ybase
             adm.values = y
+            adm.phN = 1
             adm.phA = 1
             adm.phB = 1
             adm.phC = 1
 
         else:
-            phases = self.y_phases_abc
+            phases = self.y_phases_nabc
 
-            phases = phases[phases > 3 * (circuit_idx - 1)]
-            phases = phases[phases <= 3 * circuit_idx]
-            phases = phases - 3 * (circuit_idx - 1) - 1
+            phases = phases[phases > 4 * (circuit_idx - 1)]
+            phases = phases[phases <= 4 * circuit_idx]
+            phases = phases - 4 * (circuit_idx - 1)
 
-            y = self.y_abc * length * 1e6 / Ybase
-            y_3x3 = np.zeros((3, 3), dtype=complex)
-            y_3x3[np.ix_(phases, phases)] = y
+            y = self.y_nabc * length * 1e6 / Ybase
+            y_4x4 = np.zeros((4, 4), dtype=complex)
+            y_4x4[np.ix_(phases, phases)] = y
 
-            adm.values = y_3x3
-            if 1 in self.y_phases_abc:
+            adm.values = y_4x4
+            if 1 in self.y_phases_nabc:
+                adm.phN = 1
+            if 2 in self.y_phases_nabc:
                 adm.phA = 1
-            if 2 in self.y_phases_abc:
+            if 3 in self.y_phases_nabc:
                 adm.phB = 1
-            if 3 in self.y_phases_abc:
+            if 4 in self.y_phases_nabc:
                 adm.phC = 1
 
         return adm
@@ -565,16 +646,16 @@ class OverheadLineType(EditableDevice):
         """
 
         ok = True
-        ok = ok and self.z_abc is not None
+        # ok = ok and self.z_abc is not None
         # ok = ok and self.z_seq is not None
-        # ok = ok and self.z_abcn is not None
-        ok = ok and self.z_phases_abc is not None
-        # ok = ok and self.z_phases_abcn is not None
-        ok = ok and self.y_abc is not None
+        ok = ok and self.z_nabc is not None
+        # ok = ok and self.z_phases_abc is not None
+        ok = ok and self.z_phases_nabc is not None
+        # ok = ok and self.y_abc is not None
         # ok = ok and self.y_seq is not None
-        # ok = ok and self.y_abcn is not None
-        ok = ok and self.y_phases_abc is not None
-        # ok = ok and self.y_phases_abcn is not None
+        ok = ok and self.y_nabc is not None
+        # ok = ok and self.y_phases_abc is not None
+        ok = ok and self.y_phases_nabc is not None
 
         return ok
 
@@ -587,10 +668,10 @@ class OverheadLineType(EditableDevice):
         ok = True
         ok = ok and self.z_seq is not None
         ok = ok and self.y_seq is not None
-        ok = ok and self.z_abcn is not None
-        ok = ok and self.y_abcn is not None
-        ok = ok and self.z_phases_abcn is not None
-        ok = ok and self.y_phases_abcn is not None
+        ok = ok and self.z_nabc is not None
+        ok = ok and self.y_nabc is not None
+        ok = ok and self.z_phases_nabc is not None
+        ok = ok and self.y_phases_nabc is not None
 
         return ok
 
@@ -671,15 +752,15 @@ class OverheadLineType(EditableDevice):
         if all_ok:
             try:
                 # Impedances
-                (self._z_abcn,
-                 self._z_phases_abcn,
+                (self._z_nabc,
+                 self._z_phases_nabc,
                  self._z_abc,
                  self._z_phases_abc,
                  self._z_seq) = calc_z_matrix(self.wires_in_tower, f=self.frequency, rho=self.earth_resistivity)
 
                 # Admittances
-                (self._y_abcn,
-                 self._y_phases_abcn,
+                (self._y_nabc,
+                 self._y_phases_nabc,
                  self._y_abc,
                  self._y_phases_abc,
                  self._y_seq) = calc_y_matrix(self.wires_in_tower, f=self.frequency)
@@ -720,7 +801,7 @@ class OverheadLineType(EditableDevice):
             I_kA = self.Imax[circuit_idx - 1]
             return R1, X1, Bsh1, I_kA
         else:
-            #warn(f"{self.name} tower is incorrect :(")
+            # warn(f"{self.name} tower is incorrect :(")
             I_kA = self.Imax[circuit_idx - 1]
             return 0.0, 1e-20, 0.0, I_kA
 
@@ -901,7 +982,7 @@ def wire_bundling(phases_set: List[int], primitive: Mat, phases_vector: IntVec):
             for k in g:
                 primitive[k, :] -= primitive[i, :]
 
-            # kron - reduction to Zabcn
+            # kron - reduction to Znabc
             primitive = kron_reduction(mat=primitive, keep=a, embed=g)
 
             # reduce the phases too
@@ -1092,9 +1173,9 @@ def calc_z_ii(R_int, is_tube, r_outer, r_inner, y_i, f, rho, err_tol=1e-6, use_d
 
         w = 2 * pi * f  # rad
 
-        mu_0 = 4 * pi * 1e-4  # H/Km
+        mu_0 = 4 * pi * 1e-4  # H/km
 
-        mu_0_2pi = 2e-4  # H/Km
+        mu_0_2pi = 2e-4  # H/km
 
         p = sqrt(rho / (1j * w * mu_0))
 
@@ -1140,9 +1221,9 @@ def calc_z_ij(y_i, y_j, x_i, x_j, f, rho, err_tol=1e-6, use_dubanton_aprox: bool
     if use_dubanton_aprox:
         w = 2 * pi * f  # rad
 
-        mu_0 = 4 * pi * 1e-4  # H/Km
+        mu_0 = 4 * pi * 1e-4  # H/km
 
-        mu_0_2pi = 2e-4  # H/Km
+        mu_0_2pi = 2e-4  # H/km
 
         p = sqrt(rho / (1j * w * mu_0))
 
@@ -1186,7 +1267,7 @@ def calc_z_matrix(wires_in_tower: ListOfWires, f: float = 50, rho: float = 100, 
     # dictionary with the wire indices per phase
     phases_set = set()
 
-    phases_abcn = np.zeros(n, dtype=int)
+    phases_nabc = np.zeros(n, dtype=int)
 
     for i, wire_i in enumerate(wires_in_tower.data):
 
@@ -1221,27 +1302,27 @@ def calc_z_matrix(wires_in_tower: ListOfWires, f: float = 50, rho: float = 100, 
 
         # account for the phase
         phases_set.add(wire_i.phase)
-        phases_abcn[i] = wire_i.phase
+        phases_nabc[i] = wire_i.phase
 
     # bundle the phases
-    z_abcn = z_prim.copy()
+    z_nabc = z_prim.copy()
 
     # sort the phases vector
     phases_set = list(phases_set)
     phases_set.sort(reverse=True)
 
     # wire bundling
-    z_abcn, phases_abcn = wire_bundling(phases_set=phases_set,
-                                        primitive=z_abcn,
-                                        phases_vector=phases_abcn)
+    z_nabc, phases_nabc = wire_bundling(phases_set=phases_set,
+                                        primitive=z_nabc,
+                                        phases_vector=phases_nabc)
 
     # kron - reduction to Zabc
-    a = np.where(phases_abcn != 0)[0]
-    g = np.where(phases_abcn == 0)[0]
-    z_abc = kron_reduction(mat=z_abcn, keep=a, embed=g)
+    a = np.where(phases_nabc != 0)[0]
+    g = np.where(phases_nabc == 0)[0]
+    z_abc = kron_reduction(mat=z_nabc, keep=a, embed=g)
 
     # reduce the phases too
-    phases_abc = phases_abcn[a]
+    phases_abc = phases_nabc[a]
 
     # compute the sequence components
     if z_abc.shape[0] % 3 == 0:
@@ -1249,7 +1330,7 @@ def calc_z_matrix(wires_in_tower: ListOfWires, f: float = 50, rho: float = 100, 
     else:
         z_seq = None
 
-    return z_abcn, phases_abcn, z_abc, phases_abc, z_seq
+    return z_nabc, phases_nabc, z_abc, phases_abc, z_seq
 
 
 def calc_y_matrix(wires_in_tower: ListOfWires, f: float = 50):
@@ -1268,14 +1349,14 @@ def calc_y_matrix(wires_in_tower: ListOfWires, f: float = 50):
     # dictionary with the wire indices per phase
     phases_set = set()
 
-    # 1 / (2 * pi * e0) in Km/F
+    # 1 / (2 * pi * e0) in km/F
     e_air = 1.00058986
-    e_0 = 8.854187817e-9  # F/Km
+    e_0 = 8.854187817e-9  # F/km
     w = 2 * pi * f  # Nominal angular frequency [rad/s]
     e = e_0  # * e_air
-    one_two_pi_e0 = 1 / (2 * pi * e)  # Km/F
+    one_two_pi_e0 = 1 / (2 * pi * e)  # km/F
 
-    phases_abcn = np.zeros(n, dtype=int)
+    phases_nabc = np.zeros(n, dtype=int)
 
     for i, wire_i in enumerate(wires_in_tower.data):
 
@@ -1304,31 +1385,31 @@ def calc_y_matrix(wires_in_tower: ListOfWires, f: float = 50):
 
         # account for the phase
         phases_set.add(wire_i.phase)
-        phases_abcn[i] = wire_i.phase
+        phases_nabc[i] = wire_i.phase
 
     # bundle the phases
-    p_abcn = p_prim.copy()
+    p_nabc = p_prim.copy()
 
     # sort the phases vector
     phases_set = list(phases_set)
     phases_set.sort(reverse=True)
 
     # wire bundling
-    p_abcn, phases_abcn = wire_bundling(phases_set=phases_set,
-                                        primitive=p_abcn,
-                                        phases_vector=phases_abcn)
+    p_nabc, phases_nabc = wire_bundling(phases_set=phases_set,
+                                        primitive=p_nabc,
+                                        phases_vector=phases_nabc)
 
     # kron - reduction to Zabc
-    a = np.where(phases_abcn != 0)[0]
-    g = np.where(phases_abcn == 0)[0]
-    p_abc = kron_reduction(mat=p_abcn, keep=a, embed=g)
+    a = np.where(phases_nabc != 0)[0]
+    g = np.where(phases_nabc == 0)[0]
+    p_abc = kron_reduction(mat=p_nabc, keep=a, embed=g)
 
     # reduce the phases too
-    phases_abc = phases_abcn[a]
+    phases_abc = phases_nabc[a]
 
     # compute the admittance matrices
 
-    y_abcn = 1j * w * np.linalg.inv(p_abcn)  # [S/km]
+    y_nabc = 1j * w * np.linalg.inv(p_nabc)  # [S/km]
     y_abc = 1j * w * np.linalg.inv(p_abc)  # [S/km]
 
     # compute the sequence components
@@ -1337,18 +1418,21 @@ def calc_y_matrix(wires_in_tower: ListOfWires, f: float = 50):
     else:
         y_seq = None
 
-    return y_abcn, phases_abcn, y_abc, phases_abc, y_seq
+    return y_nabc, phases_nabc, y_abc, phases_abc, y_seq
 
 
-def create_known_abc_overhead_template(name: str, z_abc: CxMat, ysh_abc: CxMat, phases: IntVec,
-                                   Vnom: float = 1.0,
-                                   earth_resistivity: float = 100,
-                                   frequency: float = 50):
+def create_known_abc_overhead_template(name: str,
+                                       z_nabc: CxMat,
+                                       ysh_nabc: CxMat,
+                                       phases: IntVec,
+                                       Vnom: float = 1.0,
+                                       earth_resistivity: float = 100,
+                                       frequency: float = 50) -> OverheadLineType:
     """
 
     :param name:
-    :param z_abc:
-    :param ysh_abc:
+    :param z_nabc:
+    :param ysh_nabc:
     :param phases:
     :param Vnom:
     :param earth_resistivity:
@@ -1360,8 +1444,8 @@ def create_known_abc_overhead_template(name: str, z_abc: CxMat, ysh_abc: CxMat, 
                                 earth_resistivity=earth_resistivity,
                                 frequency=frequency)
 
-    template._y_phases_abc = phases
-    template._z_phases_abc = phases
-    template._z_abc = z_abc
-    template._y_abc = ysh_abc
+    template._y_phases_nabc = phases
+    template._z_phases_nabc = phases
+    template._z_nabc = z_nabc
+    template._y_nabc = ysh_nabc
     return template

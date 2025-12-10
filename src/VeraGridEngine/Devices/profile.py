@@ -180,14 +180,14 @@ class Profile:
             return 0
 
     @default_value.setter
-    def default_value(self, val):
+    def default_value(self, val: Union[bool, int, float, DeviceType]):
         """
 
         :param val:
         :return:
         """
         if self.sparse_array is not None:
-            self.sparse_array.default_value = self.default_value
+            self.sparse_array.default_value = val
 
     @property
     def is_sparse(self) -> bool:
@@ -552,7 +552,7 @@ class Profile:
 
     def set_sparse_data_from_data(self, indptr, data):
         """
-        Set spasrse data from indices
+        Set sparse data from indices
         :param indptr: array of data indices
         :param data: array of data values
         """
@@ -586,5 +586,7 @@ class Profile:
 
         if self._dense_array is not None:
             new_prof._dense_array = self._dense_array.copy()
+
+        new_prof._initialized = self.is_initialized
 
         return new_prof
