@@ -5,6 +5,7 @@
 
 from typing import Dict, Tuple, List
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.enumerations import ConverterControlType
 import VeraGridEngine.Devices as dev
 import math
 import numpy as np
@@ -236,7 +237,8 @@ def read_DGS(filename):
 
 def data_to_grid_object(data: Dict[str, pd.DataFrame],
                         pos_dict: Dict[str, Tuple[float, float]],
-                        codification: str = "utf-8") -> MultiCircuit:
+                        codification: str = "utf-8",
+                        options: str = "statgen") -> MultiCircuit:
     """
     Turns the read data dictionary into a VeraGrid MultiCircuit object
     Args:
@@ -669,7 +671,10 @@ def data_to_grid_object(data: Dict[str, pd.DataFrame],
 
     for i in range(len(buses)):
         ID = int(id_arr[i])
-        x, y = pos_dict[ID]
+        if str(ID) in pos_dict:
+            x, y = pos_dict[str(ID)]
+        else:
+            x, y = 0.0, 0.0
         buses_dict[ID] = i
         bus_name = buses['loc_name'][i] # .decode(codification)  # BUS_Name
         vnom = buses['uknom'][i]
@@ -770,9 +775,17 @@ def data_to_grid_object(data: Dict[str, pd.DataFrame],
     # print('Parsing lines')
 
     if lines_types.__len__() > 0:
-        lines_ID = lines['ID'].values
+
+        if "ID" in lines:
+            lines_ID = lines['ID'].values
+            line_types_ID = lines_types['ID'].values
+        elif "FID" in lines:
+            lines_ID = lines['FID'].values
+            line_types_ID = lines_types['FID'].values
+        else:
+            raise ValueError("No line ID, FID could be found...")
+
         lines_type_id = lines['typ_id'].values
-        line_types_ID = lines_types['ID'].values
         lines_lenght = lines['dline'].values
 
         if 'outserv' in lines.keys():
@@ -782,9 +795,17 @@ def data_to_grid_object(data: Dict[str, pd.DataFrame],
 
         lines_R = lines_types['rline'].values
         lines_L = lines_types['xline'].values
-        lines_C = lines_types['cline'].values
+
+        lines_C = None
+        lines_B = None
+        if 'cline' in lines_types:
+            lines_C = lines_types['cline'].values
+        elif 'bline' in lines_types:
+            lines_B = lines_types['bline'].values
+
         lines_rate = lines_types['sline'].values
         lines_voltage = lines_types['uline'].values
+
         for i in range(len(lines)):
             # line_ = branch_line.copy()
 
@@ -793,8 +814,8 @@ def data_to_grid_object(data: Dict[str, pd.DataFrame],
             type_idx = np.where(line_types_ID == ID_Type)[0][0]
 
             buses = terminals_dict[ID]  # array with the ID of the connection Buses
-            bus1 = buses_dict[buses[0]]
-            bus2 = buses_dict[buses[1]]
+            bus1 = buses_dict[int(buses[0])]
+            bus2 = buses_dict[int(buses[1])]
 
             bus_from = circuit.buses[bus1]
             bus_to = circuit.buses[bus2]
@@ -805,7 +826,10 @@ def data_to_grid_object(data: Dict[str, pd.DataFrame],
             lenght = np.double(lines_lenght[i])
             R = np.double(lines_R[type_idx]) * lenght  # Ohm
             L = np.double(lines_L[type_idx]) * lenght  # Ohm
-            C = np.double(lines_C[type_idx]) * lenght * w * 1e-6  # S (siemens)
+            if lines_C is not None:
+                B = np.double(lines_C[type_idx]) * lenght * w * 1e-6  # S (siemens)
+            elif lines_B is not None:
+                B = np.double(lines_B[type_idx]) * lenght * 1e-6  # S (siemens)
 
             # pass impedance to per unit
             vbase = np.double(lines_voltage[type_idx])  # kV
@@ -813,14 +837,14 @@ def data_to_grid_object(data: Dict[str, pd.DataFrame],
             ybase = 1.0 / zbase  # S
             r = R / zbase  # pu
             l = L / zbase  # pu
-            b = C / ybase  # pu
+            b = B / ybase  # pu
 
             # rated power
             Irated = np.double(lines_rate[type_idx])  # kA
             Smax = Irated * vbase  # MVA
 
             line = dev.Line(bus_from=bus_from, bus_to=bus_to,
-                            name=lines['loc_name'][i].decode(codification),
+                            name=lines['loc_name'][i],
                             r=r,
                             x=l,
                             b=b,
@@ -900,7 +924,13 @@ def data_to_grid_object(data: Dict[str, pd.DataFrame],
         *  chr_name: Characteristic Name
         ********************************************************************************
         """
-        type_ID = transformers_types['ID'].values
+        if "ID" in transformers:
+            type_ID = transformers_types['ID'].values
+        elif "FID" in transformers:
+            type_ID = transformers_types['FID'].values
+        else:
+            raise ValueError("No transformer ID, FID could be found...")
+
         HV_nominal_voltage = transformers_types['utrn_h'].values
         LV_nominal_voltage = transformers_types['utrn_l'].values
         Nominal_power = transformers_types['strn'].values
@@ -908,20 +938,21 @@ def data_to_grid_object(data: Dict[str, pd.DataFrame],
         Iron_losses = transformers_types['pfe'].values
         No_load_current = transformers_types['curmg'].values
         Short_circuit_voltage = transformers_types['uktr'].values
-        # GR_hv1 = transformers_types['ID']
-        # GX_hv1 = transformers_types['ID']
+
         for i in range(len(transformers)):
 
-            # line_ = branch_line.copy()
+            if "ID" in transformers:
+                ID = transformers['ID'][i]
+            elif "FID" in transformers:
+                ID = transformers['FID'][i]
 
-            ID = transformers['ID'][i]
             ID_Type = transformers['typ_id'][i]
 
             if ID_Type in type_ID:
                 type_idx = np.where(type_ID == ID_Type)[0][0]
                 buses = terminals_dict[ID]  # array with the ID of the connection Buses
-                bus1 = buses_dict[buses[0]]
-                bus2 = buses_dict[buses[1]]
+                bus1 = buses_dict[int(buses[0])]
+                bus2 = buses_dict[int(buses[1])]
 
                 bus_from = circuit.buses[bus1]
                 bus_to = circuit.buses[bus2]
@@ -952,7 +983,7 @@ def data_to_grid_object(data: Dict[str, pd.DataFrame],
 
                 trafo = dev.Transformer2W(bus_from=bus_from,
                                           bus_to=bus_to,
-                                          name=transformers['loc_name'][i].decode(codification),
+                                          name=transformers['loc_name'][i],
                                           r=Zs.real,
                                           x=Zs.imag,
                                           g=Ysh.real,
@@ -990,18 +1021,26 @@ def data_to_grid_object(data: Dict[str, pd.DataFrame],
     """
     # print('Parsing Loads')
     if len(loads) > 0:
-        loads_ID = loads['ID']
+
+        if "ID" in loads:
+            loads_ID = loads['ID']
+        elif "FID" in loads:
+            loads_ID = loads['FID']
+        else:
+            raise ValueError("No load ID or FID could be found...")
+
         loads_P = loads['plini']
         loads_Q = loads['qlini']
         scale = loads['scale0']
+
         for i in range(len(loads)):
             ID = loads_ID[i]
-            bus_idx = buses_dict[(terminals_dict[ID][0])]
+            bus_idx = buses_dict[int(terminals_dict[ID][0])]
             bus_obj = circuit.buses[bus_idx]
             p = loads_P[i] * scale[i]  # in MW
             q = loads_Q[i] * scale[i]  # in MVA
 
-            load = dev.Load(name=loads['loc_name'][i].decode(codification),
+            load = dev.Load(name=loads['loc_name'][i],
                             P=p,
                             Q=q)
 
@@ -1032,16 +1071,32 @@ def data_to_grid_object(data: Dict[str, pd.DataFrame],
     ********************************************************************************
     '''
     for i in range(len(shunts)):
-        ID = shunts['ID'][i]
-        buses = terminals_dict[ID]  # array with the ID of the connection Buses
-        bus1 = buses_dict[buses[0]]
-        bus_obj = circuit.buses[bus1]
-        name = shunts['loc_name'][i].decode(codification)
 
+        if "ID" in loads:
+            ID = shunts['ID'][i]
+        elif "FID" in loads:
+            ID = shunts['FID'][i]
+        else:
+            raise ValueError("No shunt ID or FID could be found...")
+
+        buses = terminals_dict[ID]  # array with the ID of the connection Buses
+        bus1 = buses_dict[int(buses[0])]
+        bus_obj = circuit.buses[bus1]
+        name = shunts['loc_name'][i]
+
+        '''
         if 'qcapn' in shunts.columns.values:
             b = shunts['ushnm'][i] / shunts['qcapn'][i]
         elif 'qtotn' in shunts.columns.values:
             b = shunts['ushnm'][i] / shunts['qtotn'][i]
+        else:
+            b = 1e-20
+        '''
+
+        if 'qcapn' in shunts.columns.values:
+            b = shunts['qcapn'][i]
+        elif 'qtotn' in shunts.columns.values:
+            b = shunts['qtotn'][i]
         else:
             b = 1e-20
 
@@ -1070,17 +1125,58 @@ def data_to_grid_object(data: Dict[str, pd.DataFrame],
     ********************************************************************************
     '''
     for i in range(len(static_generators)):
-        ID = static_generators['ID'][i]
+
+        if "ID" in loads:
+            ID = static_generators['ID'][i]
+        elif "FID" in loads:
+            ID = static_generators['FID'][i]
+        else:
+            raise ValueError("No static generator ID or FID could be found...")
+
         buses = terminals_dict[ID]  # array with the ID of the connection Buses
-        bus1 = buses_dict[buses[0]]
+        bus1 = buses_dict[int(buses[0])]
         bus_obj = circuit.buses[bus1]
         mode = static_generators['av_mode'][i]
         num_machines = static_generators['ngnum'][i]
 
-        gen = dev.StaticGenerator(name=static_generators['loc_name'][i].decode(codification),
-                                  P=static_generators['pgini'][i] * num_machines,
-                                  Q=static_generators['qgini'][i] * num_machines)
-        circuit.add_static_generator(bus_obj, gen)
+        if options == "statgen_to_vsc":
+
+            bus_dc = dev.Bus(
+                name = f'{bus_obj.name}_dc',
+                Vnom = bus_obj.Vnom,
+                xpos = bus_obj.x,
+                ypos = bus_obj.y + 20,
+                is_dc = True,
+                is_slack= True
+            )
+            circuit.add_bus(bus_dc)
+
+            vsc = dev.VSC(
+                bus_from = bus_dc,
+                bus_to = bus_obj,
+                name = bus_obj.name,
+                rate = static_generators['sgn'][i],
+                kdp=-0.05,
+                alpha1=0.0001,
+                alpha2=0.015,
+                alpha3=0.2,
+                control1 = ConverterControlType.Pac,
+                control2 = ConverterControlType.Qac,
+                control1_val = static_generators['pgini'][i] * num_machines,
+                control2_val = static_generators['qgini'][i] * num_machines,
+                control1_dev = None,
+                control2_dev = None,
+            )
+            circuit.add_vsc(vsc)
+
+            gen = dev.Generator()
+            circuit.add_generator(bus=bus_dc, api_obj=gen)
+
+        else:
+            gen = dev.StaticGenerator(name=static_generators['loc_name'][i],
+                                      P=static_generators['pgini'][i] * num_machines,
+                                      Q=static_generators['qgini'][i] * num_machines)
+            circuit.add_static_generator(bus_obj, gen)
 
     ####################################################################################################################
     # Synchronous Machine (Gen)
@@ -1106,9 +1202,16 @@ def data_to_grid_object(data: Dict[str, pd.DataFrame],
     ********************************************************************************
     '''
     for i in range(len(synchronous_machine)):
-        ID = synchronous_machine['ID'][i]
+
+        if "ID" in loads:
+            ID = synchronous_machine['ID'][i]
+        elif "FID" in loads:
+            ID = synchronous_machine['FID'][i]
+        else:
+            raise ValueError("No synchronous machine ID or FID could be found...")
+
         buses = terminals_dict[ID]  # array with the ID of the connection Buses
-        bus1 = buses_dict[buses[0]]
+        bus1 = buses_dict[int(buses[0])]
         bus_obj = circuit.buses[bus1]
         num_machines = synchronous_machine['ngnum'][i]
 
@@ -1135,7 +1238,7 @@ def data_to_grid_object(data: Dict[str, pd.DataFrame],
 
         snom = typ['sgn'].values[0]
         vnom = synchronous_machine['usetp'][i]
-        name = synchronous_machine['loc_name'][i].decode(codification)
+        name = synchronous_machine['loc_name'][i]
         gen = dev.Generator(name=name,
                             P=synchronous_machine['pgini'][i] * num_machines,
                             vset=vnom,
@@ -1160,4 +1263,4 @@ def dgs_to_circuit(filename: str) -> MultiCircuit:
     """
     data, pos_dict = read_DGS(filename)
 
-    return data_to_grid_object(data, pos_dict)
+    return data_to_grid_object(data, pos_dict, options="statgen_to_vsc")

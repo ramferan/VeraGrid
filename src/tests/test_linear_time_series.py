@@ -59,3 +59,5 @@ def test_linear_time_series_with_time_simplification_randomized():
     assert np.allclose(Pf, Pf_true)
 
 
+if __name__ == '__main__':
+    test_linear_time_series_with_time_simplification_randomized()

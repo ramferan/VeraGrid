@@ -5,11 +5,6 @@
 import VeraGridEngine.api as gce
 from VeraGridEngine import WindingType, ShuntConnectionType
 import numpy as np
-from VeraGridEngine.basic_structures import Vec
-from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.newton_raphson_fx import newton_raphson_fx
-from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph import (PfBasicFormulation3Ph, expand3ph,
-                                                                                        expandVoltage3ph)
-from VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_results import ShortCircuitResults
 from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, PhasesShortCircuit
 
 
@@ -20,7 +15,6 @@ def test_three_phase_to_ground_fault():
     :return:
     """
     logger = gce.Logger()
-
     grid = gce.MultiCircuit()
     grid.fBase = 60
 
@@ -253,16 +247,16 @@ def test_three_phase_to_ground_fault():
     Line Configurations
     """
     config_601 = gce.create_known_abc_overhead_template(name='Config. 601',
-                                                        z_abc=z_601,
-                                                        ysh_abc=y_601,
+                                                        z_nabc=z_601,
+                                                        ysh_nabc=y_601,
                                                         phases=np.array([1, 2, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
     grid.add_overhead_line(config_601)
 
     config_602 = gce.create_known_abc_overhead_template(name='Config. 602',
-                                                        z_abc=z_602,
-                                                        ysh_abc=y_602,
+                                                        z_nabc=z_602,
+                                                        ysh_nabc=y_602,
                                                         phases=np.array([1, 2, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -270,8 +264,8 @@ def test_three_phase_to_ground_fault():
     grid.add_overhead_line(config_602)
 
     config_603 = gce.create_known_abc_overhead_template(name='Config. 603',
-                                                        z_abc=z_603,
-                                                        ysh_abc=y_603,
+                                                        z_nabc=z_603,
+                                                        ysh_nabc=y_603,
                                                         phases=np.array([2, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -279,8 +273,8 @@ def test_three_phase_to_ground_fault():
     grid.add_overhead_line(config_603)
 
     config_604 = gce.create_known_abc_overhead_template(name='Config. 604',
-                                                        z_abc=z_604,
-                                                        ysh_abc=y_604,
+                                                        z_nabc=z_604,
+                                                        ysh_nabc=y_604,
                                                         phases=np.array([1, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -288,8 +282,8 @@ def test_three_phase_to_ground_fault():
     grid.add_overhead_line(config_604)
 
     config_605 = gce.create_known_abc_overhead_template(name='Config. 605',
-                                                        z_abc=z_605,
-                                                        ysh_abc=y_605,
+                                                        z_nabc=z_605,
+                                                        ysh_nabc=y_605,
                                                         phases=np.array([3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -297,8 +291,8 @@ def test_three_phase_to_ground_fault():
     grid.add_overhead_line(config_605)
 
     config_606 = gce.create_known_abc_overhead_template(name='Config. 606',
-                                                        z_abc=z_606,
-                                                        ysh_abc=y_606,
+                                                        z_nabc=z_606,
+                                                        ysh_nabc=y_606,
                                                         phases=np.array([1, 2, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -306,8 +300,8 @@ def test_three_phase_to_ground_fault():
     grid.add_overhead_line(config_606)
 
     config_607 = gce.create_known_abc_overhead_template(name='Config. 607',
-                                                        z_abc=z_607,
-                                                        ysh_abc=y_607,
+                                                        z_nabc=z_607,
+                                                        ysh_nabc=y_607,
                                                         phases=np.array([1]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -390,20 +384,27 @@ def test_three_phase_to_ground_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Power Flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res_pf = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True))
+    res_pf = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions())
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Short-Circuit
     # ----------------------------------------------------------------------------------------------------------------------
-    sc_options = gce.ShortCircuitOptions(bus_index=4,
-                                         fault_type=FaultType.ph3,
-                                         method=MethodShortCircuit.phases,
-                                         phases=PhasesShortCircuit.abc)
+    sc_options = gce.ShortCircuitOptions()
+
+    grid.add_short_circuit_definition(
+        gce.ShortCircuitEvent(
+            device=grid.buses[4],
+            fault_type=FaultType.LLLG,
+            method=MethodShortCircuit.phases,
+            phases=PhasesShortCircuit.abc
+        )
+    )
 
     sc_driver = gce.ShortCircuitDriver(grid=grid,
                                        options=sc_options,
-                                       pf_options=gce.PowerFlowOptions(three_phase_unbalanced=True),
-                                       pf_results=res_pf)
+                                       pf_options=gce.PowerFlowOptions(),
+                                       pf_results=None,
+                                       pf_results3ph=res_pf)
     sc_driver.run()
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -411,9 +412,10 @@ def test_three_phase_to_ground_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     res_sc = sc_driver.results
 
-    assert np.allclose(abs(res_sc.voltageA[4]), 0.019603, atol=1e-4)
-    assert np.allclose(abs(res_sc.voltageB[4]), 0.019424, atol=1e-4)
-    assert np.allclose(abs(res_sc.voltageC[4]), 0.019356, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageA[4, 0]), 0.019603, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageB[4, 0]), 0.019424, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageC[4, 0]), 0.019356, atol=1e-4)
+
 
 def test_single_line_to_ground_fault():
     """
@@ -655,16 +657,16 @@ def test_single_line_to_ground_fault():
     Line Configurations
     """
     config_601 = gce.create_known_abc_overhead_template(name='Config. 601',
-                                                        z_abc=z_601,
-                                                        ysh_abc=y_601,
+                                                        z_nabc=z_601,
+                                                        ysh_nabc=y_601,
                                                         phases=np.array([1, 2, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
     grid.add_overhead_line(config_601)
 
     config_602 = gce.create_known_abc_overhead_template(name='Config. 602',
-                                                        z_abc=z_602,
-                                                        ysh_abc=y_602,
+                                                        z_nabc=z_602,
+                                                        ysh_nabc=y_602,
                                                         phases=np.array([1, 2, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -672,8 +674,8 @@ def test_single_line_to_ground_fault():
     grid.add_overhead_line(config_602)
 
     config_603 = gce.create_known_abc_overhead_template(name='Config. 603',
-                                                        z_abc=z_603,
-                                                        ysh_abc=y_603,
+                                                        z_nabc=z_603,
+                                                        ysh_nabc=y_603,
                                                         phases=np.array([2, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -681,8 +683,8 @@ def test_single_line_to_ground_fault():
     grid.add_overhead_line(config_603)
 
     config_604 = gce.create_known_abc_overhead_template(name='Config. 604',
-                                                        z_abc=z_604,
-                                                        ysh_abc=y_604,
+                                                        z_nabc=z_604,
+                                                        ysh_nabc=y_604,
                                                         phases=np.array([1, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -690,8 +692,8 @@ def test_single_line_to_ground_fault():
     grid.add_overhead_line(config_604)
 
     config_605 = gce.create_known_abc_overhead_template(name='Config. 605',
-                                                        z_abc=z_605,
-                                                        ysh_abc=y_605,
+                                                        z_nabc=z_605,
+                                                        ysh_nabc=y_605,
                                                         phases=np.array([3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -699,8 +701,8 @@ def test_single_line_to_ground_fault():
     grid.add_overhead_line(config_605)
 
     config_606 = gce.create_known_abc_overhead_template(name='Config. 606',
-                                                        z_abc=z_606,
-                                                        ysh_abc=y_606,
+                                                        z_nabc=z_606,
+                                                        ysh_nabc=y_606,
                                                         phases=np.array([1, 2, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -708,8 +710,8 @@ def test_single_line_to_ground_fault():
     grid.add_overhead_line(config_606)
 
     config_607 = gce.create_known_abc_overhead_template(name='Config. 607',
-                                                        z_abc=z_607,
-                                                        ysh_abc=y_607,
+                                                        z_nabc=z_607,
+                                                        ysh_nabc=y_607,
                                                         phases=np.array([1]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -792,20 +794,27 @@ def test_single_line_to_ground_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Power Flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res_pf = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True))
+    res_pf = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions())
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Short-Circuit
     # ----------------------------------------------------------------------------------------------------------------------
-    sc_options = gce.ShortCircuitOptions(bus_index=4,
-                                         fault_type=FaultType.LG,
-                                         method=MethodShortCircuit.phases,
-                                         phases=PhasesShortCircuit.a)
+    sc_options = gce.ShortCircuitOptions()
+
+    grid.add_short_circuit_definition(
+        gce.ShortCircuitEvent(
+            device=grid.buses[4],
+            fault_type=FaultType.LG,
+            method=MethodShortCircuit.phases,
+            phases=PhasesShortCircuit.a
+        )
+    )
 
     sc_driver = gce.ShortCircuitDriver(grid=grid,
                                        options=sc_options,
-                                       pf_options=gce.PowerFlowOptions(three_phase_unbalanced=True),
-                                       pf_results=res_pf)
+                                       pf_options=gce.PowerFlowOptions(),
+                                       pf_results=None,
+                                       pf_results3ph=res_pf)
     sc_driver.run()
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -813,9 +822,9 @@ def test_single_line_to_ground_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     res_sc = sc_driver.results
 
-    assert np.allclose(abs(res_sc.voltageA[4]), 0.018601, atol=1e-4)
-    assert np.allclose(abs(res_sc.voltageB[4]), 1.0069, atol=1e-4)
-    assert np.allclose(abs(res_sc.voltageC[4]), 0.99489, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageA[4, 0]), 0.018601, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageB[4, 0]), 1.0069, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageC[4, 0]), 0.99489, atol=1e-4)
 
 
 def test_double_line_to_ground_fault():
@@ -1058,16 +1067,16 @@ def test_double_line_to_ground_fault():
     Line Configurations
     """
     config_601 = gce.create_known_abc_overhead_template(name='Config. 601',
-                                                        z_abc=z_601,
-                                                        ysh_abc=y_601,
+                                                        z_nabc=z_601,
+                                                        ysh_nabc=y_601,
                                                         phases=np.array([1, 2, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
     grid.add_overhead_line(config_601)
 
     config_602 = gce.create_known_abc_overhead_template(name='Config. 602',
-                                                        z_abc=z_602,
-                                                        ysh_abc=y_602,
+                                                        z_nabc=z_602,
+                                                        ysh_nabc=y_602,
                                                         phases=np.array([1, 2, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -1075,8 +1084,8 @@ def test_double_line_to_ground_fault():
     grid.add_overhead_line(config_602)
 
     config_603 = gce.create_known_abc_overhead_template(name='Config. 603',
-                                                        z_abc=z_603,
-                                                        ysh_abc=y_603,
+                                                        z_nabc=z_603,
+                                                        ysh_nabc=y_603,
                                                         phases=np.array([2, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -1084,8 +1093,8 @@ def test_double_line_to_ground_fault():
     grid.add_overhead_line(config_603)
 
     config_604 = gce.create_known_abc_overhead_template(name='Config. 604',
-                                                        z_abc=z_604,
-                                                        ysh_abc=y_604,
+                                                        z_nabc=z_604,
+                                                        ysh_nabc=y_604,
                                                         phases=np.array([1, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -1093,8 +1102,8 @@ def test_double_line_to_ground_fault():
     grid.add_overhead_line(config_604)
 
     config_605 = gce.create_known_abc_overhead_template(name='Config. 605',
-                                                        z_abc=z_605,
-                                                        ysh_abc=y_605,
+                                                        z_nabc=z_605,
+                                                        ysh_nabc=y_605,
                                                         phases=np.array([3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -1102,8 +1111,8 @@ def test_double_line_to_ground_fault():
     grid.add_overhead_line(config_605)
 
     config_606 = gce.create_known_abc_overhead_template(name='Config. 606',
-                                                        z_abc=z_606,
-                                                        ysh_abc=y_606,
+                                                        z_nabc=z_606,
+                                                        ysh_nabc=y_606,
                                                         phases=np.array([1, 2, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -1111,8 +1120,8 @@ def test_double_line_to_ground_fault():
     grid.add_overhead_line(config_606)
 
     config_607 = gce.create_known_abc_overhead_template(name='Config. 607',
-                                                        z_abc=z_607,
-                                                        ysh_abc=y_607,
+                                                        z_nabc=z_607,
+                                                        ysh_nabc=y_607,
                                                         phases=np.array([1]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -1195,20 +1204,27 @@ def test_double_line_to_ground_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Power Flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res_pf = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True))
+    res_pf = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions())
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Short-Circuit
     # ----------------------------------------------------------------------------------------------------------------------
-    sc_options = gce.ShortCircuitOptions(bus_index=4,
-                                         fault_type=FaultType.LLG,
-                                         method=MethodShortCircuit.phases,
-                                         phases=PhasesShortCircuit.ca)
+    sc_options = gce.ShortCircuitOptions()
+
+    grid.add_short_circuit_definition(
+        gce.ShortCircuitEvent(
+            device=grid.buses[4],
+            fault_type=FaultType.LLG,
+            method=MethodShortCircuit.phases,
+            phases=PhasesShortCircuit.ca
+        )
+    )
 
     sc_driver = gce.ShortCircuitDriver(grid=grid,
                                        options=sc_options,
-                                       pf_options=gce.PowerFlowOptions(three_phase_unbalanced=True),
-                                       pf_results=res_pf)
+                                       pf_options=gce.PowerFlowOptions(),
+                                       pf_results=None,
+                                       pf_results3ph=res_pf)
     sc_driver.run()
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -1216,9 +1232,9 @@ def test_double_line_to_ground_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     res_sc = sc_driver.results
 
-    assert np.allclose(abs(res_sc.voltageA[4]), 0.019314, atol=1e-4)
-    assert np.allclose(abs(res_sc.voltageB[4]), 1.0196, atol=1e-4)
-    assert np.allclose(abs(res_sc.voltageC[4]), 0.018918, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageA[4, 0]), 0.019314, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageB[4, 0]), 1.0196, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageC[4, 0]), 0.018918, atol=1e-4)
 
 
 def test_line_to_line_fault():
@@ -1461,16 +1477,16 @@ def test_line_to_line_fault():
     Line Configurations
     """
     config_601 = gce.create_known_abc_overhead_template(name='Config. 601',
-                                                        z_abc=z_601,
-                                                        ysh_abc=y_601,
+                                                        z_nabc=z_601,
+                                                        ysh_nabc=y_601,
                                                         phases=np.array([1, 2, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
     grid.add_overhead_line(config_601)
 
     config_602 = gce.create_known_abc_overhead_template(name='Config. 602',
-                                                        z_abc=z_602,
-                                                        ysh_abc=y_602,
+                                                        z_nabc=z_602,
+                                                        ysh_nabc=y_602,
                                                         phases=np.array([1, 2, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -1478,8 +1494,8 @@ def test_line_to_line_fault():
     grid.add_overhead_line(config_602)
 
     config_603 = gce.create_known_abc_overhead_template(name='Config. 603',
-                                                        z_abc=z_603,
-                                                        ysh_abc=y_603,
+                                                        z_nabc=z_603,
+                                                        ysh_nabc=y_603,
                                                         phases=np.array([2, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -1487,8 +1503,8 @@ def test_line_to_line_fault():
     grid.add_overhead_line(config_603)
 
     config_604 = gce.create_known_abc_overhead_template(name='Config. 604',
-                                                        z_abc=z_604,
-                                                        ysh_abc=y_604,
+                                                        z_nabc=z_604,
+                                                        ysh_nabc=y_604,
                                                         phases=np.array([1, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -1496,8 +1512,8 @@ def test_line_to_line_fault():
     grid.add_overhead_line(config_604)
 
     config_605 = gce.create_known_abc_overhead_template(name='Config. 605',
-                                                        z_abc=z_605,
-                                                        ysh_abc=y_605,
+                                                        z_nabc=z_605,
+                                                        ysh_nabc=y_605,
                                                         phases=np.array([3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -1505,8 +1521,8 @@ def test_line_to_line_fault():
     grid.add_overhead_line(config_605)
 
     config_606 = gce.create_known_abc_overhead_template(name='Config. 606',
-                                                        z_abc=z_606,
-                                                        ysh_abc=y_606,
+                                                        z_nabc=z_606,
+                                                        ysh_nabc=y_606,
                                                         phases=np.array([1, 2, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -1514,8 +1530,8 @@ def test_line_to_line_fault():
     grid.add_overhead_line(config_606)
 
     config_607 = gce.create_known_abc_overhead_template(name='Config. 607',
-                                                        z_abc=z_607,
-                                                        ysh_abc=y_607,
+                                                        z_nabc=z_607,
+                                                        ysh_nabc=y_607,
                                                         phases=np.array([1]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -1598,20 +1614,27 @@ def test_line_to_line_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Power Flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res_pf = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True))
+    res_pf = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions())
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Short-Circuit
     # ----------------------------------------------------------------------------------------------------------------------
-    sc_options = gce.ShortCircuitOptions(bus_index=4,
-                                         fault_type=FaultType.LL,
-                                         method=MethodShortCircuit.phases,
-                                         phases=PhasesShortCircuit.ab)
+    sc_options = gce.ShortCircuitOptions()
+
+    grid.add_short_circuit_definition(
+        gce.ShortCircuitEvent(
+            device=grid.buses[4],
+            fault_type=FaultType.LL,
+            method=MethodShortCircuit.phases,
+            phases=PhasesShortCircuit.ab
+        )
+    )
 
     sc_driver = gce.ShortCircuitDriver(grid=grid,
                                        options=sc_options,
-                                       pf_options=gce.PowerFlowOptions(three_phase_unbalanced=True),
-                                       pf_results=res_pf)
+                                       pf_options=gce.PowerFlowOptions(),
+                                       pf_results=None,
+                                       pf_results3ph=res_pf)
     sc_driver.run()
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -1619,9 +1642,9 @@ def test_line_to_line_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     res_sc = sc_driver.results
 
-    assert np.allclose(abs(res_sc.voltageA[4]), 0.4943, atol=1e-4)
-    assert np.allclose(abs(res_sc.voltageB[4]), 0.4798, atol=1e-4)
-    assert np.allclose(abs(res_sc.voltageC[4]), 0.97352, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageA[4, 0]), 0.4943, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageB[4, 0]), 0.4798, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageC[4, 0]), 0.97352, atol=1e-4)
 
 
 def test_three_phase_fault():
@@ -1864,16 +1887,16 @@ def test_three_phase_fault():
     Line Configurations
     """
     config_601 = gce.create_known_abc_overhead_template(name='Config. 601',
-                                                        z_abc=z_601,
-                                                        ysh_abc=y_601,
+                                                        z_nabc=z_601,
+                                                        ysh_nabc=y_601,
                                                         phases=np.array([1, 2, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
     grid.add_overhead_line(config_601)
 
     config_602 = gce.create_known_abc_overhead_template(name='Config. 602',
-                                                        z_abc=z_602,
-                                                        ysh_abc=y_602,
+                                                        z_nabc=z_602,
+                                                        ysh_nabc=y_602,
                                                         phases=np.array([1, 2, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -1881,8 +1904,8 @@ def test_three_phase_fault():
     grid.add_overhead_line(config_602)
 
     config_603 = gce.create_known_abc_overhead_template(name='Config. 603',
-                                                        z_abc=z_603,
-                                                        ysh_abc=y_603,
+                                                        z_nabc=z_603,
+                                                        ysh_nabc=y_603,
                                                         phases=np.array([2, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -1890,8 +1913,8 @@ def test_three_phase_fault():
     grid.add_overhead_line(config_603)
 
     config_604 = gce.create_known_abc_overhead_template(name='Config. 604',
-                                                        z_abc=z_604,
-                                                        ysh_abc=y_604,
+                                                        z_nabc=z_604,
+                                                        ysh_nabc=y_604,
                                                         phases=np.array([1, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -1899,8 +1922,8 @@ def test_three_phase_fault():
     grid.add_overhead_line(config_604)
 
     config_605 = gce.create_known_abc_overhead_template(name='Config. 605',
-                                                        z_abc=z_605,
-                                                        ysh_abc=y_605,
+                                                        z_nabc=z_605,
+                                                        ysh_nabc=y_605,
                                                         phases=np.array([3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -1908,8 +1931,8 @@ def test_three_phase_fault():
     grid.add_overhead_line(config_605)
 
     config_606 = gce.create_known_abc_overhead_template(name='Config. 606',
-                                                        z_abc=z_606,
-                                                        ysh_abc=y_606,
+                                                        z_nabc=z_606,
+                                                        ysh_nabc=y_606,
                                                         phases=np.array([1, 2, 3]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -1917,8 +1940,8 @@ def test_three_phase_fault():
     grid.add_overhead_line(config_606)
 
     config_607 = gce.create_known_abc_overhead_template(name='Config. 607',
-                                                        z_abc=z_607,
-                                                        ysh_abc=y_607,
+                                                        z_nabc=z_607,
+                                                        ysh_nabc=y_607,
                                                         phases=np.array([1]),
                                                         Vnom=4.16,
                                                         frequency=60)
@@ -2001,20 +2024,27 @@ def test_three_phase_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Power Flow
     # ----------------------------------------------------------------------------------------------------------------------
-    res_pf = gce.power_flow(grid=grid, options=gce.PowerFlowOptions(three_phase_unbalanced=True))
+    res_pf = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions())
 
     # ----------------------------------------------------------------------------------------------------------------------
     # Run Short-Circuit
     # ----------------------------------------------------------------------------------------------------------------------
-    sc_options = gce.ShortCircuitOptions(bus_index=4,
-                                         fault_type=FaultType.LLL,
-                                         method=MethodShortCircuit.phases,
-                                         phases=PhasesShortCircuit.abc)
+    sc_options = gce.ShortCircuitOptions()
+
+    grid.add_short_circuit_definition(
+        gce.ShortCircuitEvent(
+            device=grid.buses[4],
+            fault_type=FaultType.LLL,
+            method=MethodShortCircuit.phases,
+            phases=PhasesShortCircuit.abc
+        )
+    )
 
     sc_driver = gce.ShortCircuitDriver(grid=grid,
                                        options=sc_options,
-                                       pf_options=gce.PowerFlowOptions(three_phase_unbalanced=True),
-                                       pf_results=res_pf)
+                                       pf_options=gce.PowerFlowOptions(),
+                                       pf_results=None,
+                                       pf_results3ph=res_pf)
     sc_driver.run()
 
     # ----------------------------------------------------------------------------------------------------------------------
@@ -2022,6 +2052,6 @@ def test_three_phase_fault():
     # ----------------------------------------------------------------------------------------------------------------------
     res_sc = sc_driver.results
 
-    assert np.allclose(abs(res_sc.voltageA[4]), 0.009069, atol=1e-4)
-    assert np.allclose(abs(res_sc.voltageB[4]), 0.007444, atol=1e-4)
-    assert np.allclose(abs(res_sc.voltageC[4]), 0.003969, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageA[4, 0]), 0.009069, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageB[4, 0]), 0.007444, atol=1e-4)
+    assert np.allclose(abs(res_sc.voltageC[4, 0]), 0.003969, atol=1e-4)

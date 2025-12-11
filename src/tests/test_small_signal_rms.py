@@ -17,7 +17,6 @@ import VeraGridEngine.api as gce
 
 
 def stability_kundur_no_shunt():
-
     grid = gce.MultiCircuit()
 
     # Buses
@@ -49,82 +48,81 @@ def stability_kundur_no_shunt():
 
     line0 = grid.add_line(
         Line(name="line 5-6-1", bus_from=bus5, bus_to=bus6,
-                 r=0.00500, x=0.05000, b=0.02187, rate=750.0))
+             r=0.00500, x=0.05000, b=0.02187, rate=750.0))
 
     line1 = grid.add_line(
         Line(name="line 5-6-2", bus_from=bus5, bus_to=bus6,
-                 r=0.00500, x=0.05000, b=0.02187, rate=750.0))
+             r=0.00500, x=0.05000, b=0.02187, rate=750.0))
 
     line2 = grid.add_line(
         Line(name="line 6-7-1", bus_from=bus6, bus_to=bus7,
-                 r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+             r=0.00300, x=0.03000, b=0.00583, rate=700.0))
 
     line3 = grid.add_line(
         Line(name="line 6-7-2", bus_from=bus6, bus_to=bus7,
-                 r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+             r=0.00300, x=0.03000, b=0.00583, rate=700.0))
 
     line4 = grid.add_line(
         Line(name="line 6-7-3", bus_from=bus6, bus_to=bus7,
-                 r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+             r=0.00300, x=0.03000, b=0.00583, rate=700.0))
 
     line5 = grid.add_line(
         Line(name="line 7-8-1", bus_from=bus7, bus_to=bus8,
-                 r=0.01100, x=0.11000, b=0.19250, rate=400.0))
+             r=0.01100, x=0.11000, b=0.19250, rate=400.0))
 
     line6 = grid.add_line(
         Line(name="line 7-8-2", bus_from=bus7, bus_to=bus8,
-                 r=0.01100, x=0.11000, b=0.19250, rate=400.0))
+             r=0.01100, x=0.11000, b=0.19250, rate=400.0))
 
     line7 = grid.add_line(
         Line(name="line 8-9-1", bus_from=bus8, bus_to=bus9,
-                 r=0.01100, x=0.11000, b=0.19250, rate=400.0))
+             r=0.01100, x=0.11000, b=0.19250, rate=400.0))
 
     line8 = grid.add_line(
         Line(name="line 8-9-2", bus_from=bus8, bus_to=bus9,
-                 r=0.01100, x=0.11000, b=0.19250, rate=400.0))
+             r=0.01100, x=0.11000, b=0.19250, rate=400.0))
 
     line9 = grid.add_line(
         Line(name="line 9-10-1", bus_from=bus9, bus_to=bus10,
-                 r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+             r=0.00300, x=0.03000, b=0.00583, rate=700.0))
 
     line10 = grid.add_line(
         Line(name="line 9-10-2", bus_from=bus9, bus_to=bus10,
-                 r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+             r=0.00300, x=0.03000, b=0.00583, rate=700.0))
 
     line11 = grid.add_line(
         Line(name="line 9-10-3", bus_from=bus9, bus_to=bus10,
-                 r=0.00300, x=0.03000, b=0.00583, rate=700.0))
+             r=0.00300, x=0.03000, b=0.00583, rate=700.0))
 
     line12 = grid.add_line(
         Line(name="line 10-11-1", bus_from=bus10, bus_to=bus11,
-                 r=0.00500, x=0.05000, b=0.02187, rate=750.0))
+             r=0.00500, x=0.05000, b=0.02187, rate=750.0))
 
     line13 = grid.add_line(
         Line(name="line 10-11-2", bus_from=bus10, bus_to=bus11,
-                 r=0.00500, x=0.05000, b=0.02187, rate=750.0))
+             r=0.00500, x=0.05000, b=0.02187, rate=750.0))
 
     # Transformers
     xt1 = 0.15 * (100.0 / 900.0)
     trafo_G1 = grid.add_line(
         Line(name="trafo 5-1", bus_from=bus5, bus_to=bus1,
-                 r=0.00000, x=xt1, b=0.0, rate=900.0))
+             r=0.00000, x=xt1, b=0.0, rate=900.0))
 
     trafo_G2 = grid.add_line(
         Line(name="trafo 6-2", bus_from=bus6, bus_to=bus2,
-                 r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0))
+             r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0))
 
     trafo_G3 = grid.add_line(
         Line(name="trafo 11-3", bus_from=bus11, bus_to=bus3,
-                 r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0))
+             r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0))
 
     trafo_G4 = grid.add_line(
         Line(name="trafo 10-4", bus_from=bus10, bus_to=bus4,
-                 r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0))
+             r=0.00000, x=0.15 * (100.0 / 900.0), b=0.0, rate=900.0))
 
     # load
     load1 = Load(name="load1", P=967.0, Q=100.0, Pl0=-9.670000000007317, Ql0=-0.9999999999967969)
     load1_grid = grid.add_load(bus=bus7, api_obj=load1)
-
 
     load2 = Load(name="load2", P=1767.0, Q=100.0, Pl0=-17.6699999999199, Ql0=-0.999999999989467)
     load2_grid = grid.add_load(bus=bus9, api_obj=load2)
@@ -233,17 +231,16 @@ def stability_kundur_no_shunt():
         use_stored_guess=False,
         initialize_angles=False,
         generate_report=False,
-        three_phase_unbalanced=False
     )
     power_flow = PowerFlowDriver(grid, pf_options)
     power_flow.run()
     res = power_flow.results
 
-    ss, init_guess = initialize_rms(grid, res)
+    sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False)
 
     params_mapping = {}
 
-    slv = BlockSolver(ss, grid.time, use_jit=False)
+    slv = BlockSolver(ss, sim_time, use_jit=False)
     params0 = slv.build_init_params_vector(params_mapping)
     x0 = slv.build_init_vars_vector_from_uid(init_guess)
 
@@ -253,7 +250,7 @@ def stability_kundur_no_shunt():
      conjugate_frequencies,
      state_matrix) = run_small_signal_stability(slv=slv,
                                                 x=x0,
-                                                params=params0,
+                                                time=0,
                                                 verbose=1)
 
     return Eigenvalues, PFactors

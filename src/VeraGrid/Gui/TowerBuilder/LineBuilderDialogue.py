@@ -165,8 +165,8 @@ class TowerBuilderGUI(QtWidgets.QDialog):
 
         if idx == 0:
             # Impedances in Ohm/km
-            cols = ['Phase' + str(i) for i in self.tower_driver.tower.z_phases_abcn]
-            z_df = pd.DataFrame(data=self.tower_driver.tower.z_abcn, columns=cols, index=cols)
+            cols = ['Phase' + str(i) for i in self.tower_driver.tower.z_phases_nabc]
+            z_df = pd.DataFrame(data=self.tower_driver.tower.z_nabc, columns=cols, index=cols)
             self.ui.matrixTableView.setModel(PandasModel(z_df))
 
         elif idx == 1:

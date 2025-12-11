@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'gui.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.9.2
+## Created by: Qt User Interface Compiler version 6.10.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -25,13 +25,13 @@ class Ui_AboutDialog(object):
     def setupUi(self, AboutDialog):
         if not AboutDialog.objectName():
             AboutDialog.setObjectName(u"AboutDialog")
-        AboutDialog.resize(473, 236)
+        AboutDialog.resize(640, 365)
         icon = QIcon()
         icon.addFile(u":/Icons/icons/VeraGrid_icon.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         AboutDialog.setWindowIcon(icon)
         self.verticalLayout_2 = QVBoxLayout(AboutDialog)
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
-        self.verticalLayout_2.setContentsMargins(0, 0, 0, 0)
+        self.verticalLayout_2.setContentsMargins(2, 2, 2, 2)
         self.tabWidget = QTabWidget(AboutDialog)
         self.tabWidget.setObjectName(u"tabWidget")
         self.tab = QWidget()
@@ -40,13 +40,13 @@ class Ui_AboutDialog(object):
         self.gridLayout.setObjectName(u"gridLayout")
         self.mainLabel = QLabel(self.tab)
         self.mainLabel.setObjectName(u"mainLabel")
-        self.mainLabel.setLayoutDirection(Qt.LeftToRight)
-        self.mainLabel.setTextFormat(Qt.RichText)
+        self.mainLabel.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+        self.mainLabel.setTextFormat(Qt.TextFormat.RichText)
         self.mainLabel.setScaledContents(True)
-        self.mainLabel.setAlignment(Qt.AlignLeading|Qt.AlignLeft|Qt.AlignTop)
+        self.mainLabel.setAlignment(Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignTop)
         self.mainLabel.setWordWrap(True)
         self.mainLabel.setOpenExternalLinks(True)
-        self.mainLabel.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        self.mainLabel.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
 
         self.gridLayout.addWidget(self.mainLabel, 0, 1, 2, 2)
 
@@ -67,7 +67,7 @@ class Ui_AboutDialog(object):
         self.versionLabel.setObjectName(u"versionLabel")
         self.versionLabel.setWordWrap(True)
         self.versionLabel.setOpenExternalLinks(True)
-        self.versionLabel.setTextInteractionFlags(Qt.LinksAccessibleByMouse|Qt.TextSelectableByMouse)
+        self.versionLabel.setTextInteractionFlags(Qt.TextInteractionFlag.LinksAccessibleByMouse|Qt.TextInteractionFlag.TextSelectableByMouse)
 
         self.gridLayout.addWidget(self.versionLabel, 3, 1, 1, 2)
 
@@ -75,7 +75,7 @@ class Ui_AboutDialog(object):
         self.copyrightLabel.setObjectName(u"copyrightLabel")
         self.copyrightLabel.setWordWrap(True)
         self.copyrightLabel.setOpenExternalLinks(True)
-        self.copyrightLabel.setTextInteractionFlags(Qt.LinksAccessibleByMouse|Qt.TextSelectableByMouse)
+        self.copyrightLabel.setTextInteractionFlags(Qt.TextInteractionFlag.LinksAccessibleByMouse|Qt.TextInteractionFlag.TextSelectableByMouse)
 
         self.gridLayout.addWidget(self.copyrightLabel, 4, 1, 1, 2)
 
@@ -86,31 +86,50 @@ class Ui_AboutDialog(object):
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.contributorsLabel = QLabel(self.tab_2)
         self.contributorsLabel.setObjectName(u"contributorsLabel")
-        self.contributorsLabel.setAlignment(Qt.AlignLeading|Qt.AlignLeft|Qt.AlignTop)
+        self.contributorsLabel.setAlignment(Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignTop)
         self.contributorsLabel.setWordWrap(True)
 
         self.verticalLayout.addWidget(self.contributorsLabel)
 
         self.tabWidget.addTab(self.tab_2, "")
+        self.tab_5 = QWidget()
+        self.tab_5.setObjectName(u"tab_5")
+        self.gridLayout_3 = QGridLayout(self.tab_5)
+        self.gridLayout_3.setObjectName(u"gridLayout_3")
+        self.copyLibsButton = QPushButton(self.tab_5)
+        self.copyLibsButton.setObjectName(u"copyLibsButton")
+
+        self.gridLayout_3.addWidget(self.copyLibsButton, 2, 5, 1, 1)
+
+        self.updateButton = QPushButton(self.tab_5)
+        self.updateButton.setObjectName(u"updateButton")
+        self.updateButton.setMaximumSize(QSize(80, 16777215))
+
+        self.gridLayout_3.addWidget(self.updateButton, 2, 0, 1, 1)
+
+        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.gridLayout_3.addItem(self.horizontalSpacer, 2, 1, 1, 4)
+
+        self.allLibsTableWidget = QTableWidget(self.tab_5)
+        self.allLibsTableWidget.setObjectName(u"allLibsTableWidget")
+
+        self.gridLayout_3.addWidget(self.allLibsTableWidget, 0, 0, 1, 6)
+
+        self.updateLabel = QLabel(self.tab_5)
+        self.updateLabel.setObjectName(u"updateLabel")
+
+        self.gridLayout_3.addWidget(self.updateLabel, 1, 0, 1, 6)
+
+        self.tabWidget.addTab(self.tab_5, "")
         self.tab_3 = QWidget()
         self.tab_3.setObjectName(u"tab_3")
         self.gridLayout_2 = QGridLayout(self.tab_3)
         self.gridLayout_2.setObjectName(u"gridLayout_2")
-        self.updateButton = QPushButton(self.tab_3)
-        self.updateButton.setObjectName(u"updateButton")
-        self.updateButton.setMaximumSize(QSize(80, 16777215))
-
-        self.gridLayout_2.addWidget(self.updateButton, 2, 1, 1, 1)
-
         self.librariesTableWidget = QTableWidget(self.tab_3)
         self.librariesTableWidget.setObjectName(u"librariesTableWidget")
 
         self.gridLayout_2.addWidget(self.librariesTableWidget, 0, 0, 1, 2)
-
-        self.updateLabel = QLabel(self.tab_3)
-        self.updateLabel.setObjectName(u"updateLabel")
-
-        self.gridLayout_2.addWidget(self.updateLabel, 2, 0, 1, 1)
 
         self.tabWidget.addTab(self.tab_3, "")
         self.tab_4 = QWidget()
@@ -119,7 +138,7 @@ class Ui_AboutDialog(object):
         self.verticalLayout_3.setObjectName(u"verticalLayout_3")
         self.label_2 = QLabel(self.tab_4)
         self.label_2.setObjectName(u"label_2")
-        self.label_2.setTextFormat(Qt.RichText)
+        self.label_2.setTextFormat(Qt.TextFormat.RichText)
         self.label_2.setScaledContents(True)
         self.label_2.setWordWrap(True)
 
@@ -130,7 +149,7 @@ class Ui_AboutDialog(object):
         font = QFont()
         font.setFamilies([u"Cousine"])
         self.licenseTextEdit.setFont(font)
-        self.licenseTextEdit.setTextInteractionFlags(Qt.LinksAccessibleByKeyboard|Qt.LinksAccessibleByMouse|Qt.TextBrowserInteraction|Qt.TextSelectableByKeyboard|Qt.TextSelectableByMouse)
+        self.licenseTextEdit.setTextInteractionFlags(Qt.TextInteractionFlag.LinksAccessibleByKeyboard|Qt.TextInteractionFlag.LinksAccessibleByMouse|Qt.TextInteractionFlag.TextBrowserInteraction|Qt.TextInteractionFlag.TextSelectableByKeyboard|Qt.TextInteractionFlag.TextSelectableByMouse)
 
         self.verticalLayout_3.addWidget(self.licenseTextEdit)
 
@@ -156,9 +175,11 @@ class Ui_AboutDialog(object):
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QCoreApplication.translate("AboutDialog", u"About", None))
         self.contributorsLabel.setText(QCoreApplication.translate("AboutDialog", u"TextLabel", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QCoreApplication.translate("AboutDialog", u"Contributors", None))
+        self.copyLibsButton.setText(QCoreApplication.translate("AboutDialog", u"Copy", None))
         self.updateButton.setText(QCoreApplication.translate("AboutDialog", u"Update", None))
         self.updateLabel.setText("")
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_3), QCoreApplication.translate("AboutDialog", u"Libraries", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_5), QCoreApplication.translate("AboutDialog", u"Libraries", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_3), QCoreApplication.translate("AboutDialog", u"Optional libraries", None))
         self.label_2.setText(QCoreApplication.translate("AboutDialog", u"<html><head/><body><p align=\"justify\">This program comes with absolutelly no warranty. This is free software, and you are welcome to redistribute it under the conditions set by the license. VeraGrid is licensed under the <a href=\"https://www.mozilla.org/en-US/MPL/2.0/\"><span style=\" text-decoration: underline; color:#26a269;\">Mozilla Public License V2</span></a>.</p></body></html>", None))
         self.licenseTextEdit.setHtml(QCoreApplication.translate("AboutDialog", u"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><meta charset=\"utf-8\" /><style type=\"text/css\">\n"
@@ -166,25 +187,25 @@ class Ui_AboutDialog(object):
 "hr { height: 1px; border-width: 0; }\n"
 "li.unchecked::marker { content: \"\\2610\"; }\n"
 "li.checked::marker { content: \"\\2612\"; }\n"
-"</style></head><body style=\" font-family:'Cousine'; font-size:11pt; font-weight:400; font-style:normal;\">\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">+==============+==========================================+</p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">| Package      | License                                  |</p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">+==============+=========="
-                        "================================+</p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">| setuptools   | MIT                                      |</p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">+--------------+------------------------------------------+</p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">| wheel        | MIT                                      |</p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">+--------------+------------------------------------------+</p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">| PySide6      | LGPL                                     |</p>\n"
-"<p style=\" margin-top:0px; margin-bot"
-                        "tom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">+--------------+------------------------------------------+</p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">| numpy        | BSD                                      |</p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">+--------------+------------------------------------------+</p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">| scipy        | BSD                                      |</p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">+--------------+------------------------------------------+</p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"
-                        "\">| networkx     | BSD                                      |</p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">+--------------+------------------------------------------+</p></body></html>", None))
+"</style></head><body style=\" font-family:'Cousine'; font-size:13pt; font-weight:400; font-style:normal;\">\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:11pt;\">+==============+==========================================+</span></p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:11pt;\">| Package      | License                                  |</span></p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; mar"
+                        "gin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:11pt;\">+==============+==========================================+</span></p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:11pt;\">| setuptools   | MIT                                      |</span></p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:11pt;\">+--------------+------------------------------------------+</span></p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:11pt;\">| wheel        | MIT                                      |</span></p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:11pt;\">+--------------+------"
+                        "------------------------------------+</span></p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:11pt;\">| PySide6      | LGPL                                     |</span></p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:11pt;\">+--------------+------------------------------------------+</span></p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:11pt;\">| numpy        | BSD                                      |</span></p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:11pt;\">+--------------+------------------------------------------+</span></p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-le"
+                        "ft:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:11pt;\">| scipy        | BSD                                      |</span></p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:11pt;\">+--------------+------------------------------------------+</span></p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:11pt;\">| networkx     | BSD                                      |</span></p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:11pt;\">+--------------+------------------------------------------+</span></p></body></html>", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_4), QCoreApplication.translate("AboutDialog", u"License", None))
     # retranslateUi
 

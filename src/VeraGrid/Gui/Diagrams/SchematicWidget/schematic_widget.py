@@ -1470,7 +1470,8 @@ class SchematicWidget(BaseDiagramWidget):
         min_y = sys.maxsize
         max_x = -sys.maxsize
         max_y = -sys.maxsize
-        max_w = -sys.maxsize
+        max_w = 100
+        max_h = 60
 
         if elements is None:
             for item in self.diagram_scene.items():
@@ -1485,6 +1486,7 @@ class SchematicWidget(BaseDiagramWidget):
                     max_y = max(max_y, y)
                     min_y = min(min_y, y)
                     max_w = max(max_w, item.rect().width())
+                    max_h = max(max_h, item.rect().height())
         else:
             elements_s = set(elements)
             for item in self.diagram_scene.items():
@@ -1501,13 +1503,15 @@ class SchematicWidget(BaseDiagramWidget):
                         max_y = max(max_y, y)
                         min_y = min(min_y, y)
                         max_w = max(max_w, item.rect().width())
+                        max_h = max(max_h, item.rect().height())
 
         # set the limits of the view
         dx = max_x - min_x
         dy = max_y - min_y
         mx = margin_factor * dx
         my = margin_factor * dy
-        h = dy + 2 * my + max_w
+
+        h = dy + 2 * my + max_h
         w = dx + 2 * mx + max_w
         boundaries = QRectF(min_x - mx, min_y - my, w, h)
 

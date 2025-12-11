@@ -2,7 +2,7 @@ import numpy as np
 
 import VeraGridEngine as gce
 from VeraGridEngine import MultiCircuit, Bus, Line, PiMeasurement, QiMeasurement, VmMeasurement, StateEstimationOptions, \
-    StateEstimation, QfMeasurement, PfMeasurement
+    StateEstimationDriver, QfMeasurement, PfMeasurement
 
 
 def test_se_with_and_without_pseudo_measurements():
@@ -48,7 +48,7 @@ def test_se_with_and_without_pseudo_measurements():
         # solution to converge
         verbose=0
     )
-    se_no_pseudo = StateEstimation(circuit=grid, options=se_options_no_pseudo)
+    se_no_pseudo = StateEstimationDriver(circuit=grid, options=se_options_no_pseudo)
     se_no_pseudo.run()
     report_no_pseudo = se_no_pseudo.results.convergence_reports[0]
     assert report_no_pseudo
@@ -65,7 +65,7 @@ def test_se_with_and_without_pseudo_measurements():
         solver=gce.SolverType.NR,
         verbose=2
     )
-    se_pseudo = StateEstimation(circuit=grid, options=se_options_pseudo)
+    se_pseudo = StateEstimationDriver(circuit=grid, options=se_options_pseudo)
     se_pseudo.run()
     report_pseudo = se_pseudo.results.convergence_reports[0]
 

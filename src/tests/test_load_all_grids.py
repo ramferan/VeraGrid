@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import os
-from VeraGridEngine.IO.file_handler import FileOpen
+from VeraGridEngine.IO.file_handler import FileOpen, FileSave
 
 
 def test_all_grids():
@@ -56,6 +56,8 @@ def test_line_templates_finding():
 
     opener = FileOpen(fname)
     grid = opener.open()
+
+    # FileSave(grid, fname).save()  # re-save if new structures are present
 
     if opener.logger.has_logs():
         opener.logger.print()

@@ -673,8 +673,8 @@ class NonLinearOptimalPfProblem:
         else:
             sl_sf = np.zeros(self.n_br_mon)
             sl_st = np.zeros(self.n_br_mon)
-            sl_vmax = np.zeros(self.nbus)
-            sl_vmin = np.zeros(self.nbus)
+            sl_vmax = np.zeros(self.npq)
+            sl_vmin = np.zeros(self.npq)
 
         if self.options.ips_control_q_limits:  # if reactive power control...
             v_g = self.Vm[self.gen_bus_idx[self.gen_disp_idx]]
