@@ -34,3 +34,5 @@ cryptography
 opencv-python>=4.10.0.84
 setuptools
 packaging
+
+ 

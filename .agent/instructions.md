@@ -1,9 +1,13 @@
 # Protocolo de Inicio
-1. **LEE SIEMPRE `TASKS.md`**: Antes de hacer nada, lee este fichero para entender el estado actual y tu objetivo inmediato.
-2. **LEE LA ARQUITECTURA**: La visión global está en `../soma/ARCHITECTURE.md`.
-3. **LEE EL CONTEXTO LOCAL**: Lee `VISION.md` y `PROJECT_OVERVIEW.md` de este repositorio.
-4. **MANTÉN LA DOCUMENTACIÓN VIVA**: Si tu código cambia la realidad descrita en estos documentos, ACTUALÍZALOS.
-5. **ACTUALIZA `TASKS.md`**: Al terminar tu tarea, actualiza el estado.
+1. **LEE EL CONTEXTO GLOBAL**: Antes de nada, lee `../casandra/README.md` y `../casandra/PLANNING_CONTEXT.md` para entender el ecosistema completo.
+2. **LEE LAS DECISIONES TÉCNICAS**: Lee `../casandra/TECHNICAL_DECISIONS.md` para conocer las decisiones arquitectónicas clave.
+3. **LEE SIEMPRE `TASKS.md`**: Lee este fichero para entender el estado actual y tu objetivo inmediato.
+4. **LEE EL CONTEXTO LOCAL**: Lee `VISION.md` y `PROJECT_OVERVIEW.md` de este repositorio.
+5. **MANTÉN LA DOCUMENTACIÓN VIVA**: Si tu código cambia la realidad descrita en estos documentos, ACTUALÍZALOS.
+6. **IDIOMA (HÍBRIDO)**: Todo el código debe estar en **Inglés**: variables, funciones, clases, docstrings y comentarios. Los commits también en inglés. Los archivos **Markdown (`.md`)** deben estar en **Español**.
+7. **PROTOCOL GESTIÓN GIT**: NO realizar PUSH directo a `devel` o `main`. Crear siempre una rama `feat/agent-...` y esperar validación.
+8. **PLAN-BEFORE-CODE**: Presentar SIEMPRE un plan detallado de pasos y esperar la aprobación del USER antes de modificar archivos o ejecutar comandos.
+9. **ACTUALIZA `TASKS.md`**: Al terminar tu tarea, actualiza el estado.
 
 # Instrucciones para Agentes de IA
 **Contexto Global**: Este repositorio (`VeraGrid`) es una herramienta de simulación **LEGACY**. Se mantiene por motivos históricos y de comparación mientras se migra a `hybridcircuit` (Axon).
