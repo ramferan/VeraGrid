@@ -16,6 +16,25 @@ product of cutting-edge research.
 [![Downloads](https://static.pepy.tech/personalized-badge/veragrid?period=total&units=abbreviation&left_color=grey&right_color=green&left_text=Downloads)](https://pepy.tech/project/veragrid)
 [![Discord](https://img.shields.io/badge/Discord-%235865F2.svg)](https://discord.gg/sVnwkaxN)
 
+## 📚 Documentación
+
+Toda la documentación de desarrollo está organizada en [`.docs/`](.docs/):
+
+- **[Visión](.docs/VISION.md)**: Objetivos y propósito de VeraGrid.
+- **[Planificación](.docs/planning/)**: Tareas pendientes, roadmap de desarrollo.
+- **[Resumen del Proyecto](.docs/PROJECT_OVERVIEW.md)**: Arquitectura del motor y drivers.
+- **[Guías](.docs/guides/)**: Guía de contribución y workflows.
+- **[Legacy](.docs/legacy/)**: Histórico y contextos previos.
+
+### 🚀 Desarrollo
+
+1. **Setup del entorno**: Ver sección "Installation" más abajo.
+2. **Tareas pendientes**: Ver [`.docs/planning/TASKS.md`](.docs/planning/TASKS.md).
+3. **Casos de prueba**: Ver [`.docs/planning/WORK_PLAN.md`](.docs/planning/WORK_PLAN.md).
+
+---
+*Para el ecosistema completo de planificación, consultar [CASANDRA](../casandra/).*
+
 VeraGrid started in 2015 with a clear objective: create a solid programming library and a user-friendly interface.
 This straightforward approach sparked many innovations — some driven by the necessity
 for commercial use, and others fueled by curiosity and research.
