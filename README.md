@@ -1,39 +1,25 @@
-# VeraGrid
+# VeraGrid: Motor Vendor (Heredado)
+> **Rol:** Soporte de Motores de Cálculo Externos y Funcionalidades Específicas REE.
 
-VeraGrid is a top tier power systems planning and simulation software.
-As such it has all the static analysis studies that you can think of, plus
-linear and non-linear optimization functions. Some of these functions are
-well known, while others you may have never heard of as they are a
-product of cutting-edge research.
+**VeraGrid** es un componente de terceros (Vendor) integrado en el ecosistema **Casandra**. Su función es proporcionar motores de simulación y planificación estática/dinámica que han sido personalizados o extendidos por REE para estudios de red específicos.
 
+## 🎯 Propósito Específico
+Actuar como un motor de cálculo especializado para estudios que requieren algoritmos de planificación estática, optimización lineal y análisis estocástico heredados. Proporciona una suite de herramientas ya probadas que complementan las nuevas capacidades de AXON sin necesidad de reescribir algoritmos complejos de terceros.
 
-![VeraGrid_banner.png](pics/VeraGrid_banner.png)[](![Ver(pics/VeraGrid_banner.png))
-![VeraGrid](pics/VeraGrid_yt.png)
+## 🧩 Encaje en el Ecosistema
+- **Cálculo (Axon):** VeraGrid es invocado por AXON cuando se requieren estudios específicos que el motor nativo delega en este vendor.
+- **Resultados:** Genera salidas que deben ser normalizadas o persistidas en formatos compatibles (Parquet) para su consumo en el Frontend (Abax).
+- **Interoperabilidad:** Se expone mediante el protocolo **MCP** para permitir que agentes de IA utilicen sus potentes algoritmos de forma estructurada.
 
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/75e794c9bcfd49bda1721b9ba8f6c790)](https://app.codacy.com/app/SanPen/VeraGrid?utm_source=github.com&utm_medium=referral&utm_content=SanPen/VeraGrid&utm_campaign=Badge_Grade_Dashboard)
-[![Documentation Status](https://readthedocs.org/projects/veragrid/badge/?version=latest)](https://veragrid.readthedocs.io/en/latest/?badge=latest) [![Build Status](https://travis-ci.org/SanPen/VeraGrid.svg?branch=master)](https://travis-ci.org/SanPen/VeraGrid)
-[![DOI](https://www.zenodo.org/badge/49583206.svg)](https://www.zenodo.org/badge/latestdoi/49583206)
-[![Downloads](https://static.pepy.tech/personalized-badge/veragrid?period=total&units=abbreviation&left_color=grey&right_color=green&left_text=Downloads)](https://pepy.tech/project/veragrid)
-[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg)](https://discord.gg/sVnwkaxN)
+## 📚 Documentación Casandra
 
-## 📚 Documentación
+Toda la documentación de integración está en [`.docs/`](.docs/):
 
-Toda la documentación de desarrollo está organizada en [`.docs/`](.docs/):
-
-- **[Visión](.docs/VISION.md)**: Objetivos y propósito de VeraGrid.
-- **[Planificación](.docs/planning/)**: Tareas pendientes, roadmap de desarrollo.
-- **[Resumen del Proyecto](.docs/PROJECT_OVERVIEW.md)**: Arquitectura del motor y drivers.
-- **[Guías](.docs/guides/)**: Guía de contribución y workflows.
-- **[Legacy](.docs/legacy/)**: Histórico y contextos previos.
-
-### 🚀 Desarrollo
-
-1. **Setup del entorno**: Ver sección "Installation" más abajo.
-2. **Tareas pendientes**: Ver [`.docs/planning/TASKS.md`](.docs/planning/TASKS.md).
-3. **Casos de prueba**: Ver [`.docs/planning/WORK_PLAN.md`](.docs/planning/WORK_PLAN.md).
+- **[Hoja de Ruta Particular](./.context/ROADMAP.md)**: Mantenimiento y exposición de herramientas.
+- **[Sync de Investigación](./.context/sync_y_deep_research.md)**: Registro de consultas específicas sobre VeraGrid.
 
 ---
-*Para el ecosistema completo de planificación, consultar [CASANDRA](../casandra/).*
+*Para el ecosistema completo y la visión estratégica, consultar el repositorio principal [CASANDRA](../casandra/).*
 
 VeraGrid started in 2015 with a clear objective: create a solid programming library and a user-friendly interface.
 This straightforward approach sparked many innovations — some driven by the necessity

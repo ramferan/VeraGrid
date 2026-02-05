@@ -1,5 +1,19 @@
 # Protocolo de Onboarding: VeraGrid (Legacy & Performance)
 
+## ⚠️ CRÍTICO: Protocolo de Planificación Obligatoria
+**NO EJECUTES NINGUNA ACCIÓN COMPLEJA O DESTRUCTIVA SIN APROBACIÓN PREVIA.**
+
+1. **Analiza**: Diagnostica el problema o tarea.
+2. **Planifica**: Presenta al usuario un plan detallado paso a paso de lo que vas a hacer.
+   - Qué archivos vas a modificar.
+   - Qué comandos vas a ejecutar.
+   - Qué riesgos existen.
+3. **Espera Confirmación**: No asumas que puedes proceder. Pregunta explícitamente "¿Procedo con este plan?" o similares.
+4. **Ejecuta**: Solo tras recibir el "Sí" del usuario.
+
+Este protocolo es **INVIOLABLE** para tareas de migración, borrado de datos, refactorización masiva o cualquier cambio de infraestructura.
+
+
 Bienvenido a **VeraGrid**. Este es un motor de cálculo crítico con herencia legacy. Tu misión es mantener su estabilidad mientras extraemos su lógica para el futuro del ecosistema.
 
 ## 🧭 Mapa del Cerebro (Contexto)
