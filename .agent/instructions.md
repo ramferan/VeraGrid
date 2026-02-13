@@ -18,9 +18,11 @@ Bienvenido a **VeraGrid**. Este es un motor de cálculo crítico con herencia le
 
 ## 🧭 Mapa del Cerebro (Contexto)
 **OBLIGATORIO**: Sincroniza el contexto al inicio:
-1. **Knowledge Scan**: Lee `.context/README.md`.
-2. **Contexto Hub**: Lee `../casandra/README.md` y `../casandra/TECHNICAL_DECISIONS.md`.
-3. **Estado**: Consulta `TASKS.md`.
+1. **Contexto Superior**: Lee `../casandra/README.md` y `../casandra/.context/cap_gestion_datos.md`.
+2. **Capítulos Tematizados**: Lee los ficheros en `.context/` (ej: `cap_gestion_datos.md`).
+3. **MANTÉN EL CONTEXTO ACTUALIZADO**: Es obligatorio actualizar la visión técnica en `.context/` si tu desarrollo cambia la implementación.
+4. **Estado**: Consulta `TASKS.md`.
+
 
 ## 🔄 Flujo Git Swarm
 - **Ramas**: `main`, `devel`. Trabajo en `feat/agent-...` o `fix/agent-...`.
