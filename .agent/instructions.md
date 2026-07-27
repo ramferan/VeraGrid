@@ -34,6 +34,10 @@ Bienvenido a **VeraGrid**. Este es un motor de cálculo crítico con herencia le
 - Revisa `pytest.ini` y añade tests en la carpeta correspondiente (`tests/` o subcarpetas de `src/`).
 - Crea o actualiza `tests/conftest.py` para fixtures globales.
 
+## 🚀 Flujo de Trabajo y Agilidad (Sin Builds Innecesarios)
+- **No ejecutar `build` ni linters/tests pesados tras cada cambio**: Está estrictamente prohibido lanzar suites completas de tests o compilaciones pesadas en modificaciones locales menores.
+- **Verificación Ligera**: Se realizan ejecuciones dirigidas del test afectado. Las comprobaciones completas solo se ejecutarán a petición del usuario o antes de publicar.
+
 ## 📜 Idioma y Estilo
 - **Código y Commits**: Inglés.
 - **Documentación MD**: Español.
