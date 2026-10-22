@@ -795,10 +795,21 @@ def formulate_branches_flow(solver: pywraplp.Solver, nbr, nbus, Rates, Sbase, br
             _f = F[m]
             _t = T[m]
 
-            # compute the branch susceptance
+            # compute the branch susceptance. A zero impedance cannot be
+            # represented as a regular branch; fail fast instead of silently
+            # replacing it with an arbitrary small value that would falsify
+            # the flow distribution.
             if branch_dc[m]:
+                if R[m] == 0.0:
+                    raise ValueError(
+                        "Branch '{0}' has zero resistance; it must be modelled as a switch "
+                        "or removed from the branch set before the NTC OPF".format(branch_names[m]))
                 bk = 1.0 / R[m]
             else:
+                if X[m] == 0.0:
+                    raise ValueError(
+                        "Branch '{0}' has zero reactance; it must be modelled as a switch "
+                        "or removed from the branch set before the NTC OPF".format(branch_names[m]))
                 bk = 1.0 / X[m]
 
             # branch power from-to eq.15
@@ -929,6 +940,7 @@ def formulate_contingency(
     flow_n1f = list()
     con_idx = list()
     con_alpha = list()
+    warned_zero_rate = set()
 
     for c, lodfnx in LODF_NX:
 
@@ -938,10 +950,17 @@ def formulate_contingency(
             c2 = any(np.abs(lodfnx[m]) > branch_sensitivity_threshold)
             c3 = np.abs(alpha[m]) > branch_sensitivity_threshold
             c4 = any(np.abs(alpha_n1[m, c]) > branch_sensitivity_threshold)
-            # any: consideramos mejor dejar el criterío más restrictivo de any, porque si una contingencia
-            # ya es sensible por si misma, también queremos vigilar la influencia de los disparos que la incluyan.
 
-            if c1 and c2 and (c3 and c4):
+            # Monitor a branch if it is sensitive in N or in N-1 (same
+            # criterion as max_alpha in formulate_monitorization_logic).
+            if c1 and c2 and (c3 or c4):
+
+                if rates[m] <= 0:
+                    if m not in warned_zero_rate:
+                        logger.add_warning("Contingency rate is zero; N-1 constraint skipped",
+                                           device=branch_names[m], value=rates[m])
+                        warned_zero_rate.add(m)
+                    continue
 
                 suffix = "{0}@{1}_{2}@{3}".format(branch_names[m], '; '.join(branch_names[c]), m, c)
 
@@ -1275,8 +1294,15 @@ def formulate_hvdc_flow(
                     inf=inf)
 
             elif control_mode[i] == HvdcControlType.type_1_Pset and not dispatchable[i]:
-                # simple injections model: The power is set by the user
-                flow_f[i] = P0
+                # simple injections model: The power is set by the user,
+                # clamped to the link rating so it cannot inject beyond it.
+                if abs(P0) > rates[i]:
+                    logger.add_warning("HVDC Pset outside rating; clamped",
+                                       device=names[i], value=P0 * Sbase,
+                                       expected_value=rates[i] * Sbase)
+                    flow_f[i] = np.sign(P0) * rates[i]
+                else:
+                    flow_f[i] = P0
 
             elif control_mode[i] == HvdcControlType.type_1_Pset and dispatchable[i]:
                 # simple injections model, the power is a variable and it is optimized
@@ -1852,8 +1878,20 @@ class OpfNTC(Opf):
             rates=self.numerical_circuit.Rates,
         )
 
+        # The objective includes the inter-area flows. Force those branches to
+        # be monitored so their flow variables are bounded by their rates;
+        # otherwise an inter-area branch excluded by the sensitivity/ACER
+        # filters could make the LP unbounded.
+        for br_idx, _ in inter_area_branches:
+            monitor[br_idx] = True
+            monitor_by_sensitivity[br_idx] = True
+
         # formulate the generation
         if self.generation_formulation == GenerationNtcFormulation.Optimal:
+
+            raise NotImplementedError(
+                "GenerationNtcFormulation.Optimal is incomplete; use "
+                "GenerationNtcFormulation.Proportional")
 
             # formulate optimal generation
             generation, generation_delta, gen_a1_idx, gen_a2_idx, power_shift, dgen1, \
@@ -2243,8 +2281,20 @@ class OpfNTC(Opf):
             rates=self.numerical_circuit.Rates[:, t],
         )
 
+        # The objective includes the inter-area flows. Force those branches to
+        # be monitored so their flow variables are bounded by their rates;
+        # otherwise an inter-area branch excluded by the sensitivity/ACER
+        # filters could make the LP unbounded.
+        for br_idx, _ in inter_area_branches:
+            monitor[br_idx] = True
+            monitor_by_sensitivity[br_idx] = True
+
         # formulate the generation
         if self.generation_formulation == GenerationNtcFormulation.Optimal:
+
+            raise NotImplementedError(
+                "GenerationNtcFormulation.Optimal is incomplete; use "
+                "GenerationNtcFormulation.Proportional")
 
             # formulate optimal generation
             generation, generation_delta, gen_a1_idx, gen_a2_idx, power_shift, dgen1, \
