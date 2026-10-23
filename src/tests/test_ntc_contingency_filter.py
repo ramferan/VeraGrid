@@ -51,11 +51,12 @@ class TestNtcContingencyFilter(unittest.TestCase):
         rates = np.asarray(contingency_rates, dtype=float)
         names = np.array(['b0', 'b1', 'b2'], dtype=object)
 
-        lodfnx = np.zeros((n, n), dtype=float)
+        # LODF_NX stores (outaged_branch_indices, lodf_nx), where lodf_nx has
+        # shape (n_branches, n_outaged_branches). For a single outage this is
+        # (n, 1), not (n, n).
+        lodfnx = np.zeros((n, 1), dtype=float)
         lodfnx[1, 0] = 1.0
 
-        # One contingency: outage of branch 0. LODF_NX is a list of
-        # (outaged_branch_indices, LODF_rows) as produced by LinearAnalysis.
         lodf_nx = [(np.array([0], dtype=int), lodfnx)]
 
         flow_f = self._flows(solver=solver, n=n)
