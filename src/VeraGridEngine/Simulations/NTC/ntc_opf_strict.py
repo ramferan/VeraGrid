@@ -45,6 +45,7 @@ from VeraGridEngine.Simulations.NTC.ntc_opf import (add_corrective_contingency_f
                                                     get_exchange_proportions)
 from VeraGridEngine.IO.file_system import opf_file_path
 from VeraGridEngine.Simulations.NTC.ntc_compact import SolverProgress, CompactContingencies
+from VeraGridEngine.Simulations.NTC.ntc_preflight import validate_inter_area_links
 
 
 def formulate_monitorization_logic(monitor_only_sensitive_branches: bool,
@@ -1945,6 +1946,9 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
     inter_info_vsc = nc.vsc_data.get_inter_areas(bus_idx_from=bus_a1_idx, bus_idx_to=bus_a2_idx)
     inter_area_vsc_idx: List[int] = [x[0] for x in inter_info_vsc]
     inter_area_vsc_sense: List[float] = [x[1] for x in inter_info_vsc]
+
+    # Without a tie element the exchange objective is undefined
+    validate_inter_area_links(inter_area_branch_idx, inter_area_hvdc_idx, inter_area_vsc_idx)
 
     for k in inter_area_branch_idx:
         logger.add_info("Inter area branch", device=f"({k}) - {nc.passive_branch_data.names[k]}",

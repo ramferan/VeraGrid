@@ -36,6 +36,9 @@ from VeraGridEngine.Simulations.ATC.available_transfer_capacity_driver import co
 from VeraGridEngine.IO.file_system import opf_file_path
 from VeraGridEngine.Simulations.NTC.ntc_compact import (SolverProgress, CompactContingencies, add_clipped_flow,
                                                         BranchVariables, ConverterVariables)
+from VeraGridEngine.Simulations.NTC.ntc_preflight import (NtcFormulationError,
+                                                          check_participation,
+                                                          validate_inter_area_links)
 
 
 def formulate_monitorization_logic(monitor_only_sensitive_branches: bool,
@@ -262,7 +265,7 @@ def get_sensed_proportions(power: Vec,
     proportions = prop_gen_delta_up + prop_gen_delta_dw
 
     # some checks
-    if not np.isclose(np.sum(proportions), 1, rtol=1e-6):
+    if logger is not None and not np.isclose(np.sum(proportions), 1, rtol=1e-6):
         logger.add_warning('Issue computing proportions to scale delta generation in area 1.')
 
     return proportions
@@ -272,7 +275,8 @@ def get_exchange_proportions(power: Vec,
                              bus_a1_idx: IntVec,
                              bus_a2_idx: IntVec,
                              logger: Logger,
-                             decimals: int):
+                             decimals: int,
+                             raise_on_zero_participation: bool = False):
     """
     Get generation proportions by transfer method with sign consideration.
     :param power: Vec. Power reference
@@ -280,10 +284,24 @@ def get_exchange_proportions(power: Vec,
     :param bus_a2_idx: bus indices within area 2
     :param logger: logger instance
     :param decimals: Number of decimals to round to
+    :param raise_on_zero_participation: fail instead of warning when an area
+        has no participating generation (its NTC would be slack-relaxed)
     :return: proportions (rounded), summing to exactly 1 in area 1 and -1 in area 2
     """
-    proportions_a1: Vec = np.round(get_sensed_proportions(power=power, idx=bus_a1_idx, logger=logger), decimals)
-    proportions_a2: Vec = np.round(get_sensed_proportions(power=power, idx=bus_a2_idx, logger=logger), decimals)
+    # Without participating generation the shares are 0/0 and only the area
+    # slack absorbs the transfer: make it visible (or fatal on request) instead
+    # of returning an all-zero proportion vector.
+    check_participation(power=power, bus_idx=bus_a1_idx,
+                        area_label='Area 1 (sending)',
+                        raise_on_zero=raise_on_zero_participation,
+                        logger=logger)
+    check_participation(power=power, bus_idx=bus_a2_idx,
+                        area_label='Area 2 (receiving)',
+                        raise_on_zero=raise_on_zero_participation,
+                        logger=logger)
+
+    proportions_a1: Vec = np.round(get_sensed_proportions(power=power, idx=bus_a1_idx, logger=None), decimals)
+    proportions_a2: Vec = np.round(get_sensed_proportions(power=power, idx=bus_a2_idx, logger=None), decimals)
 
     # Rounding drops the smallest shares, so each area's total drifts from 1 by ~1e-5. Kirchhoff then
     # makes the area 1 increase differ from the area 2 decrease by that amount. Correct it.
@@ -3568,6 +3586,9 @@ def run_linear_ntc_opf(grid: MultiCircuit,
     inter_info_vsc = nc.vsc_data.get_inter_areas(bus_idx_from=bus_a1_idx, bus_idx_to=bus_a2_idx)
     inter_area_vsc_idx: List[int] = [x[0] for x in inter_info_vsc]
     inter_area_vsc_sense: List[float] = [x[1] for x in inter_info_vsc]
+
+    # Without a tie element the exchange objective is undefined
+    validate_inter_area_links(inter_area_branch_idx, inter_area_hvdc_idx, inter_area_vsc_idx)
 
     for k in inter_area_branch_idx:
         logger.add_info("Inter area branch", device=f"({k}) - {nc.passive_branch_data.names[k]}",
