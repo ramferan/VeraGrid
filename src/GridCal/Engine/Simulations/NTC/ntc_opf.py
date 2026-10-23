@@ -318,7 +318,7 @@ def formulate_optimal_generation(solver: pywraplp.Solver, generator_active, disp
     for bus_idx, gen_idx in gens1:
 
         if generator_active[gen_idx] and dispatchable[gen_idx]:
-            name = 'gen_up_{0}_bus{1}'.format(generator_names[gen_idx], bus_idx)
+            name = 'gen_up_{0}_{1}_bus{2}'.format(gen_idx, generator_names[gen_idx], bus_idx)
 
             if Pmin[gen_idx] >= Pmax[gen_idx]:
                 logger.add_error('Pmin >= Pmax', 'Generator index {0}'.format(gen_idx), Pmin[gen_idx])
@@ -345,7 +345,7 @@ def formulate_optimal_generation(solver: pywraplp.Solver, generator_active, disp
     for bus_idx, gen_idx in gens2:
 
         if generator_active[gen_idx] and dispatchable[gen_idx]:
-            name = 'gen_down_{0}_bus{1}'.format(generator_names[gen_idx], bus_idx)
+            name = 'gen_down_{0}_{1}_bus{2}'.format(gen_idx, generator_names[gen_idx], bus_idx)
 
             if Pmin[gen_idx] >= Pmax[gen_idx]:
                 logger.add_error('Pmin >= Pmax', 'Generator index {0}'.format(gen_idx), Pmin[gen_idx])
@@ -374,7 +374,7 @@ def formulate_optimal_generation(solver: pywraplp.Solver, generator_active, disp
         if dispatch_all_areas:
 
             if generator_active[gen_idx] and dispatchable[gen_idx]:
-                name = 'gen_down_{0}@bus{1}'.format(generator_names[gen_idx], bus_idx)
+                name = 'gen_down_{0}_{1}@bus{2}'.format(gen_idx, generator_names[gen_idx], bus_idx)
 
                 if Pmin[gen_idx] >= Pmax[gen_idx]:
                     logger.add_error('Pmin >= Pmax', 'Generator index {0}'.format(gen_idx), Pmin[gen_idx])
@@ -541,24 +541,29 @@ def formulate_proportional_generation(solver: pywraplp.Solver, generator_active,
         if gen_idx not in out_gen_idx:
 
             # store solver variables
+            # The index is part of the name on purpose: device names are not
+            # guaranteed to be unique, and OR-Tools/CBC aborts when two LP
+            # variables share a name.
+            gen_name = 'gen_{0}_{1}'.format(gen_idx, generator_names[gen_idx])
+
             generation[gen_idx] = solver.NumVar(
                 lb=Pmin[gen_idx],
                 ub=Pmax[gen_idx],
-                name='gen_{0}'.format(generator_names[gen_idx]))
+                name=gen_name)
 
             delta[gen_idx] = solver.NumVar(
                 lb=-inf,
                 ub=inf,
-                name='gen_{0}_delta'.format(generator_names[gen_idx]))
+                name=gen_name + '_delta')
 
             # solver variables formulation
             solver.Add(
                 constraint=delta[gen_idx] == power_shift * proportions[gen_idx] * sense[gen_idx],
-                name='gen_{0}_assignment'.format(generator_names[gen_idx]))
+                name=gen_name + '_assignment')
 
             solver.Add(
                 constraint=generation[gen_idx] == Pgen[gen_idx] + delta[gen_idx],
-                name='gen_{0}_delta_assignment'.format(generator_names[gen_idx]))
+                name=gen_name + '_delta_assignment')
 
         else:
             generation[gen_idx] = Pgen[gen_idx]
