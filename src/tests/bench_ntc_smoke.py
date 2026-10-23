@@ -43,6 +43,7 @@ from GridCal.Engine.basic_structures import SolverType
 
 
 FORMULATION_STATS = list()
+LP_OUTPUT = {'path': None}
 
 
 def patch_formulation_stats():
@@ -70,6 +71,14 @@ def patch_formulation_stats():
         }
         self._bench_stats = stats
         FORMULATION_STATS.append(stats)
+
+        if LP_OUTPUT['path']:
+            try:
+                self.save_lp(LP_OUTPUT['path'])
+                print(f'LP written to {LP_OUTPUT["path"]}')
+            except Exception as exc:
+                print(f'Could not save the LP: {type(exc).__name__}: {exc}')
+
         return out
 
     wrapper._bench_patched = True
@@ -397,6 +406,7 @@ def main(argv=None):
     print(f'  solver             : {args.solver}')
 
     patch_formulation_stats()
+    LP_OUTPUT['path'] = args.lp
 
     runs = list()
     for run_idx in range(max(args.repeat, 1)):
@@ -416,10 +426,6 @@ def main(argv=None):
             error = f'{type(exc).__name__}: {exc}'
             traceback.print_exc()
         total_s = time.perf_counter() - t0
-
-        if args.lp is not None and run_idx == 0 and hasattr(driver, 'results') \
-                and driver.results is not None:
-            pass  # LP dumping is done through OpfNTC.save_lp; not kept by the driver
 
         summary = {
             'run': run_idx,
@@ -465,6 +471,15 @@ def main(argv=None):
                   f'(errors={summary.get("logger_errors")})')
             if summary.get('summary_error'):
                 print(f'  summary warning    : {summary["summary_error"]}')
+            if summary.get('logger_errors'):
+                shown = 0
+                for entry in getattr(driver.logger, 'entries', []):
+                    text = getattr(entry, 'msg', str(entry))
+                    device = getattr(entry, 'device', '')
+                    print(f'    {text} [{device}]')
+                    shown += 1
+                    if shown >= 5:
+                        break
         else:
             print(f'  ERROR              : {error}')
 
