@@ -43,6 +43,7 @@ from GridCal.Engine.basic_structures import SolverType
 
 
 FORMULATION_STATS = list()
+LAZY_STATS = list()
 LP_OUTPUT = {'path': None}
 
 
@@ -83,6 +84,25 @@ def patch_formulation_stats():
 
     wrapper._bench_patched = True
     OpfNTC.formulate = wrapper
+
+
+def patch_lazy_stats():
+    """Record how many lazy N-1 rounds were needed and how many rows were added."""
+    original = OpfNTC._run_lazy_rounds
+    if getattr(original, '_bench_patched', False):
+        return
+
+    def wrapper(self):
+        out = original(self)
+        LAZY_STATS.append({
+            'rounds': int(getattr(self, 'lazy_n1_rounds', 0)),
+            'rows_added': len(getattr(self, '_lazy_added', [])),
+            'candidates': len(getattr(self, '_lazy_candidates', [])),
+        })
+        return out
+
+    wrapper._bench_patched = True
+    OpfNTC._run_lazy_rounds = wrapper
 
 
 def _safe_len(obj):
@@ -257,6 +277,7 @@ def build_options(args, circuit):
         consider_gen_contingencies=not args.no_gen_contingencies,
         consider_hvdc_contingencies=not args.no_hvdc_contingencies,
         consider_nx_contingencies=not args.no_nx_contingencies,
+        use_lazy_n1=args.lazy_n1,
         dispatch_all_areas=False,
         generation_contingency_threshold=args.gen_contingency_threshold,
         tolerance=1e-2,
@@ -347,6 +368,8 @@ def main(argv=None):
                         help='monitor every branch, not only the sensitive ones')
     parser.add_argument('--synthetic-contingencies', action='store_true',
                         help='add one N-1 contingency per branch when the model has none')
+    parser.add_argument('--lazy-n1', action='store_true',
+                        help='add only the violated N-1 rows, round by round')
     parser.add_argument('--hvdc-mode', default='keep', choices=['keep', 'free', 'pset'],
                         help="'free' is Pmode3 (droop), 'pset' is Pmode1")
     parser.add_argument('--hvdc-droop', type=float, default=None,
@@ -406,11 +429,13 @@ def main(argv=None):
     print(f'  solver             : {args.solver}')
 
     patch_formulation_stats()
+    patch_lazy_stats()
     LP_OUTPUT['path'] = args.lp
 
     runs = list()
     for run_idx in range(max(args.repeat, 1)):
         FORMULATION_STATS.clear()
+        LAZY_STATS.clear()
 
         driver = OptimalNetTransferCapacityDriver(
             grid=circuit,
@@ -432,6 +457,7 @@ def main(argv=None):
             'elapsed_s': total_s,
             'error': error,
             'formulation': dict(FORMULATION_STATS[0]) if FORMULATION_STATS else None,
+            'lazy': dict(LAZY_STATS[0]) if LAZY_STATS else None,
             'driver_elapsed_s': getattr(driver, 'elapsed', None),
         }
 
@@ -460,6 +486,10 @@ def main(argv=None):
             print(f'  formulation time   : {f["formulation_s"]:.3f} s')
             print(f'  LP variables       : {f["lp_variables"]}')
             print(f'  LP constraints     : {f["lp_constraints"]}')
+        if summary.get('lazy'):
+            lazy = summary['lazy']
+            print(f'  lazy N-1 rounds    : {lazy["rounds"]} '
+                  f'(rows added={lazy["rows_added"]}, candidates={lazy["candidates"]})')
         if error is None:
             print(f'  exchange power     : {summary.get("exchange_power")}')
             print(f'  structural NTC     : {summary.get("structural_ntc")}')

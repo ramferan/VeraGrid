@@ -84,6 +84,17 @@ def _validate_area_participation(side, gens, pref, generator_names,
         "Candidates: {1}".format(side, '; '.join(details)))
 
 
+def solution_values(variables):
+    """Values of a mixed array of LP variables and fixed numbers."""
+    values = np.zeros(len(variables), dtype=float)
+    for i, var in enumerate(variables):
+        try:
+            values[i] = var.solution_value()
+        except AttributeError:
+            values[i] = float(var)
+    return values
+
+
 def lpDot(mat, arr):
     """
     CSC matrix-vector or CSC matrix-matrix dot product (A x b)
@@ -1738,6 +1749,9 @@ class OpfNTC(Opf):
                  consider_contingencies=True,
                  consider_hvdc_contingencies=True,
                  consider_gen_contingencies=True,
+                 use_lazy_n1=False,
+                 lazy_n1_max_rounds=20,
+                 lazy_n1_tolerance=1e-4,
                  generation_contingency_threshold=1000,
                  match_gen_load=False,
                  force_exchange_sense=False,
@@ -1760,6 +1774,9 @@ class OpfNTC(Opf):
         :param ntc load rule
         :param skip_generation_limits: Skip the generation limits?
         :param consider_contingencies: Consider contingencies?
+        :param use_lazy_n1: add only the violated N-1 rows, round by round
+        :param lazy_n1_max_rounds: maximum number of lazy N-1 rounds
+        :param lazy_n1_tolerance: violation tolerance (p.u.) for the lazy rounds
         :param maximize_exchange_flows: Maximize the exchange flow?
         :param tolerance: Solution tolerance
         :param weight_power_shift: Power shift maximization weight
@@ -1802,6 +1819,16 @@ class OpfNTC(Opf):
         self.consider_hvdc_contingencies = consider_hvdc_contingencies
         self.consider_gen_contingencies = consider_gen_contingencies
         self.generation_contingency_threshold = generation_contingency_threshold
+
+        # lazy N-1: solve first and add only the violated contingency rows
+        self.use_lazy_n1 = use_lazy_n1
+        self.lazy_n1_max_rounds = lazy_n1_max_rounds
+        self.lazy_n1_tolerance = lazy_n1_tolerance
+        self.lazy_n1_rounds = 0
+        self._lazy_candidates = list()
+        self._lazy_added = set()
+        self._lazy_rates = None
+        self.flow_f = None
 
         self.weight_power_shift = weight_power_shift
         self.weight_generation_cost = weight_generation_cost
@@ -2142,7 +2169,17 @@ class OpfNTC(Opf):
             bus_names=self.numerical_circuit.bus_data.names,
             logger=self.logger)
 
-        if self.consider_contingencies:
+        if self.consider_contingencies and self.use_lazy_n1:
+
+            # Lazy N-1: the base problem is solved first and only the
+            # violated contingency rows are added, round by round.
+            n1flow_f, con_br_alpha, con_br_idx = list(), list(), list()
+            self.flow_f = flow_f
+            self._lazy_candidates, self._lazy_rates = self._build_lazy_candidates(
+                monitor=monitor,
+                contingency_rates=self.numerical_circuit.ContingencyRates)
+
+        elif self.consider_contingencies:
 
             # formulate the contingencies
             n1flow_f, con_br_alpha, con_br_idx = formulate_contingency(
@@ -2557,7 +2594,17 @@ class OpfNTC(Opf):
             bus_names=self.numerical_circuit.bus_data.names,
             logger=self.logger)
 
-        if self.consider_contingencies:
+        if self.consider_contingencies and self.use_lazy_n1:
+
+            # Lazy N-1: the base problem is solved first and only the
+            # violated contingency rows are added, round by round.
+            n1flow_f, con_brn_alpha, con_br_idx = list(), list(), list()
+            self.flow_f = flow_f
+            self._lazy_candidates, self._lazy_rates = self._build_lazy_candidates(
+                monitor=monitor,
+                contingency_rates=self.numerical_circuit.ContingencyRates[:, t])
+
+        elif self.consider_contingencies:
 
             # formulate the contingencies
             n1flow_f, con_brn_alpha, con_br_idx = formulate_contingency(
@@ -2711,20 +2758,152 @@ class OpfNTC(Opf):
         """
         save_lp(self.solver, file_name)
 
+    def _build_lazy_candidates(self, monitor, contingency_rates):
+        """
+        Pre-screen, once per formulation, the (branch, contingency) pairs that
+        can bind. The screening uses the same criteria as the static N-1 block
+        so the lazy solution is equivalent.
+        """
+        rates = np.asarray(contingency_rates, dtype=float) / self.lp_Sbase
+        threshold = self.branch_sensitivity_threshold
+        monitored = np.where(monitor == True)[0]
+        candidates = list()
+
+        for c_idx, lodf_nx in self.LODF_NX:
+            c_list = [int(c) for c in c_idx]
+            for m in monitored:
+                m = int(m)
+
+                if m in c_list:
+                    continue
+
+                if not np.any(np.abs(lodf_nx[m]) > threshold):
+                    continue
+
+                sensitive = abs(self.alpha[m]) > threshold or \
+                    np.any(np.abs(self.alpha_n1[m, c_list]) > threshold)
+                if not sensitive:
+                    continue
+
+                if rates[m] <= 0:
+                    continue
+
+                candidates.append((m, tuple(c_list), lodf_nx[m, :]))
+
+        self._lazy_added = set()
+
+        return candidates, rates
+
+    def add_violated_n1_constraints(self):
+        """
+        Add the N-1 rows violated by the current solution.
+        :return: number of contingency pairs added
+        """
+        if not self.use_lazy_n1 or self.flow_f is None or len(self._lazy_candidates) == 0:
+            return 0
+
+        values = solution_values(self.flow_f)
+        added = 0
+
+        for m, c_idx, lodf_col in self._lazy_candidates:
+
+            key = (m, c_idx)
+            if key in self._lazy_added:
+                continue
+
+            rate = self._lazy_rates[m]
+            f_n1 = values[m] + float(np.dot(lodf_col, values[list(c_idx)]))
+
+            if abs(f_n1) <= rate + self.lazy_n1_tolerance:
+                continue
+
+            expr = self.flow_f[m] + np.matmul(lodf_col, self.flow_f[list(c_idx)])
+            suffix = '{0}_{1}'.format(m, '_'.join(str(c) for c in c_idx))
+            self.solver.Add(expr <= rate, name='lazy_n1_up_' + suffix)
+            self.solver.Add(expr >= -rate, name='lazy_n1_dn_' + suffix)
+            self._lazy_added.add(key)
+            added += 1
+
+        return added
+
+    def _store_lazy_n1_results(self):
+        """Post-contingency flows of every screened pair, for the reports."""
+        if self.flow_f is None:
+            return
+
+        values = solution_values(self.flow_f)
+        indices = list()
+        flows = list()
+        alphas = list()
+
+        for m, c_idx, lodf_col in self._lazy_candidates:
+            indices.append((m, c_idx))
+            flows.append(float(values[m] + np.dot(lodf_col, values[list(c_idx)])))
+            alphas.append(float(np.max(np.abs(self.alpha_n1[m, list(c_idx)]))))
+
+        self.contingency_indices_list = indices
+        self.contingency_flows_list = flows
+        self.n1flow_f = flows
+        self.contingency_branch_alpha_list = \
+            np.array([alphas]).T if len(alphas) else np.zeros((0, 1))
+
+    def _report_lazy_convergence(self):
+        """Warn if the lazy rounds stopped with violations still present."""
+        if self.flow_f is None or self.status != pywraplp.Solver.OPTIMAL:
+            return
+
+        values = solution_values(self.flow_f)
+        remaining = 0
+        for m, c_idx, lodf_col in self._lazy_candidates:
+            rate = self._lazy_rates[m]
+            f_n1 = values[m] + float(np.dot(lodf_col, values[list(c_idx)]))
+            if abs(f_n1) > rate + self.lazy_n1_tolerance:
+                remaining += 1
+
+        if remaining > 0:
+            self.logger.add_warning(
+                'Lazy N-1 stopped with {0} violated contingency pairs; '
+                'increase lazy_n1_max_rounds'.format(remaining),
+                device='NTC OPF')
+        elif self.lazy_n1_rounds > 0:
+            self.logger.add_info(
+                'Lazy N-1 converged in {0} round(s)'.format(self.lazy_n1_rounds),
+                device='NTC OPF')
+
+    def _run_lazy_rounds(self):
+        """Add violated N-1 rows until none is violated or the rounds run out."""
+        if not self.solved() or not self.use_lazy_n1:
+            return self.solved()
+
+        self.lazy_n1_rounds = 0
+
+        for _ in range(self.lazy_n1_max_rounds):
+            added = self.add_violated_n1_constraints()
+            if added == 0:
+                break
+
+            self.lazy_n1_rounds += 1
+            self.status = self.solver.Solve()
+
+            if not self.solved():
+                return False
+
+        self._store_lazy_n1_results()
+        self._report_lazy_convergence()
+
+        return True
+
     def solve(self, time_limit_ms=0):
         """
         Call ORTools to solve the problem
         """
-
 
         if time_limit_ms != 0:
             self.solver.set_time_limit(int(time_limit_ms))
 
         self.status = self.solver.Solve()
 
-        solved = self.solved()
-
-        return solved
+        return self._run_lazy_rounds()
 
     def solve_ts(self, t, time_limit_ms=0):
         """
@@ -2735,9 +2914,7 @@ class OpfNTC(Opf):
 
         self.status = self.solver.Solve()
 
-        solved = self.solved()
-
-        return solved
+        return self._run_lazy_rounds()
 
     def error(self):
         """

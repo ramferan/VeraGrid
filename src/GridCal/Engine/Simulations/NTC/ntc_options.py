@@ -45,6 +45,9 @@ class OptimalNetTransferCapacityOptions:
                  consider_hvdc_contingencies=False,
                  consider_gen_contingencies=False,
                  consider_nx_contingencies=False,
+                 use_lazy_n1=False,
+                 lazy_n1_max_rounds=20,
+                 lazy_n1_tolerance=1e-4,
                  generation_contingency_threshold=0,
                  match_gen_load=True,
                  trm=0,
@@ -67,6 +70,9 @@ class OptimalNetTransferCapacityOptions:
         :param skip_generation_limits:
         :param consider_contingencies:
         :param consider_nx_contingencies:
+        :param use_lazy_n1: only add the violated N-1 constraints, round by round
+        :param lazy_n1_max_rounds: maximum number of lazy N-1 rounds
+        :param lazy_n1_tolerance: violation tolerance in p.u. for the lazy rounds
         :param tolerance:
         :param sensitivity_dT:
         :param weight_power_shift:
@@ -115,6 +121,9 @@ class OptimalNetTransferCapacityOptions:
         self.consider_hvdc_contingencies = consider_hvdc_contingencies
         self.consider_gen_contingencies = consider_gen_contingencies
         self.consider_nx_contingencies = consider_nx_contingencies
+        self.use_lazy_n1 = use_lazy_n1
+        self.lazy_n1_max_rounds = lazy_n1_max_rounds
+        self.lazy_n1_tolerance = lazy_n1_tolerance
 
         self.generation_contingency_threshold = generation_contingency_threshold
 
