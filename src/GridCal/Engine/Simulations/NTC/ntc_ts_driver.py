@@ -22,7 +22,7 @@ import os
 
 from GridCal.Engine.Core.multi_circuit import MultiCircuit
 from GridCal.Engine.Core.time_series_opf_data import compile_opf_time_circuit, OpfTimeCircuit
-from GridCal.Engine.Simulations.NTC.ntc_opf import OpfNTC
+from GridCal.Engine.Simulations.NTC.ntc_opf import OpfNTC, NtcFormulationError
 from GridCal.Engine.Simulations.NTC.ntc_driver import OptimalNetTransferCapacityOptions, OptimalNetTransferCapacityResults
 from GridCal.Engine.Simulations.NTC.ntc_ts_results import OptimalNetTransferCapacityTimeSeriesResults
 from GridCal.Engine.Simulations.driver_types import SimulationTypes
@@ -255,7 +255,12 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
 
             # Define the problem
             self.progress_text.emit('Formulating NTC OPF...['+time_str+']')
-            problem.formulate_ts(t=t)
+            try:
+                problem.formulate_ts(t=t)
+            except NtcFormulationError as exc:
+                self.logger.add_error(str(exc), 'NTC OPF', device=time_str)
+                self.results.infeasible_idx.append(t)
+                continue
 
             # Solve
 

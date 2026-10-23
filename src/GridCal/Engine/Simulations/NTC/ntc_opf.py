@@ -38,6 +38,52 @@ except ModuleNotFoundError:
 import pandas as pd
 from scipy.sparse import csc_matrix
 
+
+class NtcFormulationError(ValueError):
+    """The model data cannot produce a valid NTC formulation."""
+
+
+def validate_inter_area_links(inter_area_branches, inter_area_hvdcs):
+    """Fail when the selected areas are not connected by any AC branch or HVDC."""
+    if len(inter_area_branches) == 0 and len(inter_area_hvdcs) == 0:
+        raise NtcFormulationError(
+            "There is no AC branch or HVDC link between the selected areas, so "
+            "the exchange is undefined. Check that the areas are adjacent and "
+            "that the tie lines are active.")
+
+
+def _validate_area_participation(side, gens, pref, generator_names,
+                                 generator_active, generator_dispatchable,
+                                 reference):
+    """
+    Fail early when an area cannot take part in the exchange.
+
+    Without participating generation the proportional shares are 0/0, the NaN
+    coefficients reach the LP and CBC reports "infeasible" with no hint about
+    the real cause.
+    """
+    if len(gens) == 0:
+        raise NtcFormulationError(
+            "Area {0} has no generator connected to it. The exchange cannot be "
+            "balanced; check the area assignment of the generators.".format(side))
+
+    if np.sum(np.abs(pref)) > 1e-12:
+        return
+
+    details = list()
+    for _, gen_idx in list(gens)[:10]:
+        details.append('{0} (active={1}, dispatchable={2}, Pref={3:g})'.format(
+            generator_names[gen_idx],
+            bool(generator_active[gen_idx]),
+            bool(generator_dispatchable[gen_idx]),
+            float(reference[gen_idx])))
+
+    raise NtcFormulationError(
+        "Area {0} has no generator able to participate in the exchange: all of "
+        "them are inactive, non-dispatchable or have zero reference power. "
+        "Candidates: {1}".format(side, '; '.join(details)))
+
+
 def lpDot(mat, arr):
     """
     CSC matrix-vector or CSC matrix-matrix dot product (A x b)
@@ -439,8 +485,19 @@ def formulate_proportional_generation(solver: pywraplp.Solver, generator_active,
     delta = np.zeros(ngen, dtype=object)
 
     if skip_generator_limits:
-        Pmax = inf * np.ones(len(Pmax))
-        Pmin = -inf * np.ones(len(Pmin))
+        # ``inf`` is a finite sentinel (99.99 p.u.). Using it for the
+        # participation masks silently excluded any generator with
+        # Pref > 99.99 p.u. (e.g. 10 GW at Sbase = 100 MVA), leaving the area
+        # with no participating generation. Widen only the LP bounds.
+        Pmax_lp = solver.infinity() * np.ones(len(Pmax))
+        Pmin_lp = -solver.infinity() * np.ones(len(Pmin))
+        pref_up_mask = np.ones(len(Pref), dtype=bool)
+        pref_dw_mask = np.ones(len(Pref), dtype=bool)
+    else:
+        Pmax_lp = Pmax
+        Pmin_lp = Pmin
+        pref_up_mask = Pref <= Pmax
+        pref_dw_mask = Pref >= Pmin
 
     # # Only for debug purpose
     # Pgen = np.array([-102, 500, 1800, 1500, -300, 100])
@@ -464,14 +521,25 @@ def formulate_proportional_generation(solver: pywraplp.Solver, generator_active,
     # get proportions of contribution by sense (gen or pump) and area
     # the idea is both techs contributes to achieve the power shift goal in the same proportion
     # that in base situation
-    Pref_a1 = Pref * is_gen_in_a1 * generator_active * generator_dispatchable * (Pref <= Pmax)
-    Pref_a2 = Pref * is_gen_in_a2 * generator_active * generator_dispatchable * (Pref >= Pmin)
+    Pref_a1 = Pref * is_gen_in_a1 * generator_active * generator_dispatchable * pref_up_mask
+    Pref_a2 = Pref * is_gen_in_a2 * generator_active * generator_dispatchable * pref_dw_mask
 
     # Filter positive and negative generators. Same vectors lenght, set not matched values to zero.
     gen_pos_a1 = np.where(Pref_a1 < 0, 0, Pref_a1)
     gen_neg_a1 = np.where(Pref_a1 > 0, 0, Pref_a1)
     gen_pos_a2 = np.where(Pref_a2 < 0, 0, Pref_a2)
     gen_neg_a2 = np.where(Pref_a2 > 0, 0, Pref_a2)
+
+    _validate_area_participation(side=1, gens=gens_a1, pref=Pref_a1,
+                                 generator_names=generator_names,
+                                 generator_active=generator_active,
+                                 generator_dispatchable=generator_dispatchable,
+                                 reference=Pref)
+    _validate_area_participation(side=2, gens=gens_a2, pref=Pref_a2,
+                                 generator_names=generator_names,
+                                 generator_active=generator_active,
+                                 generator_dispatchable=generator_dispatchable,
+                                 reference=Pref)
 
     prop_up_a1 = np.sum(gen_pos_a1) / np.sum(np.abs(Pref_a1))
     prop_dw_a1 = np.sum(gen_neg_a1) / np.sum(np.abs(Pref_a1))
@@ -547,8 +615,8 @@ def formulate_proportional_generation(solver: pywraplp.Solver, generator_active,
             gen_name = 'gen_{0}_{1}'.format(gen_idx, generator_names[gen_idx])
 
             generation[gen_idx] = solver.NumVar(
-                lb=Pmin[gen_idx],
-                ub=Pmax[gen_idx],
+                lb=Pmin_lp[gen_idx],
+                ub=Pmax_lp[gen_idx],
                 name=gen_name)
 
             delta[gen_idx] = solver.NumVar(
@@ -1896,6 +1964,18 @@ class OpfNTC(Opf):
             buses_areas_1=self.area_from_bus_idx,
             buses_areas_2=self.area_to_bus_idx)
 
+        validate_inter_area_links(inter_area_branches, inter_area_hvdcs)
+
+        if self.consider_contingencies:
+            if len(self.LODF_NX) == 0:
+                self.logger.add_warning(
+                    'The model has no contingency groups: N-1 constraints are skipped',
+                    device='NTC OPF')
+            elif np.all(np.asarray(self.numerical_circuit.ContingencyRates) <= 0):
+                self.logger.add_warning(
+                    'All contingency rates are <= 0: N-1 constraints will be empty',
+                    device='NTC OPF')
+
         structural_ntc = get_structural_ntc(
             inter_area_branches=inter_area_branches,
             inter_area_hvdcs=inter_area_hvdcs,
@@ -2299,6 +2379,18 @@ class OpfNTC(Opf):
             T=self.numerical_circuit.hvdc_data.get_bus_indices_t(),
             buses_areas_1=self.area_from_bus_idx,
             buses_areas_2=self.area_to_bus_idx)
+
+        validate_inter_area_links(inter_area_branches, inter_area_hvdc)
+
+        if self.consider_contingencies:
+            if len(self.LODF_NX) == 0:
+                self.logger.add_warning(
+                    'The model has no contingency groups: N-1 constraints are skipped',
+                    device='NTC OPF')
+            elif np.all(np.asarray(self.numerical_circuit.ContingencyRates) <= 0):
+                self.logger.add_warning(
+                    'All contingency rates are <= 0: N-1 constraints will be empty',
+                    device='NTC OPF')
 
         structural_ntc = get_structural_ntc(
             inter_area_branches=inter_area_branches,

@@ -20,7 +20,7 @@ import numpy as np
 import time
 
 from GridCal.Engine.Core.multi_circuit import MultiCircuit
-from GridCal.Engine.Simulations.NTC.ntc_opf import OpfNTC, get_inter_areas_branches
+from GridCal.Engine.Simulations.NTC.ntc_opf import OpfNTC, get_inter_areas_branches, NtcFormulationError
 from GridCal.Engine.Core.snapshot_opf_data import compile_snapshot_opf_circuit, SnapshotOpfData
 from GridCal.Engine.Simulations.driver_types import SimulationTypes
 from GridCal.Engine.Simulations.driver_template import DriverTemplate
@@ -277,7 +277,12 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
 
             # Solve
             self.progress_text.emit('Solving NTC OPF...')
-            problem.formulate()
+            try:
+                problem.formulate()
+            except NtcFormulationError as exc:
+                self.logger.add_error(str(exc), 'NTC OPF')
+                self.results = None
+                return None
 
             solved = problem.solve(
                 time_limit_ms=self.options.time_limit_ms)
