@@ -1109,6 +1109,72 @@ def formulate_lp_piece_wise(
     return z
 
 
+def add_clipped_flow(solver: pywraplp.Solver,
+                     flow: pywraplp.Variable,
+                     demand: pywraplp.Variable,
+                     rate: float,
+                     lower: float,
+                     upper: float,
+                     name: str):
+    """
+    Exact clipped affine law with at most two binary variables.
+
+    flow = clip(demand, -rate, rate)
+
+    The flow variable must already be bounded to [-rate, rate]. The lower and
+    upper values are bounds on the unclipped demand, not an arbitrary Big-M.
+
+    :param solver: pywraplp solver
+    :param flow: flow variable, already bounded to [-rate, rate]
+    :param demand: unclipped demand variable
+    :param rate: nonnegative saturation rating in pu
+    :param lower: lower bound of the unclipped demand
+    :param upper: upper bound of the unclipped demand
+    :param name: unique prefix for variables and constraints
+    """
+    if rate <= 0.0:
+        solver.Add(constraint=flow == 0.0, name=name + '_zero')
+        return
+
+    if upper <= -rate:
+        solver.Add(constraint=flow == -rate, name=name + '_lower')
+        return
+
+    if lower >= rate:
+        solver.Add(constraint=flow == rate, name=name + '_upper')
+        return
+
+    binaries = list()
+
+    if upper > rate:
+        z_up = solver.IntVar(0, 1, name + '_zu')
+        up = solver.NumVar(0.0, upper - rate, name + '_up')
+        solver.Add(constraint=up <= (upper - rate) * z_up,
+                   name=name + '_up_bound')
+        solver.Add(constraint=flow >= rate - 2.0 * rate * (1.0 - z_up),
+                   name=name + '_up_flow')
+        binaries.append(z_up)
+    else:
+        up = 0.0
+
+    if lower < -rate:
+        z_dn = solver.IntVar(0, 1, name + '_zd')
+        dn = solver.NumVar(0.0, -rate - lower, name + '_dn')
+        solver.Add(constraint=dn <= (-rate - lower) * z_dn,
+                   name=name + '_dn_bound')
+        solver.Add(constraint=flow <= -rate + 2.0 * rate * (1.0 - z_dn),
+                   name=name + '_dn_flow')
+        binaries.append(z_dn)
+    else:
+        dn = 0.0
+
+    if len(binaries) == 2:
+        solver.Add(constraint=solver.Sum(binaries) <= 1,
+                   name=name + '_one_region')
+
+    solver.Add(constraint=flow == demand - up + dn, name=name + '_law')
+
+
 def formulate_hvdc_Pmode3_single_flow(
         solver: pywraplp.Solver,
         active,
@@ -1154,6 +1220,7 @@ def formulate_hvdc_Pmode3_single_flow(
         else:
             lim_a = -P0 + k * (angle_max_f + angle_max_t)
 
+        # 'a' is the unclipped Pmode3 demand and 'b' is the actual flow.
         a = solver.NumVar(
             lb=-lim_a,
             ub=lim_a,
@@ -1164,51 +1231,18 @@ def formulate_hvdc_Pmode3_single_flow(
             ub=rate,
             name='b_' + suffix)
 
-        a_abs, za = formulate_lp_abs_value(
-            solver=solver,
-            lp_var=a, 
-            ub=lim_a,
-            M=inf*10,
-            name='a_abs_' + suffix)
-        
-        b_abs, zb = formulate_lp_abs_value(
-            solver=solver, 
-            lp_var=b, 
-            ub=rate,
-            M=inf,  # this limit could be enough with inf value in order to improve solution convergence
-            name='b_abs_' + suffix)
-
-        # Force same power sign
-        solver.Add(
-            constraint=za - zb == 0,
-            name='same_sign_' + suffix)
-
-        # Constraints formulation, 'a' is Pmode3 behavior
         solver.Add(
             constraint=a == P0 + k * (angle_f - angle_t),
             name='Pmode3_behavior_' + suffix)
 
-        condition_ub = lim_a - rate
-        condition_lb = -rate
-
-        condition = solver.NumVar(
-            lb=condition_lb,
-            ub=condition_ub,
-            name='cond_' + suffix)
-
-        solver.Add(
-            constraint=condition == a_abs - rate,
-            name='cond_cst' + suffix)
-
-        # Constraints formulation, b is the solution
-        formulate_lp_piece_wise(
-            solver=solver,
-            lp_var=b_abs,
-            higher_exp=rate,
-            lower_exp=a_abs,
-            condition=condition,
-            M=inf*10,
-            name='theoretical_unconstrainded_flow_' + suffix)
+        # Exact clipped law: b = clip(a, -rate, rate), with tight bounds.
+        add_clipped_flow(solver=solver,
+                         flow=b,
+                         demand=a,
+                         rate=rate,
+                         lower=-lim_a,
+                         upper=lim_a,
+                         name='pmode3_' + suffix)
 
     else:
         b = 0
