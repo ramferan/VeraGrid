@@ -1453,6 +1453,80 @@ def test_activs_2000_acdc_ts():
     assert res.converged.all()
 
 
+def test_issue_372_congested_thermal_slacks():
+    """
+    Validation test demonstrating thermal slack inflation in the regular formulation
+    under congested grid conditions vs hard physical adherence in strict formulation.
+
+    Using grid: 'IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal'
+    with branch 7 (Trafo 11) choked to 4.0 MW to create a binding contingency bottleneck.
+    """
+    fname = get_grid_path('IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal')
+
+    # 1. Run strict formulation (hard thermal bounds, zero slack, 1:1 area balance)
+    grid_strict = gce.open_file(fname)
+    grid_strict.transformers2w[6].tap_phase_control_mode = gce.TapPhaseControl.Pt
+    grid_strict.hvdc_lines[0].control_mode = gce.HvdcControlType.type_1_Pset
+    grid_strict.transformers2w[11].rate = 4.0
+
+    info_s = grid_strict.get_inter_aggregation_info(objects_from=[grid_strict.areas[1]], objects_to=[grid_strict.areas[0]])
+    opts_strict = gce.OptimalNetTransferCapacityOptions(
+        sending_bus_idx=info_s.idx_bus_from,
+        receiving_bus_idx=info_s.idx_bus_to,
+        transfer_method=gce.AvailableTransferMode.InstalledPower,
+        loading_threshold_to_report=98.0,
+        skip_generation_limits=True,
+        transmission_reliability_margin=0.0,
+        use_branch_exchange_sensitivity=False,
+        branch_rating_contribution=1.0,
+        monitor_only_ntc_load_rule_branches=False,
+        consider_contingencies=True,
+        strict_formulation=True,
+        opf_options=gce.OptimalPowerFlowOptions(contingency_groups_used=grid_strict.contingency_groups),
+        lin_options=gce.LinearAnalysisOptions()
+    )
+    drv_strict = gce.OptimalNetTransferCapacityDriver(grid_strict, opts_strict)
+    drv_strict.run()
+    res_strict = drv_strict.results
+
+    # 2. Run regular formulation (penalized slack variables)
+    grid_reg = gce.open_file(fname)
+    grid_reg.transformers2w[6].tap_phase_control_mode = gce.TapPhaseControl.Pt
+    grid_reg.hvdc_lines[0].control_mode = gce.HvdcControlType.type_1_Pset
+    grid_reg.transformers2w[11].rate = 4.0
+
+    info_r = grid_reg.get_inter_aggregation_info(objects_from=[grid_reg.areas[1]], objects_to=[grid_reg.areas[0]])
+    opts_reg = gce.OptimalNetTransferCapacityOptions(
+        sending_bus_idx=info_r.idx_bus_from,
+        receiving_bus_idx=info_r.idx_bus_to,
+        transfer_method=gce.AvailableTransferMode.InstalledPower,
+        loading_threshold_to_report=98.0,
+        skip_generation_limits=True,
+        transmission_reliability_margin=0.0,
+        use_branch_exchange_sensitivity=False,
+        branch_rating_contribution=1.0,
+        monitor_only_ntc_load_rule_branches=False,
+        consider_contingencies=True,
+        strict_formulation=False,
+        opf_options=gce.OptimalPowerFlowOptions(contingency_groups_used=grid_reg.contingency_groups),
+        lin_options=gce.LinearAnalysisOptions()
+    )
+    drv_reg = gce.OptimalNetTransferCapacityDriver(grid_reg, opts_reg)
+    drv_reg.run()
+    res_reg = drv_reg.results
+
+    # Strict converges with 0 slack and exact 1:1 balance
+    assert res_strict.converged[0]
+    assert np.isclose(res_strict.nodal_balance.sum(), 0.0, atol=1e-5)
+    a2_s = np.where(grid_strict.get_bus_area_indices() == 1)[0]
+    ttc_strict = res_strict.dSbus[a2_s].sum()
+    assert np.isclose(ttc_strict, 10.49, atol=0.1)
+
+    # Regular introduces 12.0 MW of contingency thermal slack on branch 7 (rate 4.0 MW overloaded to 16.0 MW, 400%)
+    reg_ctg_slacks = sum(neg_sl + pos_sl for _, _, _, _, neg_sl, pos_sl in res_reg.contingency_flows_list)
+    assert np.isclose(reg_ctg_slacks, 12.00, atol=0.1)
+
+
 if __name__ == '__main__':
     # test_issue_372_1()
     # test_issue_372_2()
