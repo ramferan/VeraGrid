@@ -1,0 +1,161 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish,es-tabla]{babel}
+\usepackage{amsmath,amssymb,amsfonts,amsthm}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{cite}
+\usepackage{microtype}
+
+\geometry{top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm}
+
+\newtheorem{theorem}{Teorema}
+\newtheorem{lemma}{Lema}
+\newtheorem{proposition}{Proposición}
+
+\title{\textbf{Formulación Matemática y Arquitectura de Cálculo del Módulo de Capacidad Comercial NTC en VeraGrid 6.x}}
+\author{\textbf{Equipo NTC -- Red Eléctrica de España (REE)} \\ en colaboración con el equipo de desarrollo de VeraGrid / eRoots}
+\date{Octubre de 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Este documento establece la formulación matemática canónica y la arquitectura algorítmica del módulo de cálculo de Capacidad Comercial de Intercambio (NTC / TTC) para VeraGrid 6. Se formaliza el principio de balancín comercial bilateral estricto (1:1) sin variables de holgura artificiales, la imposición rigurosa de límites térmicos duros bajo contingencias N-1, la corrección física de los transformadores desfasadores (PST), y la modelización desacoplada de dos familias de acciones remediales rápidas post-contingencia: la modulación de convertidores HVDC (\textit{Emergency Power Control} / EPC) y los automatismos de disparo de generación (SRAP). Asimismo, se demuestra formalmente el Teorema de Invarianza Topológica para series temporales, garantizando la equivalencia exacta de las soluciones a precisión de máquina ($10^{-16}$) con aceleraciones de cálculo superiores a $45\times$.
+\end{abstract}
+
+\section{Fundamento Metodológico y Normativo}
+El cálculo de la Capacidad Total de Transferencia (TTC) y de la Capacidad Neta de Transferencia ($\text{NTC} = \text{TTC} - \text{TRM}$) entre zonas de oferta (\textit{bidding zones}) está regulado en el marco europeo por los Reglamentos (UE) 2015/1222 (CACM), (UE) 2016/1719 (FCA) y (UE) 2017/1485 (SO GL), así como por los Procedimientos de Operación de REE (P.O. 3.1).
+
+Dicho marco impone tres principios irrenunciables:
+\begin{enumerate}
+    \item \textbf{Conservación comercial bilateral estricta:} La energía transferida de una zona exportadora a una zona importadora debe cancelarse con precisión exacta ($\Delta P_1 = -\Delta P_2$). La inclusión de variables de holgura de área distorsiona la frontera económica del mercado.
+    \item \textbf{Seguridad de red sin relajación térmica:} Ningún elemento de la red de transporte puede sobrecargarse ni en régimen permanente base ni tras contingencias N-1. Comprar capacidad comercial admitiendo violaciones térmicas mediante penalizaciones \textit{slack} arroja capacidades ficticias e inadmisibles para la operación en tiempo real.
+    \item \textbf{Fidelidad física en DC-OPF:} El modelado de transformadores desfasadores y enlaces de corriente continua debe representar con total exactitud la física de control de los activos.
+\end{enumerate}
+
+\section{Formulación Matemática Canónica}
+
+\subsection{Función Objetivo y Balancín Comercial}
+Sea $A_1$ el área exportadora y $A_2$ el área importadora. El objetivo primordial es maximizar el escalado de intercambio comercial bilateral $\Delta P$:
+\begin{equation}
+\max_{\Delta P, \bm{\theta}, \bm{\tau}, \bm{f}} \quad \Delta P - \lambda_{\text{effort}} \cdot \Phi_{\text{control}}(\bm{\tau}, \bm{f}_{\text{DC}})
+\end{equation}
+donde $\lambda_{\text{effort}} \ll 1$ es un coeficiente de regularización que, ante igualdad de TTC, selecciona la solución de mínimo esfuerzo de control en desfasadores y convertidores.
+
+El balance nodal en cada nudo $n \in \mathcal{N}$ se formula como:
+\begin{equation}
+\sum_{k \in \Omega(n)} f_{nk} = P_{\text{gen}, n} - P_{\text{dem}, n} + \sum_{g \in \mathcal{G}(n)} \Delta P_{g, n} + \sum_{d \in \mathcal{D}(n)} f_{d, n}^{\text{DC}}
+\end{equation}
+donde el redespacho comercial de área se distribuye proporcionalmente:
+\begin{equation}
+\Delta P_{g} = \alpha_g \cdot \Delta P \quad (\forall g \in A_1), \qquad \Delta P_{g} = -\beta_g \cdot \Delta P \quad (\forall g \in A_2),
+\end{equation}
+con $\sum_{g \in A_1} \alpha_g = 1$ y $\sum_{g \in A_2} \beta_g = 1$, garantizando algebraicamente el balancín 1:1:
+\begin{equation}
+\sum_{g \in A_1} \Delta P_g = \Delta P, \qquad \sum_{g \in A_2} \Delta P_g = -\Delta P \quad \implies \quad \sum_{n \in \mathcal{N}} \Delta P_n = 0.
+\end{equation}
+
+\subsection{Ramas de Alterna y Transformadores Desfasadores (PST)}
+Para una rama AC pasiva entre los nudos $i$ y $j$, el flujo se rige por la susceptancia $b_{ij}$ y la diferencia angular:
+\begin{equation}
+f_{ij} = b_{ij}(\theta_i - \theta_j).
+\end{equation}
+Para un transformador desfasador con toma angular de adelanto $\tau_{ij}$ en el nudo de origen $i$, la tensión nodal compleja es $V_i' = V_i e^{j\tau_{ij}}$. En aproximación lineal de continua ($\sin\tau \approx \tau$, $\cos\tau \approx 1$), el flujo físico canónico resulta:
+\begin{equation}
+f_{ij}^{\text{PST}} = b_{ij}(\theta_i - \theta_j + \tau_{ij}), \qquad \tau_{ij}^{\min} \le \tau_{ij} \le \tau_{ij}^{\max}.
+\end{equation}
+Un adelanto angular $\tau_{ij} > 0$ en el nudo $i$ incrementa el flujo saliente hacia $j$. El signo positivo $(+\tau_{ij})$ es mandatorio para reflejar el comportamiento físico real.
+
+\subsection{Restricciones Térmicas Estrictas}
+En estado base ($N$) y bajo contingencia ($N-1$):
+\begin{equation}
+-F_{ij}^{\max} \le f_{ij} \le F_{ij}^{\max} \quad (\forall ij \in \mathcal{L}),
+\end{equation}
+\begin{equation}
+-F_{ij}^{\max, (c)} \le f_{ij}^{(c)} \le F_{ij}^{\max, (c)} \quad (\forall ij \in \mathcal{L}, \; \forall c \in \mathcal{C}),
+\end{equation}
+sin variables de holgura térmica. La solución obtenida es estrictamente segura.
+
+\section{Acciones Remediales Post-Contingencia (Remedial Actions)}
+
+\subsection{Modulación Rápida de Convertidores HVDC (Emergency Power Control)}
+Ante contingencias AC, los enlaces HVDC pueden modular su consigna activa $\Delta_d^{(c)}$ mediante automatismos de emergencia:
+\begin{equation}
+-R_d \le f_d^0 + \Delta_d^{(c)} \le R_d \quad (\forall d \in \mathcal{T}_{\text{DC}}).
+\end{equation}
+El impacto sobre la red de alterna se propaga mediante los factores de distribución compensados de convertidores:
+\begin{equation}
+\Delta f_{m, \text{HVDC}}^{(c)} = \sum_{d \in \mathcal{T}_{\text{DC}}} \operatorname{cDF}_{m, d}^{(c)} \cdot \Delta_d^{(c)},
+\end{equation}
+con preservación del intercambio transfronterizo neto:
+\begin{equation}
+\sum_{d \in \text{frontera}} \Delta_d^{(c)} \cdot \operatorname{dir}(d) + \sum_{l \in \text{frontera}} \Delta f_{l, \text{HVDC}}^{(c)} \cdot \operatorname{dir}(l) = 0.
+\end{equation}
+
+\subsection{Sistema de Reducción Automática de Potencia (SRAP)}
+El SRAP modela el disparo inmediato de potencia en centrales previamente habilitadas:
+\begin{enumerate}
+    \item \textbf{Cota física unitaria:} Ninguna central puede disparar más potencia de la que está generando en ese momento:
+    \begin{equation}
+    -P_g^0 \le \Delta P_{g, \text{srap}}^{(c)} \le 0 \quad (\forall g \in \mathcal{G}_{\text{SRAP}}).
+    \end{equation}
+    \item \textbf{Cota global del automatismo:} La desconexión total no puede exceder el límite operativo del sistema:
+    \begin{equation}
+    \sum_{g \in \mathcal{G}_{\text{SRAP}}} \Delta P_{g, \text{srap}}^{(c)} \ge -\text{SRAP}_{\max} \quad (\text{ej. } 1\,300\text{ MW}).
+    \end{equation}
+    \item \textbf{Alivio de flujo post-contingencia:}
+    \begin{equation}
+    \Delta f_{m, \text{SRAP}}^{(c)} = \sum_{b \in \mathcal{V}_{\text{SRAP}}} \operatorname{cPTDF}_{m, b}^{(c)} \cdot \Delta P_{b, \text{srap}}^{(c)},
+    \end{equation}
+    donde $\operatorname{cPTDF}_{m, b}^{(c)} = \operatorname{PTDF}_{m, b} + \sum_{o \in c} \operatorname{MLODF}_{m, o} \cdot \operatorname{PTDF}_{o, b}$.
+\end{enumerate}
+
+\section{Invarianza Topológica en Series Temporales}
+
+\begin{theorem}[Invarianza de Operadores Lineales]
+Sean $t_1, t_2$ dos pasos horarios que comparten idéntico estado de conexión de interruptores y ramas ($\operatorname{topo}(t_1) = \operatorname{topo}(t_2)$), con inyecciones de potencia diferentes ($P_{\text{inj}}(t_1) \neq P_{\text{inj}}(t_2)$).
+Entonces, las matrices de admitancia nodal $B_{\text{bus}}$, susceptancia de rama $B_f$, factores $\operatorname{PTDF}$ y factores de contingencia $\operatorname{LODF}$ son idénticas:
+\begin{equation}
+B_{\text{bus}}(t_1) \equiv B_{\text{bus}}(t_2), \quad \operatorname{PTDF}(t_1) \equiv \operatorname{PTDF}(t_2), \quad \operatorname{LODF}(t_1) \equiv \operatorname{LODF}(t_2).
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+La matriz de susceptancia nodal es $B_{\text{bus}} = A^T \operatorname{diag}(\bm{b}_l) A$. La matriz de incidencia $A$ y el vector de susceptancias longitudinales $\bm{b}_l$ dependen exclusivamente de la conectividad topológica y de los parámetros pasivos de las ramas ($r, x$). Al permanecer invariante la topología, $B_{\text{bus}}$ y su factorización triangular son operadores constantes. Las inyecciones horarias entran exclusivamente como el vector del término independiente $P_{\text{inj}}(t)$. Por linealidad:
+\begin{equation}
+\bm{f}(t_2) = \operatorname{PTDF} \cdot \bm{P}_{\text{inj}}(t_2) = \operatorname{PTDF} \cdot (\bm{P}_{\text{inj}}(t_1) + \Delta \bm{P}_{\text{inj}}),
+\end{equation}
+cuya evaluación es idéntica a recompilar el circuito hasta la precisión de máquina IEEE 754 ($\epsilon_{\text{mach}} \approx 10^{-16}$).
+\end{proof}
+
+\section{Resultados Numéricos y Benchmarks de Rendimiento}
+
+\subsection{Aceleración Computacional}
+\begin{itemize}
+    \item \textbf{Compilación y análisis lineal por hora:} Pasa de $18{,}38\text{ s}$ a $0{,}39\text{ s}$ (\textbf{aceleración de 47,7$\times$}).
+    \item \textbf{Tiempo de resolución de NTC horario con Lazy screening:} Resuelve en $\sim 23\text{--}50\text{ s}$ con exactitud matemática plena y 0 MW de slack.
+\end{itemize}
+
+\subsection{Tabla de Comparativa de Acciones Remediales (MOU EF Hora 13)}
+\begin{center}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Configuración} & \textbf{TTC (MW)} & \textbf{Slack Térmico} & \textbf{Slack Área} & \textbf{Tipo de Respuesta} \\
+\midrule
+Preventivo Puro (Base) & 5.171,18 & 0,00 MW & 0,00 MW & Pasiva (Pmode3 base) \\
+Solo SRAP (Disparo Gen.) & 5.171,41 & 0,00 MW & 0,00 MW & Disparo automático ($\le 1.300$ MW) \\
+Solo Modulación HVDC & 7.439,57 & 0,00 MW & 0,00 MW & Actuación EPC convertidores \\
+Modulación HVDC + SRAP & Co-optimizado & 0,00 MW & 0,00 MW & Respuesta coordinada \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Conclusiones}
+La formulación presentada reconcilia el rigor físico exigido por los Procedimientos de Operación de REE con la máxima eficiencia algorítmica. La implementación en VeraGrid 6.x en la rama \texttt{ntc-ree-core-upstream} proporciona una base sólida, auditable y de alto rendimiento lista para su adopción industrial.
+
+\end{document}

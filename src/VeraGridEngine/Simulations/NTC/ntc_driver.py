@@ -370,7 +370,9 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 progress_func=self.report_progress,
                 verbose=self.options.opf_options.verbose,
                 robust=self.options.opf_options.robust,
-                mip_framework=self.options.opf_options.mip_framework
+                mip_framework=self.options.opf_options.mip_framework,
+                use_srap=self.options.use_srap,
+                srap_max_power=self.options.srap_max_power
             )
         else:
             opf_vars, model = run_linear_ntc_opf(

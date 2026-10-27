@@ -1012,7 +1012,8 @@ def add_preventive_contingency_formulation_strict(t_idx: int,
                                                   alpha_threshold: float,
                                                   alpha_n1_abs: Mat,
                                                   prob: OrToolsLpModel,
-                                                  rows_to_limit: Union[IntVec, None] = None) -> float:
+                                                  rows_to_limit: Union[IntVec, None] = None,
+                                                  branch_terms: Union[Dict[int, LpExp], None] = None) -> float:
     """
     Formulate a single contingency with the preventive N-1 rule in the strict formulation
 
@@ -1037,8 +1038,10 @@ def add_preventive_contingency_formulation_strict(t_idx: int,
     # iterate candidate branches; only those flagged by the mask and depending on variables are limited
     branches_to_check = enumerate(contingency_flows) if rows_to_limit is None else ((m, contingency_flows[m]) for m in rows_to_limit)
     for m, contingency_flow in branches_to_check:
+        flow_to_check = contingency_flow + branch_terms[m] if (branch_terms is not None and m in branch_terms) else contingency_flow
+        has_relief = branch_terms is not None and m in branch_terms
 
-        if mask[m] and isinstance(contingency_flow, LpExp):
+        if (mask[m] or has_relief) and isinstance(flow_to_check, LpExp):
 
             # Monitoring logic: avoid unrealistic NTC flows over the CEP-rule limit in the N-1 condition (ACER).
             if monitor_only_ntc_load_rule_branches:
@@ -1062,16 +1065,16 @@ def add_preventive_contingency_formulation_strict(t_idx: int,
                 monitor_by_sensitivity_n1 = True
 
             # DC branches are always monitored because their AC-PTDF sensitivity alpha is zero
-            if branch_data_t.dc[m] or (monitor_by_load_rule_n1 and monitor_by_sensitivity_n1):
+            if branch_data_t.dc[m] or has_relief or (monitor_by_load_rule_n1 and monitor_by_sensitivity_n1):
                 # record the flow so the result extraction can evaluate the post-contingency loading later
-                branch_vars.add_contingency_flow(t=t_idx, m=m, c=c, flow_var=contingency_flow)
+                branch_vars.add_contingency_flow(t=t_idx, m=m, c=c, flow_var=flow_to_check)
 
                 # hard upper rate constraint
-                prob.add_cst(cst=contingency_flow <= branch_data_t.contingency_rates[m] / Sbase,
+                prob.add_cst(cst=flow_to_check <= branch_data_t.contingency_rates[m] / Sbase,
                              name=join("br_cst_flow_upper_lim_", [t_idx, m, c]))
 
                 # hard lower rate constraint
-                prob.add_cst(cst=contingency_flow >= -branch_data_t.contingency_rates[m] / Sbase,
+                prob.add_cst(cst=flow_to_check >= -branch_data_t.contingency_rates[m] / Sbase,
                              name=join("br_cst_flow_lower_lim_", [t_idx, m, c]))
             else:
                 # the branch is not monitored under this contingency: nothing to enforce
@@ -1104,7 +1107,13 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                                                    vsc_delta_store: Union[Dict[int, Dict[int, LpVar]], None] = None,
                                                    hvdc_delta_store: Union[Dict[int, Dict[int, LpVar]], None] = None,
                                                    group_indices: Union[IntVec, None] = None,
-                                                   group_rows: Union[Dict[int, IntVec], None] = None):
+                                                   group_rows: Union[Dict[int, IntVec], None] = None,
+                                                   use_srap: bool = False,
+                                                   srap_max_power: float = 1300.0,
+                                                   generator_data: GeneratorData | None = None,
+                                                   ptdf: Mat | None = None,
+                                                   srap_delta_store: Union[Dict[int, Dict[int, LpVar]], None] = None,
+                                                   allowed_srap_gen_indices: IntVec | None = None):
     """
     Formulate the branches
     :param t_idx: time index
@@ -1149,6 +1158,12 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
     for branch_m, branch_sense in branch_vars.inter_space_branches:
         corrective_rows[branch_m] = True
 
+    srap_data = None
+    if use_srap and generator_data is not None and ptdf is not None:
+        from VeraGridEngine.Simulations.NTC.ntc_remedial_actions import precompute_srap_data
+        srap_data = precompute_srap_data(generator_data=generator_data, ptdf=ptdf,
+                                         allowed_gen_indices=allowed_srap_gen_indices)
+
     c_iterable = range(len(linear_multi_contingencies.multi_contingencies)) if group_indices is None else group_indices
     for c in c_iterable:
         contingency = linear_multi_contingencies.multi_contingencies[int(c)]
@@ -1160,6 +1175,21 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
             vsc_flow=vsc_vars.flows[t_idx, :],
             row_filter=monitorable
         )
+
+        branch_terms: Dict[int, LpExp] = dict()
+        rows_to_limit = None if group_rows is None else group_rows.get(int(c), None)
+
+        if use_srap and srap_data is not None:
+            from VeraGridEngine.Simulations.NTC.ntc_remedial_actions import add_srap_formulation
+            srap_deltas_c = srap_delta_store.setdefault(int(c), dict()) if srap_delta_store is not None else dict()
+            add_srap_formulation(
+                prob=prob, t_idx=t_idx, c=int(c), Sbase=Sbase,
+                contingency=contingency, generator_data=generator_data,
+                srap_data=srap_data, srap_max_power_mw=srap_max_power,
+                row_filter=corrective_rows,
+                srap_delta_vars=srap_deltas_c, branch_terms=branch_terms,
+                target_branch_indices=rows_to_limit
+            )
 
         if corrective_contingencies:
             # corrective N-1: the converters may change their set-points after the outage (shared helper)
@@ -1178,7 +1208,8 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                 vsc_vars=vsc_vars, hvdc_vars=hvdc_vars,
                 prob=prob, corrective_rows=corrective_rows,
                 vsc_active=vsc_active, hvdc_active=hvdc_active,
-                vsc_delta_vars=vsc_deltas_c, hvdc_delta_vars=hvdc_deltas_c)
+                vsc_delta_vars=vsc_deltas_c, hvdc_delta_vars=hvdc_deltas_c,
+                branch_terms=branch_terms)
         else:
             # preventive N-1: the converters stay at their base-case set-point (hard limits, no slack)
             rows_to_limit = None if group_rows is None else group_rows.get(int(c), None)
@@ -1190,7 +1221,8 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                 monitor_only_sensitive_branches=monitor_only_sensitive_branches,
                 structural_ntc=structural_ntc, ntc_load_rule=ntc_load_rule,
                 alpha_threshold=alpha_threshold, alpha_n1_abs=alpha_n1_abs, prob=prob,
-                rows_to_limit=rows_to_limit)
+                rows_to_limit=rows_to_limit,
+                branch_terms=branch_terms if len(branch_terms) > 0 else None)
 
     return f_obj
 
@@ -1567,6 +1599,9 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
                               robust: bool = False,
                               mip_framework: MIPFramework = MIPFramework.PuLP,
                               structural_area_balance: bool = True,
+                              use_srap: bool = False,
+                              srap_max_power: float = 1300.0,
+                              allowed_srap_gen_indices: IntVec | None = None,
                               linear_analysis: LinearAnalysis | None = None,
                               multi_contingencies: LinearMultiContingencies | None = None,
                               bus_dict: Dict[Bus, int] | None = None,
@@ -1729,6 +1764,12 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
     report_mctg: Union[LinearMultiContingencies, None] = None
     vsc_delta_store: Dict[int, Dict[int, LpVar]] = dict()
     hvdc_delta_store: Dict[int, Dict[int, LpVar]] = dict()
+    srap_delta_store: Dict[int, Dict[int, LpVar]] = dict() if use_srap else None
+
+    if allowed_srap_gen_indices is None and bus_a1_idx is not None and nc.generator_data is not None:
+        sending_buses = set(int(b) for b in bus_a1_idx)
+        allowed_srap_gen_indices = np.array([g for g in range(nc.generator_data.nelm)
+                                             if int(nc.generator_data.bus_idx[g]) in sending_buses], dtype=int)
 
     if zonal_grouping == ZonalGrouping.NoGrouping:
 
@@ -1742,6 +1783,12 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
                                 logger=logger)
         else:
             ls = linear_analysis
+
+        srap_data = None
+        if use_srap and nc.generator_data is not None:
+            from VeraGridEngine.Simulations.NTC.ntc_remedial_actions import precompute_srap_data
+            srap_data = precompute_srap_data(generator_data=nc.generator_data, ptdf=ls.PTDF,
+                                             allowed_gen_indices=allowed_srap_gen_indices)
 
         # compute the sensitivity to the exchange
         dP = compute_dP(
@@ -1822,7 +1869,7 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
                     dT=1.0
                 )
 
-                if corrective_contingencies and has_pmode3:
+                if corrective_contingencies and has_pmode3 and not use_srap:
                     controlled_states = CompactContingencies(
                         nc=nc, base_vars=mip_vars, multi_contingencies=mctg,
                         prob=lp_model, logger=logger, strict=True)
@@ -1895,6 +1942,8 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
                 n_hvdc=nc.hvdc_data.nelm,
                 n_branch=nc.passive_branch_data.nelm,
                 model=lp_model,
+                srap_delta_store=srap_delta_store,
+                srap_data=srap_data
             )
 
             admissions = screen_contingency_violations(
@@ -1937,7 +1986,13 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
                     vsc_delta_store=vsc_delta_store,
                     hvdc_delta_store=hvdc_delta_store,
                     group_indices=np.array([c_new for c_new, _ in admissions], dtype=int),
-                    group_rows=group_rows_now
+                    group_rows=group_rows_now,
+                    use_srap=use_srap,
+                    srap_max_power=srap_max_power,
+                    generator_data=nc.generator_data,
+                    ptdf=ls.PTDF,
+                    srap_delta_store=srap_delta_store,
+                    allowed_srap_gen_indices=allowed_srap_gen_indices
                 )
 
                 for c_new, rows_new in admissions:

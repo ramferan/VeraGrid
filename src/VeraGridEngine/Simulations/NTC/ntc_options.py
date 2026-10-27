@@ -33,6 +33,8 @@ class OptimalNetTransferCapacityOptions(OptionsTemplate):
         "consider_contingencies",
         "corrective_contingencies",
         "strict_formulation",
+        "use_srap",
+        "srap_max_power",
         "opf_options",
         "lin_options",
     )
@@ -51,6 +53,8 @@ class OptimalNetTransferCapacityOptions(OptionsTemplate):
         GCProp(key="consider_contingencies", tpe=bool),
         GCProp(key="corrective_contingencies", tpe=bool),
         GCProp(key="strict_formulation", tpe=bool),
+        GCProp(key="use_srap", tpe=bool),
+        GCProp(key="srap_max_power", tpe=float),
         GCProp(key="opf_options", tpe=DeviceType.SimulationOptionsDevice),
         GCProp(key="lin_options", tpe=DeviceType.SimulationOptionsDevice),
     )
@@ -69,6 +73,8 @@ class OptimalNetTransferCapacityOptions(OptionsTemplate):
                  consider_contingencies: bool = False,
                  corrective_contingencies: bool = True,
                  strict_formulation: bool = False,
+                 use_srap: bool = False,
+                 srap_max_power: float = 1300.0,
                  opf_options: OptimalPowerFlowOptions | None = None,
                  lin_options: LinearAnalysisOptions | None = None, ):
         """
@@ -108,6 +114,8 @@ class OptimalNetTransferCapacityOptions(OptionsTemplate):
         self.consider_contingencies: bool = consider_contingencies
         self.corrective_contingencies: bool = corrective_contingencies
         self.strict_formulation: bool = strict_formulation
+        self.use_srap: bool = use_srap
+        self.srap_max_power: float = srap_max_power
 
         if opf_options is None:
             self.opf_options = OptimalPowerFlowOptions()

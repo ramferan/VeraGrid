@@ -1551,7 +1551,8 @@ def add_corrective_contingency_formulation(t_idx: int,
                                            vsc_delta_vars: Union[Dict[int, LpVar], None] = None,
                                            hvdc_delta_vars: Union[Dict[int, LpVar], None] = None,
                                            add_exchange_preservation: bool = True,
-                                           enforce_rows: Union[BoolVec, None] = None) -> Union[float, LpExp]:
+                                           enforce_rows: Union[BoolVec, None] = None,
+                                           branch_terms: Union[Dict[int, LpExp], None] = None) -> Union[float, LpExp]:
     """
     Formulate a single contingency allowing corrective re-dispatch of the VSC and HVDC converters
     Rationale: VSCs and HVDCs can change their powers quickly after the contingency
@@ -1588,7 +1589,8 @@ def add_corrective_contingency_formulation(t_idx: int,
     """
     f_obj: Union[float, LpExp] = 0.0
 
-    branch_terms: Dict[int, LpExp] = dict()
+    if branch_terms is None:
+        branch_terms: Dict[int, LpExp] = dict()
     if vsc_delta_vars is None:
         vsc_delta_vars = dict()
     else:
@@ -1868,13 +1870,15 @@ def get_contingency_monitorable_branches(branch_data_t: PassiveBranchData,
 
 
 def evaluate_corrective_flow_addons(multi_contingencies: List[LinearMultiContingency],
-                                           group_indices,
-                                           vsc_delta_store: Dict[int, Dict[int, LpVar]],
-                                           hvdc_delta_store: Dict[int, Dict[int, LpVar]],
-                                           n_vsc: int,
-                                           n_hvdc: int,
-                                           n_branch: int,
-                                           model: LpModel) -> Dict[int, Vec]:
+                                    group_indices,
+                                    vsc_delta_store: Dict[int, Dict[int, LpVar]],
+                                    hvdc_delta_store: Dict[int, Dict[int, LpVar]],
+                                    n_vsc: int,
+                                    n_hvdc: int,
+                                    n_branch: int,
+                                    model: LpModel,
+                                    srap_delta_store: Union[Dict[int, Dict[int, LpVar]], None] = None,
+                                    srap_data: Any = None) -> Dict[int, Vec]:
     """
     Evaluate the numeric branch flow change of every group's solved corrective Δ set-points.
 
@@ -1888,6 +1892,8 @@ def evaluate_corrective_flow_addons(multi_contingencies: List[LinearMultiConting
     :param n_hvdc: number of HVDC links
     :param n_branch: number of passive branches
     :param model: solved LP model the Δ values are read from
+    :param srap_delta_store: optional per group position, per generator SRAP Δ variable store
+    :param srap_data: optional SrapPrecomputed data
     :return: per group position, the corrective flow change (p.u.) on every branch
     """
     addons: Dict[int, Vec] = dict()
@@ -1916,6 +1922,32 @@ def evaluate_corrective_flow_addons(multi_contingencies: List[LinearMultiConting
             has_delta = True
         else:
             pass  # this group moves no HVDC correctively
+
+        if srap_delta_store is not None and srap_data is not None:
+            srap_deltas: Dict[int, LpVar] = srap_delta_store.get(c_int, dict())
+            if len(srap_deltas) > 0:
+                active_buses = srap_data.candidate_buses
+                bus_to_gens = srap_data.bus_to_gens
+                d_bus: Vec = np.zeros(len(active_buses))
+                has_srap_val = False
+                for j, b in enumerate(active_buses):
+                    gens = bus_to_gens[b]
+                    v_sum = 0.0
+                    for g in gens:
+                        if g in srap_deltas and srap_deltas[g] is not None:
+                            val = model.get_value(srap_deltas[g])
+                            if abs(val) > 1e-6:
+                                v_sum += val
+                                has_srap_val = True
+                    d_bus[j] = v_sum
+                if has_srap_val:
+                    outaged_br = contingency.branch_indices
+                    if len(outaged_br) > 0 and contingency.mlodf_factors is not None and contingency.mlodf_factors.nnz > 0:
+                        ptdf_out = srap_data.ptdf_srap[outaged_br, :]
+                        addon_c += srap_data.ptdf_srap @ d_bus + contingency.mlodf_factors.dot(ptdf_out @ d_bus)
+                    else:
+                        addon_c += srap_data.ptdf_srap @ d_bus
+                    has_delta = True
 
         if has_delta:
             addons[c_int] = addon_c
