@@ -8,7 +8,12 @@ from typing import Union, List
 
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Events.contingency_group import ContingencyGroup
-from VeraGridEngine.Simulations.NTC.ntc_opf import run_linear_ntc_opf, NtcVars
+from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
+from VeraGridEngine.Simulations.LinearFactors.linear_analysis import (
+    LinearAnalysis,
+    LinearMultiContingencies,
+)
+from VeraGridEngine.Simulations.NTC.ntc_opf import run_linear_ntc_opf, NtcVars, has_pmode3_control
 from VeraGridEngine.Simulations.NTC.ntc_opf_strict import run_linear_ntc_opf_strict
 from VeraGridEngine.Simulations.NTC.ntc_driver import (
     OptimalNetTransferCapacityOptions,
@@ -153,9 +158,56 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
         contingency_groups_used: List[ContingencyGroup] = select_ntc_contingency_groups(
             self.grid, self.options.opf_options.contingency_groups_used)
 
+        # Topological caching structures
+        bus_dict = {bus: i for i, bus in enumerate(self.grid.buses)}
+        areas_dict = {elm: i for i, elm in enumerate(self.grid.areas)}
+        cached_topo_hash: int | None = None
+        cached_ls: LinearAnalysis | None = None
+        cached_mctg: LinearMultiContingencies | None = None
+
+        branches = list(self.grid.get_branches())
+        switches = list(self.grid.get_switches())
+
+        def get_topology_signature(time_step: int) -> int:
+            b_states = tuple(b.get_active_at(time_step) for b in branches)
+            s_states = tuple(s.get_closed_at(time_step) for s in switches)
+            return hash((b_states, s_states))
+
         for t_idx, t in enumerate(self.time_indices):
 
             if self.options.strict_formulation:
+                topo_hash = get_topology_signature(t)
+                if topo_hash != cached_topo_hash:
+                    # Topology changed (or initial step): compile circuit and compute PTDF & LODF
+                    nc_init = compile_numerical_circuit_at(
+                        circuit=self.grid,
+                        t_idx=t,
+                        bus_dict=bus_dict,
+                        areas_dict=areas_dict,
+                        logger=self.logger
+                    )
+                    cached_ls = LinearAnalysis(
+                        nc=nc_init,
+                        distributed_slack=False,
+                        correct_values=True,
+                        converters_as_setpoint=True,
+                        logger=self.logger
+                    )
+                    if self.options.consider_contingencies and len(contingency_groups_used) > 0:
+                        has_pmode3 = has_pmode3_control(nc_init)
+                        cached_mctg = LinearMultiContingencies(
+                            grid=self.grid,
+                            contingency_groups_used=contingency_groups_used
+                        )
+                        cached_mctg.compute(
+                            lin=cached_ls,
+                            ptdf_threshold=self.options.lin_options.lodf_threshold,
+                            lodf_threshold=self.options.lin_options.lodf_threshold,
+                            with_corrective_converter_df=self.options.corrective_contingencies and not has_pmode3
+                        )
+                    else:
+                        cached_mctg = None
+                    cached_topo_hash = topo_hash
 
                 opf_vars, model = run_linear_ntc_opf_strict(
                     grid=self.grid,
@@ -179,7 +231,12 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                     progress_func=None,
                     verbose=self.options.opf_options.verbose,
                     robust=self.options.opf_options.robust,
-                    mip_framework=self.options.opf_options.mip_framework
+                    mip_framework=self.options.opf_options.mip_framework,
+                    structural_area_balance=True,
+                    linear_analysis=cached_ls,
+                    multi_contingencies=cached_mctg,
+                    bus_dict=bus_dict,
+                    areas_dict=areas_dict
                 )
             else:
                 opf_vars, model = run_linear_ntc_opf(

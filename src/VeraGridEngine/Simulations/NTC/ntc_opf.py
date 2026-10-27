@@ -1346,7 +1346,7 @@ def add_linear_branches_formulation(t_idx: int,
                     # is a phase shifter device (like phase shifter transformer or VSC with P control)
                     prob.add_cst(
                         cst=branch_vars.flows[t_idx, m] == bk * (bus_vars.Va[t_idx, fr] -
-                                                                 bus_vars.Va[t_idx, to] -
+                                                                 bus_vars.Va[t_idx, to] +
                                                                  branch_vars.tap_angles[t_idx, m]),
                         name=join("ac_flows_ps_", [t_idx, m], "_")
                     )
@@ -1359,7 +1359,7 @@ def add_linear_branches_formulation(t_idx: int,
                         # rest of the branches
                         prob.add_cst(
                             cst=branch_vars.flows[t_idx, m] == bk * (bus_vars.Va[t_idx, fr] -
-                                                                     bus_vars.Va[t_idx, to] -
+                                                                     bus_vars.Va[t_idx, to] +
                                                                      branch_vars.tap_angles[t_idx, m]),
                             name=join("ac_flow_ps_fix", [t_idx, m], "_")
                         )

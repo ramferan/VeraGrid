@@ -34,6 +34,7 @@ from VeraGridEngine.Simulations.ATC.available_transfer_capacity_driver import co
     compute_dP
 from VeraGridEngine.Simulations.NTC.ntc_opf import (add_corrective_contingency_formulation,
                                                     get_contingency_monitorable_branches,
+                                                    screen_contingency_violations,
                                                     compute_vsc_pmode3_saturation_rates,
                                                     fill_worst_contingency_per_branch,
                                                     evaluate_corrective_flow_addons,
@@ -706,7 +707,8 @@ def add_linear_injections_formulation(t: Union[int, None],
                                       skip_generation_limits: bool,
                                       ntc_vars: NtcVars,
                                       prob: OrToolsLpModel,
-                                      logger: Logger):
+                                      logger: Logger,
+                                      structural_area_balance: bool = True):
     """
     Add MIP injections formulation
     :param t: time step
@@ -725,6 +727,8 @@ def add_linear_injections_formulation(t: Union[int, None],
     :param ntc_vars: MIP variables structure
     :param prob: MIP problem
     :param logger: logger instance
+    :param structural_area_balance: if True, enforce structural area balance with a single power_shift
+                                   variable and 0 area slacks (REE standard policy).
     :return objective function
     """
 
@@ -760,6 +764,35 @@ def add_linear_injections_formulation(t: Union[int, None],
 
     # copy the computed proportions
     ntc_vars.bus_vars.proportions[t, :] = proportions
+
+    if structural_area_balance:
+        # One exchange variable for both areas. The proportion carries the sign
+        # (positive in area 1, negative in area 2), so the same variable increases
+        # one area and decreases the other by the exact same amount.
+        power_shift = prob.add_var(lb=-prob.INFINITY, ub=prob.INFINITY, name=join("power_shift_", [t]))
+        ntc_vars.power_shift[t] = power_shift
+        ntc_vars.delta_1[t] = power_shift
+        ntc_vars.delta_2[t] = power_shift
+
+        # Structural balance: exactly 0 area slacks
+        ntc_vars.delta_sl_1[t] = prob.add_var(lb=0, ub=0, name=join("DeltaSL_up_zero_", [t]))
+        ntc_vars.delta_sl_2[t] = prob.add_var(lb=0, ub=0, name=join("DeltaSL_down_zero_", [t]))
+
+        for k in bus_a1_idx:
+            if bus_data_t.active[k] and proportions[k] != 0:
+                ntc_vars.bus_vars.delta_p[t, k] = power_shift * proportions[k]
+
+        for k in bus_a2_idx:
+            if bus_data_t.active[k] and proportions[k] != 0:
+                ntc_vars.bus_vars.delta_p[t, k] = power_shift * proportions[k]
+
+        for k in range(bus_data_t.nbus):
+            ntc_vars.bus_vars.Pinj[t, k] += base_power[k] + ntc_vars.bus_vars.delta_p[t, k]
+            ntc_vars.bus_vars.Pbalance[t, k] += ntc_vars.bus_vars.Pinj[t, k]
+
+        # The strict branch/HVDC/VSC formulations add the physical exchange to the
+        # objective (-sum(flow * sense)). Returning zero here avoids double counting.
+        return 0.0, base_power
 
     f_obj = 0.0
     ntc_vars.delta_1[t] = prob.add_var(lb=0, ub=prob.INFINITY, name=join("Delta_up_", [t]))
@@ -891,7 +924,7 @@ def add_linear_branches_formulation(t_idx: int,
                     # is a phase shifter device (like phase shifter transformer or VSC with P control)
                     prob.add_cst(
                         cst=branch_vars.flows[t_idx, m] == bk * (bus_vars.Va[t_idx, fr] -
-                                                                 bus_vars.Va[t_idx, to] -
+                                                                 bus_vars.Va[t_idx, to] +
                                                                  branch_vars.tap_angles[t_idx, m]),
                         name=join("ac_flows_ps_", [t_idx, m], "_")
                     )
@@ -904,7 +937,7 @@ def add_linear_branches_formulation(t_idx: int,
                         # rest of the branches
                         prob.add_cst(
                             cst=branch_vars.flows[t_idx, m] == bk * (bus_vars.Va[t_idx, fr] -
-                                                                     bus_vars.Va[t_idx, to] -
+                                                                     bus_vars.Va[t_idx, to] +
                                                                      branch_vars.tap_angles[t_idx, m]),
                             name=join("ac_flow_ps_fix", [t_idx, m], "_")
                         )
@@ -978,7 +1011,8 @@ def add_preventive_contingency_formulation_strict(t_idx: int,
                                                   ntc_load_rule: float,
                                                   alpha_threshold: float,
                                                   alpha_n1_abs: Mat,
-                                                  prob: OrToolsLpModel) -> float:
+                                                  prob: OrToolsLpModel,
+                                                  rows_to_limit: Union[IntVec, None] = None) -> float:
     """
     Formulate a single contingency with the preventive N-1 rule in the strict formulation
 
@@ -997,10 +1031,12 @@ def add_preventive_contingency_formulation_strict(t_idx: int,
     :param alpha_threshold: minimum N-1 exchange sensitivity for a branch to be monitored
     :param alpha_n1_abs: absolute N-1 exchange-sensitivity matrix indexed as (branch, outaged-branch)
     :param prob: linear problem the constraints are added to
+    :param rows_to_limit: optional list of branch indices to constrain
     :return: always 0.0 
     """
-    # iterate every branch; only those flagged by the mask and depending on variables are limited
-    for m, contingency_flow in enumerate(contingency_flows):
+    # iterate candidate branches; only those flagged by the mask and depending on variables are limited
+    branches_to_check = enumerate(contingency_flows) if rows_to_limit is None else ((m, contingency_flows[m]) for m in rows_to_limit)
+    for m, contingency_flow in branches_to_check:
 
         if mask[m] and isinstance(contingency_flow, LpExp):
 
@@ -1063,10 +1099,12 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                                                   alpha_threshold: float,
                                                   alpha_n1_abs: Mat,
                                                   corrective_contingencies: bool = False,
-                                                  vsc_active: BoolVec | None = None,
-                                                  hvdc_active: BoolVec | None = None,
-                                                  vsc_delta_store: Union[Dict[int, Dict[int, LpVar]], None] = None,
-                                                  hvdc_delta_store: Union[Dict[int, Dict[int, LpVar]], None] = None):
+                                                   vsc_active: BoolVec | None = None,
+                                                   hvdc_active: BoolVec | None = None,
+                                                   vsc_delta_store: Union[Dict[int, Dict[int, LpVar]], None] = None,
+                                                   hvdc_delta_store: Union[Dict[int, Dict[int, LpVar]], None] = None,
+                                                   group_indices: Union[IntVec, None] = None,
+                                                   group_rows: Union[Dict[int, IntVec], None] = None):
     """
     Formulate the branches
     :param t_idx: time index
@@ -1086,6 +1124,8 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
     :param alpha_n1_abs:
     :param vsc_delta_store: per group index, the persistent VSC Δ variable dictionary
     :param hvdc_delta_store: per group index, the persistent HVDC Δ variable dictionary
+    :param group_indices: optional explicit array of group indices to admit
+    :param group_rows: optional dictionary mapping group index to branch indices to constrain
     :return objective function
     """
     f_obj = 0.0
@@ -1109,7 +1149,9 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
     for branch_m, branch_sense in branch_vars.inter_space_branches:
         corrective_rows[branch_m] = True
 
-    for c, contingency in enumerate(linear_multi_contingencies.multi_contingencies):
+    c_iterable = range(len(linear_multi_contingencies.multi_contingencies)) if group_indices is None else group_indices
+    for c in c_iterable:
+        contingency = linear_multi_contingencies.multi_contingencies[int(c)]
 
         contingency_flows, mask, changed_idx = contingency.get_lp_contingency_flows(
             base_flow=branch_vars.flows[t_idx, :],
@@ -1130,7 +1172,7 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                 hvdc_deltas_c = hvdc_delta_store.setdefault(int(c), dict())
 
             f_obj += add_corrective_contingency_formulation(
-                t_idx=t_idx, c=c, Sbase=Sbase, contingency=contingency,
+                t_idx=t_idx, c=int(c), Sbase=Sbase, contingency=contingency,
                 contingency_flows=contingency_flows, changed_idx=changed_idx,
                 branch_data_t=branch_data_t, branch_vars=branch_vars,
                 vsc_vars=vsc_vars, hvdc_vars=hvdc_vars,
@@ -1139,14 +1181,16 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                 vsc_delta_vars=vsc_deltas_c, hvdc_delta_vars=hvdc_deltas_c)
         else:
             # preventive N-1: the converters stay at their base-case set-point (hard limits, no slack)
+            rows_to_limit = None if group_rows is None else group_rows.get(int(c), None)
             f_obj += add_preventive_contingency_formulation_strict(
-                t_idx=t_idx, c=c, Sbase=Sbase, contingency=contingency,
+                t_idx=t_idx, c=int(c), Sbase=Sbase, contingency=contingency,
                 contingency_flows=contingency_flows, mask=mask,
                 branch_data_t=branch_data_t, branch_vars=branch_vars,
                 monitor_only_ntc_load_rule_branches=monitor_only_ntc_load_rule_branches,
                 monitor_only_sensitive_branches=monitor_only_sensitive_branches,
                 structural_ntc=structural_ntc, ntc_load_rule=ntc_load_rule,
-                alpha_threshold=alpha_threshold, alpha_n1_abs=alpha_n1_abs, prob=prob)
+                alpha_threshold=alpha_threshold, alpha_n1_abs=alpha_n1_abs, prob=prob,
+                rows_to_limit=rows_to_limit)
 
     return f_obj
 
@@ -1521,7 +1565,13 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
                               progress_func: Union[None, Callable[[float], None]] = None,
                               verbose: int = 0,
                               robust: bool = False,
-                              mip_framework: MIPFramework = MIPFramework.PuLP) -> Tuple[NtcVars, LpModel]:
+                              mip_framework: MIPFramework = MIPFramework.PuLP,
+                              structural_area_balance: bool = True,
+                              linear_analysis: LinearAnalysis | None = None,
+                              multi_contingencies: LinearMultiContingencies | None = None,
+                              bus_dict: Dict[Bus, int] | None = None,
+                              areas_dict: Dict[Area, int] | None = None,
+                              nc: NumericalCircuit | None = None) -> Tuple[NtcVars, LpModel]:
     """
 
     :param grid: MultiCircuit instance
@@ -1545,6 +1595,12 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
     :param progress_func: function to report progress
     :param verbose: Verbosity level
     :param robust: Robust optimization?
+    :param structural_area_balance: if True, enforce structural area balance (REE standard)
+    :param linear_analysis: precomputed LinearAnalysis instance for topological caching
+    :param multi_contingencies: precomputed LinearMultiContingencies instance for topological caching
+    :param bus_dict: cached dictionary of bus objects to indices
+    :param areas_dict: cached dictionary of area objects to indices
+    :param nc: optional precompiled NumericalCircuit
     :return: NtcVars class with the results
     """
     mode_2_int = {
@@ -1554,8 +1610,10 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
         AvailableTransferMode.GenerationAndLoad: 3
     }
 
-    bus_dict = {bus: i for i, bus in enumerate(grid.buses)}
-    areas_dict = {elm: i for i, elm in enumerate(grid.areas)}
+    if bus_dict is None:
+        bus_dict = {bus: i for i, bus in enumerate(grid.buses)}
+    if areas_dict is None:
+        areas_dict = {elm: i for i, elm in enumerate(grid.areas)}
 
     n = grid.get_bus_number()
     nbr = grid.get_branch_number(add_hvdc=False, add_vsc=False, add_switch=True)
@@ -1576,14 +1634,13 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
     f_obj = 0.0
     t_idx = 0
 
-    # compile the circuit at the master time index ------------------------------------------------------------
-    # note: There are very small chances of simplifying this step and experience shows it is not
-    #        worth the effort, so compile every time step
-    nc: NumericalCircuit = compile_numerical_circuit_at(circuit=grid,
-                                                        t_idx=t,  # yes, this is not a bug
-                                                        bus_dict=bus_dict,
-                                                        areas_dict=areas_dict,
-                                                        logger=logger)
+    # compile the circuit at the master time index if not provided
+    if nc is None:
+        nc = compile_numerical_circuit_at(circuit=grid,
+                                          t_idx=t,
+                                          bus_dict=bus_dict,
+                                          areas_dict=areas_dict,
+                                          logger=logger)
 
     # The N-1 report divides by these ratings even when no contingency row enters the LP
     # so copy them unconditionally
@@ -1637,7 +1694,8 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
         skip_generation_limits=skip_generation_limits,
         ntc_vars=mip_vars,
         prob=lp_model,
-        logger=logger
+        logger=logger,
+        structural_area_balance=structural_area_balance
     )
     f_obj += inj_f_obj
 
@@ -1666,6 +1724,8 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
     )
 
     controlled_states = None
+    lazy_mctg: Union[LinearMultiContingencies, None] = None
+    lazy_alpha_n1: Union[Mat, None] = None
     report_mctg: Union[LinearMultiContingencies, None] = None
     vsc_delta_store: Dict[int, Dict[int, LpVar]] = dict()
     hvdc_delta_store: Dict[int, Dict[int, LpVar]] = dict()
@@ -1674,11 +1734,14 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
 
         # declare the linear analysis and compute the PTDF and LODF
         # converters_as_setpoint keeps the monitoring independent from the control
-        ls = LinearAnalysis(nc=nc,
-                            distributed_slack=False,
-                            correct_values=True,
-                            converters_as_setpoint=True,
-                            logger=logger)
+        if linear_analysis is None:
+            ls = LinearAnalysis(nc=nc,
+                                distributed_slack=False,
+                                correct_values=True,
+                                converters_as_setpoint=True,
+                                logger=logger)
+        else:
+            ls = linear_analysis
 
         # compute the sensitivity to the exchange
         dP = compute_dP(
@@ -1740,12 +1803,15 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
                 has_pmode3: bool = has_pmode3_control(nc)
 
                 # declare the multi-contingencies analysis and compute
-                mctg = LinearMultiContingencies(grid=grid,
-                                                contingency_groups_used=contingency_groups_used)
-                mctg.compute(lin=ls,
-                             ptdf_threshold=lodf_threshold,
-                             lodf_threshold=lodf_threshold,
-                             with_corrective_converter_df=corrective_contingencies and not has_pmode3)
+                if multi_contingencies is None:
+                    mctg = LinearMultiContingencies(grid=grid,
+                                                    contingency_groups_used=contingency_groups_used)
+                    mctg.compute(lin=ls,
+                                 ptdf_threshold=lodf_threshold,
+                                 lodf_threshold=lodf_threshold,
+                                 with_corrective_converter_df=corrective_contingencies and not has_pmode3)
+                else:
+                    mctg = multi_contingencies
                 report_mctg = mctg
 
                 alpha_n1 = compute_alpha_n1(
@@ -1761,29 +1827,8 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
                         nc=nc, base_vars=mip_vars, multi_contingencies=mctg,
                         prob=lp_model, logger=logger, strict=True)
                 else:
-                    # formulate the contingencies
-                    f_obj += add_linear_branches_contingencies_formulation(
-                        t_idx=t_idx,
-                        Sbase=nc.Sbase,
-                        branch_data_t=nc.passive_branch_data,
-                        branch_vars=mip_vars.branch_vars,
-                        bus_vars=mip_vars.bus_vars,
-                        hvdc_vars=mip_vars.hvdc_vars,
-                        vsc_vars=mip_vars.vsc_vars,
-                        prob=lp_model,
-                        linear_multi_contingencies=mctg,
-                        monitor_only_sensitive_branches=monitor_only_sensitive_branches,
-                        monitor_only_ntc_load_rule_branches=monitor_only_ntc_load_rule_branches,
-                        structural_ntc=structural_ntc,
-                        ntc_load_rule=ntc_load_rule,
-                        alpha_threshold=alpha_threshold,
-                        alpha_n1_abs=np.abs(alpha_n1),  # as per RE requirement
-                        corrective_contingencies=corrective_contingencies,
-                        vsc_active=nc.vsc_data.active,
-                        hvdc_active=nc.hvdc_data.active,
-                        vsc_delta_store=vsc_delta_store,
-                        hvdc_delta_store=hvdc_delta_store
-                    )
+                    lazy_mctg = mctg
+                    lazy_alpha_n1 = alpha_n1
             else:
                 print("Contingencies enabled, but no contingency groups provided")
                 logger.add_warning(msg="Contingencies enabled, but no contingency groups provided. "
@@ -1810,6 +1855,117 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
         # strict=True formulation admits hard limits and never adds thermal slacks.
         status = controlled_states.solve(f_obj, status, robust=robust, show_logs=verbose > 0,
                                          progress=SolverProgress(progress_text))
+    elif lazy_mctg is not None:
+        monitorable_lazy = get_contingency_monitorable_branches(
+            branch_data_t=nc.passive_branch_data,
+            branch_vars=mip_vars.branch_vars,
+            t_idx=t_idx,
+            corrective_contingencies=corrective_contingencies,
+            monitor_only_sensitive_branches=monitor_only_sensitive_branches,
+            monitor_only_ntc_load_rule_branches=monitor_only_ntc_load_rule_branches,
+            alpha_threshold=alpha_threshold,
+            alpha_n1=lazy_alpha_n1,
+            structural_ntc=float(mip_vars.structural_ntc[t_idx]),
+            ntc_load_rule=ntc_load_rule
+        )
+        for lazy_branch_m, _ in mip_vars.branch_vars.inter_space_branches:
+            monitorable_lazy[lazy_branch_m] = True
+        monitorable_lazy = monitorable_lazy | (nc.passive_branch_data.dc.astype(bool)
+                                               & nc.passive_branch_data.monitor_loading.astype(bool))
+        con_rates_pu_lazy = nc.passive_branch_data.contingency_rates / nc.Sbase
+
+        lazy_round: int = 0
+        max_lazy_rounds: int = 20
+        clean_pass: bool = False
+        admitted_rows: Dict[int, BoolVec] = dict()
+        transfer = mip_vars.delta_1[t_idx]
+
+        while lazy_round < max_lazy_rounds and status == lp_model.OPTIMAL and not clean_pass:
+            f0_num: Vec = np.array([lp_model.get_value(x) for x in mip_vars.branch_vars.flows[t_idx, :]])
+            hvdc0_num: Vec = np.array([lp_model.get_value(x) for x in mip_vars.hvdc_vars.flows[t_idx, :]])
+            vsc0_num: Vec = np.array([lp_model.get_value(x) for x in mip_vars.vsc_vars.flows[t_idx, :]])
+            inj0_num: Vec = np.array([lp_model.get_value(x) for x in mip_vars.bus_vars.Pinj[t_idx, :]])
+
+            delta_addons: Dict[int, Vec] = evaluate_corrective_flow_addons(
+                multi_contingencies=lazy_mctg.multi_contingencies,
+                group_indices=list(admitted_rows.keys()),
+                vsc_delta_store=vsc_delta_store,
+                hvdc_delta_store=hvdc_delta_store,
+                n_vsc=nc.vsc_data.nelm,
+                n_hvdc=nc.hvdc_data.nelm,
+                n_branch=nc.passive_branch_data.nelm,
+                model=lp_model,
+            )
+
+            admissions = screen_contingency_violations(
+                multi_contingencies=lazy_mctg.multi_contingencies,
+                admitted_rows=admitted_rows,
+                f0=f0_num, hvdc0=hvdc0_num, vsc0=vsc0_num, inj0=inj0_num,
+                monitorable=monitorable_lazy,
+                con_rates_pu=con_rates_pu_lazy,
+                tol_pu=1e-4,
+                at_risk_fraction=0.9,
+                delta_flow_addons=delta_addons
+            )
+
+            if len(admissions) == 0:
+                clean_pass = True
+            else:
+                group_rows_now: Dict[int, IntVec] = dict()
+                for c_new, rows_new in admissions:
+                    group_rows_now[int(c_new)] = rows_new
+
+                f_obj += add_linear_branches_contingencies_formulation(
+                    t_idx=t_idx,
+                    Sbase=nc.Sbase,
+                    branch_data_t=nc.passive_branch_data,
+                    branch_vars=mip_vars.branch_vars,
+                    bus_vars=mip_vars.bus_vars,
+                    hvdc_vars=mip_vars.hvdc_vars,
+                    vsc_vars=mip_vars.vsc_vars,
+                    prob=lp_model,
+                    linear_multi_contingencies=lazy_mctg,
+                    monitor_only_sensitive_branches=monitor_only_sensitive_branches,
+                    monitor_only_ntc_load_rule_branches=monitor_only_ntc_load_rule_branches,
+                    structural_ntc=float(mip_vars.structural_ntc[t_idx]),
+                    ntc_load_rule=ntc_load_rule,
+                    alpha_threshold=alpha_threshold,
+                    alpha_n1_abs=np.abs(lazy_alpha_n1),
+                    corrective_contingencies=corrective_contingencies,
+                    vsc_active=nc.vsc_data.active,
+                    hvdc_active=nc.hvdc_data.active,
+                    vsc_delta_store=vsc_delta_store,
+                    hvdc_delta_store=hvdc_delta_store,
+                    group_indices=np.array([c_new for c_new, _ in admissions], dtype=int),
+                    group_rows=group_rows_now
+                )
+
+                for c_new, rows_new in admissions:
+                    mask_prev = admitted_rows.get(int(c_new), None)
+                    if mask_prev is None:
+                        mask_prev = np.zeros(nc.passive_branch_data.nelm, dtype=bool)
+                        admitted_rows[int(c_new)] = mask_prev
+                    mask_prev[rows_new] = True
+
+                lp_model.set_var_bounds(var=transfer, lb=0.0, ub=lp_model.INFINITY)
+                lp_model.minimize(f_obj)
+                status = lp_model.solve(robust=robust, show_logs=verbose > 0, progress_text=progress_text)
+                lazy_round += 1
+
+        effort: List[LpExp] = list()
+        add_base_control_effort(prob=lp_model, t_idx=t_idx,
+                                branch_data_t=nc.passive_branch_data,
+                                active_branch_data_t=nc.active_branch_data,
+                                branch_vars=mip_vars.branch_vars,
+                                vsc_vars=mip_vars.vsc_vars,
+                                hvdc_vars=mip_vars.hvdc_vars,
+                                effort=effort)
+        add_corrective_control_effort(prob=lp_model, vsc_delta_store=vsc_delta_store,
+                                      hvdc_delta_store=hvdc_delta_store, counted=set(), effort=effort)
+        if status == lp_model.OPTIMAL and len(effort) > 0:
+            status = solve_least_control_effort(prob=lp_model, objective=f_obj, transfer=mip_vars.delta_1[t_idx],
+                                                effort=effort, logger=logger, robust=robust,
+                                                show_logs=verbose > 0, progress_text=progress_text)
     else:
         # Other control modes already have their contingency constraints. Among the optima,
         # pick the least control effort so the operating point and its limiting pairs are reproducible.

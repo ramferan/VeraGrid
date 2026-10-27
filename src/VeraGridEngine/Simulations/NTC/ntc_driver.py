@@ -201,6 +201,104 @@ def get_ntc_operating_point_as_opf_results(grid: MultiCircuit,
     return opf_results
 
 
+def apply_ntc_operating_point_to_circuit(grid: MultiCircuit,
+                                         ntc_results: OptimalNetTransferCapacityResults,
+                                         t_idx: int | None = None,
+                                         transfer_method: AvailableTransferMode = AvailableTransferMode.InstalledPower) -> None:
+    """Apply the solved NTC operating point directly to physical circuit devices.
+
+    This updates the physical objects (generators, HVDC links, phase shifters)
+    in the MultiCircuit, allowing direct AC power flow verification and saving
+    to standard grid formats (.gridcal).
+
+    Crucially, non-participating generators outside Area 1 and Area 2 are untouched,
+    preserving their economic dispatch and avoiding AC loss contamination.
+    """
+    if ntc_results is None:
+        return
+
+    # 1. Update generators in participating areas
+    bus_change = getattr(ntc_results, 'dSbus', None)
+    if bus_change is not None:
+        bus_change_mw = np.real(np.asarray(bus_change, dtype=complex)).ravel()
+        buses = list(grid.buses)
+        bus_idx_map = {b: i for i, b in enumerate(buses)}
+
+        generators = list(grid.get_generators())
+        gens_by_bus: dict[int, list] = {}
+        for g in generators:
+            if g.active and g.bus in bus_idx_map:
+                b_idx = bus_idx_map[g.bus]
+                gens_by_bus.setdefault(b_idx, []).append(g)
+
+        for b_idx, gens in gens_by_bus.items():
+            if b_idx < len(bus_change_mw):
+                delta_bus = float(bus_change_mw[b_idx])
+                if abs(delta_bus) > 1e-6:
+                    if len(gens) == 1:
+                        g = gens[0]
+                        if t_idx is None:
+                            g.P += delta_bus
+                        else:
+                            if hasattr(g, 'P_prof') and g.P_prof is not None and len(g.P_prof) > t_idx:
+                                g.P_prof[t_idx] += delta_bus
+                            else:
+                                g.P += delta_bus
+                    else:
+                        if transfer_method == AvailableTransferMode.InstalledPower:
+                            weights = np.array([max(0.0, float(getattr(g, 'Pmax', getattr(g, 'P', 0.0)))) for g in gens])
+                        else:
+                            weights = np.array([max(0.0, float(getattr(g, 'P', 0.0))) for g in gens])
+
+                        tot_w = float(weights.sum())
+                        if tot_w > 0:
+                            shares = weights / tot_w
+                        else:
+                            shares = np.ones(len(gens)) / len(gens)
+
+                        for g, share in zip(gens, shares):
+                            delta_g = delta_bus * float(share)
+                            if t_idx is None:
+                                g.P += delta_g
+                            else:
+                                if hasattr(g, 'P_prof') and g.P_prof is not None and len(g.P_prof) > t_idx:
+                                    g.P_prof[t_idx] += delta_g
+                                else:
+                                    g.P += delta_g
+
+    # 2. Update HVDC set-points
+    hvdc_flows = getattr(ntc_results, 'hvdc_Pf', None)
+    if hvdc_flows is not None:
+        hvdc_flows_arr = np.asarray(hvdc_flows, dtype=float).ravel()
+        hvdc_list = list(grid.get_hvdc())
+        for i, hvdc in enumerate(hvdc_list):
+            if i < len(hvdc_flows_arr):
+                val = float(hvdc_flows_arr[i])
+                if t_idx is None:
+                    hvdc.Pset = val
+                else:
+                    if hasattr(hvdc, 'Pset_prof') and hvdc.Pset_prof is not None and len(hvdc.Pset_prof) > t_idx:
+                        hvdc.Pset_prof[t_idx] = val
+                    else:
+                        hvdc.Pset = val
+
+    # 3. Update Phase Shifter tap angles (in radians)
+    phase_shifts = getattr(ntc_results, 'phase_shift', None)
+    if phase_shifts is not None:
+        phase_shifts_arr = np.asarray(phase_shifts, dtype=float).ravel()
+        branches = list(grid.get_branches())
+        for i, branch in enumerate(branches):
+            if i < len(phase_shifts_arr) and isinstance(branch, ControllableBranchParent):
+                val = float(phase_shifts_arr[i])
+                if t_idx is None:
+                    branch.tap_phase = val
+                else:
+                    if hasattr(branch, 'tap_phase_prof') and branch.tap_phase_prof is not None and len(branch.tap_phase_prof) > t_idx:
+                        branch.tap_phase_prof[t_idx] = val
+                    else:
+                        branch.tap_phase = val
+
+
 class OptimalNetTransferCapacityDriver(DriverTemplate):
     __slots__ = (
         "options",
@@ -388,3 +486,17 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
         self.opf()
 
         self.toc()
+
+    def apply_operating_point(self, t_idx: int | None = None) -> None:
+        """Apply solved NTC operating point directly to physical circuit devices.
+
+        Allocates nodal power deltas proportionally to multi-generator substations,
+        leaves non-participating generators outside Area 1 and Area 2 untouched,
+        and updates HVDC and phase shifter setpoints.
+        """
+        apply_ntc_operating_point_to_circuit(
+            grid=self.grid,
+            ntc_results=self.results,
+            t_idx=t_idx,
+            transfer_method=self.options.transfer_method
+        )
