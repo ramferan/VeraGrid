@@ -42,7 +42,9 @@ def add_linear_injections_formulation_hard(t,
                                            skip_generation_limits,
                                            ntc_vars,
                                            prob,
-                                           logger):
+                                           logger,
+                                           structural_area_balance: bool = True,
+                                           **kwargs):
     """Inject the hard policy into the strict formulation.
 
     The signature matches ``ntc_opf_strict.add_linear_injections_formulation``
