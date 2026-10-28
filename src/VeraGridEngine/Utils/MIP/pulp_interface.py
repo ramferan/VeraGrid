@@ -20,7 +20,6 @@ from pulp import (HiGHS,
                   CPLEX_CMD, CPLEX_PY,
                   COIN_CMD,
                   COPT, COPT_CMD,
-                  CUOPT,
                   GUROBI_CMD, GUROBI,
                   XPRESS_CMD, XPRESS_PY,
                   SCIP_CMD, SCIP_PY)

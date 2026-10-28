@@ -157,31 +157,41 @@ En la red original, los límites térmicos son holgados respecto al despacho bas
 
 ---
 
-### 6.2. Caso IEEE 14 Congestionado (Demostración del Comportamiento ante Cuellos de Botella)
+### 6.2. Caso IEEE 14 Congestionado (Análisis de Holguras Térmicas y Garantía de Optimalidad Física)
 
-En el caso estándar anterior (6.1), al no existir cuellos de botella severos, los slacks térmicos de la formulación `regular` permanecen en 0,00 MW, lo que podría inducir a pensar erróneamente que la presencia de variables de penalización térmica en la función objetivo es inocua.
+En el caso estándar anterior (6.1), al no existir cuellos de botella severos, los términos de holgura de la formulación `regular` permanecen en 0,00 MW, lo que podría sugerir preliminarmente que la presencia de variables de penalización en el modelo matemático es inocua.
 
-Para demostrar de forma empírica y reproducible el efecto distorsionador de los slacks cuando la red se congestiona, hemos incorporado el test `test_issue_372_congested_thermal_slacks` en `src/tests/NTC/test_ntc_strict_formulation.py`. En este ensayo, sobre la misma red abierta de vuestro Issue 372, se ajusta la capacidad nominal de la rama 7 (`branch 7`, Trafo 11 entre nudos 7 y 15) de 20 MW a **4,00 MW**, creando un cuello de botella vinculante bajo la contingencia de la rama 14:
+Para analizar de forma rigurosa y reproducible el comportamiento del optimizador ante restricciones vinculantes, se evalúa el caso implementado en `test_issue_372_congested_thermal_slacks` (`src/tests/NTC/test_ntc_strict_formulation.py`). Sobre la misma red abierta del Issue 372, se reduce la capacidad nominal de la rama 7 (Trafo 11 entre nudos 7 y 15, correspondiente al índice de rama 21 en la indexación interna) de 20 MW a **4,00 MW** (con límite de contingencia N-1 de 4,60 MW), generando un cuello de botella crítico bajo la indisponibilidad de la rama 14:
 
-| Formulación / Motor | TTC Base (MW) | TTC N-1 (MW) | Slack Térmico | Slack Área | Tiempo | Diagnóstico / Observación |
-|---|---:|---:|---:|---:|---:|---|
-| **VeraGrid 6 Limpio (Estricto / REE)** | **56,31 MW** | **10,49 MW** | **0,00 MW** | **0,00 MW** | ~2 s | Cumplimiento físico 100%: Rama 7 acotada exactamente a su límite de 4,00 MW en N-1. Balancín 1:1 estricto. |
-| **eRoots 6.7.20 `regular`** | **56,31 MW** | **10,49 MW** | **12,00 MW** | 0,00 MW* | ~2 s | **Falsa resolubilidad:** Rama 7 alcanza 16,00 MW (400% de sobrecarga) absorbida por el slack térmico. (*) Variable de área presente en LP pero inactiva por simetría. |
+| Formulación / Modo | TTC Base (MW) | TTC N-1 (MW) | Slack Térmico ($s$) | Slack Área ($\Delta_{sl}$) | Estado Solver | Diagnóstico Físico / Operativo |
+|---|---:|---:|---:|---:|:---:|---|
+| **Preventivo Estricto (Límites duros)** | **56,31 MW** | **0,00 MW** | **0,00 MW** | **0,00 MW** | `Infeasible` | **Seguridad física garantizada:** Detecta que la red no tolera la contingencia (flujo inducido de 22,93 MW vs. 4,60 MW de límite). Bloquea la publicación de capacidad inviable. |
+| **Preventivo `regular` (Con slacks)** | **56,31 MW** | **34,49 MW** | **18,33 MW** | 0,00 MW | `Optimal` | **Resolubilidad aparente:** El solver publica 34,49 MW absorbiendo una sobrecarga del ~500% en el slack térmico. En explotación real causaría la actuación inmediata de protecciones. |
+| **Correctivo `regular` (Con redespacho VSC)** | **56,31 MW** | **10,49 MW** | **12,00 MW** | 0,00 MW | `Optimal` | **Sobrecarga en contingencia:** Con redespacho de convertidores, el flujo inducido es de 16,60 MW; el solver asigna 10,49 MW de TTC absorbiendo 12,00 MW en $pos\_sl$. |
 
-#### Diagnóstico del comportamiento de las variables de holgura:
-1. **Variable de Slack Térmico (Absorción de sobrecargas de rama):**  
-   Bajo la contingencia de la rama 14, el flujo físico inducido sobre la rama 7 asciende a **16,00 MW**. Mientras que la formulación estricta obliga a la red a respetar físicamente los 4,00 MW disponibles (0,00 MW de holgura), la formulación `regular` no frena la operación: absorbe los **12,00 MW de exceso en la variable de holgura térmica** (`flow_slacks_pos` / `neg_slack`). El solver declara la solución como `Optimal / Converged`, ocultando al operador que la línea operaría al **400% de su capacidad nominal**, lo que en explotación real provocaría el disparo instantáneo de protecciones.
-2. **Variable de Slack de Área ($\Delta_{sl_1}, \Delta_{sl_2}$):**  
-   En la igualdad de áreas $\Delta_1 - \Delta_{sl_1} = \Delta_2 - \Delta_{sl_2}$, la presencia de estas variables permite al solver desacoplar la exportación de la importación. En redes donde una zona tiene márgenes asimétricos o cuellos de botella internos (como se observa de forma acusada en el modelo MOU, donde el slack asciende a miles de megavatios), el solver incrementa la exportación sin requerir la absorción física equivalente, falseando el poliedro de intercambio comercial.
+#### Análisis Técnico sobre la Garantía de Optimalidad Física:
+
+Un argumento habitual en favor de la inclusión de variables de holgura penalizadas en la formulación lineal es considerar que *«dichas variables únicamente se activan cuando no existe solución matemática factible, comportándose como un mecanismo de diagnóstico equivalente a una infactibilidad, sin alterar el óptimo cuando este existe»*.
+
+El análisis matemático y los resultados empíricos anteriores permiten precisar por qué **la introducción de variables de holgura en las restricciones térmicas y de área no garantiza la obtención del óptimo físico de operación**, resultando desaconsejable en cálculos de capacidad comercial para el mercado:
+
+1. **Alteración del espacio de búsqueda factible ($\mathcal{F}_{\text{físico}}$ vs. $\mathcal{F}_{\text{relajado}}$):**  
+   Al sustituir una restricción física dura de capacidad $f_{ij}^{(c)} \le F_{ij}^{\max}$ por una relajación con holgura $f_{ij}^{(c)} - s_{ij}^{(c)} \le F_{ij}^{\max}$ ($s_{ij}^{(c)} \ge 0$), el poliedro admisible de la red se amplía artificialmente. Cuando el solver encuentra una solución con $s^* > 0$, dicho punto **no pertenece al dominio admisible del sistema eléctrico**. La solución reportada no es un óptimo físico de la red, sino un óptimo matemático de un problema relajado que tolera violaciones térmicas inaceptables en explotación real.
+
+2. **Dependencia del hiperparámetro de penalización ($M$):**  
+   La función objetivo $\max \Delta P - M \sum s$ transforma la optimización de capacidad en un compromiso comercial entre el beneficio del intercambio ($\Delta P$) y el coste numérico asignado a la penalización ($M = 10^4$ en VeraGrid). Esta formulación arbitra de manera implícita cuánta sobrecarga física se tolera por cada megavatio adicional transferido. Por consiguiente, el valor final de TTC no refleja la capacidad física de la infraestructura, sino la calibración arbitraria del coeficiente de penalización.
+
+3. **Enmascaramiento de la infactibilidad física (Falsa convergencia):**  
+   En la gestión de capacidad para el mercado eléctrico (conforme a los reglamentos UE 2015/1222 - CACM y UE 2017/1485 - SO GL), la capacidad comercial publicada debe ser plenamente ejecutable con criterios de seguridad N-1. Si una situación de red no admite intercambio seguro, el cálculo debe retornar estrictamente una señal de infactibilidad (`Infeasible / TTC = 0`). La formulación con holguras, al retornar el estado `Optimal / Converged`, oculta al operador que el intercambio requiere que elementos de la red operen al 400% o 500% de su límite térmico, trasladando un riesgo sistémico severo a la operación en tiempo real.
 
 #### Verificación Directa con Pytest:
-Cualquier miembro del equipo puede ejecutar y verificar este resultado de forma inmediata en el repositorio:
+El comportamiento comparado entre límites duros y variables de holgura puede reproducirse de forma directa en el entorno de pruebas del repositorio:
 ```bash
 pytest src/tests/NTC/test_ntc_strict_formulation.py -k "test_issue_372_congested_thermal_slacks"
 ```
 
 **Conclusión técnica:**  
-Tanto el slack térmico (que tolera sobrecargas físicas ficticias del 400%) como el slack de intercambio de área (que rompe la conservación estricta 1:1 de energía entre fronteras) deben ser erradicados de la formulación comercial NTC. La formulación estricta con límites duros y balancín 1:1 es la única que garantiza viabilidad física y seguridad de suministro para el mercado.
+La garantía de optimalidad y de seguridad física del sistema exige que las restricciones térmicas de red ($f \le F^{\max}$) y el balancín de intercambio de área ($1:1$) se formulen como restricciones duras sin variables de relajación. Ante contingencias no superables, la infactibilidad debe emerger de forma explícita para que el operador active medidas remediales reales (redespacho preventivo, topología o modulación acotada) en lugar de tolerar sobrecargas virtuales en el modelo.
 
 
 ---
