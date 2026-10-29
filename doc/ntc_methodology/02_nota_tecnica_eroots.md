@@ -101,6 +101,8 @@ A continuación resumimos los resultados observados al contrastar empíricamente
   En la formulación estricta original (`ntc_opf_strict.py`), este motor Lazy no estaba integrado; el código intentaba inyectar por fuerza bruta las restricciones de todas las ramas para todas las contingencias directamente en el LP (hasta 61 millones de restricciones potenciales), saturando la memoria y dilatando la resolución durante horas.
 * **Ajuste propuesto:**  
   Reutilizar vuestro motor de screening y admisión *Lazy* de `ntc_opf.py` dentro de la formulación `strict` con límites duros, aplicando el filtro de ramas monitorizadas con sensibilidad al intercambio ($\alpha \ge 5\%$). Esto aúna la rapidez del Lazy (~23 s por hora) con el rigor de la NTC comercial sin variables de holgura.
+* **Observación de código a verificar (`ntc_opf.py:1839` vs `1848`):**  
+  Hemos detectado adicionalmente una divergencia en el criterio de filtrado entre rutas: la ruta preventiva evalúa la sensibilidad en contingencia $\alpha_{N-1}$ (`alpha_n1`), mientras que la ruta compacta/correctiva emplea la lógica del caso base `branch_vars.monitor_logic` (sensibilidad $\alpha_N$). Convendría unificar para que ambas evalúen de forma consistente la sensibilidad post-falta $\alpha_{N-1}$.
 
 ---
 
