@@ -1,0 +1,15 @@
+{
+  "formulation": "regular (eRoots 6.7.20)",
+  "strict_flag": false,
+  "ttc_mw": 17.05,
+  "ntc_mw": 17.05,
+  "choked_branch_rate_mw": 4.0,
+  "thermal_slack_total_mw": 12.0,
+  "thermal_slack_contingency_mw": 12.0,
+  "nodal_balance_residual_mw": 6.938893903907228e-16,
+  "solution_state": "Relaxed",
+  "converged": true,
+  "elapsed_seconds": 0.032,
+  "pst_tap_rad": 0.0593,
+  "hvdc_flow_mw": 50.0
+}

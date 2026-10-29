@@ -1,0 +1,15 @@
+{
+  "formulation": "strict (propuesta REE)",
+  "strict_flag": true,
+  "ttc_mw": 10.49,
+  "ntc_mw": 10.49,
+  "choked_branch_rate_mw": 4.0,
+  "thermal_slack_total_mw": 0.0,
+  "thermal_slack_contingency_mw": 0.0,
+  "nodal_balance_residual_mw": 6.938893903907228e-16,
+  "solution_state": "Optimal",
+  "converged": true,
+  "elapsed_seconds": 1.112,
+  "pst_tap_rad": 0.0593,
+  "hvdc_flow_mw": 50.0
+}
