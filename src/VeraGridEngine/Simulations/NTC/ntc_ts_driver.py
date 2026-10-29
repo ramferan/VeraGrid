@@ -167,11 +167,13 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
 
         branches = list(self.grid.get_branches())
         switches = list(self.grid.get_switches())
+        trafos2w = list(self.grid.get_transformers2w())
 
         def get_topology_signature(time_step: int) -> int:
             b_states = tuple(b.get_active_at(time_step) for b in branches)
             s_states = tuple(s.get_closed_at(time_step) for s in switches)
-            return hash((b_states, s_states))
+            t_taps = tuple(round(float(t.get_tap_module_at(time_step)), 4) for t in trafos2w)
+            return hash((b_states, s_states, t_taps))
 
         for t_idx, t in enumerate(self.time_indices):
 
