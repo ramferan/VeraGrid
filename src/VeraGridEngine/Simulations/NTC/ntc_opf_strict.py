@@ -1064,6 +1064,12 @@ def add_preventive_contingency_formulation_strict(t_idx: int,
                 # the sensitivity filter is disabled: keep the branch as a candidate
                 monitor_by_sensitivity_n1 = True
 
+            # When the lazy loop already admitted this row, the single mask was applied upstream:
+            # do not filter it again per contingency.
+            if rows_to_limit is not None:
+                monitor_by_load_rule_n1 = True
+                monitor_by_sensitivity_n1 = True
+
             # DC branches are always monitored because their AC-PTDF sensitivity alpha is zero
             if branch_data_t.dc[m] or has_relief or (monitor_by_load_rule_n1 and monitor_by_sensitivity_n1):
                 # record the flow so the result extraction can evaluate the post-contingency loading later
@@ -1101,6 +1107,7 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                                                   ntc_load_rule: float,
                                                   alpha_threshold: float,
                                                   alpha_n1_abs: Mat,
+                                                  alpha: Vec | None = None,
                                                   corrective_contingencies: bool = False,
                                                    vsc_active: BoolVec | None = None,
                                                    hvdc_active: BoolVec | None = None,
@@ -1150,7 +1157,8 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
         alpha_threshold=alpha_threshold,
         alpha_n1=alpha_n1_abs,
         structural_ntc=structural_ntc,
-        ntc_load_rule=ntc_load_rule
+        ntc_load_rule=ntc_load_rule,
+        alpha=alpha
     )
 
     # the inter-area branches carry the exchange preservation terms even if not monitored
@@ -1913,7 +1921,8 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
             alpha_threshold=alpha_threshold,
             alpha_n1=lazy_alpha_n1,
             structural_ntc=float(mip_vars.structural_ntc[t_idx]),
-            ntc_load_rule=ntc_load_rule
+            ntc_load_rule=ntc_load_rule,
+            alpha=alpha
         )
         for lazy_branch_m, _ in mip_vars.branch_vars.inter_space_branches:
             monitorable_lazy[lazy_branch_m] = True
@@ -1980,6 +1989,7 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
                     ntc_load_rule=ntc_load_rule,
                     alpha_threshold=alpha_threshold,
                     alpha_n1_abs=np.abs(lazy_alpha_n1),
+                    alpha=alpha,
                     corrective_contingencies=corrective_contingencies,
                     vsc_active=nc.vsc_data.active,
                     hvdc_active=nc.hvdc_data.active,

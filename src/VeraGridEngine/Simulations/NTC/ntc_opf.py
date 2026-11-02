@@ -1812,7 +1812,8 @@ def get_contingency_monitorable_branches(branch_data_t: PassiveBranchData,
                                          alpha_threshold: float,
                                          alpha_n1: Mat,
                                          structural_ntc: float,
-                                         ntc_load_rule: float) -> BoolVec:
+                                         ntc_load_rule: float,
+                                         alpha: Union[Vec, None] = None) -> BoolVec:
     """
     Flag the branches that may receive a post-contingency limit under any of the contingencies.
     This exists so the post contingency flow expressions of the branches where no contingency 
@@ -1826,6 +1827,8 @@ def get_contingency_monitorable_branches(branch_data_t: PassiveBranchData,
     :param monitor_only_ntc_load_rule_branches: True to apply the CEP load rule
     :param alpha_threshold: minimum N-1 exchange sensitivity for a branch to be monitored
     :param alpha_n1: N-1 exchange sensitivities, branches x outaged branches
+    :param alpha: N exchange sensitivities. When given, the mask follows the 4.8 rule:
+                   monitor_loading and max(|alpha_n|, max|alpha_n1|) above the threshold
     :param structural_ntc: sum of the inter-area ratings
     :param ntc_load_rule: share of the rating a branch may contribute to the exchange
     :return: per-branch flag, True for the branches worth formulating
@@ -1843,12 +1846,16 @@ def get_contingency_monitorable_branches(branch_data_t: PassiveBranchData,
         if alpha_n1.ndim == 2 and alpha_n1.shape[0] == branch_data_t.nelm and alpha_n1.shape[1] > 0:
             alpha_max: Vec = np.max(np.abs(alpha_n1), axis=1)
 
-            candidate: BoolVec = np.ones(branch_data_t.nelm, dtype=bool)
+            # 4.8 parity: one mask for the whole study. A branch is a candidate when the user
+            # flagged it and it is sensitive either in N or in N-1.
+            candidate: BoolVec = np.array(branch_data_t.monitor_loading, dtype=bool)
 
             if monitor_only_sensitive_branches:
+                if alpha is not None:
+                    alpha_max = np.maximum(alpha_max, np.abs(np.asarray(alpha, dtype=float)))
                 candidate = np.logical_and(candidate, alpha_max > alpha_threshold)
             else:
-                # the sensitivity filter is disabled so every branch stays a candidate
+                # the sensitivity filter is disabled; the user flag still applies
                 pass
 
             if monitor_only_ntc_load_rule_branches:
@@ -3348,7 +3355,8 @@ def run_linear_ntc_opf(grid: MultiCircuit,
             alpha_threshold=alpha_threshold,
             alpha_n1=lazy_alpha_n1,
             structural_ntc=float(mip_vars.structural_ntc[t_idx]),
-            ntc_load_rule=ntc_load_rule
+            ntc_load_rule=ntc_load_rule,
+            alpha=alpha
         )
 
         for lazy_branch_m, _lazy_branch_sense in mip_vars.branch_vars.inter_space_branches:

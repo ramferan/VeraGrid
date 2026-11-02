@@ -1302,11 +1302,21 @@ def parse_object_type_from_dataframe(
 
                     if template_elm.device_type == DeviceType.Transformer2WDevice:
                         if property_name == 'control_mode':
+                            # The enum profile overrides the scalar in get_..._at(), so the legacy
+                            # column must be written into both, otherwise the transformer keeps
+                            # reporting Fixed and the phase shifter is never optimised.
+                            def _set_phase_mode(mode) -> None:
+                                elm.tap_phase_control_mode = mode
+                                enum_prof = getattr(elm, 'tap_phase_control_mode_prof', None)
+                                if enum_prof is not None:
+                                    for i_prof in range(int(enum_prof.size())):
+                                        enum_prof[i_prof] = mode
+
                             if "Pf" in property_value:
-                                elm.tap_phase_control_mode = TapPhaseControl.Pf
+                                _set_phase_mode(TapPhaseControl.Pf)
                                 skip = True
                             if "Pt" in property_value:
-                                elm.tap_phase_control_mode = TapPhaseControl.Pt
+                                _set_phase_mode(TapPhaseControl.Pt)
                                 skip = True
                             if "V" in property_value:
                                 elm.tap_module_control_mode = TapModuleControl.Vm
@@ -1320,7 +1330,7 @@ def parse_object_type_from_dataframe(
                                 skip = True
                             if "fixed" in property_value:
                                 elm.tap_module_control_mode = TapModuleControl.fixed
-                                elm.tap_phase_control_mode = TapPhaseControl.fixed
+                                _set_phase_mode(TapPhaseControl.fixed)
                                 skip = True
 
                     if property_name == 'contingency_enabled':
