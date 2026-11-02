@@ -422,6 +422,22 @@ class PulpLpModel(AbstractLpModel):
             print(e)
             status = 1
 
+        if status != self.OPTIMAL and self.solver_type == MIPSolvers.HIGHS:
+            # HiGHS presolve can declare infeasible a feasible LP or MILP that sits exactly on a
+            # limit (degenerate vertex; the NTC Pmode3 model carries the saturation binaries).
+            # Re-solve the same model, with no relaxation of any constraint, without presolve.
+            # A truly infeasible model stays infeasible.
+            try:
+                status_no_presolve = normalize_solve_status(
+                    self.model.solve(solver=HiGHS(mip=self.model.isMIP(), msg=show_logs, presolve="off"))
+                )
+            except (pulp.PulpSolverError, subprocess.CalledProcessError, IndexError, TypeError) as e:
+                self.logger.add_warning(msg="HiGHS retry without presolve failed", value=str(e))
+                status_no_presolve = self.NOT_SOLVED
+            if status_no_presolve == self.OPTIMAL:
+                self.logger.add_warning(msg="HiGHS presolve reported infeasible; optimal without presolve")
+                status = status_no_presolve
+
         if status != self.OPTIMAL:
             self.originally_infeasible = True
 

@@ -967,13 +967,13 @@ def add_linear_branches_formulation(t_idx: int,
                     1190 / 0.05 --> 23.800 MW en la frontera en N
                     23.800 >>>> 5200 --> esta linea no puede ser declarada como limitante en la NTC en N.
                    """
-                monitor_by_load_rule_n = ntc_load_rule * branch_data_t.rates[m] / (alpha[m] + 1e-20) <= structural_ntc
+                monitor_by_load_rule_n = ntc_load_rule * branch_data_t.rates[m] / (abs(alpha[m]) + 1e-20) <= structural_ntc
             else:
                 monitor_by_load_rule_n = True
 
             # Monitoring logic: Exclude branches with not enough sensibility to exchange in N condition
             if monitor_only_sensitive_branches:
-                monitor_by_sensitivity_n = alpha[m] > alpha_threshold
+                monitor_by_sensitivity_n = abs(alpha[m]) > alpha_threshold
             else:
                 monitor_by_sensitivity_n = True
 
@@ -2002,7 +2002,7 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
                         admitted_rows[int(c_new)] = mask_prev
                     mask_prev[rows_new] = True
 
-                lp_model.set_var_bounds(var=transfer, lb=0.0, ub=lp_model.INFINITY)
+                lp_model.set_var_bounds(var=transfer, lb=-lp_model.INFINITY, ub=lp_model.INFINITY)
                 lp_model.minimize(f_obj)
                 status = lp_model.solve(robust=robust, show_logs=verbose > 0, progress_text=progress_text)
                 lazy_round += 1
@@ -2020,7 +2020,8 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
         if status == lp_model.OPTIMAL and len(effort) > 0:
             status = solve_least_control_effort(prob=lp_model, objective=f_obj, transfer=mip_vars.delta_1[t_idx],
                                                 effort=effort, logger=logger, robust=robust,
-                                                show_logs=verbose > 0, progress_text=progress_text)
+                                                show_logs=verbose > 0, progress_text=progress_text,
+                                                transfer_lb=-lp_model.INFINITY)
     else:
         # Other control modes already have their contingency constraints. Among the optima,
         # pick the least control effort so the operating point and its limiting pairs are reproducible.
@@ -2037,7 +2038,8 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
         if status == lp_model.OPTIMAL and len(effort) > 0:
             status = solve_least_control_effort(prob=lp_model, objective=f_obj, transfer=mip_vars.delta_1[t_idx],
                                                 effort=effort, logger=logger, robust=robust,
-                                                show_logs=verbose > 0, progress_text=progress_text)
+                                                show_logs=verbose > 0, progress_text=progress_text,
+                                                transfer_lb=-lp_model.INFINITY)
         else:
             pass  # nothing to choose among the optima, or the first stage failed
 

@@ -2073,7 +2073,8 @@ def solve_least_control_effort(prob: LpModel,
                                logger: Logger,
                                robust: bool,
                                show_logs: bool,
-                               progress_text: Union[None, Callable[[str], None]]) -> int:
+                               progress_text: Union[None, Callable[[str], None]],
+                               transfer_lb: float = 0.0) -> int:
     """
     Second stage. Among the solutions that reach the first stage TTC, take the one with the
     least control effort. This makes the reported operating point and its limiting pairs
@@ -2092,10 +2093,12 @@ def solve_least_control_effort(prob: LpModel,
     :param robust: robust solver mode
     :param show_logs: display the solver logs
     :param progress_text: GUI text callback
+    :param transfer_lb: lower bound the transfer variable was declared with (0 for the regular
+                        formulation, -inf for the strict one, whose transfer is free in sign)
     :return: solver status
     """
     # hold the transfer at its optimum
-    value: float = max(0.0, prob.get_value(transfer))
+    value: float = max(transfer_lb, prob.get_value(transfer))
     prob.set_var_bounds(var=transfer, lb=value, ub=value)
 
     # keep the slacks minimal and, behind them, take the least control effort
@@ -2108,7 +2111,7 @@ def solve_least_control_effort(prob: LpModel,
         # numerical trouble so keep the first stage optimum, which is valid but not unique
         logger.add_warning("Least control effort stage not solved, keeping the first stage optimum",
                            value=prob.status2string(status))
-        prob.set_var_bounds(var=transfer, lb=0.0, ub=prob.INFINITY)
+        prob.set_var_bounds(var=transfer, lb=transfer_lb, ub=prob.INFINITY)
         prob.minimize(objective)
         status = prob.solve(robust=robust, show_logs=show_logs, progress_text=progress_text)
     return status
