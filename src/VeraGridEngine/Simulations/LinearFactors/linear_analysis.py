@@ -942,6 +942,8 @@ class LinearMultiContingency:
         "vsc_odf",
         "compensated_vsc_df",
         "compensated_hvdc_df",
+        "hvdc_factors",
+        "vsc_factors",
         "enabled",
     )
 
@@ -956,7 +958,9 @@ class LinearMultiContingency:
                  vsc_odf: sp.csc_matrix,
                  injections_factor: Vec,
                  compensated_vsc_df: sp.csc_matrix | None = None,
-                 compensated_hvdc_df: sp.csc_matrix | None = None):
+                 compensated_hvdc_df: sp.csc_matrix | None = None,
+                 hvdc_factors: Vec | None = None,
+                 vsc_factors: Vec | None = None):
         """
         Linear multi contingency object
         :param branch_indices: contingency branch indices.
@@ -1003,6 +1007,10 @@ class LinearMultiContingency:
         self.hvdc_odf = hvdc_odf
         self.vsc_odf = vsc_odf
 
+        # partial power outage / capacity factors (1.0 = 100% loss)
+        self.hvdc_factors: Vec = hvdc_factors if hvdc_factors is not None else np.ones(len(hvdc_indices), dtype=float)
+        self.vsc_factors: Vec = vsc_factors if vsc_factors is not None else np.ones(len(vsc_indices), dtype=float)
+
         # post-contingency converter distribution factors for corrective N-1 (may be None if not requested)
         self.compensated_vsc_df: sp.csc_matrix | None = compensated_vsc_df
         self.compensated_hvdc_df: sp.csc_matrix | None = compensated_hvdc_df
@@ -1041,10 +1049,12 @@ class LinearMultiContingency:
             flow += self.mlodf_factors @ base_branches_flow[self.branch_indices]
 
         if len(self.hvdc_indices) and hvdc_flow is not None:
-            flow += self.hvdc_odf @ hvdc_flow[self.hvdc_indices]
+            h_loss = self.hvdc_factors * hvdc_flow[self.hvdc_indices]
+            flow += self.hvdc_odf @ h_loss
 
         if len(self.vsc_indices) and vsc_flow is not None:
-            flow += self.vsc_odf @ vsc_flow[self.vsc_indices]
+            v_loss = self.vsc_factors * vsc_flow[self.vsc_indices]
+            flow += self.vsc_odf @ v_loss
 
         if len(self.bus_indices):
             injection_delta = injections[self.bus_indices]
@@ -1079,13 +1089,15 @@ class LinearMultiContingency:
                 flow[block_idx] += inc[block_idx]
 
         if len(self.hvdc_indices) > 0 and hvdc_flow is not None:
-            inc, block_idx = lpDot1D_changes(self.hvdc_odf, hvdc_flow[self.hvdc_indices], row_filter)
+            hvdc_loss = self.hvdc_factors * hvdc_flow[self.hvdc_indices]
+            inc, block_idx = lpDot1D_changes(self.hvdc_odf, hvdc_loss, row_filter)
             if len(block_idx) > 0:
                 mask[block_idx] = True
                 flow[block_idx] += inc[block_idx]
 
         if len(self.vsc_indices) > 0 and vsc_flow is not None:
-            inc, block_idx = lpDot1D_changes(self.vsc_odf, vsc_flow[self.vsc_indices], row_filter)
+            vsc_loss = self.vsc_factors * vsc_flow[self.vsc_indices]
+            inc, block_idx = lpDot1D_changes(self.vsc_odf, vsc_loss, row_filter)
             if len(block_idx) > 0:
                 mask[block_idx] = True
                 flow[block_idx] += inc[block_idx]
@@ -1134,6 +1146,8 @@ class ContingencyIndices:
         "vsc_contingency_indices",
         "bus_contingency_indices",
         "injections_factors",
+        "hvdc_factors",
+        "vsc_factors",
     )
 
     def __init__(self,
@@ -1161,6 +1175,8 @@ class ContingencyIndices:
         vsc_contingency_indices_list = list()
         bus_contingency_indices_list = list()
         injections_factors_list = list()
+        hvdc_factors_list = list()
+        vsc_factors_list = list()
 
         # apply the contingencies
         for cnt in contingencies:
@@ -1171,11 +1187,13 @@ class ContingencyIndices:
                     hvdc_idx = hvdc_dict.get(cnt.device_idtag, None)
                     if hvdc_idx is not None:
                         hvdc_contingency_indices_list.append(hvdc_idx)
+                        hvdc_factors_list.append(1.0)
 
                 elif cnt.tpe == DeviceType.VscDevice:
                     vsc_idx = vsc_dict.get(cnt.device_idtag, None)
                     if vsc_idx is not None:
                         vsc_contingency_indices_list.append(vsc_idx)
+                        vsc_factors_list.append(1.0)
 
                 elif cnt.tpe in [DeviceType.GeneratorDevice,
                                  DeviceType.BatteryDevice,
@@ -1200,13 +1218,25 @@ class ContingencyIndices:
                         print(f"contingency device {cnt.device_type.value}:{cnt.device_idtag} not found")
 
             elif cnt.prop == ContingencyOperationTypes.PowerPercentage:
-                # this can only be an injection device
-                bus_idx = injections_bus_index_dict.get(cnt.device_idtag, None)
-                if bus_idx is not None:
-                    bus_contingency_indices_list.append(bus_idx)
-                    injections_factors_list.append(cnt.value / 100.0)
+                if cnt.tpe == DeviceType.HVDCLineDevice:
+                    hvdc_idx = hvdc_dict.get(cnt.device_idtag, None)
+                    if hvdc_idx is not None:
+                        hvdc_contingency_indices_list.append(hvdc_idx)
+                        hvdc_factors_list.append(cnt.value / 100.0)
+                elif cnt.tpe == DeviceType.VscDevice:
+                    vsc_idx = vsc_dict.get(cnt.device_idtag, None)
+                    if vsc_idx is not None:
+                        vsc_contingency_indices_list.append(vsc_idx)
+                        vsc_factors_list.append(cnt.value / 100.0)
+                elif cnt.tpe in [DeviceType.LineDevice, DeviceType.Transformer2WDevice, DeviceType.WindingDevice]:
+                    print(f"Warning: PowerPercentage is not supported for AC branch {cnt.device_idtag}. Ignored.")
                 else:
-                    print(f"contingency generator {cnt.device_idtag} not found")
+                    bus_idx = injections_bus_index_dict.get(cnt.device_idtag, None)
+                    if bus_idx is not None:
+                        bus_contingency_indices_list.append(bus_idx)
+                        injections_factors_list.append(cnt.value / 100.0)
+                    else:
+                        print(f"contingency generator {cnt.device_idtag} not found")
             else:
                 print(f'Unknown branch contingency property {cnt.prop} at {cnt.name} {cnt.idtag}')
 
@@ -1215,6 +1245,8 @@ class ContingencyIndices:
         self.vsc_contingency_indices: IntVec = np.array(vsc_contingency_indices_list, dtype=int)
         self.bus_contingency_indices: IntVec = np.array(bus_contingency_indices_list, dtype=int)
         self.injections_factors: Vec = np.array(injections_factors_list, dtype=float)
+        self.hvdc_factors: Vec = np.array(hvdc_factors_list, dtype=float)
+        self.vsc_factors: Vec = np.array(vsc_factors_list, dtype=float)
 
 
 class LinearMultiContingencies:
@@ -1452,7 +1484,9 @@ class LinearMultiContingencies:
                     hvdc_odf=hvdc_odf,
                     vsc_odf=vsc_odf,
                     compensated_vsc_df=compensated_vsc_df,
-                    compensated_hvdc_df=compensated_hvdc_df
+                    compensated_hvdc_df=compensated_hvdc_df,
+                    hvdc_factors=contingency_indices.hvdc_factors,
+                    vsc_factors=contingency_indices.vsc_factors
                 )
             )
 

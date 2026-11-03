@@ -2175,11 +2175,11 @@ def screen_contingency_violations(multi_contingencies: List[LinearMultiContingen
             else:
                 pass  # no branch outages in this group
             if len(contingency.hvdc_indices) > 0:
-                fc += contingency.hvdc_odf @ hvdc0[contingency.hvdc_indices]
+                fc += contingency.hvdc_odf @ (contingency.hvdc_factors * hvdc0[contingency.hvdc_indices])
             else:
                 pass  # no HVDC outages in this group
             if len(contingency.vsc_indices) > 0:
-                fc += contingency.vsc_odf @ vsc0[contingency.vsc_indices]
+                fc += contingency.vsc_odf @ (contingency.vsc_factors * vsc0[contingency.vsc_indices])
             else:
                 pass  # no VSC outages in this group
             if len(contingency.bus_indices) > 0:
@@ -2349,12 +2349,12 @@ def fill_worst_contingency_per_branch(grid: MultiCircuit,
                     pass  # this group outages no AC branch
 
                 if len(contingency.hvdc_indices) > 0 and hvdc0.size > 0:
-                    fc = fc + contingency.hvdc_odf @ hvdc0[contingency.hvdc_indices]
+                    fc = fc + contingency.hvdc_odf @ (contingency.hvdc_factors * hvdc0[contingency.hvdc_indices])
                 else:
                     pass  # this group outages no HVDC
 
                 if len(contingency.vsc_indices) > 0 and vsc0.size > 0:
-                    fc = fc + contingency.vsc_odf @ vsc0[contingency.vsc_indices]
+                    fc = fc + contingency.vsc_odf @ (contingency.vsc_factors * vsc0[contingency.vsc_indices])
                 else:
                     pass  # this group outages no VSC
 
