@@ -2175,11 +2175,15 @@ def screen_contingency_violations(multi_contingencies: List[LinearMultiContingen
             else:
                 pass  # no branch outages in this group
             if len(contingency.hvdc_indices) > 0:
-                fc += contingency.hvdc_odf @ (contingency.hvdc_factors * hvdc0[contingency.hvdc_indices])
+                h_flows = hvdc0[contingency.hvdc_indices]
+                h_loss = np.maximum(0.0, np.abs(h_flows) - contingency.hvdc_surviving_rates) * np.sign(h_flows)
+                fc += contingency.hvdc_odf @ h_loss
             else:
                 pass  # no HVDC outages in this group
             if len(contingency.vsc_indices) > 0:
-                fc += contingency.vsc_odf @ (contingency.vsc_factors * vsc0[contingency.vsc_indices])
+                v_flows = vsc0[contingency.vsc_indices]
+                v_loss = np.maximum(0.0, np.abs(v_flows) - contingency.vsc_surviving_rates) * np.sign(v_flows)
+                fc += contingency.vsc_odf @ v_loss
             else:
                 pass  # no VSC outages in this group
             if len(contingency.bus_indices) > 0:
@@ -2349,12 +2353,16 @@ def fill_worst_contingency_per_branch(grid: MultiCircuit,
                     pass  # this group outages no AC branch
 
                 if len(contingency.hvdc_indices) > 0 and hvdc0.size > 0:
-                    fc = fc + contingency.hvdc_odf @ (contingency.hvdc_factors * hvdc0[contingency.hvdc_indices])
+                    h_flows = hvdc0[contingency.hvdc_indices]
+                    h_loss = np.maximum(0.0, np.abs(h_flows) - contingency.hvdc_surviving_rates) * np.sign(h_flows)
+                    fc = fc + contingency.hvdc_odf @ h_loss
                 else:
                     pass  # this group outages no HVDC
 
                 if len(contingency.vsc_indices) > 0 and vsc0.size > 0:
-                    fc = fc + contingency.vsc_odf @ (contingency.vsc_factors * vsc0[contingency.vsc_indices])
+                    v_flows = vsc0[contingency.vsc_indices]
+                    v_loss = np.maximum(0.0, np.abs(v_flows) - contingency.vsc_surviving_rates) * np.sign(v_flows)
+                    fc = fc + contingency.vsc_odf @ v_loss
                 else:
                     pass  # this group outages no VSC
 

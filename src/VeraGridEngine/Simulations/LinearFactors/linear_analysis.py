@@ -944,6 +944,8 @@ class LinearMultiContingency:
         "compensated_hvdc_df",
         "hvdc_factors",
         "vsc_factors",
+        "hvdc_surviving_rates",
+        "vsc_surviving_rates",
         "enabled",
     )
 
@@ -960,7 +962,9 @@ class LinearMultiContingency:
                  compensated_vsc_df: sp.csc_matrix | None = None,
                  compensated_hvdc_df: sp.csc_matrix | None = None,
                  hvdc_factors: Vec | None = None,
-                 vsc_factors: Vec | None = None):
+                 vsc_factors: Vec | None = None,
+                 hvdc_surviving_rates: Vec | None = None,
+                 vsc_surviving_rates: Vec | None = None):
         """
         Linear multi contingency object
         :param branch_indices: contingency branch indices.
@@ -1011,6 +1015,10 @@ class LinearMultiContingency:
         self.hvdc_factors: Vec = hvdc_factors if hvdc_factors is not None else np.ones(len(hvdc_indices), dtype=float)
         self.vsc_factors: Vec = vsc_factors if vsc_factors is not None else np.ones(len(vsc_indices), dtype=float)
 
+        # surviving ratings in p.u. after contingency
+        self.hvdc_surviving_rates: Vec = hvdc_surviving_rates if hvdc_surviving_rates is not None else np.zeros(len(hvdc_indices), dtype=float)
+        self.vsc_surviving_rates: Vec = vsc_surviving_rates if vsc_surviving_rates is not None else np.zeros(len(vsc_indices), dtype=float)
+
         # post-contingency converter distribution factors for corrective N-1 (may be None if not requested)
         self.compensated_vsc_df: sp.csc_matrix | None = compensated_vsc_df
         self.compensated_hvdc_df: sp.csc_matrix | None = compensated_hvdc_df
@@ -1049,11 +1057,13 @@ class LinearMultiContingency:
             flow += self.mlodf_factors @ base_branches_flow[self.branch_indices]
 
         if len(self.hvdc_indices) and hvdc_flow is not None:
-            h_loss = self.hvdc_factors * hvdc_flow[self.hvdc_indices]
+            h_flows = hvdc_flow[self.hvdc_indices]
+            h_loss = np.maximum(0.0, np.abs(h_flows) - self.hvdc_surviving_rates) * np.sign(h_flows)
             flow += self.hvdc_odf @ h_loss
 
         if len(self.vsc_indices) and vsc_flow is not None:
-            v_loss = self.vsc_factors * vsc_flow[self.vsc_indices]
+            v_flows = vsc_flow[self.vsc_indices]
+            v_loss = np.maximum(0.0, np.abs(v_flows) - self.vsc_surviving_rates) * np.sign(v_flows)
             flow += self.vsc_odf @ v_loss
 
         if len(self.bus_indices):
@@ -1089,15 +1099,31 @@ class LinearMultiContingency:
                 flow[block_idx] += inc[block_idx]
 
         if len(self.hvdc_indices) > 0 and hvdc_flow is not None:
-            hvdc_loss = self.hvdc_factors * hvdc_flow[self.hvdc_indices]
-            inc, block_idx = lpDot1D_changes(self.hvdc_odf, hvdc_loss, row_filter)
+            hvdc_loss_list = []
+            for k, h_idx in enumerate(self.hvdc_indices):
+                r_surv = float(self.hvdc_surviving_rates[k])
+                if r_surv <= 0.0:
+                    hvdc_loss_list.append(hvdc_flow[h_idx])
+                else:
+                    hvdc_loss_list.append(hvdc_flow[h_idx] - r_surv)
+            arr_hvdc = np.empty(len(hvdc_loss_list), dtype=object)
+            arr_hvdc[:] = hvdc_loss_list
+            inc, block_idx = lpDot1D_changes(self.hvdc_odf, arr_hvdc, row_filter)
             if len(block_idx) > 0:
                 mask[block_idx] = True
                 flow[block_idx] += inc[block_idx]
 
         if len(self.vsc_indices) > 0 and vsc_flow is not None:
-            vsc_loss = self.vsc_factors * vsc_flow[self.vsc_indices]
-            inc, block_idx = lpDot1D_changes(self.vsc_odf, vsc_loss, row_filter)
+            vsc_loss_list = []
+            for k, v_idx in enumerate(self.vsc_indices):
+                r_surv = float(self.vsc_surviving_rates[k])
+                if r_surv <= 0.0:
+                    vsc_loss_list.append(vsc_flow[v_idx])
+                else:
+                    vsc_loss_list.append(vsc_flow[v_idx] - r_surv)
+            arr_vsc = np.empty(len(vsc_loss_list), dtype=object)
+            arr_vsc[:] = vsc_loss_list
+            inc, block_idx = lpDot1D_changes(self.vsc_odf, arr_vsc, row_filter)
             if len(block_idx) > 0:
                 mask[block_idx] = True
                 flow[block_idx] += inc[block_idx]
@@ -1471,6 +1497,19 @@ class LinearMultiContingencies:
                 # corrective N-1 was not requested: keep the converter factors as None (preventive behaviour)
                 pass
 
+            # compute surviving ratings after contingency
+            hvdc_surviving_rates = []
+            for h_idx, frac in zip(contingency_indices.hvdc_contingency_indices, contingency_indices.hvdc_factors):
+                rate_mw = float(self.grid.hvdc_lines[h_idx].rate)
+                rate_pu = rate_mw / lin.Sbase
+                hvdc_surviving_rates.append(rate_pu * (1.0 - frac))
+
+            vsc_surviving_rates = []
+            for v_idx, frac in zip(contingency_indices.vsc_contingency_indices, contingency_indices.vsc_factors):
+                rate_mw = float(self.grid.vsc_converters[v_idx].rate)
+                rate_pu = rate_mw / lin.Sbase
+                vsc_surviving_rates.append(rate_pu * (1.0 - frac))
+
             # append values
             self.multi_contingencies.append(
                 LinearMultiContingency(
@@ -1486,7 +1525,9 @@ class LinearMultiContingencies:
                     compensated_vsc_df=compensated_vsc_df,
                     compensated_hvdc_df=compensated_hvdc_df,
                     hvdc_factors=contingency_indices.hvdc_factors,
-                    vsc_factors=contingency_indices.vsc_factors
+                    vsc_factors=contingency_indices.vsc_factors,
+                    hvdc_surviving_rates=np.array(hvdc_surviving_rates, dtype=float),
+                    vsc_surviving_rates=np.array(vsc_surviving_rates, dtype=float)
                 )
             )
 
