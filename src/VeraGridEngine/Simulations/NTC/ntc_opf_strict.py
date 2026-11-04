@@ -1013,7 +1013,8 @@ def add_preventive_contingency_formulation_strict(t_idx: int,
                                                   alpha_n1_abs: Mat,
                                                   prob: OrToolsLpModel,
                                                   rows_to_limit: Union[IntVec, None] = None,
-                                                  branch_terms: Union[Dict[int, LpExp], None] = None) -> float:
+                                                  branch_terms: Union[Dict[int, LpExp], None] = None,
+                                                  alpha: Vec | None = None) -> float:
     """
     Formulate a single contingency with the preventive N-1 rule in the strict formulation
 
@@ -1054,20 +1055,18 @@ def add_preventive_contingency_formulation_strict(t_idx: int,
                 # the load-rule filter is disabled: keep the branch as a candidate
                 monitor_by_load_rule_n1 = True
 
-            # Monitoring logic: exclude branches not sensitive enough to the exchange 
+            # Monitoring logic: exclude branches not sensitive enough to the exchange (4.8 rule)
             if monitor_only_sensitive_branches:
-                monitor_by_sensitivity_n1: bool = True
-                for c_br in contingency.branch_indices:
-                    monitor_by_sensitivity_n1 = (monitor_by_sensitivity_n1 and
-                                                 (alpha_n1_abs[m, c_br] > alpha_threshold))
+                sens_n = alpha is not None and abs(alpha[m]) > alpha_threshold
+                sens_n1 = False
+                if len(contingency.branch_indices) > 0 and alpha_n1_abs is not None:
+                    for c_br in contingency.branch_indices:
+                        if alpha_n1_abs[m, c_br] > alpha_threshold:
+                            sens_n1 = True
+                            break
+                monitor_by_sensitivity_n1 = sens_n or sens_n1
             else:
                 # the sensitivity filter is disabled: keep the branch as a candidate
-                monitor_by_sensitivity_n1 = True
-
-            # When the lazy loop already admitted this row, the single mask was applied upstream:
-            # do not filter it again per contingency.
-            if rows_to_limit is not None:
-                monitor_by_load_rule_n1 = True
                 monitor_by_sensitivity_n1 = True
 
             # DC branches are always monitored because their AC-PTDF sensitivity alpha is zero
@@ -1230,7 +1229,8 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                 structural_ntc=structural_ntc, ntc_load_rule=ntc_load_rule,
                 alpha_threshold=alpha_threshold, alpha_n1_abs=alpha_n1_abs, prob=prob,
                 rows_to_limit=rows_to_limit,
-                branch_terms=branch_terms if len(branch_terms) > 0 else None)
+                branch_terms=branch_terms if len(branch_terms) > 0 else None,
+                alpha=alpha)
 
     return f_obj
 
@@ -1963,7 +1963,10 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
                 con_rates_pu=con_rates_pu_lazy,
                 tol_pu=1e-4,
                 at_risk_fraction=0.9,
-                delta_flow_addons=delta_addons
+                delta_flow_addons=delta_addons,
+                alpha=alpha,
+                alpha_n1=lazy_alpha_n1,
+                alpha_threshold=alpha_threshold
             )
 
             if len(admissions) == 0:

@@ -2134,7 +2134,10 @@ def screen_contingency_violations(multi_contingencies: List[LinearMultiContingen
                                   con_rates_pu: Vec,
                                   tol_pu: float,
                                   at_risk_fraction: float,
-                                  delta_flow_addons: Union[Dict[int, Vec], None] = None) -> List[Tuple[int, IntVec]]:
+                                  delta_flow_addons: Union[Dict[int, Vec], None] = None,
+                                  alpha: Union[Vec, None] = None,
+                                  alpha_n1: Union[Mat, None] = None,
+                                  alpha_threshold: float = 0.05) -> List[Tuple[int, IntVec]]:
     """
     Numerically evaluate every contingency group against a solved operating point and
     return, per violated group, the rows to admit into the LP. This accelerates the
@@ -2153,6 +2156,9 @@ def screen_contingency_violations(multi_contingencies: List[LinearMultiContingen
                              is admitted preventively along with the violated rows
     :param delta_flow_addons: per group index, the numeric flow change caused by that
                               group's solved corrective Δ set-points (compensated DF · Δ)
+    :param alpha: exchange sensitivities in N condition
+    :param alpha_n1: exchange sensitivities in N-1 condition (branches x outaged branches)
+    :param alpha_threshold: minimum exchange sensitivity to consider a branch candidate
     :return: list of (group index, row indices to admit)
     """
     # Check every monitorable row at the solved operating point, regardless of initial loading.
@@ -2167,6 +2173,13 @@ def screen_contingency_violations(multi_contingencies: List[LinearMultiContingen
             pending: BoolVec = monitorable
         else:
             pending = monitorable & (~already)
+
+        # 4.8 Parity: only rows sensitive in N or in this specific N-1 can bind
+        if alpha is not None:
+            sens_mask = np.abs(alpha) > alpha_threshold
+            if alpha_n1 is not None and len(contingency.branch_indices) > 0:
+                sens_mask = sens_mask | np.any(np.abs(alpha_n1[:, contingency.branch_indices]) > alpha_threshold, axis=1)
+            pending = pending & sens_mask
 
         if np.any(pending):
             fc: Vec = f0.copy()
@@ -3402,7 +3415,10 @@ def run_linear_ntc_opf(grid: MultiCircuit,
                 con_rates_pu=con_rates_pu_lazy,
                 tol_pu=1e-4,
                 at_risk_fraction=0.9,
-                delta_flow_addons=delta_addons
+                delta_flow_addons=delta_addons,
+                alpha=alpha,
+                alpha_n1=lazy_alpha_n1,
+                alpha_threshold=alpha_threshold
             )
 
             if len(admissions) == 0:

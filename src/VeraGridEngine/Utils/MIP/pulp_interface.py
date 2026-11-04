@@ -14,6 +14,8 @@ from numbers import Real
 from typing import List, Union, Callable, Any
 import platform
 import subprocess
+import os
+import tempfile
 import pulp
 from pulp import LpVariable as LpVar, LpConstraint as LpCst, LpAffineExpression as LpExp
 from pulp import (HiGHS,
@@ -405,6 +407,42 @@ class PulpLpModel(AbstractLpModel):
         if progress_text is not None:
             progress_text(f"Solving model with {self.solver_type.value}...")
 
+        # If HiGHS is selected and highspy is available, solve directly via LP file.
+        # This completely avoids PuLP's in-memory HiGHS binding bugs (which misclassifies
+        # binary saturation variables and gets trapped in degenerate non-optimal vertices).
+        if self.solver_type == MIPSolvers.HIGHS:
+            try:
+                import highspy
+                with tempfile.NamedTemporaryFile(suffix='.lp', delete=False) as f:
+                    lp_path = f.name
+                self.model.writeLP(lp_path)
+                try:
+                    h = highspy.Highs()
+                    h.readModel(lp_path)
+                    h.setOptionValue('log_to_console', show_logs)
+                    h.run()
+                    model_status = h.getModelStatus()
+                    if model_status == highspy.HighsModelStatus.kOptimal:
+                        sol = h.getSolution()
+                        col_names = h.getLp().col_names_
+                        v_dict = self.model.variablesDict()
+                        for name, val in zip(col_names, sol.col_value):
+                            v = v_dict.get(name)
+                            if v is not None:
+                                v.varValue = val
+                        return self.OPTIMAL
+                    elif model_status == highspy.HighsModelStatus.kInfeasible:
+                        self.originally_infeasible = True
+                        return self.INFEASIBLE
+                    else:
+                        self.originally_infeasible = True
+                        return self.NOT_SOLVED
+                finally:
+                    if os.path.exists(lp_path):
+                        os.remove(lp_path)
+            except Exception as e:
+                self.logger.add_warning(msg="HiGHS file solve failed, falling back to standard PuLP", value=str(e))
+
         # solve the model
         try:
             solver = self.get_solver(show_logs=show_logs)
@@ -421,22 +459,6 @@ class PulpLpModel(AbstractLpModel):
             print("Index error:")
             print(e)
             status = 1
-
-        if status != self.OPTIMAL and self.solver_type == MIPSolvers.HIGHS:
-            # HiGHS presolve can declare infeasible a feasible LP or MILP that sits exactly on a
-            # limit (degenerate vertex; the NTC Pmode3 model carries the saturation binaries).
-            # Re-solve the same model, with no relaxation of any constraint, without presolve.
-            # A truly infeasible model stays infeasible.
-            try:
-                status_no_presolve = normalize_solve_status(
-                    self.model.solve(solver=HiGHS(mip=self.model.isMIP(), msg=show_logs, presolve="off"))
-                )
-            except (pulp.PulpSolverError, subprocess.CalledProcessError, IndexError, TypeError) as e:
-                self.logger.add_warning(msg="HiGHS retry without presolve failed", value=str(e))
-                status_no_presolve = self.NOT_SOLVED
-            if status_no_presolve == self.OPTIMAL:
-                self.logger.add_warning(msg="HiGHS presolve reported infeasible; optimal without presolve")
-                status = status_no_presolve
 
         if status != self.OPTIMAL:
             self.originally_infeasible = True
