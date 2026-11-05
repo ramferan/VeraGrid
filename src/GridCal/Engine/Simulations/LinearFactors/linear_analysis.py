@@ -319,19 +319,26 @@ def make_lodf_nx(circuit, lodf, force_from_file=False):
     # Create dictionaries to speed up the access
     cg_dict = {cg.idtag: cg for cg in circuit.contingency_groups}
     idx_dict = {e.idtag: i for i, e in enumerate(circuit.get_branches())}
+    nbr_lodf = lodf.shape[1]
 
     # Initialize c_idx list for each contingency groups
     for cg in circuit.contingency_groups:
         cg.c_idx = list()
 
-    # Loop for contingencies to fill group c_idx
+    # Loop for contingencies to fill group c_idx (only AC branches in LODF matrix)
     for c in circuit.contingencies:
-        cg_dict[c.group.idtag].c_idx.append(idx_dict[c.device_idtag])
+        if c.device_idtag in idx_dict:
+            idx = idx_dict[c.device_idtag]
+            if idx < nbr_lodf:
+                cg_dict[c.group.idtag].c_idx.append(idx)
 
     for cg in circuit.contingency_groups:
 
         # Sort unique c_idx
         cg.c_idx = list(sorted(set(cg.c_idx), reverse=False))
+
+        if len(cg.c_idx) == 0:
+            continue
 
         # Compute LODF vector
         L = lodf[:, cg.c_idx]  # Take the columns of the LODF associated with the contingencies
