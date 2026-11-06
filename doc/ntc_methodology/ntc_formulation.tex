@@ -81,6 +81,31 @@ En estado base ($N$) y bajo contingencia ($N-1$):
 \end{equation}
 sin variables de holgura térmica. La solución obtenida es estrictamente segura.
 
+\subsection{Enlaces HVDC en Pmode3: Estatismo Pasivo y Saturación Física}
+Los enlaces HVDC operando en modo droop angular (Pmode3) no se redespachan a conveniencia del optimizador en el régimen preventivo N-1, sino que siguen su ley de respuesta física pasiva:
+\begin{enumerate}
+    \item \textbf{Régimen Permanente ($N$):} El flujo del enlace responde a la diferencia angular en bornas saturada por su capacidad de transporte:
+    \begin{equation}
+    f_h^0 = \operatorname{clip}\left(P_0 + K_h(\theta_{f_h} - \theta_{t_h}), -R_h, +R_h\right).
+    \end{equation}
+    \item \textbf{Respuesta ante Contingencias de Líneas AC ($N-1$):} El disparo de una línea de alterna $c=(u, v)$ induce un salto angular en la red $\Delta\bm{\theta}^{(c)} = X_{\text{bus}} \Delta\mathbf{P}^{(c)}$. La deformación angular entre bornas del enlace $h$ es:
+    \begin{equation}
+    \Delta\theta_h^{(c)} = x_c \cdot \operatorname{HvdcODF}_{c, h} \cdot \frac{f_c^0}{1 - H_{c,c}}.
+    \end{equation}
+    El enlace reacciona pasivamente siguiendo su estatismo hasta topar con su límite térmico $\pm R_h$:
+    \begin{equation}
+    \Delta f_h^{(c)} = \operatorname{clip}\left(f_h^0 + K_h \Delta\theta_h^{(c)}, -R_h, +R_h\right) - f_h^0.
+    \end{equation}
+    Esta variación induce a su vez una inyección en la red de alterna mediante los factores de distribución:
+    \begin{equation}
+    f_m^{(c)} = f_m^0 + \sum_{k \in c} \operatorname{MLODF}_{m, k} \cdot f_k^0 + \sum_h \operatorname{HvdcODF}_{m, h} \cdot \Delta f_h^{(c)}.
+    \end{equation}
+    \item \textbf{Contingencia de Polo HVDC (Spillover de Bipolo):} Ante el disparo de un polo en un enlace bipolar, la capacidad remanente queda acotada a la mitad ($R_{\text{surviving}} = R_h / n_{\text{polos}}$). El polo superviviente satura en $R_{\text{surviving}}$ y el excedente no evacuable se redistribuye forzosamente por la red de alterna:
+    \begin{equation}
+    \Delta f_h^{\text{loss}} = \max\left(0, |f_h^0| - R_{\text{surviving}}\right) \cdot \operatorname{sign}(f_h^0), \qquad \Delta \bm{f}_{\text{AC}} = \operatorname{HvdcODF}_h \cdot \Delta f_h^{\text{loss}}.
+    \end{equation}
+\end{enumerate}
+
 \section{Acciones Remediales Post-Contingencia (Remedial Actions)}
 
 \subsection{Modulación Rápida de Convertidores HVDC (Emergency Power Control)}
