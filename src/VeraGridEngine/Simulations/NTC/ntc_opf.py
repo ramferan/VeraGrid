@@ -2185,6 +2185,12 @@ def screen_contingency_violations(multi_contingencies: List[LinearMultiContingen
             fc: Vec = f0.copy()
             if len(contingency.branch_indices) > 0:
                 fc += contingency.mlodf_factors @ f0[contingency.branch_indices]
+                if (contingency.hvdc_droop_factors is not None and contingency.hvdc_rates is not None
+                        and contingency.hvdc_df is not None):
+                    dh_droop = contingency.hvdc_droop_factors @ f0[contingency.branch_indices]
+                    h_post = np.clip(hvdc0 + dh_droop, -contingency.hvdc_rates, contingency.hvdc_rates)
+                    delta_h = h_post - hvdc0
+                    fc += contingency.hvdc_df @ delta_h
             else:
                 pass  # no branch outages in this group
             if len(contingency.hvdc_indices) > 0:
@@ -2362,6 +2368,14 @@ def fill_worst_contingency_per_branch(grid: MultiCircuit,
                 fc: Vec = f0.copy()
                 if len(contingency.branch_indices) > 0:
                     fc = fc + contingency.mlodf_factors @ f0[contingency.branch_indices]
+                    if (contingency.hvdc_droop_factors is not None and contingency.hvdc_rates is not None
+                            and contingency.hvdc_df is not None):
+                        dh_droop = contingency.hvdc_droop_factors @ f0[contingency.branch_indices]
+                        sbase_val: float = float(getattr(grid, "Sbase", 100.0))
+                        rates_mw: Vec = contingency.hvdc_rates * sbase_val
+                        h_post: Vec = np.clip(hvdc0 + dh_droop, -rates_mw, rates_mw)
+                        delta_h: Vec = h_post - hvdc0
+                        fc = fc + contingency.hvdc_df @ delta_h
                 else:
                     pass  # this group outages no AC branch
 
@@ -2468,7 +2482,8 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                                                   group_rows: Union[Dict[int, IntVec], None] = None,
                                                   vsc_delta_store: Union[Dict[int, Dict[int, LpVar]], None] = None,
                                                   hvdc_delta_store: Union[Dict[int, Dict[int, LpVar]], None] = None,
-                                                  preservation_done: Union[set, None] = None):
+                                                  preservation_done: Union[set, None] = None,
+                                                   droop_addons: Union[Dict[int, Vec], None] = None):
     """
     Formulate the branches
     :param t_idx: time index
@@ -2540,12 +2555,14 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
             # (exchange preservation), thus saving time.
             corrective_rows_c = corrective_rows & (enforce_rows_c | boundary_rows)
 
+        addon_c = droop_addons.get(int(c), None) if droop_addons is not None else None
         contingency_flows, mask, changed_idx = contingency.get_lp_contingency_flows(
             base_flow=branch_vars.flows[t_idx, :],
             injections=bus_vars.Pinj[t_idx, :],
             hvdc_flow=hvdc_vars.flows[t_idx, :],
             vsc_flow=vsc_vars.flows[t_idx, :],
-            row_filter=row_filter_c
+            row_filter=row_filter_c,
+            droop_addon=addon_c
         )
 
         if corrective_contingencies:
@@ -3425,10 +3442,15 @@ def run_linear_ntc_opf(grid: MultiCircuit,
                 # clean screening pass as the solution survives every contingency group
                 clean_pass = True
             else:
-                # per group row lookup for the formulation call
+                # per group row lookup and saturated droop addon for the formulation call
                 group_rows_now: Dict[int, IntVec] = dict()
+                droop_addons_now: Dict[int, Vec] = dict()
                 for c_new, rows_new in admissions:
                     group_rows_now[int(c_new)] = rows_new
+                    c_obj = lazy_mctg.multi_contingencies[int(c_new)]
+                    addon = c_obj.compute_hvdc_droop_addon(base_branch_flow=f0_num, hvdc_flow=hvdc0_num)
+                    if addon is not None:
+                        droop_addons_now[int(c_new)] = addon
 
                 f_obj += add_linear_branches_contingencies_formulation(
                     t_idx=t_idx,
@@ -3453,7 +3475,8 @@ def run_linear_ntc_opf(grid: MultiCircuit,
                     group_rows=group_rows_now,
                     vsc_delta_store=vsc_delta_store,
                     hvdc_delta_store=hvdc_delta_store,
-                    preservation_done=preservation_done
+                    preservation_done=preservation_done,
+                    droop_addons=droop_addons_now
                 )
 
                 # record the admitted rows so the screening skips them from now on

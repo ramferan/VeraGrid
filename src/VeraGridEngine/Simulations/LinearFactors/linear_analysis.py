@@ -624,6 +624,12 @@ class LinearAnalysis:
         "Sbase",
         "tau_flows",
         "tau_injections",
+        "branch_X",
+        "branch_from",
+        "branch_to",
+        "hvdc_rates_pu",
+        "hvdc_droop_pu",
+        "hvdc_active_pmode3",
     )
 
     def __init__(self,
@@ -771,6 +777,20 @@ class LinearAnalysis:
             self.VscODF[:, k] = self.PTDF[:, f] - self.PTDF[:, t]
 
         # self.VscDF = self.PTDF @ A_vsc
+
+        # Cache branch properties for AC-contingency reactive droop calculations
+        self.branch_X = nc.passive_branch_data.X.copy()
+        self.branch_from = nc.passive_branch_data.F.copy()
+        self.branch_to = nc.passive_branch_data.T.copy()
+
+        # Cache HVDC Pmode3 droop and ratings
+        self.hvdc_rates_pu = nc.hvdc_data.rates / nc.Sbase
+        self.hvdc_droop_pu = np.zeros(n_hvdc, dtype=float)
+        self.hvdc_active_pmode3 = np.zeros(n_hvdc, dtype=bool)
+        for h in range(n_hvdc):
+            if nc.hvdc_data.active[h] and nc.hvdc_data.control_mode_int[h] == HvdcControlType.type_0_free.idx():
+                self.hvdc_active_pmode3[h] = True
+                self.hvdc_droop_pu[h] = nc.hvdc_data.get_angle_droop_in_pu_rad_at(h, nc.Sbase)
 
     def get_transfer_limits(self, flows: np.ndarray, rates: Vec):
         """
@@ -946,6 +966,10 @@ class LinearMultiContingency:
         "vsc_factors",
         "hvdc_surviving_rates",
         "vsc_surviving_rates",
+        "hvdc_droop_factors",
+        "effective_droop_lodf",
+        "hvdc_rates",
+        "hvdc_df",
         "enabled",
     )
 
@@ -964,7 +988,11 @@ class LinearMultiContingency:
                  hvdc_factors: Vec | None = None,
                  vsc_factors: Vec | None = None,
                  hvdc_surviving_rates: Vec | None = None,
-                 vsc_surviving_rates: Vec | None = None):
+                 vsc_surviving_rates: Vec | None = None,
+                 hvdc_droop_factors: Mat | None = None,
+                 effective_droop_lodf: sp.csc_matrix | None = None,
+                 hvdc_rates: Vec | None = None,
+                 hvdc_df: Mat | None = None):
         """
         Linear multi contingency object
         :param branch_indices: contingency branch indices.
@@ -1023,6 +1051,12 @@ class LinearMultiContingency:
         self.compensated_vsc_df: sp.csc_matrix | None = compensated_vsc_df
         self.compensated_hvdc_df: sp.csc_matrix | None = compensated_hvdc_df
 
+        # passive Pmode3 HVDC droop coupling for AC branch outages
+        self.hvdc_droop_factors: Mat | None = hvdc_droop_factors
+        self.effective_droop_lodf: sp.csc_matrix | None = effective_droop_lodf
+        self.hvdc_rates: Vec | None = hvdc_rates
+        self.hvdc_df: Mat | None = hvdc_df
+
         # store flag for contingency emptyness
         # self.enabled: bool = (self.mlodf_factors.nnz > 0
         #                       or self.compensated_ptdf_factors.nnz > 0
@@ -1056,6 +1090,13 @@ class LinearMultiContingency:
             # MLODF[k, βδ] x Pf0[βδ]
             flow += self.mlodf_factors @ base_branches_flow[self.branch_indices]
 
+            # Physical passive droop response of Pmode3 HVDC links to AC branch outages
+            if self.hvdc_droop_factors is not None and hvdc_flow is not None and self.hvdc_rates is not None and self.hvdc_df is not None:
+                dh_droop = self.hvdc_droop_factors @ base_branches_flow[self.branch_indices]
+                h_post = np.clip(hvdc_flow + dh_droop, -self.hvdc_rates, self.hvdc_rates)
+                delta_h = h_post - hvdc_flow
+                flow += self.hvdc_df @ delta_h
+
         if len(self.hvdc_indices) and hvdc_flow is not None:
             h_flows = hvdc_flow[self.hvdc_indices]
             h_loss = np.maximum(0.0, np.abs(h_flows) - self.hvdc_surviving_rates) * np.sign(h_flows)
@@ -1074,12 +1115,28 @@ class LinearMultiContingency:
 
         return flow
 
+    def compute_hvdc_droop_addon(self, base_branch_flow: Vec, hvdc_flow: Vec) -> Vec | None:
+        """
+        Evaluate the physical saturated droop flow change on AC branches.
+        :param base_branch_flow: solved base AC branch flows (pu)
+        :param hvdc_flow: solved base HVDC link flows (pu)
+        :return: flow increment on AC branches from saturated HVDC droop response (pu)
+        """
+        if (self.hvdc_droop_factors is None or self.hvdc_rates is None
+                or self.hvdc_df is None or len(self.branch_indices) == 0):
+            return None
+        dh_droop = self.hvdc_droop_factors @ base_branch_flow[self.branch_indices]
+        h_post = np.clip(hvdc_flow + dh_droop, -self.hvdc_rates, self.hvdc_rates)
+        delta_h = h_post - hvdc_flow
+        return self.hvdc_df @ delta_h
+
     def get_lp_contingency_flows(self,
                                  base_flow: ObjVec,
                                  injections: ObjVec,
                                  hvdc_flow: ObjVec | None = None,
                                  vsc_flow: ObjVec | None = None,
-                                 row_filter: BoolVec | None = None) -> Tuple[ObjVec, BoolVec, IntVec]:
+                                 row_filter: BoolVec | None = None,
+                                 droop_addon: Vec | None = None) -> Tuple[ObjVec, BoolVec, IntVec]:
         """
         Get contingency flows using the LP interface equations
         :param base_flow: Base branch flows (nbranch)
@@ -1087,6 +1144,7 @@ class LinearMultiContingency:
         :param hvdc_flow: Base HvdcLine flows (n_hvdc)
         :param vsc_flow: Base Vsc flows (n_vsc)
         :param row_filter: per-branch flag, True for the branches the caller is going to constrain.
+        :param droop_addon: numeric AC branch flow offset from saturated Pmode3 HVDC droop response
         :return: New flows (nbranch), the mask of branches that changed, and their indices
         """
         mask: BoolVec = np.zeros(len(base_flow), dtype=bool)
@@ -1097,6 +1155,16 @@ class LinearMultiContingency:
             if len(block_idx) > 0:
                 mask[block_idx] = True
                 flow[block_idx] += inc[block_idx]
+
+            # Physical saturated droop addon from Pmode3 HVDC links responding to AC contingency
+            if droop_addon is not None and len(droop_addon) == len(flow):
+                active_idx = np.flatnonzero(np.abs(droop_addon) > 1e-6)
+                if row_filter is not None:
+                    active_idx = active_idx[row_filter[active_idx]]
+                if len(active_idx) > 0:
+                    mask[active_idx] = True
+                    for idx_a in active_idx:
+                        flow[idx_a] += float(droop_addon[idx_a])
 
         if len(self.hvdc_indices) > 0 and hvdc_flow is not None:
             hvdc_loss_list = []
@@ -1510,6 +1578,43 @@ class LinearMultiContingencies:
                 rate_pu = rate_mw / lin.Sbase
                 vsc_surviving_rates.append(rate_pu * (1.0 - frac))
 
+            # Calculate passive Pmode3 HVDC droop coupling for AC branch outages
+            hvdc_droop_factors: Mat | None = None
+            effective_droop_lodf: sp.csc_matrix | None = None
+            br_con_idx: IntVec = contingency_indices.branch_contingency_indices
+            if len(br_con_idx) > 0 and hasattr(lin, "hvdc_active_pmode3") and np.any(lin.hvdc_active_pmode3):
+                n_h: int = len(lin.hvdc_active_pmode3)
+                n_c: int = len(br_con_idx)
+                droop_mat: Mat = np.zeros((n_h, n_c), dtype=float)
+                if n_c == 1:
+                    c_single: int = int(br_con_idx[0])
+                    x_c: float = float(lin.branch_X[c_single])
+                    f_node: int = int(lin.branch_from[c_single])
+                    t_node: int = int(lin.branch_to[c_single])
+                    denom: float = 1.0 - float(lin.PTDF[c_single, f_node] - lin.PTDF[c_single, t_node])
+                    if abs(denom) < 1e-10:
+                        denom = 1.0
+                    for h_idx in range(n_h):
+                        if lin.hvdc_active_pmode3[h_idx]:
+                            droop_mat[h_idx, 0] = - lin.hvdc_droop_pu[h_idx] * x_c * lin.HvdcDF[c_single, h_idx] / denom
+                else:
+                    X_diag: Vec = lin.branch_X[br_con_idx]
+                    f_nodes: IntVec = lin.branch_from[br_con_idx]
+                    t_nodes: IntVec = lin.branch_to[br_con_idx]
+                    H_block: Mat = lin.PTDF[np.ix_(br_con_idx, t_nodes)] - lin.PTDF[np.ix_(br_con_idx, f_nodes)]
+                    M_block: Mat = np.eye(n_c) + H_block
+                    try:
+                        M_inv: Mat = np.linalg.inv(M_block)
+                    except np.linalg.LinAlgError:
+                        M_inv = np.linalg.pinv(M_block)
+                    for h_idx in range(n_h):
+                        if lin.hvdc_active_pmode3[h_idx]:
+                            droop_mat[h_idx, :] = - lin.hvdc_droop_pu[h_idx] * (lin.HvdcDF[br_con_idx, h_idx] * X_diag) @ M_inv
+
+                hvdc_droop_factors = droop_mat
+                eff_mat: Mat = lin.HvdcDF @ droop_mat
+                effective_droop_lodf = dense_to_csc(eff_mat, threshold=lodf_threshold)
+
             # append values
             self.multi_contingencies.append(
                 LinearMultiContingency(
@@ -1527,7 +1632,11 @@ class LinearMultiContingencies:
                     hvdc_factors=contingency_indices.hvdc_factors,
                     vsc_factors=contingency_indices.vsc_factors,
                     hvdc_surviving_rates=np.array(hvdc_surviving_rates, dtype=float),
-                    vsc_surviving_rates=np.array(vsc_surviving_rates, dtype=float)
+                    vsc_surviving_rates=np.array(vsc_surviving_rates, dtype=float),
+                    hvdc_droop_factors=hvdc_droop_factors,
+                    effective_droop_lodf=effective_droop_lodf,
+                    hvdc_rates=lin.hvdc_rates_pu if hasattr(lin, "hvdc_rates_pu") else None,
+                    hvdc_df=lin.HvdcDF
                 )
             )
 
