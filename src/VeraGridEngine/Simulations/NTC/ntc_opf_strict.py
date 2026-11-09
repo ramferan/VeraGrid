@@ -1219,7 +1219,8 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                 vsc_delta_vars=vsc_deltas_c, hvdc_delta_vars=hvdc_deltas_c,
                 branch_terms=branch_terms)
         else:
-            # preventive N-1: the converters stay at their base-case set-point (hard limits, no slack)
+            # Preventive N-1: hard thermal limits without slacks.
+            # Converter flows are evaluated according to the N-1 contingency model.
             rows_to_limit = None if group_rows is None else group_rows.get(int(c), None)
             f_obj += add_preventive_contingency_formulation_strict(
                 t_idx=t_idx, c=int(c), Sbase=Sbase, contingency=contingency,
