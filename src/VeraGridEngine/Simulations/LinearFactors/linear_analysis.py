@@ -407,8 +407,8 @@ def make_acdc_ptdf(nc: NumericalCircuit,
             # k is in MW/deg, we need it in p.u./rad
             ys = nc.vsc_data.control1_val[k] * 57.295779513 / nc.Sbase
         else:
-            # Non-droop VSCs: small coupling to keep the AC-DC topology visible
-            ys = 0.01
+            # Non-droop VSCs: pure setpoint injections without fictitious AC admittance
+            ys = 0.0
 
         A[f, f] += ys
         A[f, t] -= ys
@@ -426,8 +426,8 @@ def make_acdc_ptdf(nc: NumericalCircuit,
             # angle_droop is in MW/deg, we need it in p.u./rad
             ys = nc.hvdc_data.angle_droop[k] * 57.295779513 / nc.Sbase
         else:
-            # Pset mode: small coupling to keep the AC-DC topology visible
-            ys = 0.01
+            # Pset mode: pure setpoint injections without fictitious AC admittance
+            ys = 0.0
 
         A[f, f] += ys
         A[f, t] -= ys
