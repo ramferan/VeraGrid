@@ -162,7 +162,8 @@ def get_transfer_power_scaling_per_bus(bus_data_t: BusData,
 
     # Evaluate transfer method
     if transfer_method == AvailableTransferMode.InstalledPower:
-        p_ref = pinst_per_bus
+        # Match legacy / physical installed active power capacity (Pmax)
+        p_ref = gen_data_t.get_pmax_per_bus() / Sbase
 
         if skip_generation_limits:
             p_min = np.full(bus_data_t.nbus, -inf_value)
@@ -2030,31 +2031,11 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
                                 effort=effort)
         add_corrective_control_effort(prob=lp_model, vsc_delta_store=vsc_delta_store,
                                       hvdc_delta_store=hvdc_delta_store, counted=set(), effort=effort)
-        if status == lp_model.OPTIMAL and len(effort) > 0:
-            status = solve_least_control_effort(prob=lp_model, objective=f_obj, transfer=mip_vars.delta_1[t_idx],
-                                                effort=effort, logger=logger, robust=robust,
-                                                show_logs=verbose > 0, progress_text=progress_text,
-                                                transfer_lb=-lp_model.INFINITY)
+        # Phase 2 (solve_least_control_effort) retired per project spec
+        pass
     else:
-        # Other control modes already have their contingency constraints. Among the optima,
-        # pick the least control effort so the operating point and its limiting pairs are reproducible.
-        effort: List[LpExp] = list()
-        add_base_control_effort(prob=lp_model, t_idx=t_idx,
-                                branch_data_t=nc.passive_branch_data,
-                                active_branch_data_t=nc.active_branch_data,
-                                branch_vars=mip_vars.branch_vars,
-                                vsc_vars=mip_vars.vsc_vars,
-                                hvdc_vars=mip_vars.hvdc_vars,
-                                effort=effort)
-        add_corrective_control_effort(prob=lp_model, vsc_delta_store=vsc_delta_store,
-                                      hvdc_delta_store=hvdc_delta_store, counted=set(), effort=effort)
-        if status == lp_model.OPTIMAL and len(effort) > 0:
-            status = solve_least_control_effort(prob=lp_model, objective=f_obj, transfer=mip_vars.delta_1[t_idx],
-                                                effort=effort, logger=logger, robust=robust,
-                                                show_logs=verbose > 0, progress_text=progress_text,
-                                                transfer_lb=-lp_model.INFINITY)
-        else:
-            pass  # nothing to choose among the optima, or the first stage failed
+        # Phase 2 (solve_least_control_effort) retired per project spec
+        pass
 
     # gather the results
     logger.add_info(msg="Status", value=lp_model.status2string(status))

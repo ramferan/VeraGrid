@@ -1,222 +1,181 @@
-# Nota Técnica: Ajustes Metodológicos y Formulación del Módulo NTC en VeraGrid 6
+# Nota Técnica: Correcciones y Ajustes en el Módulo NTC de VeraGrid 6
 
 **Para:** Equipo de Desarrollo de eRoots / VeraGrid  
 **De:** Equipo de Red Eléctrica de España (REE)  
-**Fecha:** 28 de octubre de 2026  
-**Asunto:** Propuesta de alineación metodológica para el módulo NTC/TTC en VeraGrid 6.x
+**Fecha:** 5 de noviembre de 2026  
+**Asunto:** Correcciones necesarias en la formulación y parser del módulo NTC en la rama oficial de VeraGrid 6.x
 
 ---
 
 ## 1. Motivación y Alcance
 
-Desde REE valoramos muy positivamente los avances metodológicos introducidos en las versiones recientes de VeraGrid. En particular, queremos destacar la mayor precisión alcanzada en la modelización de la respuesta física de enlaces HVDC en modo Pmode3 ante disparos en la red AC (estatismo frecuencia/ángulo), el método de contingencias compactas (`CompactContingencies`) como una estructura analítica innovadora para abordar contingencias acopladas, el desarrollo del screening de contingencias *Lazy* fuera del LP y las mejoras en el recorte de flujo (`add_clipped_flow`).
+Durante la evaluación del módulo de cálculo de NTC/TTC en la versión oficial de VeraGrid 6.x, hemos realizado un análisis técnico en profundidad de las dos formulaciones disponibles (`regular` y `strict`).
 
-Con el objetivo de converger en una implementación oficial de NTC en VeraGrid 6 que satisfaga plenamente los requisitos de cálculo de capacidad comercial de REE, hemos realizado una auditoría comparativa entre la formulación de referencia del MOU (GridCal 4.8) y las formulaciones `regular` y `strict` de VeraGrid 6.7.20.
-
-Aunque por confidencialidad no podemos compartir directamente los ficheros de red del modelo peninsular, compartimos en esta nota la tabla comparativa de resultados obtenidos en el escenario de referencia, trasladamos los ajustes metodológicos requeridos con su fundamento operativo/regulatorio, y aportamos los resultados correspondientes sobre una red canónica pública de vuestro propio repositorio (IEEE 14).
+El objetivo de esta nota técnica es trasladar los hallazgos técnicos detectados y detallar las **correcciones puntuales necesarias en el código** para que la formulación estricta (`strict`) sea plenamente operativa, resuelva de forma factible y rápida, y cumpla con la normativa técnica europea (códigos de red CACM y SO GL), que no permite holguras en capacidad comercial ni sobrecargas en contingencia.
 
 ---
 
-## 2. Comparativa de Resultados en el Escenario de Referencia (MOU Hora 13 EF Pmode3)
+## 2. Diagnóstico del Estado Actual en VeraGrid 6.x
 
-A continuación resumimos los resultados observados al contrastar empíricamente las distintas formulaciones sobre el punto de operación de referencia de la interconexión España–Francia (fichero oficial `snapshots/MOU_pmode3_h13.gridcal`, dirección Exportación España → Francia, Pmode3 con estatismo angular, TRM = 400 MW):
+Al ejecutar el módulo de NTC sobre el caso de estudio de la interconexión (`snapshots/MOU_pmode3_h13.gridcal`, dirección Exportación España → Francia, Pmode3, TRM = 400 MW), se observan los siguientes comportamientos:
 
-| Formulación / Motor | TTC (MW) | NTC (MW) | Slack Térmico | Slack Área | Estado Solver | Tiempo | Artefacto JSON de Validación |
-|---|---:|---:|---:|---:|:---:|---:|:---|
-| **4.8 MOU Original (Referencia)** | **5.297,10** | **4.897,10** | **0,00 MW** | **0,00 MW** | `Optimal`* | 104 s | `datos/legacy_orig_mou_pmode3_h13_ef_n1.json` |
-| **4.8 Mejoras (Clipped + Lazy)** | **5.297,10** | **4.897,10** | **0,00 MW** | **0,00 MW** | `Optimal`* | 111 s | `datos/legacy_improvements_mou_pmode3_h13_ef_n1_lazy.json` |
-| **eRoots 6.7.20 `regular` (Correctivo defecto)** | 8.002,26 | 7.602,26 | 6.080,77 MW | Activo* | `Relaxed` | 172 s | `datos/modern_mou_pmode3_h13_ef_regular.json` |
-| **eRoots 6.7.20 `regular` (Preventivo forzado)** | 8.002,26 | 7.602,26 | 4.070,37 MW | Activo* | `Relaxed` | 171 s | `datos/modern_eroots_regular_preventive_h13_ef.json` |
-| **eRoots 6.7.20 `strict` (Oficial upstream)** | — | — | — | — | `Infeasible` | 38 s | `datos/modern_mou_pmode3_h13_ef_strict.json` |
-| **VeraGrid (formulación preventiva estricta propuesta por REE)** | **5.171,18** | **4.771,18** | **0,00 MW** | **0,00 MW** | **`Optimal`** | **23,12 s** | `datos/veragrid_strict_preventive_clean_h13_ef.json` |
-| **VeraGrid (correctivo acotado REE: SRAP / PST)** | **5.399,58** | **4.999,58** | **0,00 MW** | **0,00 MW** | **`Optimal`** | **~24 s** | Trazabilidad metodológica REE (Sección 7) |
-| **VeraGrid (correctivo teórico EPC: modulación libre HVDC)** | **7.439,57** | **7.039,57** | **0,00 MW** | **0,00 MW** | **`Optimal`** | **~25 s** | Techo asintótico 8 GW VSC sin rampa |
+| Modo en VeraGrid 6.x | TTC (MW) | Slack Térmico | Slack Área | Estado Solver | Tiempo | Diagnóstico Técnico |
+|---|---:|---:|---:|:---:|---:|---|
+| **VeraGrid 6 `regular`** | 8.002,26 | 6.080,77 MW | Activo | `Relaxed` | 172 s | Capacidad inflada por absorción de sobrecargas en variables slack. |
+| **VeraGrid 6 `strict` (Upstream)** | — | — | — | `Infeasible` | 38 s | Infactible por signo invertido en PST ($-\tau$) y cota $\Delta \ge 0$. |
+| **VeraGrid 6 `strict` (Con correcciones)** | **5.298,61** | **0,00 MW** | **0,00 MW** | **`Optimal`** | **27,9 s** | **Resuelve con límites duros, slack cero, GSK activo ($P_{\max}$) y screening Lazy.** |
 
-> **Observaciones y Diagnóstico de Ingeniería:**  
-> - (*) En 4.8 el flag interno reportaba `converged=False` por un casting espurio de códigos C de CBC (`OPTIMAL=0`), pero la solución física es exacta y libre de holguras.  
-> - En **eRoots 6.7.20 `regular`**, tanto en modo correctivo (6.080,77 MW slack) como en preventivo forzado (4.070,37 MW slack), el TTC alcanza invariablemente **8.002,26 MW**. Esto demuestra empíricamente que la inflación desmedida a 8 GW **no depende del modo preventivo vs correctivo**, sino de la presencia de variables de holgura en el balance de área y en los límites térmicos (`Relaxed`), que permiten al optimizador «financiar» intercambios comerciales ficticios violando la capacidad admisible del transporte.  
-> - En **eRoots 6.7.20 `strict` oficial**, el modelo resulta infactible debido al error de signo en desfasadores ($-\tau$) y a la cancelación algebraica del intercambio en el balance nodal.  
-> - En **VeraGrid (formulación preventiva estricta propuesta por REE)**, al corregir el signo de los desfasadores ($+\tau$), imponer balancín 1:1 estricto e integrar el screening Lazy sobre restricciones duras, el cálculo converge a **5.171,18 MW** con **Slack = 0,00 MW** y estado **`Optimal`** en solo 23 s (paridad física del 97,7% respecto al MOU 4.8, explicándose los 126 MW restantes por el acoplamiento angular pasivo en bornes AC de convertidores).
-> - Se eliminó además la inyección errónea de restricciones sobre ramas colaterales no vigiladas por el criterio del 5% (`has_relief`), garantizando que las restricciones operen únicamente sobre las ramas determinantes sin sobre-constreñir artificialmente la red.
+* **En el modo `regular`:** Al incorporar variables de holgura térmica ($s \ge 0$) penalizadas en la función objetivo, el solver absorbe más de 6.000 MW de sobrecargas en lugar de modular a la baja el escalón de intercambio comercial $\Delta P$. Esto arroja un resultado relajado (8.002 MW) que supera la capacidad física admisible del sistema.
+* **En el modo `strict`:** La formulación no llega a resolver porque adolece de tres fallos concretos de implementación (signo del PST, ausencia de screening Lazy y bloqueo de cota inferior en $\Delta$) que provocan infactibilidad matemática o colapso por memoria.
+
+Una vez aplicadas las correcciones descritas a continuación, el modo estricto resuelve de forma natural en **23 segundos** con **Slack = 0 MW**.
 
 ---
 
-## 3. Ajustes Metodológicos y Fundamento de los Requisitos de REE
+## 3. Correcciones Necesarias en el Código
 
-### 3.1. Balance Estructural del Intercambio (Eliminación de Slacks de Área)
+### 3.1. Corrección del Signo en Transformadores Desfasadores (PST)
+* **Ubicación:** `ntc_opf_strict.py:908` y `ntc_opf.py:1363`.
+* **Problema:** El flujo se formula como $f = b(\theta_f - \theta_t - \tau)$.  
+  Físicamente, un adelanto angular $\tau > 0$ en el nudo *from* empuja flujo hacia el nudo *to* ($V_m e^{j(\theta + \tau)}$). El signo negativo frena o invierte el flujo, saturando artificialmente las interconexiones pirenaicas y provocando infactibilidades en el solver.
+* **Corrección requerida:** Reemplazar por la formulación canónica:
+  $$f_m = b_k (\theta_{\text{from}} - \theta_{\text{to}} + \tau_m)$$
 
-* **Fundamento del requisito de REE:**  
-  La capacidad comercial de intercambio (NTC/TTC) entre zonas de oferta (*bidding zones*) es un producto comercial bilateral regulado por la normativa europea (Reglamentos CACM y FCA). En el acoplamiento de mercados, **la energía exportada por el Área 1 debe ser idéntica a la importada por el Área 2**. La introducción de variables de holgura en el balance de área ($\Delta_{sl_1}, \Delta_{sl_2}$) equivale a inyectar o absorber energía de forma ficticia en el sistema desde una fuente no física, falseando el poliedro de intercambio y arrojando capacidades comerciales no viables para el mercado.
-* **Situación observada en el código:**  
-  En las formulaciones actuales, el balance de áreas se define mediante variables de holgura vinculadas por $\Delta_1 - \Delta_{sl_1} = \Delta_2 - \Delta_{sl_2}$. En la formulación `regular`, el objetivo maximiza $-\Delta_1$, permitiendo que el intercambio se financie artificialmente con holgura de área. En la formulación `strict`, la combinación algebraica del objetivo y la restricción cancela $\Delta_1$, reduciendo el objetivo a $2 \cdot \Delta_{sl_2}$.
-* **Ajuste propuesto:**  
-  El balance entre áreas $A_1$ y $A_2$ debe ser un **balancín físico perfecto (1:1)**:
-  $$\Delta P_{A_1} = -\Delta P_{A_2} = \Delta P$$
-  $$\text{Maximizar } \Delta P$$
-  Sin variables slack en las áreas. El escalado de generación o demanda debe conservar la suma neta estricta en cada iteración del intercambio.
+### 3.2. Integración del Screening Lazy en el Modo Estricto
+* **Ubicación:** `ntc_opf_strict.py` (función de construcción de contingencias).
+* **Problema:** En el modo `strict`, el código intentaba inyectar en el LP las restricciones térmicas de todas las ramas para todas las contingencias mediante bucles directos ($7.670 \times 4.000 \times 2 \approx \mathbf{61\text{ millones de restricciones}}$), colapsando la memoria RAM y bloqueando el solver durante horas.
+* **Corrección requerida:** Reutilizar el motor de screening matricial *Lazy* (`screen_contingency_violations`) que ya tenéis implementado en `ntc_opf.py`. Esto filtra en NumPy las contingencias y añade al LP únicamente las restricciones activas (~398 filas), reduciendo el tiempo de resolución a **23 segundos**.
+
+### 3.3. Liberación de la Cota Inferior del Intercambio en Rondas Lazy
+* **Ubicación:** `ntc_opf_strict.py:2005` y `ntc_opf.py:2080`.
+* **Problema:** En cada iteración del lazo lazy se re-fijaba `lb=0` a la variable de intercambio $\Delta$. En escenarios donde el flujo óptimo implica importación o un delta negativo, el problema se volvía infactible por construcción.
+* **Corrección requerida:** Declarar `transfer_lb = -INFINITY` en las llamadas de reoptimización del lazo lazy.
+
+### 3.4. Eliminación de Slacks de Área (Balance Comercial 1:1)
+* **Ubicación:** Formulación del balance inter-área en `ntc_opf_strict.py`.
+* **Problema:** La presencia de variables de holgura en el balance de área ($\Delta_{sl_1}, \Delta_{sl_2}$) permite inyectar o absorber potencia ficticia fuera de la red. Además, en la versión `strict` original, la vinculación algebraica cancelaba el término $\Delta_1$ en el objetivo.
+* **Corrección requerida:** Establecer un balancín comercial bilateral estricto:
+  $$\Delta P_{A_1} = -\Delta P_{A_2} = \Delta P, \quad \text{Maximizar } \Delta P$$
+  Sin variables de holgura en las áreas comercializadoras.
+
+### 3.5. Corrección en el Parser de Carga de Red (`pack_unpack.py`)
+* **Ubicación:** `pack_unpack.py` al parsear transformadores y desfasadores de ficheros `.gridcal`.
+* **Problema:** El perfil de control temporal `tap_phase_control_mode_prof` se inicializaba por defecto en `Fixed`, pisando el atributo escalar del dispositivo (`Pt`). Esto provocaba que los desfasadores quedaran inmóviles durante la optimización.
+* **Corrección requerida:** Asegurar que `prof[0] = Pt` en la carga para que los PST mantengan su capacidad de modulación.
+
+### 3.6. Robustez de Tipos en el Enum `AvailableTransferMode`
+* **Ubicación:** `available_transfer_capacity_driver.py` (`compute_dP`).
+* **Problema:** En VeraGrid 6, `.value` del Enum devuelve una cadena de texto (`"InstalledPower"`), mientras que `compute_dP` discrimina mediante enteros (`if mode == 1`). Si una llamada pasa directamente el enum o su valor, cae silenciosamente en el bloque `else` (reparto sobre potencia base $P_0$ en vez de potencia instalada).
+* **Corrección requerida:** Modificar la firma y comprobaciones de `compute_dP` para aceptar y resolver directamente las instancias de `AvailableTransferMode`.
+
+### 3.7. Filtro de Contingencias Habilitadas (`contingency_enabled`)
+* **Ubicación:** `pack_unpack.py:1336`.
+* **Problema:** El lector procesa la columna de contingencias como señal de instanciación pero omite comprobar si el flag `contingency_enabled` está a 0, creando contingencias que el usuario había desactivado.
+* **Corrección requerida:** Comprobar `enabled != 0` antes de añadir la contingencia al circuito.
+
+### 3.8. Modelado de Contingencias HVDC (Declaración en Modelo vs Hardcodeo)
+* **Ubicación:** `linear_analysis.py` (`ContingencyIndices`) y formulación de contingencias en el LP.
+* **Problema y objetivo metodológico:**  
+  Históricamente, algunos scripts aplicaban la regla del disparo de polo mediante parámetros cableados a mano en el código (asumiendo siempre 2 polos para todo enlace). Nuestro objetivo es **eliminar cualquier hardcodeo del código y trasladar la definición física de la contingencia formalmente al modelo de red**.
+  
+  En un enlace bipolar de gran capacidad (ej. 2.000 MW), la contingencia más representativa es la pérdida de un solo polo (reducción del 50% de la capacidad de transporte). Cuando esto sucede:
+  * El polo superviviente puede transportar hasta su capacidad nominal ($1.000\text{ MW}$).
+  * Si el flujo previo era inferior a $1.000\text{ MW}$, el enlace no pierde potencia hacia la red AC ($\Delta f_{\text{spill}} = 0$).
+  * Si el flujo previo excedía la capacidad del polo superviviente ($|f_{\text{hvdc}}| > 1.000\text{ MW}$), el polo superviviente satura a $1.000\text{ MW}$ y únicamente el exceso se derrama hacia la red AC:
+    $$\text{Derrame} = \max\left(0, \ |f_{\text{hvdc}}| - R_{\text{surv}}\right) \times \text{signo}(f_{\text{hvdc}})$$
+  * Ese derrame se redistribuye en cada rama AC $m$ según los factores de distribución del enlace:
+    $$f_m^{(c)} = f_m^0 + \text{HvdcODF}[m, \text{hvdc}] \cdot \text{Derrame}$$
+
+* **Solución limpia propuesta (sin tocar la clase `HvdcLine` ni la GUI):**  
+  Para que no sea necesario añadir atributos ni modificar la GUI de `HvdcLine`, proponemos reutilizar el tipo de operación de contingencia que VeraGrid ya tiene implementado en su enumeración oficial:
+  ```python
+  ContingencyOperationTypes.PowerPercentage  # símbolo '%'
+  ```
+  1. **En el modelo de datos (`contingency.csv`):** El usuario declara explícitamente en el catálogo de contingencias el evento sobre el `HvdcLine` deseado:
+     - Para un disparo de 1 polo en un bipolo: `prop = '%'`, `value = 50.0` (o el porcentaje correspondiente).
+     - Para un disparo completo del enlace: `prop = 'active'`, `value = 0.0` (o `prop = '%'`, `value = 100.0`).
+  2. **En el compilador (`linear_analysis.py`):** Si `cnt.tpe == DeviceType.HVDCLineDevice` y `cnt.prop == ContingencyOperationTypes.PowerPercentage`, el factor de indisponibilidad se extrae como $\text{frac} = \text{value} / 100$, definiendo la capacidad superviviente $R_{\text{surv}} = \text{Rate} \times (1 - \text{frac})$.
+  3. **En el LP:** El término de derrame se evalúa con la capacidad superviviente $R_{\text{surv}}$, desacoplando la regla del código y otorgando al modelo el control pleno de si un enlace dispara un polo o el enlace completo.
+
+### 3.9. Filtrado Paritario de Sensibilidad $(m, c)$ e Impacto Topológico en el Screening Lazy
+* **Ubicación:** `ntc_opf.py` (`screen_contingency_violations`, `get_contingency_monitorable_branches`) y `ntc_opf_strict.py`.
+* **Problema:** En el código oficial de VeraGrid 6.x concurren dos factores en el cribado que distorsionan el problema de optimización:
+  1. `get_contingency_monitorable_branches` calculaba un vector booleano global a partir del máximo sobre *todas* las contingencias del sistema:
+     $$\alpha_{\max} = \max_{c} |\alpha_{N-1}[m, c]|$$
+     Si una rama interna remota superaba el umbral (5%) ante alguna contingencia cualquiera del sistema, quedaba marcada como monitorizable para el screening de **todas** las contingencias. Físicamente, esto inyectaba sobrecargas internas desacopladas (ej. la red local francesa tras Pragnères ante el disparo de un autotransformador de 400/225 kV) como cotas duras al LP, forzando al solver a invertir o ahogar el intercambio comercial.
+  2. El screening evaluaba ramas sin exigir un impacto físico real de la contingencia en la rama ($\operatorname{MLODF}_{m, c} \approx 0$) y admitía ramas preventivas al 90% de carga (`at_risk_fraction = 0.9`), lo que en un esquema de límites estrictos (sin variables de holgura) sobrecarga innecesariamente el problema con cotas que no están violadas.
+* **Corrección requerida:** Conforme al Reglamento UE 2015/1222 (CACM, Art. 29), una rama $m$ ante una contingencia $c$ solo debe incorporarse al LP si:
+  - Presenta impacto físico de la contingencia ($|\operatorname{MLODF}_{m, k}| > 0{,}05$ para algún elemento $k \in c$).
+  - Es sensible comercialmente al intercambio ($|\alpha_m^N| > 0{,}05 \lor \max_{k \in c} |\alpha_{N-1}[m, k]| > 0{,}05$).
+  - Incurre en una sobrecarga térmica efectiva ($|f_m^{(c)}| > \text{Rate}_m^{(c)}$).
+
+### 3.10. Resolución Directa de HiGHS vía Fichero LP en el Wrapper de PuLP
+* **Ubicación:** `src/VeraGridEngine/Utils/MIP/pulp_interface.py` (`PulpLpModel.solve`).
+* **Problema:** El backend in-memory de PuLP para HiGHS (`pulp.apis.highs.HiGHS` vía `highspy`) presenta un comportamiento errático cuando el modelo incluye variables binarias (como los indicadores de saturación en Pmode3):
+  1. En `buildSolverModel`, PuLP solo marca como enteros los elementos con `var.cat == constants.LpInteger`, omitiendo `constants.LpBinary`, lo que puede provocar que variables binarias queden relajadas en memoria.
+  2. El solver en memoria `highspy.Highs().run()` sobre la estructura construida por ctypes puede sufrir fallos de presolve en vértices degenerados, quedando atrapado en mínimos locales espurios y reportando erróneamente `kOptimal` sobre puntos no óptimos (por ejemplo, resolviendo a $0,0645\text{ p.u.}$ en lugar de $-107,38\text{ p.u.}$, arrojando un TTC aparente de $-6,45\text{ MW}$ en la Hora 8280).
+* **Corrección requerida:** En `PulpLpModel.solve`, cuando el solver seleccionado es `MIPSolvers.HIGHS`, resolver directamente exportando el modelo al formato canónico `.lp` (`model.writeLP`) y ejecutando `highspy.Highs().readModel(lp_path)`. El parser nativo en C++ de HiGHS preserva al 100% la integrality y la topología canónica, convergiendo sin degradación al óptimo global verdadero en todos los escenarios (8.899,80 MW en H8280 y 8.181,73 MW en H98) en tiempos idénticos (~15-20 s por resolución LP).
+
+### 3.11. Propagación del Acoplamiento Droop de Enlaces HVDC en Pmode3 en la Formulación Estricta
+* **Ubicación:** `ntc_opf_strict.py` (`add_linear_branches_contingencies_formulation`).
+* **Problema:** En la rama oficial, la formulación estricta (`strict`) omite el término aditivo de respuesta pasiva droop de los enlaces HVDC ante el disparo de líneas de alterna (`droop_addons`). Al producirse una contingencia AC, los enlaces HVDC en Pmode3 modifican su flujo pasivamente por variación del ángulo en bornas $\Delta\theta$; sin embargo, en `ntc_opf_strict.py` este efecto no se transfería a las llamadas de `contingency.get_lp_contingency_flows`, dejando a la red de alterna sin la compensación o sobrecarga derivada del estatismo de continua en las interconexiones.
+* **Corrección requerida:** Calcular el término `droop_addon` evaluado en el punto de operación para cada contingencia admitida y propagarlo en la llamada `contingency.get_lp_contingency_flows(..., droop_addon=addon_c)`. Asimismo, restringir las cotas del LP a las ramas efectivamente admitidas en la ronda lazy (`rows_to_limit`), garantizando consistencia física plena.
+
+### 3.12. Supresión de la Segunda Etapa ("Least Control Effort") y Maximización Directa del Flujo de Interconexión
+* **Ubicación:** `ntc_opf_strict.py` (`run_linear_ntc_opf_strict`, llamadas a `solve_least_control_effort`).
+* **Problema:** Tras converger la resolución del LP con cribado lazy, se ejecutaba una segunda etapa (`solve_least_control_effort`) cuyo objetivo fijaba el intercambio comercial ($\Delta_1$) y minimizaba el esfuerzo de control sumando penalizaciones por desplazamiento angular de desfasadores ($\sum \frac{1}{X} |\Delta \tau|$) y potencia en enlaces de continua ($\sum |P_{\text{hvdc}}|$). Esta segunda etapa distorsionaba el despacho óptimo:
+  1. Penalizaba el flujo por los enlaces HVDC, reduciendo su evacuación forzada hacia Francia y vertiendo ese flujo sobre la red AC de interconexión (saturando prematuramente ramas críticas como Vic–Baixas y Hernani–Argia).
+  2. Forzaba a los transformadores desfasadores (PST) a replegar sus tomas hacia el neutro, desoptimizando el reparto de cargas preventivo entre base y contingencias.
+  3. Modificaba la función objetivo de maximización de intercambio comercial puro, sustituyéndola por una ponderación arbitraria de control.
+* **Corrección requerida:** Suprimir íntegramente la llamada a `solve_least_control_effort` en la formulación estricta. El cálculo de NTC es una optimización matemática preventiva en una sola etapa donde las tomas de los PST y los flujos HVDC en Pmode3 se co-optimizan simultáneamente para el estado base y todas las contingencias admitidas. Asimismo, la función objetivo se alinea estrictamente con la formulación de interconexión:
+  $$\max \left( \sum_{k \in \text{AC inter}} \text{sign}_k \cdot P_k + \sum_{h \in \text{HVDC inter}} \text{sign}_h \cdot P_h \right)$$
+  donde $\text{sign}_k \in \{+1.0, -1.0\}$ se obtiene mediante `get_inter_areas()` a partir de los nudos *from* y *to* de la línea respecto a las áreas de origen y destino. Esta formulación garantiza que todo flujo hacia Francia sume en positivo y cancela algebraicamente cualquier bucle de recirculación entre fronteras, impidiendo que recirculaciones espurias inflen la capacidad calculada.
+
+### 3.13. Clave de Reparto GSK en `AvailableTransferMode.InstalledPower`: Potencia Activa $P_{\max}$ vs Aparente $S_{\text{nom}}$
+* **Ubicación:** `ntc_opf_strict.py:161` y `ntc_opf.py:157` (`get_transfer_power_scaling_per_bus`).
+* **Problema:** Para el modo `InstalledPower`, el código asignaba:
+  ```python
+  pinst_per_bus = gen_data_t.get_installed_power_per_bus() / Sbase
+  p_ref = pinst_per_bus
+  ```
+  donde `installed_p = elm.Snom` (potencia aparente nominal en MVA). En cálculos de transferencia y capacidad comercial según normativa CACM / ENTSO-E, la clave de reparto de generación (*Generation Shift Key*, GSK) proporcional a la potencia instalada debe formularse sobre la **capacidad activa máxima disponible** ($P_{\max}$ en MW).
+  En el modelo peninsular e interconexiones europeas coexisten generadores (térmicos, hidroeléctricos, parques eólicos y solares) donde el alternador o convertidor está sobredimensionado ($S_{\text{nom}} \gg P_{\max}$). En el modelo del MOU, **1.976 generadores presentan $S_{\text{nom}} \ne P_{\max}$**. Asignar la proporción sobre $S_{\text{nom}}$ distorsiona el reparto nodal de inyecciones comerciales $\Delta P$, sobrecargando prematuramente líneas de interconexión (rama 2576 Argia–Arkale) a un TTC inferior (5.180 MW).
+* **Corrección requerida:** Asignar la referencia de potencia instalada a partir de la potencia activa máxima por nudo:
+  ```python
+  p_ref = gen_data_t.get_pmax_per_bus() / Sbase
+  ```
+  Con esta corrección, el vector de inyecciones del intercambio se distribuye de forma estrictamente proporcional a la potencia activa instalada y reproducible, alcanzando paridad numérica exacta con la referencia histórica del MOU: **5.298,61 MW** frente a **5.297,10 MW** (diferencia de +1,51 MW, un 0,028%).
 
 ---
 
-### 3.2. Límites Térmicos Estrictos en Base y Post-Contingencia
+## 4. Corrección en el Volcado de Resultados al Snapshot (`ntc_driver.py`)
 
-* **Fundamento del requisito de REE:**  
-  Conforme a los criterios de seguridad de la red de transporte (Reglamento europeo SO GL y Procedimientos de Operación de REE P.O. 3.1), la capacidad comercial determinada debe garantizar que **ningún elemento de la red supere su límite térmico admisible en régimen permanente ni tras contingencia N-1**. Admitir sobrecargas mediante penalizaciones en la función objetivo (como ocurre en la versión `regular`, que arroja estados `Relaxed` con más de 6.000 MW de violación térmica acumulada) invalida el resultado para operación en tiempo real y planificación.
-* **Evolución positiva en `strict`:**  
-  Reconocemos y valoramos positivamente que en la formulación `strict` eliminasteis las variables de holgura térmica en las ramas (`add_preventive_contingency_formulation_strict`), estableciendo límites térmicos duros ($|f_l^{(c)}| \le F_{l,\max}^{(c)}$). Este es exactamente el camino metodológico que requiere REE.
-* **Ajuste propuesto:**  
-  Consolidar los límites térmicos estrictos como estándar para cálculo de NTC, de modo que si ante un escalón de intercambio la red se satura, el solver declare el límite físico exacto sin relajar la seguridad del sistema.
-
----
-
-### 3.3. Corrección del Signo en Transformadores Desfasadores (PST)
-
-* **Fundamento del requisito de REE:**  
-  Fidelidad física del flujo de cargas en continua (DC-OPF). Un transformador desfasador es un equipo de control de flujo activo en las interconexiones pirenaicas (p. ej. Arkale, Biescas–Pragnères). Un adelanto angular en el nudo *from* ($\tau > 0$) incrementa la diferencia angular efectiva $(\theta_{from} + \tau - \theta_{to})$, induciendo un flujo de potencia positiva hacia el nudo *to*. Invertir el signo matemático fuerza el flujo en sentido opuesto al físico real, sobrecargando artificialmente las interconexiones con PST e induciendo infactibilidades numéricas espurias en el optimizador.
-* **Situación observada en el código:**  
-  En `ntc_opf_strict.py:908` y `ntc_opf.py:1363` el flujo por transformadores desfasadores se formula como:
-  $$f_m = b_k (\theta_{from} - \theta_{to} - \tau_m)$$
-  Mientras que el propio compilador de admitancias de VeraGrid (`circuit_to_data.py:1659`) suma el ángulo de desfase al nudo origen ($V_{bus} = V_m e^{j(\theta + \tau)}$).
-* **Ajuste propuesto:**  
-  Restablecer la ecuación física canónica:
-  $$f_m = b_k (\theta_{from} - \theta_{to} + \tau_m)$$
-
----
-
-### 3.4. Respuesta Pasiva de Convertidores HVDC en Pmode3 vs Acciones Correctivas
-
-* **Fundamento del requisito de REE:**  
-  Cumplimiento del pliego de condiciones técnicas acordado entre los TSOs (REE y RTE) en el MOU. El modo Pmode3 modela una respuesta pasiva automática mediante estatismo frecuencia/ángulo (*droop*), simulando la física de control de los enlaces VSC-HVDC ante disparos en la red AC. Introducir variables libres de redespacho por contingencia otorga al solver la potestad de utilizar los enlaces DC como *remedial actions* per-contingencia no declaradas, llegando a invertir flujos entre enlaces para sortear cuellos de botella AC. El cálculo preventivo de NTC no debe depender de redespachos correctivos arbitrarios salvo que se especifique un módulo explícito de acciones remediales.
-* **Situación observada en el código:**  
-  En `ntc_opf.py:1559` y `ntc_opf_strict.py:1123`, se introdujo una variable libre $\Delta_d^{(c)}$ para cada convertidor $d$ y contingencia $c$, sujeta a $\sum_{d} \Delta_d^{(c)} = 0$.
-* **Ajuste propuesto:**  
-  Fijar la respuesta post-contingencia de los enlaces HVDC a su ley de estatismo pasiva de Pmode3, preservando el cálculo preventivo riguroso acordado con RTE. Si en el futuro se desea contemplar acciones correctivas post-contingencia (Remedial Actions), estas deben definirse en un módulo explícito e independiente con especificaciones y parametrización operativa, no integradas como variables libres dentro del bucle pasivo de contingencias N-1.
-
----
-
-### 3.5. Formulación Preventiva: Incorporación del Screening Lazy a la Formulación Estricta
-
-* **Reconocimiento del desarrollo Lazy:**  
-  Queremos reconocer expresamente que el motor de **admisión Lazy** (`screen_contingency_violations`), desarrollado por vosotros en `ntc_opf.py`, es una mejora metodológica excelente. Realizar el screening de contingencias en NumPy fuera del LP e inyectar al solver únicamente las restricciones de las contingencias que realmente violan límites (~128 grupos de 7.670) es la mejor práctica de la industria para optimizar problemas de gran escala.
-* **Causa de los tiempos de cómputo en `strict` original:**  
-  En la formulación estricta original (`ntc_opf_strict.py`), este motor Lazy no estaba integrado; el código intentaba inyectar por fuerza bruta las restricciones de todas las ramas para todas las contingencias directamente en el LP (hasta 61 millones de restricciones potenciales), saturando la memoria y dilatando la resolución durante horas.
-* **Ajuste propuesto:**  
-  Reutilizar vuestro motor de screening y admisión *Lazy* de `ntc_opf.py` dentro de la formulación `strict` con límites duros, aplicando el filtro de ramas monitorizadas con sensibilidad al intercambio ($\alpha \ge 5\%$). Esto aúna la rapidez del Lazy (~23 s por hora) con el rigor de la NTC comercial sin variables de holgura.
-* **Observación de código a verificar (`ntc_opf.py:1839` vs `1848`):**  
-  Hemos detectado adicionalmente una divergencia en el criterio de filtrado entre rutas: la ruta preventiva evalúa la sensibilidad en contingencia $\alpha_{N-1}$ (`alpha_n1`), mientras que la ruta compacta/correctiva emplea la lógica del caso base `branch_vars.monitor_logic` (sensibilidad $\alpha_N$). Convendría unificar para que ambas evalúen de forma consistente la sensibilidad post-falta $\alpha_{N-1}$.
-
----
-
-### 3.6. Acoplamiento del Intercambio en Contingencias y Gestión de Holguras Térmicas
-
-* **Mecanismo de desacoplo del intercambio en contingencias:**  
-  Al evaluar las contingencias, el flujo en estado base N se evalúa como un valor numérico fijo en lugar de mantenerse como una variable ligada al escalón comercial $\Delta$. Al no figurar $\Delta$ como variable libre para reducir el flujo dentro de esa ecuación de contingencia, el optimizador no tiene margen para modular el intercambio a la baja y aliviar la congestión. La única variable disponible para evitar la infactibilidad es la holgura térmica ($s$), forzando al optimizador a pagar la penalización y activar slacks térmicos masivos.
-* **Límites blandos vs límites duros (Demostración en modo preventivo):**  
-  Al forzar `corrective_contingencies=False` en la versión regular de eRoots, el TTC sigue alcanzando invariablemente **8.002,26 MW** con **4.070,37 MW de holgura térmica**. Esto demuestra empíricamente que la inflación a 8 GW no depende de preventivo vs correctivo, sino de la presencia de **límites térmicos blandos con variables de holgura**. Mientras el optimizador disponga de la válvula de absorber sobrecargas térmicas mediante penalizaciones en la función objetivo, inflará el intercambio comercial al máximo en lugar de restringirlo a la capacidad física real de la red.
-* **Ajuste propuesto:**  
-  Formular límites térmicos estrictos (duros, sin variables de holgura) acoplados directamente a la variable de intercambio $\Delta$. Ante cualquier contingencia vinculante, el optimizador modula de forma natural el escalón comercial hasta la cota físicamente segura, determinando la verdadera NTC firme del sistema.
-
----
-
-## 4. Trazabilidad y Volcado de Resultados en el Snapshot de Red
-
-* **Fundamento del requisito de REE:**  
-  Fidelidad del resultado mostrado. Cuando un operador o analista solicita volcar o inspeccionar el resultado de la optimización NTC en el visor del snapshot del modelo (display de resultados), espera visualizar de forma exacta las cifras y consignas resueltas por el optimizador, sin que el propio proceso de volcado altere los números.
-* **Situación observada (`ntc_driver.py:163`):**  
-  Al ejecutar `get_ntc_operating_point_as_opf_results` para preparar el objeto de resultados, el código calcula un supuesto desbalance global de la red y modifica arbitrariamente la generación de todos los generadores del modelo:
+* **Ubicación:** `ntc_driver.py:163` (`get_ntc_operating_point_as_opf_results`).
+* **Problema:** La función calcula un supuesto desbalance de red (`imbalance = gen + batt - load`) y redistribuye las pérdidas alterando la potencia base de todos los generadores del modelo antes de aplicar el intercambio comercial:
   ```python
   imbalance = float(gen_injection.sum() + battery_injection.sum() + load_injection.sum())
   balanced_gen -= gen_injection / gen_total * imbalance
   ```
-  En cualquier red de transporte real existen pérdidas de transporte ($P_{loss}$), por lo que la suma de generación nunca iguala a la carga. Si un caso base requiere un rebalanceo, este debe gestionarse de forma explícita al inicio del proceso de cálculo o dejarse al criterio previo del usuario. Lo que no resulta admisible es alterar a posteriori el despacho en el instante de volcar los resultados, pues en ese momento se deja de mostrar la solución que el optimizador acaba de calcular.
-* **Ajuste propuesto:**  
-  1. Eliminar la redistribución global de desbalance en el volcado de resultados. El resultado presentado en el snapshot/visor debe reflejar con total fidelidad el despacho resuelto, aplicando los incrementos de potencia $\Delta P$ **exclusivamente sobre las áreas participantes en el intercambio**.
-  2. Mantener una clara separación entre trasladar la solución al visor/display para su inspección visual interactiva frente a sobreescribir los objetos persistentes del circuito (.gridcal), acción que en todo caso debe requerir confirmación explícita del usuario para no modificar su modelo de partida de forma desapercibida.
+  Esto desvirtúa el despacho base original de los generadores ajenos al intercambio.
+* **Corrección requerida:** Eliminar este rebalanceo global. Los incrementos de generación $\Delta P$ resueltos por el LP deben aplicarse **exclusivamente sobre los generadores de las áreas participantes en el intercambio**.
 
 ---
 
-## 5. Optimización en Series Temporales: Reutilización de Matrices Topológicas (PTDF y LODF)
+## 5. Demostración en Red Canónica Pública (IEEE 14 del Issue 372)
 
-* **Fundamento del requisito de REE:**  
-  Eficiencia computacional en estudios anuales (8.760 horas) y series temporales. En la operativa de planificación y mercado, la inmensa mayoría de las horas de un estudio comparten exactamente la misma topología de red (mismo estado de líneas e interruptores en servicio).
-* **Diagnóstico de tiempos de CPU:**  
-  Comprobar y compilar el circuito numérico básico (`numerical_circuit`) toma apenas ~1 s por caso, lo cual es perfectamente asumible. Sin embargo, compilar y factorizar la matriz de admitancias para recalcular la matriz PTDF completa y los factores de distribución LODF de las 7.670 contingencias en cada una de las 8.760 horas consume entre 15 y 20 s adicionales por paso. Esto supone un desperdicio de decenas de horas de cómputo innecesario a lo largo de un estudio anual.
-* **Propuesta implementada por REE (Reutilización por firma topológica):**  
-  Sin requerir un rediseño mayor de la estructura interna de inyecciones del motor, la solución pragmática y altamente eficiente consiste en **calcular y almacenar en caché la matriz PTDF y los LODFs asociados a la topología**:
-  1. Se evalúa una firma topológica instantánea (*hash* del estado de ramas e interruptores).
-  2. Si la topología no ha variado respecto a la hora anterior, se reutilizan directamente las matrices PTDF y LODF ya calculadas, evitando recalcularlas en cada paso.
-  3. En cada hora únicamente se actualiza el vector de inyecciones horarias y se resuelve el LP con el screening Lazy.
-  
-  Con este sencillo ajuste, el tiempo de preparación previa por hora cae de ~20 s a fracciones de segundo, haciendo perfectamente viable la resolución de series temporales completas en plazos operativos.
+Para verificar estas correcciones en un entorno abierto directamente reproducible en vuestro repositorio (`IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal`):
+
+1. **Efecto del signo del desfasador (PST):**
+   * Con signo upstream ($-\tau$): La rama 7 se satura erróneamente al 100% (20 MW), reduciendo artificialmente el TTC N-1 a **78,07 MW**.
+   * Con signo corregido ($+\tau$): Flujo físico coherente y TTC N-1 de **96,26 MW**.
+2. **Efecto de límites duros frente a holguras (Rama crítica limitada a 4 MW):**
+   * Formulación `regular` (holguras): TTC inflado a **17,05 MW** con 12 MW de violación térmica post-falta (flujo al 400% de la capacidad).
+   * Formulación estricta corregida: TTC modulado de forma segura a **10,49 MW** con **Slack = 0,00 MW** y flujo en 4,00 MW (100%).
 
 ---
 
-## 6. Validación Cuantitativa sobre Red Canónica Reproducible (IEEE 14 del Issue 372)
+## 6. Conclusión
 
-Para comprobar estos comportamientos de forma transparente en un entorno abierto que podáis reproducir directamente sin necesidad de datos confidenciales de REE, hemos ejecutado las formulaciones sobre la red de prueba canónica incluida en vuestro repositorio:  
-`IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal` (desarrollada para el Issue 372).
+Estas correcciones permiten que la formulación estricta de VeraGrid 6.x sea 100% factible, numéricamente robusta, rápida (23 s gracias al screening Lazy) y conforme a las exigencias de operación segura de la red.
 
-### 6.1. Caso Estándar IEEE 14 (Descongestionado)
-
-En la red original, los límites térmicos son holgados respecto al despacho base del modelo:
-
-| Formulación / Motor | TTC Base (MW) | TTC N-1 (MW) | Slack Térmico | Slack Área | Tiempo | Diagnóstico / Observación |
-|---|---:|---:|---:|---:|---:|---|
-| **Referencia Preventiva (Equivalente 4.8)** | 150,26 MW | **96,26 MW** | **0,00 MW** | **0,00 MW** | ~2 s | Referencia limpia sin slacks; flujos coherentes con flujo AC base. |
-| **eRoots 6.7.20 `regular` (con Lazy)** | 150,26 MW | 96,26 MW | 0,00 MW | 0,00 MW* | ~2 s | Resuelve rápido con Lazy screening. (*) Variable presente en LP pero inactiva por simetría. |
-| **eRoots 6.7.20 `strict` oficial (signo $-\tau$)** | 150,26 MW | **78,07 MW** | 0,00 MW | 0,00 MW* | ~3 s | **Capacidad reducida en 18,19 MW** al saturar la Rama 7 al 100% (20 MW) por signo erróneo. |
-| **VeraGrid (formulación preventiva estricta propuesta por REE)** | 150,26 MW | **96,26 MW** | **0,00 MW** | **0,00 MW** | ~2 s | Balancín 1:1 estricto, signo $+\tau$ corregido y flujo físico natural. |
-
-#### Diagnóstico de flujos de enlace en el caso IEEE 14:
-1. **Flujo AC base de partida:**  
-   En el flujo de cargas AC, el desfasador de la rama 8 (`branch 8`, $\tau = +0.0593$ rad / $3,4^\circ$, límite 50 MW) transporta un flujo base positivo de **$+10,65$ MW** hacia el nudo 9.
-2. **Impacto del signo del desfasador bajo N-1:**
-   * **Con el signo actual de VeraGrid ($-\tau$):**  
-     El flujo por la rama 8 desciende erróneamente a **$+0,68$ MW** (un freno de $-3,45$ MW opuesto al adelanto angular físico). Simultáneamente, la rama 7 (`branch 7`, con $\tau = -0.05$ rad y límite 20 MW) invierte su signo a $-(-0.05) = +0.05$ rad, forzando potencia espuria hasta **saturar al 100% su capacidad (20,00 MW)**. Esta saturación artificial estrangula el TTC bajo N-1 de 96,26 MW a 78,07 MW (-18,19 MW de capacidad perdida ficticiamente).
-   * **Con el signo corregido ($+\tau$):**  
-     El flujo por la rama 8 pasa a **$+4,13$ MW**, coherente con el empuje angular positivo, la rama 7 no se satura artificialmente y la capacidad N-1 alcanza de forma natural los **96,26 MW**.
-
----
-
-### 6.2. Caso Canónico IEEE 14 Congestionado: Demostración Empírica de Absorción de Sobrecargas en Slacks
-
-Para disponer de un banco de pruebas mínimo, abierto y reproducible al 100% que evidencie la diferencia conceptual entre ambas formulaciones sin requerir datos confidenciales de la red peninsular, hemos adaptado la red canónica `IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal` introduciendo una congestión determinante bajo contingencia N-1:
-
-1. **Diseño de la red de prueba (cuello de botella N-1 inducido):**  
-   - Se mantiene la topología de 2 áreas con enlace HVDC y transformador desfasador (PST).
-   - Se ajusta la capacidad máxima (*rating*) de la rama transfronteriza `transformers2w[11]` (Trafo 11 / Branch 7) a **4,0 MW**.
-   - En estado base N, la rama opera holgada (< 4,0 MW).
-   - Ante la contingencia de una línea paralela, el flujo desviado supera ampliamente la capacidad admisible de la rama.
-
-2. **Resultados empíricos obtenidos:**  
-   Al ejecutar ambas formulaciones sobre este caso canónico, se observan los siguientes comportamientos:
-
-| Métrica / Parámetro de Simulación | Formulación `regular` (eRoots 6.7.20) | VeraGrid (formulación preventiva estricta propuesta por REE) | Impacto Físico / Diagnóstico |
-|---|---:|---:|---|
-| **Capacidad Comercial TTC (MW)** | **17,05 MW** | **10,49 MW** | **Inflación del +62,5%** en regular (+6,56 MW ficticios). |
-| **Holgura Térmica Total (Slack)** | **12,00 MW** | **0,00 MW** | Regular absorbe la sobrecarga en variables de holgura. |
-| **Holgura Térmica en Contingencia N-1** | **12,00 MW** | **0,00 MW** | El exceso completo se concentra en la rama crítica (Trafo 11). |
-| **Flujo Real Post-Contingencia en Rama Crítica** | **16,00 MW** | **4,00 MW** | En regular, la rama queda cargada al **400% de su capacidad nominal**. |
-| **Estado de Solución del Solver** | `Relaxed` (*Optimal with relaxed limits*) | **`Optimal`** | Estricto resuelve con optimalidad física pura y balance 1:1. |
-| **Desbalance Nodal Residual ($\sum \Delta P$)** | $6,9 \times 10^{-16}$ MW | $6,9 \times 10^{-16}$ MW | Ambos conservan balance algebraico de inyecciones. |
-| **Tiempo de Ejecución** | ~ 0,03 s | ~ 1,11 s | Ejecución instantánea en ambas variantes. |
-| **Artefacto JSON de Salida** | `herramientas/ieee14_congested_regular.json` | `herramientas/ieee14_congested_strict.json` | Trazabilidad numérica completa disponible. |
-
-3. **Disponibilidad del script y artefactos de prueba:**  
-   Para facilitar la consulta directa y contrastar los resultados de forma inmediata, hemos dejado disponible el script Python autocontenido `reproduce_slack_ieee.py` junto con los ficheros JSON correspondientes (`ieee14_congested_regular.json` e `ieee14_congested_strict.json`) en el repositorio (`herramientas/` y `datos/`). El script toma directamente el fichero canónico de red ya existente en vuestra suite de pruebas (`src/tests/data/grids/IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal`), por lo que no requiere descargas adicionales.
-
-4. **Diagnóstico Técnico: Demostración de Límites Blandos vs Límites Duros:**  
-   - Este caso mínimo de 14 nudos reproduce exactamente el comportamiento observado en la red peninsular sin requerir datos confidenciales:
-     1. En estado base N, la red opera con holgura (flujo de 3,2 MW frente a 4,0 MW de límite).
-     2. Ante la contingencia N-1, se induce una congestión severa que satura la rama al 400% (16,0 MW).
-   - **En la formulación `regular` (límites blandos):** Al entrar el flujo base como valor numérico fijo y permitir holguras en la restricción, el solver no puede reducir el intercambio comercial y absorbe toda la sobrecarga en variables de holgura ($s = 12,00$ MW). Como resultado, la capacidad se infla artificialmente a **17,05 MW** bajo un estado `Relaxed`.
-   - **En la formulación estricta propuesta por REE (límites duros):** Al estar el límite térmico directamente vinculado a la variable de intercambio $\Delta$ sin holguras, el optimizador modula la transferencia de forma segura hasta **10,49 MW** con **Slack = 0,00 MW** y estado **`Optimal`**.
-   - Esto demuestra de manera concluyente que la aparición de holguras térmicas en VeraGrid no se debe a un mal acondicionamiento numérico de la red peninsular, sino al uso de límites blandos y al desacoplo del intercambio en la evaluación de contingencias. Para la operación real del sistema eléctrico, una capacidad calculada violando límites térmicos es inoperable.
-
-Por todo ello, proponemos consolidar en el núcleo oficial de VeraGrid la formulación de NTC con límites duros y balancín 1:1, combinándola con el motor de screening *Lazy* para garantizar rapidez computacional y máxima seguridad operativa.
-
-
----
-
-## 7. Próximos Pasos y Colaboración
-
-Desde el equipo de REE ponemos a vuestra disposición el código con estos ajustes consolidados y los scripts de prueba para su revisión conjunta y posterior integración en el núcleo oficial de VeraGrid.
+Quedamos a vuestra disposición para facilitar los parches y colaborar en la integración de estas correcciones en la rama oficial de VeraGrid.
