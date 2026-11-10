@@ -73,12 +73,16 @@ Una vez aplicadas las correcciones descritas a continuación, el modo estricto r
 * **Problema:** El lector procesa la columna de contingencias como señal de instanciación pero omite comprobar si el flag `contingency_enabled` está a 0, creando contingencias que el usuario había desactivado.
 * **Corrección requerida:** Comprobar `enabled != 0` antes de añadir la contingencia al circuito.
 
-### 3.8. Modelado de Contingencias HVDC (Declaración en Modelo vs Hardcodeo)
+### 3.8. Modelado de Contingencias HVDC (Declaración en el Modelo vs Parámetro Fijo en el Código)
 * **Ubicación:** `linear_analysis.py` (`ContingencyIndices`) y formulación de contingencias en el LP.
-* **Problema y objetivo metodológico:**  
-  Históricamente, algunos scripts aplicaban la regla del disparo de polo mediante parámetros cableados a mano en el código (asumiendo siempre 2 polos para todo enlace). Nuestro objetivo es **eliminar cualquier hardcodeo del código y trasladar la definición física de la contingencia formalmente al modelo de red**.
+* **Contexto y objetivo metodológico:**
+  En la primera iteración de nuestro pipeline de análisis, la regla del disparo de polo se resolvía con un parámetro fijado a nivel de script (se asumían 2 polos para cualquier enlace). Fue una simplificación razonable como punto de partida, suficiente para reproducir el comportamiento de los enlaces bipolares del caso de estudio, pero arrastra dos consecuencias que hoy queremos eliminar:
+  * El número de polos no queda registrado en ninguna parte del modelo de red, de modo que auditar una contingencia obliga a leer el código y no el fichero de datos.
+  * La regla deja de ser válida en cuanto aparece un enlace monopolar, un esquema con electrodos o un porcentaje de pérdida distinto del 50%.
+
+  El objetivo, por tanto, es **eliminar cualquier hardcodeo y trasladar la definición física de la contingencia formalmente al modelo de red**, de forma que el compilador se limite a ejecutar aritmética sobre lo que el usuario ha declarado.
   
-  En un enlace bipolar de gran capacidad (ej. 2.000 MW), la contingencia más representativa es la pérdida de un solo polo (reducción del 50% de la capacidad de transporte). Cuando esto sucede:
+  La física que debe quedar representada no cambia. En un enlace bipolar de gran capacidad (ej. 2.000 MW con dos polos nominales de 1.000 MW), la contingencia más representativa es la pérdida de un solo polo, es decir, la indisponibilidad del 50% de la capacidad de transporte. Cuando esto sucede:
   * El polo superviviente puede transportar hasta su capacidad nominal ($1.000\text{ MW}$).
   * Si el flujo previo era inferior a $1.000\text{ MW}$, el enlace no pierde potencia hacia la red AC ($\Delta f_{\text{spill}} = 0$).
   * Si el flujo previo excedía la capacidad del polo superviviente ($|f_{\text{hvdc}}| > 1.000\text{ MW}$), el polo superviviente satura a $1.000\text{ MW}$ y únicamente el exceso se derrama hacia la red AC:
@@ -86,16 +90,18 @@ Una vez aplicadas las correcciones descritas a continuación, el modo estricto r
   * Ese derrame se redistribuye en cada rama AC $m$ según los factores de distribución del enlace:
     $$f_m^{(c)} = f_m^0 + \text{HvdcODF}[m, \text{hvdc}] \cdot \text{Derrame}$$
 
-* **Solución limpia propuesta (sin tocar la clase `HvdcLine` ni la GUI):**  
-  Para que no sea necesario añadir atributos ni modificar la GUI de `HvdcLine`, proponemos reutilizar el tipo de operación de contingencia que VeraGrid ya tiene implementado en su enumeración oficial:
+* **Solución limpia propuesta (sin tocar la clase `HvdcLine` ni la GUI):**
+  Para no añadir atributos nuevos al dispositivo ni modificar la GUI de `HvdcLine`, basta con reutilizar el tipo de operación de contingencia que VeraGrid ya trae en su enumeración oficial:
   ```python
   ContingencyOperationTypes.PowerPercentage  # símbolo '%'
   ```
-  1. **En el modelo de datos (`contingency.csv`):** El usuario declara explícitamente en el catálogo de contingencias el evento sobre el `HvdcLine` deseado:
-     - Para un disparo de 1 polo en un bipolo: `prop = '%'`, `value = 50.0` (o el porcentaje correspondiente).
-     - Para un disparo completo del enlace: `prop = 'active'`, `value = 0.0` (o `prop = '%'`, `value = 100.0`).
-  2. **En el compilador (`linear_analysis.py`):** Si `cnt.tpe == DeviceType.HVDCLineDevice` y `cnt.prop == ContingencyOperationTypes.PowerPercentage`, el factor de indisponibilidad se extrae como $\text{frac} = \text{value} / 100$, definiendo la capacidad superviviente $R_{\text{surv}} = \text{Rate} \times (1 - \text{frac})$.
-  3. **En el LP:** El término de derrame se evalúa con la capacidad superviviente $R_{\text{surv}}$, desacoplando la regla del código y otorgando al modelo el control pleno de si un enlace dispara un polo o el enlace completo.
+  1. **En el modelo de datos (`contingency.csv`):** el usuario declara explícitamente, en el catálogo de contingencias, el evento sobre el `HvdcLine` deseado:
+     - Disparo de 1 polo en un bipolo: `prop = '%'`, `value = 50.0` (o el porcentaje que corresponda al parque real).
+     - Disparo completo del enlace: `prop = 'active'`, `value = 0.0` (o `prop = '%'`, `value = 100.0`).
+  2. **En el compilador (`linear_analysis.py`):** si `cnt.tpe == DeviceType.HVDCLineDevice` y `cnt.prop == ContingencyOperationTypes.PowerPercentage`, el factor de indisponibilidad se extrae como $\text{frac} = \text{value} / 100$ y la capacidad superviviente resulta $R_{\text{surv}} = \text{Rate} \times (1 - \text{frac})$. El compilador no deduce nada sobre el número de polos: se limita a aplicar el porcentaje declarado.
+  3. **En el LP:** el término de derrame se evalúa con la capacidad superviviente $R_{\text{surv}}$, con lo que la regla queda desacoplada del código y el modelo conserva el control pleno de si el enlace dispara un polo, el enlace completo o una fracción arbitraria.
+
+  Con este esquema, pasar de un 50% a un 25% de indisponibilidad (enlace de cuatro polos) o modelar un enlace monopolar no exige tocar una sola línea de código: es un cambio de dato en el catálogo de contingencias.
 
 ### 3.9. Filtrado Paritario de Sensibilidad $(m, c)$ e Impacto Topológico en el Screening Lazy
 * **Ubicación:** `ntc_opf.py` (`screen_contingency_violations`, `get_contingency_monitorable_branches`) y `ntc_opf_strict.py`.
