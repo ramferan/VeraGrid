@@ -386,6 +386,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
         self.generator_power = controlled_generation_power
 
         self.solved = solved
+        self.converged = bool(solved)
 
         self.alpha = alpha
         self.alpha_n1 = alpha_n1

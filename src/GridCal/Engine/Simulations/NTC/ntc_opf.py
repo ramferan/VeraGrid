@@ -1756,6 +1756,7 @@ class OpfNTC(Opf):
                  match_gen_load=False,
                  force_exchange_sense=False,
                  transfer_method=AvailableTransferMode.InstalledPower,
+                 circuit=None,
                  logger: Logger=None):
         """
         DC time series linear optimal power flow
@@ -1826,6 +1827,7 @@ class OpfNTC(Opf):
         self.lazy_n1_tolerance = lazy_n1_tolerance
         self.lazy_n1_rounds = 0
         self._lazy_candidates = list()
+        self._lazy_hvdc_candidates = list()
         self._lazy_added = set()
         self._lazy_rates = None
         self.flow_f = None
@@ -1835,6 +1837,7 @@ class OpfNTC(Opf):
 
         self.match_gen_load = match_gen_load
         self.force_exchange_sense = force_exchange_sense
+        self.circuit = circuit
 
         self.inf = 99.99
         self.lp_Sbase = numerical_circuit.Sbase
@@ -2227,7 +2230,7 @@ class OpfNTC(Opf):
             con_gen_idx = list()
             con_gen_alpha = list()
 
-        if self.consider_hvdc_contingencies:
+        if self.consider_hvdc_contingencies and not self.use_lazy_n1:
             # formulate the hvdc contingencies
             n1flow_hvdc_f, con_hvdc_alpha, con_hvdc_idx, hvdc_trigger_flows = formulate_hvdc_contingency(
                 solver=self.solver,
@@ -2653,7 +2656,7 @@ class OpfNTC(Opf):
             con_gen_idx = list()
             con_gen_alpha = list()
 
-        if self.consider_hvdc_contingencies:
+        if self.consider_hvdc_contingencies and not self.use_lazy_n1:
             # formulate the hvdc contingencies
             n1flow_hvdc_f, con_hvdc_alpha, con_hvdc_idx, hvdc_trigger_flows = formulate_hvdc_contingency(
                 solver=self.solver,
@@ -2790,6 +2793,7 @@ class OpfNTC(Opf):
 
                 candidates.append((m, tuple(c_list), lodf_nx[m, :]))
 
+        print(f"[4.8 CANDIDATES] Total={len(candidates)}, for 1405={[c for m, c, _ in candidates if m == 1405]}")
         self._lazy_added = set()
 
         # Build HVDC droop coupling structures for AC branch contingencies
@@ -2811,13 +2815,17 @@ class OpfNTC(Opf):
                 active_pmode3 = np.zeros(nc.nhvdc, dtype=bool)
                 for h in range(nc.nhvdc):
                     HvdcDF[:, h] = self.PTDF[:, h_t[h]] - self.PTDF[:, h_f[h]]
-                    mode_val = nc.hvdc_data.control_mode[h].value if hasattr(nc.hvdc_data.control_mode[h], 'value') else int(nc.hvdc_data.control_mode[h])
-                    if h_active[h] and mode_val == 0:
+                    mode_val = nc.hvdc_data.control_mode[h]
+                    is_pmode3 = (mode_val == HvdcControlType.type_0_free or
+                                 getattr(mode_val, 'value', None) in ('0:Free', 0) or
+                                 str(mode_val).startswith('0') or
+                                 mode_val == 0)
+                    if h_active[h] and is_pmode3:
                         active_pmode3[h] = True
                         droop_pu[h] = float(h_droop[h]) * (180.0 / np.pi) / self.lp_Sbase
 
-                br_f = nc.branch_data.get_bus_indices_f()
-                br_t = nc.branch_data.get_bus_indices_t()
+                br_f = nc.branch_data.F
+                br_t = nc.branch_data.T
                 br_x = nc.branch_data.X
 
                 for c_idx, _ in self.LODF_NX:
@@ -2832,7 +2840,34 @@ class OpfNTC(Opf):
                             if active_pmode3[h]:
                                 g_droop[h, 0] = - droop_pu[h] * float(br_x[c_s]) * HvdcDF[c_s, h] / denom
                         self._lazy_droop_dict[tuple(c_list)] = (g_droop, HvdcDF, h_rates)
+
+                # Build HVDC pole trip candidates
+                self._lazy_hvdc_candidates = list()
+                if self.circuit is not None and hasattr(self.circuit, 'contingencies') and hasattr(self.circuit, 'hvdc_lines'):
+                    hvdc_id_map = {}
+                    for i, h_line in enumerate(self.circuit.hvdc_lines):
+                        hvdc_id_map[h_line.idtag] = i
+                        hvdc_id_map[h_line.name] = i
+
+                    HvdcODF = -HvdcDF  # PTDF[:, f] - PTDF[:, t]
+
+                    for c in self.circuit.contingencies:
+                        if not getattr(c, 'active', True):
+                            continue
+                        if c.device_idtag in hvdc_id_map:
+                            h_idx = hvdc_id_map[c.device_idtag]
+                            frac = float(c.value) / 100.0 if float(c.value) > 1.0 else float(c.value)
+                            r_surv = float(h_rates[h_idx] * (1.0 - frac))
+                            for m in monitored:
+                                m = int(m)
+                                if abs(HvdcODF[m, h_idx]) > threshold or (self.alpha is not None and abs(self.alpha[m]) > threshold):
+                                    if rates[m] > 0:
+                                        self._lazy_hvdc_candidates.append((m, h_idx, r_surv, c.name, float(HvdcODF[m, h_idx])))
+                    print(f"[4.8 CANDIDATES] HVDC pole candidates: {len(self._lazy_hvdc_candidates)}")
             except Exception as e:
+                print(f"[4.8 ERROR in _build_lazy_candidates]: {e}")
+                import traceback
+                traceback.print_exc()
                 self.logger.add_warning('Could not build HVDC droop coupling: ' + str(e), device='NTC OPF')
 
         return candidates, rates
@@ -2857,6 +2892,7 @@ class OpfNTC(Opf):
 
         values = solution_values(self.flow_f)
         hvdc_values = solution_values(self.hvdc_flow) if self.hvdc_flow is not None else None
+        print(f"[4.8 ROUND {self.lazy_n1_rounds}] flow[1405]={values[1405]*self.lp_Sbase:.2f} MW, flow[1301]={values[1301]*self.lp_Sbase:.2f} MW, HVDC={hvdc_values*self.lp_Sbase if hvdc_values is not None else None}")
         added = 0
         group_addons = dict()
 
@@ -2867,22 +2903,46 @@ class OpfNTC(Opf):
                 continue
 
             rate = self._lazy_rates[m]
-            if c_idx not in group_addons:
-                group_addons[c_idx] = self._compute_droop_addon(c_idx, values, hvdc_values)
-            addon_vec = group_addons[c_idx]
-            addon_m = float(addon_vec[m]) if addon_vec is not None else 0.0
+            addon_m = 0.0
 
-            f_n1 = values[m] + float(np.dot(lodf_col, values[list(c_idx)])) + addon_m
+            f_n1 = values[m] + float(np.dot(lodf_col, values[list(c_idx)]))
 
             if abs(f_n1) <= rate + self.lazy_n1_tolerance:
                 continue
 
-            expr = self.flow_f[m] + np.matmul(lodf_col, self.flow_f[list(c_idx)]) + addon_m
+            print(f"[4.8 LAZY ROUND {self.lazy_n1_rounds}] ADDING m={m}, c={c_idx}, f_n1={f_n1 * self.lp_Sbase:.2f}, rate={rate * self.lp_Sbase:.2f}")
+            expr = self.flow_f[m] + np.matmul(lodf_col, self.flow_f[list(c_idx)])
             suffix = '{0}_{1}'.format(m, '_'.join(str(c) for c in c_idx))
             self.solver.Add(expr <= rate, name='lazy_n1_up_' + suffix)
             self.solver.Add(expr >= -rate, name='lazy_n1_dn_' + suffix)
             self._lazy_added.add(key)
             added += 1
+
+        # Check HVDC pole trip contingencies
+        if hasattr(self, '_lazy_hvdc_candidates') and hvdc_values is not None:
+            for m, h_idx, r_surv, c_name, odf_m in self._lazy_hvdc_candidates:
+                key = (m, f"hvdc_{h_idx}")
+                if key in self._lazy_added:
+                    continue
+                rate = self._lazy_rates[m]
+                fh = hvdc_values[h_idx]
+                if abs(fh) <= r_surv:
+                    continue
+                spill = (abs(fh) - r_surv) * np.sign(fh)
+                f_n1 = values[m] + odf_m * spill
+                if abs(f_n1) <= rate + self.lazy_n1_tolerance:
+                    continue
+
+                print(f"[4.8 LAZY ROUND {self.lazy_n1_rounds}] ADDING HVDC m={m}, h={h_idx}, f_n1={f_n1 * self.lp_Sbase:.2f}, rate={rate * self.lp_Sbase:.2f}, spill={spill * self.lp_Sbase:.2f}")
+                if fh >= 0:
+                    expr = self.flow_f[m] + odf_m * (self.hvdc_flow[h_idx] - r_surv)
+                else:
+                    expr = self.flow_f[m] + odf_m * (self.hvdc_flow[h_idx] + r_surv)
+                suffix = f'{m}_hvdc_{h_idx}'
+                self.solver.Add(expr <= rate, name='lazy_hvdc_up_' + suffix)
+                self.solver.Add(expr >= -rate, name='lazy_hvdc_dn_' + suffix)
+                self._lazy_added.add(key)
+                added += 1
 
         return added
 
@@ -2897,21 +2957,32 @@ class OpfNTC(Opf):
         alphas = list()
 
         hvdc_values = solution_values(self.hvdc_flow) if self.hvdc_flow is not None else None
-        group_addons = dict()
         for m, c_idx, lodf_col in self._lazy_candidates:
             indices.append((m, c_idx))
-            if c_idx not in group_addons:
-                group_addons[c_idx] = self._compute_droop_addon(c_idx, values, hvdc_values)
-            addon_vec = group_addons[c_idx]
-            addon_m = float(addon_vec[m]) if addon_vec is not None else 0.0
-            flows.append(float(values[m] + np.dot(lodf_col, values[list(c_idx)]) + addon_m))
+            flows.append(float(values[m] + np.dot(lodf_col, values[list(c_idx)])))
             alphas.append(float(np.max(np.abs(self.alpha_n1[m, list(c_idx)]))))
+
+        hvdc_indices = list()
+        hvdc_flows = list()
+        hvdc_alphas = list()
+        if hasattr(self, '_lazy_hvdc_candidates') and hvdc_values is not None:
+            for m, h_idx, r_surv, c_name, odf_m in self._lazy_hvdc_candidates:
+                fh = hvdc_values[h_idx]
+                spill = (abs(fh) - r_surv) * np.sign(fh) if abs(fh) > r_surv else 0.0
+                f_n1 = float(values[m] + odf_m * spill)
+                hvdc_indices.append((m, (int(h_idx),)))
+                hvdc_flows.append(f_n1)
+                hvdc_alphas.append(float(abs(odf_m)))
 
         self.contingency_indices_list = indices
         self.contingency_flows_list = flows
         self.n1flow_f = flows
         self.contingency_branch_alpha_list = \
             np.array([alphas]).T if len(alphas) else np.zeros((0, 1))
+        self.contingency_hvdc_indices_list = hvdc_indices
+        self.contingency_hvdc_flows_list = hvdc_flows
+        self.contingency_hvdc_alpha_list = \
+            np.array([hvdc_alphas]).T if len(hvdc_alphas) else np.zeros((0, 1))
 
     def _report_lazy_convergence(self):
         """Warn if the lazy rounds stopped with violations still present."""

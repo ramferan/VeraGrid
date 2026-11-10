@@ -231,6 +231,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                 match_gen_load=self.options.match_gen_load,
                 ntc_load_rule=self.options.ntc_load_rule,
                 transfer_method=self.options.transfer_method,
+                circuit=self.grid,
                 logger=self.logger
             )
 
