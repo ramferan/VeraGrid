@@ -146,6 +146,19 @@ Una vez aplicadas las correcciones descritas a continuación, el modo estricto r
   ```
   Con esta corrección, el vector de inyecciones del intercambio se distribuye de forma estrictamente proporcional a la potencia activa instalada y reproducible, alcanzando paridad numérica exacta con la referencia histórica del MOU: **5.298,61 MW** frente a **5.297,10 MW** (diferencia de +1,51 MW, un 0,028%).
 
+### 3.14. Erradicación de la Susceptancia Parásita en Factores Lineales (`linear_analysis.py`)
+* **Ubicación:** `src/VeraGridEngine/Simulations/LinearFactors/linear_analysis.py:411, 430`.
+* **Problema:** En el ensamblado de la matriz de susceptancia nodal para cálculo lineal DC, se introdujo una susceptancia artificial parásita de acoplamiento de $y_s = 0,01\text{ p.u.}$ en convertidores VSC sin estatismo activo y en líneas HVDC con consigna fija de potencia $P_{\text{set}}$.
+  Físicamente, un enlace de corriente continua en control de potencia fija o sin estatismo no constituye un camino pasivo de alterna regido por la ley de Ohm en continua ($I \ne b \Delta\theta$). Introducir un valor artificial $y_s = 0,01$:
+  1. Crea lazos ficticios de circulación AC a través de los enlaces DC en la matriz $B_{\text{bus}}$, violando las leyes de Kirchhoff en corriente alterna.
+  2. Altera la matriz de sensibilidades PTDF ($\partial f / \partial P$), desvirtuando los factores de distribución transfronterizos hasta en varios puntos porcentuales.
+* **Corrección requerida:** Fijar estrictamente $y_s = 0,0$ para todos los dispositivos DC que no operen en modo estatismo angular puro. Esto asegura que la matriz de susceptancias refleje exclusivamente la topología física de alterna y garantiza la coherencia rigurosa de las sensibilidades PTDF.
+
+### 3.15. Unificación Metodológica: Adopción Exclusiva de la Formulación Estricta sin Holguras
+* **Ubicación:** Integración global del módulo NTC (`ntc_driver.py`).
+* **Problema:** La coexistencia de dos formulaciones (`regular` con penalizaciones de holgura $s \ge 0$, y `strict` con límites duros) genera confusión operativa y resultados contradictorios. La formulación `regular` tolera sobrecargas masivas post-contingencia (absorbidas en variables slack de holgura térmica), lo cual infringe frontalmente el mandato del Reglamento (UE) 2015/1222 (CACM) y el P.O. 3.1 de REE, que exigen capacidades firmes y seguras en N y N-1.
+* **Corrección requerida:** Estandarizar la formulación estricta (`strict_formulation = True`) como la única operativa en VeraGrid 6.x. Con las correcciones de screening Lazy, signo PST y GSK aquí detalladas, el modo estricto resuelve de manera factible, óptima y en tiempos de cómputo excelentes (~25 segundos), eliminando la necesidad de recurrir a relajaciones artificiales con holguras térmicas.
+
 ---
 
 ## 4. Corrección en el Volcado de Resultados al Snapshot (`ntc_driver.py`)
