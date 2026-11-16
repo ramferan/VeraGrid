@@ -2828,17 +2828,50 @@ class OpfNTC(Opf):
                 br_t = nc.branch_data.T
                 br_x = nc.branch_data.X
 
+                # Closed-loop Thevenin impedance seen by active Pmode3 HVDC links
+                p3_idx = np.where(active_pmode3)[0]
+                if len(p3_idx) > 0:
+                    import scipy.sparse.linalg as spla
+                    slack_bus = nc.vd[0]
+                    bus_mask = np.ones(nc.nbus, dtype=bool)
+                    bus_mask[slack_bus] = False
+                    Bred = nc.Bbus[np.ix_(bus_mask, bus_mask)].tocsc()
+                    solve_B = spla.factorized(Bred)
+                    phi = np.zeros((nc.nbus, len(p3_idx)))
+                    for j, h in enumerate(p3_idx):
+                        rhs = np.zeros(nc.nbus)
+                        rhs[h_f[h]] = 1.0
+                        rhs[h_t[h]] = -1.0
+                        sol = np.zeros(nc.nbus)
+                        sol[bus_mask] = solve_B(rhs[bus_mask])
+                        phi[:, j] = sol
+                    Z0_p3 = phi[h_f[p3_idx], :] - phi[h_t[p3_idx], :]
+                    K_p3 = np.diag(droop_pu[p3_idx])
+                else:
+                    phi = None
+                    Z0_p3 = None
+                    K_p3 = None
+
                 for c_idx, _ in self.LODF_NX:
                     c_list = [int(c) for c in c_idx]
-                    if len(c_list) == 1 and np.any(active_pmode3):
+                    if len(c_list) == 1 and len(p3_idx) > 0:
                         c_s = c_list[0]
                         denom = 1.0 - (self.PTDF[c_s, br_f[c_s]] - self.PTDF[c_s, br_t[c_s]])
                         if abs(denom) < 1e-10:
                             denom = 1.0
+                        Xc = float(br_x[c_s])
+                        g_open_p3 = np.array([
+                            -droop_pu[h] * Xc * HvdcDF[c_s, h] / denom
+                            for h in p3_idx
+                        ], dtype=float)
+                        phi_c = phi[br_f[c_s], :] - phi[br_t[c_s], :]
+                        if abs(Xc) > 1e-12:
+                            Zc = Z0_p3 + np.outer(phi_c, phi_c) / (Xc * denom)
+                        else:
+                            Zc = Z0_p3.copy()
+                        g_closed_p3 = np.linalg.solve(np.eye(len(p3_idx)) + K_p3 @ Zc, g_open_p3)
                         g_droop = np.zeros((nc.nhvdc, 1))
-                        for h in range(nc.nhvdc):
-                            if active_pmode3[h]:
-                                g_droop[h, 0] = - droop_pu[h] * float(br_x[c_s]) * HvdcDF[c_s, h] / denom
+                        g_droop[p3_idx, 0] = g_closed_p3
                         self._lazy_droop_dict[tuple(c_list)] = (g_droop, HvdcDF, h_rates)
 
                 # Build HVDC pole trip candidates
@@ -2882,6 +2915,26 @@ class OpfNTC(Opf):
         delta_h = h_post - hvdc_vals
         return HvdcDF @ delta_h
 
+    def _compute_droop_lp_expr(self, m, c_tuple, branch_vals, hvdc_vals):
+        """Return LP expression for passive Pmode3 HVDC droop response on branch m under contingency c_tuple."""
+        if not hasattr(self, '_lazy_droop_dict') or c_tuple not in self._lazy_droop_dict or hvdc_vals is None or self.hvdc_flow is None:
+            return 0.0
+        g_droop, HvdcDF, h_rates = self._lazy_droop_dict[c_tuple]
+        c_list = list(c_tuple)
+        dh_droop = g_droop @ branch_vals[c_list]
+        expr = 0.0
+        for h in range(len(h_rates)):
+            if abs(g_droop[h, 0]) < 1e-12 or abs(HvdcDF[m, h]) < 1e-12:
+                continue
+            h_unclipped = float(hvdc_vals[h] + dh_droop[h])
+            if h_unclipped > h_rates[h]:
+                expr += float(HvdcDF[m, h]) * (float(h_rates[h]) - self.hvdc_flow[h])
+            elif h_unclipped < -h_rates[h]:
+                expr += float(HvdcDF[m, h]) * (-float(h_rates[h]) - self.hvdc_flow[h])
+            else:
+                expr += float(HvdcDF[m, h] * g_droop[h, 0]) * self.flow_f[c_list[0]]
+        return expr
+
     def add_violated_n1_constraints(self):
         """
         Add the N-1 rows violated by the current solution.
@@ -2903,15 +2956,19 @@ class OpfNTC(Opf):
                 continue
 
             rate = self._lazy_rates[m]
-            addon_m = 0.0
+            if c_idx not in group_addons:
+                group_addons[c_idx] = self._compute_droop_addon(c_idx, values, hvdc_values)
+            addon_vec = group_addons[c_idx]
+            addon_m = float(addon_vec[m]) if addon_vec is not None else 0.0
 
-            f_n1 = values[m] + float(np.dot(lodf_col, values[list(c_idx)]))
+            f_n1 = values[m] + float(np.dot(lodf_col, values[list(c_idx)])) + addon_m
 
             if abs(f_n1) <= rate + self.lazy_n1_tolerance:
                 continue
 
-            print(f"[4.8 LAZY ROUND {self.lazy_n1_rounds}] ADDING m={m}, c={c_idx}, f_n1={f_n1 * self.lp_Sbase:.2f}, rate={rate * self.lp_Sbase:.2f}")
-            expr = self.flow_f[m] + np.matmul(lodf_col, self.flow_f[list(c_idx)])
+            print(f"[4.8 LAZY ROUND {self.lazy_n1_rounds}] ADDING m={m}, c={c_idx}, f_n1={f_n1 * self.lp_Sbase:.2f}, rate={rate * self.lp_Sbase:.2f}, addon={addon_m * self.lp_Sbase:.2f}")
+            droop_expr = self._compute_droop_lp_expr(m, c_idx, values, hvdc_values)
+            expr = self.flow_f[m] + np.matmul(lodf_col, self.flow_f[list(c_idx)]) + droop_expr
             suffix = '{0}_{1}'.format(m, '_'.join(str(c) for c in c_idx))
             self.solver.Add(expr <= rate, name='lazy_n1_up_' + suffix)
             self.solver.Add(expr >= -rate, name='lazy_n1_dn_' + suffix)
@@ -2957,9 +3014,14 @@ class OpfNTC(Opf):
         alphas = list()
 
         hvdc_values = solution_values(self.hvdc_flow) if self.hvdc_flow is not None else None
+        group_addons = dict()
         for m, c_idx, lodf_col in self._lazy_candidates:
+            if c_idx not in group_addons:
+                group_addons[c_idx] = self._compute_droop_addon(c_idx, values, hvdc_values)
+            addon_vec = group_addons[c_idx]
+            addon_m = float(addon_vec[m]) if addon_vec is not None else 0.0
             indices.append((m, c_idx))
-            flows.append(float(values[m] + np.dot(lodf_col, values[list(c_idx)])))
+            flows.append(float(values[m] + np.dot(lodf_col, values[list(c_idx)]) + addon_m))
             alphas.append(float(np.max(np.abs(self.alpha_n1[m, list(c_idx)]))))
 
         hvdc_indices = list()
@@ -2990,10 +3052,16 @@ class OpfNTC(Opf):
             return
 
         values = solution_values(self.flow_f)
+        hvdc_values = solution_values(self.hvdc_flow) if self.hvdc_flow is not None else None
+        group_addons = dict()
         remaining = 0
         for m, c_idx, lodf_col in self._lazy_candidates:
+            if c_idx not in group_addons:
+                group_addons[c_idx] = self._compute_droop_addon(c_idx, values, hvdc_values)
+            addon_vec = group_addons[c_idx]
+            addon_m = float(addon_vec[m]) if addon_vec is not None else 0.0
             rate = self._lazy_rates[m]
-            f_n1 = values[m] + float(np.dot(lodf_col, values[list(c_idx)]))
+            f_n1 = values[m] + float(np.dot(lodf_col, values[list(c_idx)])) + addon_m
             if abs(f_n1) > rate + self.lazy_n1_tolerance:
                 remaining += 1
 
