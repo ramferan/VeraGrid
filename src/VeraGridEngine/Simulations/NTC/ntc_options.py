@@ -33,6 +33,7 @@ class OptimalNetTransferCapacityOptions(OptionsTemplate):
         "consider_contingencies",
         "corrective_contingencies",
         "strict_formulation",
+        "include_hvdc_exchange_sensitivity",
         "use_srap",
         "srap_max_power",
         "opf_options",
@@ -53,6 +54,7 @@ class OptimalNetTransferCapacityOptions(OptionsTemplate):
         GCProp(key="consider_contingencies", tpe=bool),
         GCProp(key="corrective_contingencies", tpe=bool),
         GCProp(key="strict_formulation", tpe=bool),
+        GCProp(key="include_hvdc_exchange_sensitivity", tpe=bool),
         GCProp(key="use_srap", tpe=bool),
         GCProp(key="srap_max_power", tpe=float),
         GCProp(key="opf_options", tpe=DeviceType.SimulationOptionsDevice),
@@ -73,6 +75,7 @@ class OptimalNetTransferCapacityOptions(OptionsTemplate):
                  consider_contingencies: bool = False,
                  corrective_contingencies: bool = False,
                  strict_formulation: bool = True,
+                 include_hvdc_exchange_sensitivity: bool = True,
                  use_srap: bool = False,
                  srap_max_power: float = 1300.0,
                  opf_options: OptimalPowerFlowOptions | None = None,
@@ -95,6 +98,7 @@ class OptimalNetTransferCapacityOptions(OptionsTemplate):
                                          Set to False only for a conservative preventive (fixed-set-point) N-1,
                                          e.g. for a regulatory assessment or to reduce the problem size.
         :param strict_formulation: Use the strict formulation
+        :param include_hvdc_exchange_sensitivity: include HVDC flow in the exchange sensitivity (alpha) calculation
         :param opf_options: OptimalPowerFlowOptions
         :param lin_options: LinearAnalysisOptions
         """
@@ -114,6 +118,7 @@ class OptimalNetTransferCapacityOptions(OptionsTemplate):
         self.consider_contingencies: bool = consider_contingencies
         self.corrective_contingencies: bool = corrective_contingencies
         self.strict_formulation: bool = strict_formulation
+        self.include_hvdc_exchange_sensitivity: bool = include_hvdc_exchange_sensitivity
         self.use_srap: bool = use_srap
         self.srap_max_power: float = srap_max_power
 

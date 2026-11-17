@@ -420,6 +420,7 @@ class PulpLpModel(AbstractLpModel):
                     h = highspy.Highs()
                     h.readModel(lp_path)
                     h.setOptionValue('log_to_console', show_logs)
+                    h.setOptionValue('presolve', 'off')
                     h.run()
                     model_status = h.getModelStatus()
                     if model_status == highspy.HighsModelStatus.kOptimal:

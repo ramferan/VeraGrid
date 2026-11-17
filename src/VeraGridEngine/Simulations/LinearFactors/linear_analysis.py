@@ -8,7 +8,7 @@ import numpy as np
 import numba as nb
 import warnings
 import scipy.sparse as sp
-from typing import List, Dict, Tuple, TYPE_CHECKING
+from typing import Any, List, Dict, Tuple, TYPE_CHECKING
 
 from scipy.sparse import lil_matrix
 from scipy.sparse.linalg import spsolve as scipy_spsolve
@@ -630,6 +630,10 @@ class LinearAnalysis:
         "hvdc_rates_pu",
         "hvdc_droop_pu",
         "hvdc_active_pmode3",
+        "hvdc_p3_idx",
+        "hvdc_phi",
+        "hvdc_Z0",
+        "hvdc_K_p3",
     )
 
     def __init__(self,
@@ -638,7 +642,8 @@ class LinearAnalysis:
                  correct_values: bool = False,
                  converters_as_setpoint: bool = False,
                  logger: Logger = Logger(),
-                 use_jacobian_ptdf: bool = False):
+                 use_jacobian_ptdf: bool = False,
+                 compute_lodf: bool = True):
         """
         Linear Analysis constructor
         :param nc: numerical circuit instance
@@ -647,6 +652,7 @@ class LinearAnalysis:
         :param converters_as_setpoint: build the AC-DC PTDF with every converter treated
             as a set-point device regardless of its control mode
         :param use_jacobian_ptdf: use the AC Jacobian PTDF for AC islands
+        :param compute_lodf: whether to compute the LODF matrix (can be False if only PTDF is needed)
         """
 
         self.logger: Logger = logger
@@ -687,7 +693,7 @@ class LinearAnalysis:
                 if len(indices.vd) == 1:
                     if len(indices.no_slack) > 0:
 
-                        if island.bus_data.is_dc.any():
+                        if island.bus_data.is_dc.any() or (island.nhvdc > 0 and not converters_as_setpoint):
                             ptdf_island = make_acdc_ptdf(
                                 nc=island,
                                 logger=self.logger,
@@ -731,17 +737,18 @@ class LinearAnalysis:
                         self.PTDF[np.ix_(island.passive_branch_data.original_idx,
                                          island.bus_data.original_idx)] = ptdf_island
 
-                        # compute the island LODF
-                        lodf_island = make_lodf(
-                            Cf=island.passive_branch_data.Cf.tocsc(),
-                            Ct=island.passive_branch_data.Ct.tocsc(),
-                            PTDF=ptdf_island,
-                            correct_values=correct_values
-                        )
+                        if compute_lodf:
+                            # compute the island LODF
+                            lodf_island = make_lodf(
+                                Cf=island.passive_branch_data.Cf.tocsc(),
+                                Ct=island.passive_branch_data.Ct.tocsc(),
+                                PTDF=ptdf_island,
+                                correct_values=correct_values
+                            )
 
-                        # assign the LODF to the main LODF matrix
-                        self.LODF[np.ix_(island.passive_branch_data.original_idx,
-                                         island.passive_branch_data.original_idx)] = lodf_island
+                            # assign the LODF to the main LODF matrix
+                            self.LODF[np.ix_(island.passive_branch_data.original_idx,
+                                             island.passive_branch_data.original_idx)] = lodf_island
                     else:
                         self.logger.add_error('No PQ or PV nodes', 'Island {}'.format(n_island))
 
@@ -791,6 +798,44 @@ class LinearAnalysis:
             if nc.hvdc_data.active[h] and nc.hvdc_data.control_mode_int[h] == HvdcControlType.type_0_free.idx():
                 self.hvdc_active_pmode3[h] = True
                 self.hvdc_droop_pu[h] = nc.hvdc_data.get_angle_droop_in_pu_rad_at(h, nc.Sbase)
+
+        # Precompute closed-loop Thevenin impedance seen by active Pmode3 HVDC links
+        self.hvdc_p3_idx = np.where(self.hvdc_active_pmode3)[0]
+        self.hvdc_phi = None
+        self.hvdc_Z0 = None
+        self.hvdc_K_p3 = None
+        vd_idx = np.flatnonzero(nc.bus_data.bus_types == 3)
+        if len(self.hvdc_p3_idx) > 0 and len(vd_idx) > 0:
+            import scipy.sparse.linalg as spla
+            slack_bus = int(vd_idx[0])
+            bus_mask = np.ones(n_bus, dtype=bool)
+            bus_mask[slack_bus] = False
+            br_act = nc.passive_branch_data.active
+            br_x = nc.passive_branch_data.X
+            b_val = np.where((br_act != 0) & (np.abs(br_x) > 1e-12), 1.0 / br_x, 0.0)
+            f_br = nc.passive_branch_data.F
+            t_br = nc.passive_branch_data.T
+            Bbus = sp.csc_matrix(
+                (np.concatenate([b_val, b_val, -b_val, -b_val]),
+                 (np.concatenate([f_br, t_br, f_br, t_br]),
+                  np.concatenate([f_br, t_br, t_br, f_br]))),
+                shape=(n_bus, n_bus),
+            )
+            Bred = Bbus[np.ix_(bus_mask, bus_mask)].tocsc()
+            solve_B = spla.factorized(Bred)
+            phi = np.zeros((n_bus, len(self.hvdc_p3_idx)), dtype=float)
+            for j, h in enumerate(self.hvdc_p3_idx):
+                rhs = np.zeros(n_bus, dtype=float)
+                rhs[nc.hvdc_data.F[h]] = 1.0
+                rhs[nc.hvdc_data.T[h]] = -1.0
+                sol = np.zeros(n_bus, dtype=float)
+                sol[bus_mask] = solve_B(rhs[bus_mask])
+                phi[:, j] = sol
+            hf_p3 = nc.hvdc_data.F[self.hvdc_p3_idx]
+            ht_p3 = nc.hvdc_data.T[self.hvdc_p3_idx]
+            self.hvdc_phi = phi
+            self.hvdc_Z0 = phi[hf_p3, :] - phi[ht_p3, :]
+            self.hvdc_K_p3 = np.diag(self.hvdc_droop_pu[self.hvdc_p3_idx])
 
     def get_transfer_limits(self, flows: np.ndarray, rates: Vec):
         """
@@ -1115,6 +1160,42 @@ class LinearMultiContingency:
 
         return flow
 
+    @staticmethod
+    def pole_spill(flow_value: Any, r_surv: float) -> Any:
+        """
+        Spilled power of the surviving pole, respecting the sign of the flow.
+
+        The surviving pole keeps its rating ``±R_surv`` **in the original flow direction**,
+        so only the excess spills into the AC grid:
+
+        .. math:: s = \\operatorname{sign}(f)\\,\\max(0, |f| - R_{surv})
+
+        The plain algebraic ``f - R_surv`` is only right while ``f > 0``: with
+        ``f = -1622 MW`` and ``R_surv = 1000 MW`` it declared ``-2622 MW`` of spill when the
+        correct figure is ``-622 MW``. That over-counting inflates every AC branch fed by the
+        pole and is fixed here the same way the N-1 screening already does it.
+
+        :param flow_value: pre-contingency flow of the link (pu). A number, or an LP variable.
+        :param r_surv: surviving rating of the pole (pu)
+        :return: spill in the same units as ``flow_value``
+        """
+        if r_surv <= 0.0:
+            # the pole is gone: everything spills
+            return flow_value
+        try:
+            f = float(flow_value)
+        except (TypeError, ValueError):
+            # LP variable (`LpVar` has no __float__): the exact spill cannot be evaluated
+            # without the base operating point, so the linearised expression is kept. The
+            # caller that knows the base flow must pass the number instead, which then takes
+            # the branch below. Do NOT return the bare variable here: dropping the -r_surv
+            # offset silently tells the LP that the surviving pole can carry nothing, and
+            # the resulting TTC changes by gigawatts (measured: H13 5.298 -> 2.850 MW).
+            return flow_value - r_surv
+        if abs(f) <= r_surv:
+            return 0.0
+        return f - (r_surv if f > 0.0 else -r_surv)
+
     def compute_hvdc_droop_addon(self, base_branch_flow: Vec, hvdc_flow: Vec) -> Vec | None:
         """
         Evaluate the physical saturated droop flow change on AC branches.
@@ -1130,13 +1211,65 @@ class LinearMultiContingency:
         delta_h = h_post - hvdc_flow
         return self.hvdc_df @ delta_h
 
+    def compute_hvdc_droop_lp_addon(self,
+                                    base_branch_flow_lp: ObjVec,
+                                    base_branch_flow_num: Vec,
+                                    hvdc_flow_lp: ObjVec,
+                                    hvdc_flow_num: Vec,
+                                    row_filter: BoolVec | None = None) -> ObjVec | None:
+        """
+        Compute linear LP expressions for passive Pmode3 HVDC droop response to AC branch outages.
+        """
+        if (self.hvdc_droop_factors is None or self.hvdc_rates is None or self.hvdc_df is None
+                or len(self.branch_indices) == 0 or hvdc_flow_lp is None):
+            return None
+
+        dh_droop = self.hvdc_droop_factors @ base_branch_flow_num[self.branch_indices]
+        n_h = self.hvdc_droop_factors.shape[0]
+        delta_h_lp = np.zeros(n_h, dtype=object)
+        active_h = []
+        for h in range(n_h):
+            if not np.any(np.abs(self.hvdc_droop_factors[h, :]) > 1e-12):
+                continue
+            h_unclipped = float(hvdc_flow_num[h] + dh_droop[h])
+            r_h = float(self.hvdc_rates[h])
+            if h_unclipped > r_h:
+                delta_h_lp[h] = r_h - hvdc_flow_lp[h]
+            elif h_unclipped < -r_h:
+                delta_h_lp[h] = -r_h - hvdc_flow_lp[h]
+            else:
+                expr_h = 0.0
+                for k_col, c_br in enumerate(self.branch_indices):
+                    coef = float(self.hvdc_droop_factors[h, k_col])
+                    if abs(coef) > 1e-12:
+                        expr_h += coef * base_branch_flow_lp[c_br]
+                delta_h_lp[h] = expr_h
+            active_h.append(h)
+
+        if not active_h:
+            return None
+
+        n_br = self.hvdc_df.shape[0]
+        addon = np.zeros(n_br, dtype=object)
+        rows = np.flatnonzero(row_filter) if row_filter is not None else np.arange(n_br)
+        for m in rows:
+            expr_m = 0.0
+            for h in active_h:
+                w = float(self.hvdc_df[m, h])
+                if abs(w) > 1e-12:
+                    expr_m += w * delta_h_lp[h]
+            addon[m] = expr_m
+        return addon
+
     def get_lp_contingency_flows(self,
                                  base_flow: ObjVec,
                                  injections: ObjVec,
                                  hvdc_flow: ObjVec | None = None,
                                  vsc_flow: ObjVec | None = None,
                                  row_filter: BoolVec | None = None,
-                                 droop_addon: Vec | None = None) -> Tuple[ObjVec, BoolVec, IntVec]:
+                                 droop_addon: Vec | None = None,
+                                 pole_spill: ObjVec | None = None,
+                                 vsc_pole_spill: ObjVec | None = None) -> Tuple[ObjVec, BoolVec, IntVec]:
         """
         Get contingency flows using the LP interface equations
         :param base_flow: Base branch flows (nbranch)
@@ -1145,6 +1278,12 @@ class LinearMultiContingency:
         :param vsc_flow: Base Vsc flows (n_vsc)
         :param row_filter: per-branch flag, True for the branches the caller is going to constrain.
         :param droop_addon: numeric AC branch flow offset from saturated Pmode3 HVDC droop response
+        :param pole_spill: spill of the surviving pole, already built as an LP expression and aligned with
+                           ``self.hvdc_indices``. When given it is used instead of evaluating
+                           ``pole_spill()`` on the flow, which is impossible with solver variables.
+                           The expression must be ``sign(f) * max(0, |f| - R_surv)``: the source can
+                           build it exactly with ``add_clipped_flow`` on the surviving pole.
+        :param vsc_pole_spill: same as ``pole_spill`` for the VSC converters
         :return: New flows (nbranch), the mask of branches that changed, and their indices
         """
         mask: BoolVec = np.zeros(len(base_flow), dtype=bool)
@@ -1158,22 +1297,25 @@ class LinearMultiContingency:
 
             # Physical saturated droop addon from Pmode3 HVDC links responding to AC contingency
             if droop_addon is not None and len(droop_addon) == len(flow):
-                active_idx = np.flatnonzero(np.abs(droop_addon) > 1e-6)
-                if row_filter is not None:
-                    active_idx = active_idx[row_filter[active_idx]]
-                if len(active_idx) > 0:
-                    mask[active_idx] = True
-                    for idx_a in active_idx:
-                        flow[idx_a] += float(droop_addon[idx_a])
+                from VeraGridEngine.Utils.MIP.selected_interface import LpExp
+                indices = np.flatnonzero(row_filter) if row_filter is not None else range(len(flow))
+                for idx_a in indices:
+                    val = droop_addon[idx_a]
+                    if isinstance(val, LpExp):
+                        mask[idx_a] = True
+                        flow[idx_a] += val
+                    elif isinstance(val, (int, float, np.floating)) and abs(float(val)) > 1e-6:
+                        mask[idx_a] = True
+                        flow[idx_a] += float(val)
 
         if len(self.hvdc_indices) > 0 and hvdc_flow is not None:
-            hvdc_loss_list = []
-            for k, h_idx in enumerate(self.hvdc_indices):
-                r_surv = float(self.hvdc_surviving_rates[k])
-                if r_surv <= 0.0:
-                    hvdc_loss_list.append(hvdc_flow[h_idx])
-                else:
-                    hvdc_loss_list.append(hvdc_flow[h_idx] - r_surv)
+            if pole_spill is not None and len(pole_spill) == len(self.hvdc_indices):
+                hvdc_loss_list = list(pole_spill)
+            else:
+                hvdc_loss_list = []
+                for k, h_idx in enumerate(self.hvdc_indices):
+                    r_surv = float(self.hvdc_surviving_rates[k])
+                    hvdc_loss_list.append(self.pole_spill(hvdc_flow[h_idx], r_surv))
             arr_hvdc = np.empty(len(hvdc_loss_list), dtype=object)
             arr_hvdc[:] = hvdc_loss_list
             inc, block_idx = lpDot1D_changes(self.hvdc_odf, arr_hvdc, row_filter)
@@ -1182,13 +1324,13 @@ class LinearMultiContingency:
                 flow[block_idx] += inc[block_idx]
 
         if len(self.vsc_indices) > 0 and vsc_flow is not None:
-            vsc_loss_list = []
-            for k, v_idx in enumerate(self.vsc_indices):
-                r_surv = float(self.vsc_surviving_rates[k])
-                if r_surv <= 0.0:
-                    vsc_loss_list.append(vsc_flow[v_idx])
-                else:
-                    vsc_loss_list.append(vsc_flow[v_idx] - r_surv)
+            if vsc_pole_spill is not None and len(vsc_pole_spill) == len(self.vsc_indices):
+                vsc_loss_list = list(vsc_pole_spill)
+            else:
+                vsc_loss_list = []
+                for k, v_idx in enumerate(self.vsc_indices):
+                    r_surv = float(self.vsc_surviving_rates[k])
+                    vsc_loss_list.append(self.pole_spill(vsc_flow[v_idx], r_surv))
             arr_vsc = np.empty(len(vsc_loss_list), dtype=object)
             arr_vsc[:] = vsc_loss_list
             inc, block_idx = lpDot1D_changes(self.vsc_odf, arr_vsc, row_filter)
@@ -1574,7 +1716,7 @@ class LinearMultiContingencies:
 
             vsc_surviving_rates = []
             for v_idx, frac in zip(contingency_indices.vsc_contingency_indices, contingency_indices.vsc_factors):
-                rate_mw = float(self.grid.vsc_converters[v_idx].rate)
+                rate_mw = float(self.grid.vsc_devices[v_idx].rate)
                 rate_pu = rate_mw / lin.Sbase
                 vsc_surviving_rates.append(rate_pu * (1.0 - frac))
 
@@ -1594,9 +1736,21 @@ class LinearMultiContingencies:
                     denom: float = 1.0 - float(lin.PTDF[c_single, f_node] - lin.PTDF[c_single, t_node])
                     if abs(denom) < 1e-10:
                         denom = 1.0
-                    for h_idx in range(n_h):
-                        if lin.hvdc_active_pmode3[h_idx]:
-                            droop_mat[h_idx, 0] = - lin.hvdc_droop_pu[h_idx] * x_c * lin.HvdcDF[c_single, h_idx] / denom
+                    p3_idx = getattr(lin, "hvdc_p3_idx", np.where(lin.hvdc_active_pmode3)[0])
+                    g_open_p3 = np.array([
+                        - lin.hvdc_droop_pu[h_idx] * x_c * lin.HvdcDF[c_single, h_idx] / denom
+                        for h_idx in p3_idx
+                    ], dtype=float)
+                    if getattr(lin, "hvdc_Z0", None) is not None and getattr(lin, "hvdc_phi", None) is not None:
+                        phi_c = lin.hvdc_phi[f_node, :] - lin.hvdc_phi[t_node, :]
+                        if abs(x_c) > 1e-12:
+                            Zc = lin.hvdc_Z0 + np.outer(phi_c, phi_c) / (x_c * denom)
+                        else:
+                            Zc = lin.hvdc_Z0.copy()
+                        g_closed_p3 = np.linalg.solve(np.eye(len(p3_idx)) + lin.hvdc_K_p3 @ Zc, g_open_p3)
+                        droop_mat[p3_idx, 0] = g_closed_p3
+                    else:
+                        droop_mat[p3_idx, 0] = g_open_p3
                 else:
                     X_diag: Vec = lin.branch_X[br_con_idx]
                     f_nodes: IntVec = lin.branch_from[br_con_idx]

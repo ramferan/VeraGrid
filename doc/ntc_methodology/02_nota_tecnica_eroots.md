@@ -123,9 +123,13 @@ Una vez aplicadas las correcciones descritas a continuación, el modo estricto r
 * **Corrección requerida:** En `PulpLpModel.solve`, cuando el solver seleccionado es `MIPSolvers.HIGHS`, resolver directamente exportando el modelo al formato canónico `.lp` (`model.writeLP`) y ejecutando `highspy.Highs().readModel(lp_path)`. El parser nativo en C++ de HiGHS preserva al 100% la integrality y la topología canónica, convergiendo sin degradación al óptimo global verdadero en todos los escenarios (8.899,80 MW en H8280 y 8.181,73 MW en H98) en tiempos idénticos (~15-20 s por resolución LP).
 
 ### 3.11. Propagación del Acoplamiento Droop de Enlaces HVDC en Pmode3 en la Formulación Estricta
-* **Ubicación:** `ntc_opf_strict.py` (`add_linear_branches_contingencies_formulation`).
-* **Problema:** En la rama oficial, la formulación estricta (`strict`) omite el término aditivo de respuesta pasiva droop de los enlaces HVDC ante el disparo de líneas de alterna (`droop_addons`). Al producirse una contingencia AC, los enlaces HVDC en Pmode3 modifican su flujo pasivamente por variación del ángulo en bornas $\Delta\theta$; sin embargo, en `ntc_opf_strict.py` este efecto no se transfería a las llamadas de `contingency.get_lp_contingency_flows`, dejando a la red de alterna sin la compensación o sobrecarga derivada del estatismo de continua en las interconexiones.
-* **Corrección requerida:** Calcular el término `droop_addon` evaluado en el punto de operación para cada contingencia admitida y propagarlo en la llamada `contingency.get_lp_contingency_flows(..., droop_addon=addon_c)`. Asimismo, restringir las cotas del LP a las ramas efectivamente admitidas en la ronda lazy (`rows_to_limit`), garantizando consistencia física plena.
+* **Ubicación:** `linear_analysis.py` (`LinearAnalysis`, `LinearMultiContingencies.compute`, `compute_hvdc_droop_lp_addon`) y `ntc_opf_strict.py` (`add_linear_branches_contingencies_formulation`).
+* **Problema:** En la rama oficial, la formulación estricta (`strict`) omite la respuesta pasiva droop de los enlaces HVDC ante el disparo de líneas de alterna. Al producirse una contingencia AC, los enlaces HVDC en Pmode3 modifican su flujo pasivamente según el equilibrio acoplado con la red AC; omitir este término en `ntc_opf_strict.py` deja la red de alterna sin la redistribución derivada del estatismo de continua.
+* **Corrección requerida:** Calcular los factores de acoplamiento `hvdc_droop_factors` en **lazo cerrado** mediante $(I + K Z_{\text{th}}^{(c)})^{-1}$ (sobre la impedancia de Thévenin post-contingencia $Z_{\text{th}}^{(c)}$ entre terminales HVDC) y propagarlos en `ntc_opf_strict.py` mediante `compute_hvdc_droop_lp_addon` como expresión lineal en las variables del LP.
+
+Adicionalmente, para asegurar la convergencia numérica de HiGHS y el soporte completo de convertidores VSC en `ntc_opf_strict.py`:
+* En `pulp_interface.py` (`PulpLpModel.solve`), desactivar `presolve` (`presolve="off"`) al resolver el fichero `.lp` con HiGHS evita errores de post-resolución y reducciones espurias en matrices mal escaladas.
+* En `linear_analysis.py` usar `grid.vsc_devices` (en lugar de `grid.vsc_converters`), y en `ntc_opf_strict.py` poblar `mip_vars.vsc_vars.inter_space_vsc = nc.vsc_data.get_inter_areas(...)`.
 
 ### 3.12. Supresión de la Segunda Etapa ("Least Control Effort") y Maximización Directa del Flujo de Interconexión
 * **Ubicación:** `ntc_opf_strict.py` (`run_linear_ntc_opf_strict`, llamadas a `solve_least_control_effort`).
@@ -137,20 +141,25 @@ Una vez aplicadas las correcciones descritas a continuación, el modo estricto r
   $$\max \left( \sum_{k \in \text{AC inter}} \text{sign}_k \cdot P_k + \sum_{h \in \text{HVDC inter}} \text{sign}_h \cdot P_h \right)$$
   donde $\text{sign}_k \in \{+1.0, -1.0\}$ se obtiene mediante `get_inter_areas()` a partir de los nudos *from* y *to* de la línea respecto a las áreas de origen y destino. Esta formulación garantiza que todo flujo hacia Francia sume en positivo y cancela algebraicamente cualquier bucle de recirculación entre fronteras, impidiendo que recirculaciones espurias inflen la capacidad calculada.
 
-### 3.13. Clave de Reparto GSK en `AvailableTransferMode.InstalledPower`: Potencia Activa $P_{\max}$ vs Aparente $S_{\text{nom}}$
-* **Ubicación:** `ntc_opf_strict.py:161` y `ntc_opf.py:157` (`get_transfer_power_scaling_per_bus`).
-* **Problema:** Para el modo `InstalledPower`, el código asignaba:
-  ```python
-  pinst_per_bus = gen_data_t.get_installed_power_per_bus() / Sbase
-  p_ref = pinst_per_bus
-  ```
-  donde `installed_p = elm.Snom` (potencia aparente nominal en MVA). En cálculos de transferencia y capacidad comercial según normativa CACM / ENTSO-E, la clave de reparto de generación (*Generation Shift Key*, GSK) proporcional a la potencia instalada debe formularse sobre la **capacidad activa máxima disponible** ($P_{\max}$ en MW).
-  En el modelo peninsular e interconexiones europeas coexisten generadores (térmicos, hidroeléctricos, parques eólicos y solares) donde el alternador o convertidor está sobredimensionado ($S_{\text{nom}} \gg P_{\max}$). En el modelo del MOU, **1.976 generadores presentan $S_{\text{nom}} \ne P_{\max}$**. Asignar la proporción sobre $S_{\text{nom}}$ distorsiona el reparto nodal de inyecciones comerciales $\Delta P$, sobrecargando prematuramente líneas de interconexión (rama 2576 Argia–Arkale) a un TTC inferior (5.180 MW).
-* **Corrección requerida:** Asignar la referencia de potencia instalada a partir de la potencia activa máxima por nudo:
-  ```python
-  p_ref = gen_data_t.get_pmax_per_bus() / Sbase
-  ```
-  Con esta corrección, el vector de inyecciones del intercambio se distribuye de forma estrictamente proporcional a la potencia activa instalada y reproducible, alcanzando paridad numérica exacta con la referencia histórica del MOU: **5.298,61 MW** frente a **5.297,10 MW** (diferencia de +1,51 MW, un 0,028%).
+### 3.13. Clave de Reparto GSK en `AvailableTransferMode.InstalledPower`: Potencia Activa $P_{\max}$ vs Aparente $S_{\text{nom}}$ y Unificación Screening-LP
+* **Ubicación:** `src/VeraGridEngine/Compilers/circuit_to_data.py:1195`, `ntc_opf_strict.py:161, 1807` y `available_transfer_capacity_driver.py:89, 540`.
+* **Problema en dos capas:**
+  1. *Capa de datos (`circuit_to_data.py`):* Para el modo `InstalledPower`, el compilador acumulaba incondicionalmente la potencia aparente nominal de placa:
+     ```python
+     data.installed_p[k] = elm.Snom
+     bus_data.installed_power[i] += elm.Snom
+     ```
+     sin filtrar por estado de servicio (`active`) ni por capacidad de modulación (`dispatchable`). En el modelo del MOU, **1.976 generadores presentan $S_{\text{nom}} \ne P_{\max}$** y existen parques renovables con `dispatchable=False` que no participan en el redespacho.
+  2. *Capa de acoplamiento Screening vs LP:* La corrección previa en `ntc_opf_strict.py:165` (`p_ref = gen_data_t.get_pmax_per_bus() / Sbase * dispatchable_bus`) corrigió el redespacho en las restricciones del LP, pero el cribado de vigilancia calculaba el vector de sensibilidades $\alpha = \text{PTDF} \cdot dP$ a través de una tubería independiente (`compute_dP` alimentada por `bus_data.installed_power`). Al mantenerse `installed_power` con $S_{\text{nom}}$ de todos los grupos, el vector de perturbación $dP$ usado para screening divergía de la dirección real de transferencia $\bm{w}_{\text{LP}}$ del optimizador.
+  * *Impacto físico y metodológico:* La dilución del vector de perturbación debida al uso de $S_{\text{nom}}$ y la inclusión de máquinas no despachables provoca que ramas con acoplamiento a nudos con generación renovable o de potencia firme limitada presenten una sensibilidad calculada $\alpha$ inferior a la real. Si dicha sensibilidad artificial cae por debajo del umbral reglamentario de monitorización (e.g. 5%), la rama es indebidamente excluida del conjunto de restricciones vigiladas en el LP, permitiendo que el optimizador resuelva capacidades comerciales artificialmente sobreestimadas que violan los límites térmicos reales de la red.
+* **Corrección requerida e implementada:**
+  1. En `circuit_to_data.py`, poblar `data.installed_p[k]` y `bus_data.installed_power[i]` exclusivamente con la potencia activa máxima $P_{\max}$ de generadores activos y despachables:
+     ```python
+     inst_p = float(pmax) if (data.active[k] and data.dispatchable[k]) else 0.0
+     data.installed_p[k] = inst_p
+     bus_data.installed_power[i] += inst_p
+     ```
+  2. Unificar el cálculo de sensibilidades: `compute_alpha()` debe evaluarse directamente sobre el vector de inyecciones unitarias del LP (`bus_pref_t` / `proportions`), garantizando por construcción la identidad analítica $\alpha = \text{PTDF} \cdot \bm{w}_{\text{LP}}$ sin ruidos de redondeo a 6 decimales ni fallbacks silenciosos a $S_n$. Con esto se asegura que una rama se vigila bajo la mismísima ley de reparto con la que el LP la optimiza.
 
 ### 3.14. Erradicación de la Susceptancia Parásita en Factores Lineales (`linear_analysis.py`)
 * **Ubicación:** `src/VeraGridEngine/Simulations/LinearFactors/linear_analysis.py:411, 430`.

@@ -45,7 +45,7 @@ from VeraGridEngine.Simulations.NTC.ntc_opf import (add_corrective_contingency_f
                                                     solve_least_control_effort,
                                                     get_exchange_proportions)
 from VeraGridEngine.IO.file_system import opf_file_path
-from VeraGridEngine.Simulations.NTC.ntc_compact import SolverProgress, CompactContingencies
+from VeraGridEngine.Simulations.NTC.ntc_compact import SolverProgress, CompactContingencies, add_clipped_flow
 from VeraGridEngine.Simulations.NTC.ntc_preflight import validate_inter_area_links
 
 
@@ -235,6 +235,7 @@ class BusNtcVars:
         "Pbalance",
         "delta_p",
         "proportions",
+        "exchange_weights",
     )
 
     def __init__(self, nt: int, n_elm: int):
@@ -258,6 +259,10 @@ class BusNtcVars:
         self.Pbalance = np.zeros((nt, n_elm), dtype=object)
         self.delta_p = np.zeros((nt, n_elm), dtype=object)
         self.proportions = np.zeros((nt, n_elm), dtype=float)
+        # Un-rounded transfer weights the optimisation actually moves (p.u. of P). The
+        # exchange sensitivity (alpha) is derived from these, so it can never disagree
+        # with the GSK and the transfer_method that the LP applies.
+        self.exchange_weights = np.zeros((nt, n_elm), dtype=float)
 
     def get_values(self, Sbase: float, model: OrToolsLpModel) -> "BusNtcVars":
         """
@@ -270,6 +275,7 @@ class BusNtcVars:
         data.shadow_prices = self.shadow_prices
         data.load_p = self.load_p * Sbase
         data.proportions = self.proportions
+        data.exchange_weights = self.exchange_weights
 
         for t in range(nt):
 
@@ -765,6 +771,9 @@ def add_linear_injections_formulation(t: Union[int, None],
 
     # copy the computed proportions
     ntc_vars.bus_vars.proportions[t, :] = proportions
+    # keep the raw (un-rounded) weights: the exchange sensitivity uses the very same
+    # criterion as the optimisation, whatever transfer_method is configured
+    ntc_vars.bus_vars.exchange_weights[t, :] = bus_pref_t
 
     if structural_area_balance:
         # One exchange variable for both areas. The proportion carries the sign
@@ -1092,6 +1101,80 @@ def add_preventive_contingency_formulation_strict(t_idx: int,
     return 0.0
 
 
+def compute_pole_spill_expressions(prob,
+                                   t_idx: int,
+                                   cont_index: int,
+                                   contingency,
+                                   hvdc_vars,
+                                   vsc_vars,
+                                   Sbase: float) -> tuple[list, list]:
+    r"""Derrame del polo superviviente, formulado de forma exacta dentro del LP.
+
+    El polo que sobrevive puede asumir hasta $R_{surv}$ **en el sentido del flujo**; lo que
+    excede esa capacidad se derrama sobre la red de alterna. Eso es, literalmente, un
+    ``clip`` del flujo del enlace:
+
+    .. math:: f^{\text{polo}} = \operatorname{clip}(f, \pm R_{surv}), \qquad
+              \Delta f^{\text{derrame}} = f - f^{\text{polo}}
+
+    y un ``clip`` es exactamente lo que resuelve ``add_clipped_flow``, el mismo helper que
+    usa Pmode3 para la saturación del estatismo: como mucho **dos** selectores por enlace y
+    big-M ajustada a las cotas reales (``upper - rate`` y ``-rate - lower``), sin multiplicar
+    el problema por miles de binarias.
+
+    Frente a congelar el derrame en el punto base, esto mantiene la dependencia con el flujo
+    que decide el optimizador: si el enlace se carga por encima de $R_{surv}$ para aumentar el
+    intercambio, el derrame crece con él. Y frente a la expresión algebraica ``f - R_{surv}``,
+    no inventa derrame cuando el enlace va poco cargado ni lo cuenta con el signo cambiado
+    cuando el flujo es negativo.
+
+    El coste es de dos binarias por contingencia de polo y enlace implicado —en la red del
+    MOU, cuatro contingencias de polo con un enlace cada una—, no por contingencia de rama AC.
+
+    :param prob: modelo LP/MIP donde se declaran las variables y restricciones
+    :param t_idx: paso temporal
+    :param cont_index: índice de la contingencia, sólo para nombres únicos
+    :param contingency: ``LinearMultiContingency`` con los índices y las capacidades que sobreviven
+    :param hvdc_vars: variables de los enlaces HVDC del paso temporal
+    :param vsc_vars: variables de los convertidores VSC del paso temporal
+    :param Sbase: potencia base
+    :return: ``(lista HVDC, lista VSC)`` de expresiones de derrame alineadas con los índices
+    """
+    hvdc_spill: list = []
+    vsc_spill: list = []
+
+    if hvdc_vars is not None and len(contingency.hvdc_indices) > 0:
+        for k, h_idx in enumerate(contingency.hvdc_indices):
+            r_surv = float(contingency.hvdc_surviving_rates[k])
+            flow = hvdc_vars.flows[t_idx, int(h_idx)]
+            if r_surv <= 0.0:
+                # el polo se pierde entero: se derrama todo el flujo
+                hvdc_spill.append(flow)
+                continue
+            rate_pu = float(hvdc_vars.rates[t_idx, int(h_idx)]) / Sbase
+            tag = join("pole_surv_hvdc_", [t_idx, cont_index, int(h_idx)])
+            carried = prob.add_var(lb=-r_surv, ub=r_surv, name=tag + "_flow")
+            add_clipped_flow(prob=prob, flow=carried, demand=flow, rate=r_surv,
+                             lower=-rate_pu, upper=rate_pu, name=tag)
+            hvdc_spill.append(flow - carried)
+
+    if vsc_vars is not None and len(contingency.vsc_indices) > 0:
+        for k, v_idx in enumerate(contingency.vsc_indices):
+            r_surv = float(contingency.vsc_surviving_rates[k])
+            flow = vsc_vars.flows[t_idx, int(v_idx)]
+            if r_surv <= 0.0:
+                vsc_spill.append(flow)
+                continue
+            rate_pu = float(vsc_vars.rates[t_idx, int(v_idx)]) / Sbase
+            tag = join("pole_surv_vsc_", [t_idx, cont_index, int(v_idx)])
+            carried = prob.add_var(lb=-r_surv, ub=r_surv, name=tag + "_flow")
+            add_clipped_flow(prob=prob, flow=carried, demand=flow, rate=r_surv,
+                             lower=-rate_pu, upper=rate_pu, name=tag)
+            vsc_spill.append(flow - carried)
+
+    return hvdc_spill, vsc_spill
+
+
 def add_linear_branches_contingencies_formulation(t_idx: int,
                                                   Sbase: float,
                                                   branch_data_t: PassiveBranchData,
@@ -1120,7 +1203,9 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                                                    generator_data: GeneratorData | None = None,
                                                    ptdf: Mat | None = None,
                                                    srap_delta_store: Union[Dict[int, Dict[int, LpVar]], None] = None,
-                                                   allowed_srap_gen_indices: IntVec | None = None):
+                                                   allowed_srap_gen_indices: IntVec | None = None,
+                                                   base_branch_flow_num: Vec | None = None,
+                                                   hvdc_flow_num: Vec | None = None):
     """
     Formulate the branches
     :param t_idx: time index
@@ -1176,16 +1261,41 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
     for c in c_iterable:
         contingency = linear_multi_contingencies.multi_contingencies[int(c)]
 
+        # derrame exacto del polo superviviente (clip con selectores, como Pmode3)
+        pole_spill, vsc_pole_spill = compute_pole_spill_expressions(
+            prob=prob, t_idx=t_idx, cont_index=int(c), contingency=contingency,
+            hvdc_vars=hvdc_vars, vsc_vars=vsc_vars, Sbase=Sbase
+        )
+
+        rows_to_limit = None if group_rows is None else group_rows.get(int(c), None)
+
+        droop_addon_c = None
+        if base_branch_flow_num is not None and hvdc_flow_num is not None and len(contingency.branch_indices) > 0:
+            row_mask_c = np.zeros(branch_data_t.nelm, dtype=bool)
+            if rows_to_limit is not None:
+                row_mask_c[rows_to_limit] = True
+            else:
+                row_mask_c[:] = monitorable
+            droop_addon_c = contingency.compute_hvdc_droop_lp_addon(
+                base_branch_flow_lp=branch_vars.flows[t_idx, :],
+                base_branch_flow_num=base_branch_flow_num,
+                hvdc_flow_lp=hvdc_vars.flows[t_idx, :],
+                hvdc_flow_num=hvdc_flow_num,
+                row_filter=row_mask_c,
+            )
+
         contingency_flows, mask, changed_idx = contingency.get_lp_contingency_flows(
             base_flow=branch_vars.flows[t_idx, :],
             injections=bus_vars.Pinj[t_idx, :],
             hvdc_flow=hvdc_vars.flows[t_idx, :],
             vsc_flow=vsc_vars.flows[t_idx, :],
-            row_filter=monitorable
+            row_filter=monitorable,
+            droop_addon=droop_addon_c,
+            pole_spill=pole_spill if len(pole_spill) > 0 else None,
+            vsc_pole_spill=vsc_pole_spill if len(vsc_pole_spill) > 0 else None
         )
 
         branch_terms: Dict[int, LpExp] = dict()
-        rows_to_limit = None if group_rows is None else group_rows.get(int(c), None)
 
         if use_srap and srap_data is not None:
             from VeraGridEngine.Simulations.NTC.ntc_remedial_actions import add_srap_formulation
@@ -1609,6 +1719,7 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
                               robust: bool = False,
                               mip_framework: MIPFramework = MIPFramework.PuLP,
                               structural_area_balance: bool = True,
+                              include_hvdc_exchange_sensitivity: bool = True,
                               use_srap: bool = False,
                               srap_max_power: float = 1300.0,
                               allowed_srap_gen_indices: IntVec | None = None,
@@ -1702,6 +1813,9 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
     mip_vars.hvdc_vars.inter_space_hvdc = nc.hvdc_data.get_inter_areas(bus_idx_from=bus_a1_idx_set,
                                                                        bus_idx_to=bus_a2_idx_set)
 
+    mip_vars.vsc_vars.inter_space_vsc = nc.vsc_data.get_inter_areas(bus_idx_from=bus_a1_idx_set,
+                                                                     bus_idx_to=bus_a2_idx_set)
+
     mip_vars.bus_vars.angle_min = nc.bus_data.angle_min
     mip_vars.bus_vars.angle_max = nc.bus_data.angle_max
 
@@ -1783,8 +1897,8 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
 
     if zonal_grouping == ZonalGrouping.NoGrouping:
 
-        # declare the linear analysis and compute the PTDF and LODF
-        # converters_as_setpoint keeps the monitoring independent from the control
+        # Keep ls.LODF purely AC (converters_as_setpoint=True) so N-1 droop is not double-counted
+        # alongside hvdc_droop_factors; compute exchange sensitivity PTDF separately when requested.
         if linear_analysis is None:
             ls = LinearAnalysis(nc=nc,
                                 distributed_slack=False,
@@ -1794,29 +1908,66 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
         else:
             ls = linear_analysis
 
+        if include_hvdc_exchange_sensitivity and (nc.nhvdc > 0 or nc.nvsc > 0):
+            ptdf_exchange = LinearAnalysis(nc=nc,
+                                           distributed_slack=False,
+                                           correct_values=True,
+                                           converters_as_setpoint=False,
+                                           compute_lodf=False,
+                                           logger=logger).PTDF
+        else:
+            ptdf_exchange = ls.PTDF
+
         srap_data = None
         if use_srap and nc.generator_data is not None:
             from VeraGridEngine.Simulations.NTC.ntc_remedial_actions import precompute_srap_data
-            srap_data = precompute_srap_data(generator_data=nc.generator_data, ptdf=ls.PTDF,
+            srap_data = precompute_srap_data(generator_data=nc.generator_data, ptdf=ptdf_exchange,
                                              allowed_gen_indices=allowed_srap_gen_indices)
 
-        # compute the sensitivity to the exchange
-        dP = compute_dP(
-            P0=Pbus.real,  # already scaled within add_linear_injections_formulation
-            P_installed=nc.bus_data.installed_power,
-            Pgen=nc.generator_data.get_injections_per_bus().real,
-            Pload=nc.load_data.get_injections_per_bus().real,
+        # The exchange sensitivity (alpha, alpha_n1) must follow the SAME criterion the
+        # optimisation moves: the transfer_method's per-bus MW weights (Pmax·dispatchable
+        # for InstalledPower, the current MW for Generation, the load for Load...). Building
+        # them from nc.bus_data.installed_power (the installed MVA, Sn) made the monitoring
+        # agree on a different GSK than the one actually applied, so a branch could be
+        # screened out (or in) using a transfer direction the LP never uses.
+        dP = get_exchange_proportions(
+            power=np.asarray(mip_vars.bus_vars.exchange_weights[t_idx, :], dtype=float),
             bus_a1_idx=bus_a1_idx,
             bus_a2_idx=bus_a2_idx,
-            mode=mode_2_int[transfer_method],
-            dT=1.0
+            logger=logger,
+            decimals=12,
         )
+        if float(np.sum(np.abs(dP))) < 1e-12:
+            # Degenerate weights (an area with no participating generation): keep the legacy
+            # numeric dP alive, but say it, so nobody reads a slack-relaxed NTC as a market value.
+            logger.add_warning(msg="Degenerate exchange proportions: the exchange sensitivity "
+                                   "(alpha) falls back to the installed-power numeric dP")
+            dP = compute_dP(
+                P0=Pbus.real,  # already scaled within add_linear_injections_formulation
+                P_installed=nc.bus_data.installed_power,
+                Pgen=nc.generator_data.get_injections_per_bus().real,
+                Pload=nc.load_data.get_injections_per_bus().real,
+                bus_a1_idx=bus_a1_idx,
+                bus_a2_idx=bus_a2_idx,
+                mode=mode_2_int[transfer_method],
+                dT=1.0
+            )
 
-        alpha = compute_alpha(
+        alpha_ac = compute_alpha(
             ptdf=ls.PTDF,
             dP=dP,
             dT=1.0
         )
+        if include_hvdc_exchange_sensitivity and (nc.nhvdc > 0 or nc.nvsc > 0):
+            alpha_hvdc = compute_alpha(
+                ptdf=ptdf_exchange,
+                dP=dP,
+                dT=1.0
+            )
+            alpha = np.where(np.abs(alpha_hvdc) > np.abs(alpha_ac), alpha_hvdc, alpha_ac)
+        else:
+            alpha_hvdc = alpha_ac
+            alpha = alpha_ac
 
         mip_vars.branch_vars.alpha[t_idx, :] = alpha
 
@@ -1871,13 +2022,24 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
                     mctg = multi_contingencies
                 report_mctg = mctg
 
-                alpha_n1 = compute_alpha_n1(
+                alpha_n1_ac = compute_alpha_n1(
                     ptdf=ls.PTDF,
                     lodf=ls.LODF,
-                    alpha=alpha,
+                    alpha=alpha_ac,
                     dP=dP,
                     dT=1.0
                 )
+                if include_hvdc_exchange_sensitivity and (nc.nhvdc > 0 or nc.nvsc > 0):
+                    alpha_n1_hvdc = compute_alpha_n1(
+                        ptdf=ptdf_exchange,
+                        lodf=ls.LODF,
+                        alpha=alpha_hvdc,
+                        dP=dP,
+                        dT=1.0
+                    )
+                    alpha_n1 = np.where(np.abs(alpha_n1_hvdc) > np.abs(alpha_n1_ac), alpha_n1_hvdc, alpha_n1_ac)
+                else:
+                    alpha_n1 = alpha_n1_ac
 
                 if corrective_contingencies and has_pmode3 and not use_srap:
                     controlled_states = CompactContingencies(
@@ -2005,9 +2167,11 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
                     use_srap=use_srap,
                     srap_max_power=srap_max_power,
                     generator_data=nc.generator_data,
-                    ptdf=ls.PTDF,
+                    ptdf=ptdf_exchange,
                     srap_delta_store=srap_delta_store,
-                    allowed_srap_gen_indices=allowed_srap_gen_indices
+                    allowed_srap_gen_indices=allowed_srap_gen_indices,
+                    base_branch_flow_num=f0_num,
+                    hvdc_flow_num=hvdc0_num,
                 )
 
                 for c_new, rows_new in admissions:

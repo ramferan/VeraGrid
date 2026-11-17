@@ -235,6 +235,7 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                     robust=self.options.opf_options.robust,
                     mip_framework=self.options.opf_options.mip_framework,
                     structural_area_balance=True,
+                    include_hvdc_exchange_sensitivity=self.options.include_hvdc_exchange_sensitivity,
                     linear_analysis=cached_ls,
                     multi_contingencies=cached_mctg,
                     bus_dict=bus_dict,
@@ -263,7 +264,8 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                     progress_func=None,
                     verbose=self.options.opf_options.verbose,
                     robust=self.options.opf_options.robust,
-                    mip_framework=self.options.opf_options.mip_framework
+                    mip_framework=self.options.opf_options.mip_framework,
+                    include_hvdc_exchange_sensitivity=self.options.include_hvdc_exchange_sensitivity
                 )
 
             if t_idx == 0:

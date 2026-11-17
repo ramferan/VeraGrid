@@ -88,13 +88,17 @@ Los enlaces HVDC operando en modo droop angular (Pmode3) no se redespachan a con
     \begin{equation}
     f_h^0 = \operatorname{clip}\left(P_0 + K_h(\theta_{f_h} - \theta_{t_h}), -R_h, +R_h\right).
     \end{equation}
-    \item \textbf{Respuesta ante Contingencias de Líneas AC ($N-1$):} El disparo de una línea de alterna $c=(u, v)$ induce un salto angular en la red $\Delta\bm{\theta}^{(c)} = X_{\text{bus}} \Delta\mathbf{P}^{(c)}$. La deformación angular entre bornas del enlace $h$ es:
+    \item \textbf{Respuesta ante Contingencias de Líneas AC ($N-1$):} El disparo de una línea de alterna $c=(u, v)$ induce en la red AC (sin realimentación de continua) una deformación angular en lazo abierto entre bornas del enlace $h$:
     \begin{equation}
-    \Delta\theta_h^{(c)} = x_c \cdot \operatorname{HvdcODF}_{c, h} \cdot \frac{f_c^0}{1 - H_{c,c}}.
+    \Delta\theta_{\text{AC}, h}^{(c)} = - x_c \cdot \operatorname{HvdcDF}_{c, h} \cdot \frac{f_c^0}{1 - H_{c,c}}.
     \end{equation}
-    El enlace reacciona pasivamente siguiendo su estatismo hasta topar con su límite térmico $\pm R_h$:
+    Como la propia inyección $\Delta\bm{f}^{(c)}$ de los enlaces HVDC descarga la red AC y frena dicha apertura angular ($\Delta\bm{\theta}^{(c)} = \Delta\bm{\theta}_{\text{AC}}^{(c)} - Z_{\text{th}}^{(c)} \Delta\bm{f}^{(c)}$), el equilibrio acoplado en \textbf{lazo cerrado} se obtiene resolviendo el sistema lineal sobre la impedancia de Thévenin post-contingencia $Z_{\text{th}}^{(c)} = Z_0 + \frac{\bm{\phi}_c \bm{\phi}_c^\top}{x_c (1 - H_{c,c})}$:
     \begin{equation}
-    \Delta f_h^{(c)} = \operatorname{clip}\left(f_h^0 + K_h \Delta\theta_h^{(c)}, -R_h, +R_h\right) - f_h^0.
+    \left(I + \operatorname{diag}(\bm{K}) \, Z_{\text{th}}^{(c)}\right) \Delta\bm{f}_{\text{lin}}^{(c)} = \operatorname{diag}(\bm{K}) \, \Delta\bm{\theta}_{\text{AC}}^{(c)},
+    \end{equation}
+    y cada enlace reacciona pasivamente siguiendo su estatismo hasta topar con su límite térmico $\pm R_h$:
+    \begin{equation}
+    \Delta f_h^{(c)} = \operatorname{clip}\left(f_h^0 + \Delta f_{\text{lin}, h}^{(c)}, -R_h, +R_h\right) - f_h^0.
     \end{equation}
     Esta variación induce a su vez una inyección en la red de alterna mediante los factores de distribución:
     \begin{equation}
