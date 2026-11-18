@@ -2952,9 +2952,6 @@ class OpfNTC(Opf):
         for m, c_idx, lodf_col in self._lazy_candidates:
 
             key = (m, c_idx)
-            if key in self._lazy_added:
-                continue
-
             rate = self._lazy_rates[m]
             if c_idx not in group_addons:
                 group_addons[c_idx] = self._compute_droop_addon(c_idx, values, hvdc_values)
@@ -2969,7 +2966,7 @@ class OpfNTC(Opf):
             print(f"[4.8 LAZY ROUND {self.lazy_n1_rounds}] ADDING m={m}, c={c_idx}, f_n1={f_n1 * self.lp_Sbase:.2f}, rate={rate * self.lp_Sbase:.2f}, addon={addon_m * self.lp_Sbase:.2f}")
             droop_expr = self._compute_droop_lp_expr(m, c_idx, values, hvdc_values)
             expr = self.flow_f[m] + np.matmul(lodf_col, self.flow_f[list(c_idx)]) + droop_expr
-            suffix = '{0}_{1}'.format(m, '_'.join(str(c) for c in c_idx))
+            suffix = '{0}_{1}_r{2}'.format(m, '_'.join(str(c) for c in c_idx), self.lazy_n1_rounds)
             self.solver.Add(expr <= rate, name='lazy_n1_up_' + suffix)
             self.solver.Add(expr >= -rate, name='lazy_n1_dn_' + suffix)
             self._lazy_added.add(key)
