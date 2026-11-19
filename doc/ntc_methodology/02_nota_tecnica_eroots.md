@@ -1,209 +1,217 @@
-# Nota Técnica: Correcciones y Ajustes en el Módulo NTC de VeraGrid 6
+# Nota Técnica: Correcciones y Cierre del Módulo NTC en VeraGrid 6
 
 **Para:** Equipo de Desarrollo de eRoots / VeraGrid  
 **De:** Equipo de Red Eléctrica de España (REE)  
-**Fecha:** 5 de noviembre de 2026  
-**Asunto:** Correcciones necesarias en la formulación y parser del módulo NTC en la rama oficial de VeraGrid 6.x
+**Fecha:** 19 de noviembre de 2026  
+**Asunto:** Propuesta consolidada de correcciones, alineación metodológica y validación final del módulo NTC/TTC en VeraGrid 6.x (`ntc-finalist-6x`)
 
 ---
 
 ## 1. Motivación y Alcance
 
-Durante la evaluación del módulo de cálculo de NTC/TTC en la versión oficial de VeraGrid 6.x, hemos realizado un análisis técnico en profundidad de las dos formulaciones disponibles (`regular` y `strict`).
+Desde REE valoramos muy positivamente los avances arquitectónicos y metodológicos incorporados en VeraGrid 6.x, en particular el modelado físico de la respuesta pasiva de enlaces HVDC/VSC en modo *angle droop* (Pmode 3), el cribado *Lazy* vectorizado fuera del LP, la formulación compacta de contingencias (`CompactContingencies`), el recorte exacto de flujo (`add_clipped_flow`) y la infraestructura multiterminal para convertidores VSC.
 
-El objetivo de esta nota técnica es trasladar los hallazgos técnicos detectados y detallar las **correcciones puntuales necesarias en el código** para que la formulación estricta (`strict`) sea plenamente operativa, resuelva de forma factible y rápida, y cumpla con la normativa técnica europea (códigos de red CACM y SO GL), que no permite holguras en capacidad comercial ni sobrecargas en contingencia.
+Durante las pruebas de aceptación sobre el modelo de referencia de la interconexión España–Francia (MOU 2023, Pmode 3 y Pmode 1, con un margen $\text{TRM} = 400\text{ MW}$ y sentido exportador $\text{ES} \to \text{FR}$) y sobre redes públicas del repositorio, identificamos un conjunto acotado de defectos e inconsistencias entre las dos formulaciones existentes (`regular` y `strict`), la interfaz gráfica (GUI) y los factores lineales de continua.
 
----
+El propósito de esta nota técnica es trasladar de forma clara y reproducible **las correcciones técnicas ya implementadas y validadas en la rama finalista `ntc-finalist-6x`**, así como los resultados obtenidos sobre las **12 horas canónicas del MOU** (tanto con enlaces `HvdcLine` como con convertidores `VSC`) y sobre la red pública IEEE 14, para facilitar su revisión e integración en la rama oficial de VeraGrid.
 
-## 2. Diagnóstico del Estado Actual en VeraGrid 6.x
-
-Al ejecutar el módulo de NTC sobre el caso de estudio de la interconexión (`snapshots/MOU_pmode3_h13.gridcal`, dirección Exportación España → Francia, Pmode3, TRM = 400 MW), se observan los siguientes comportamientos:
-
-| Modo en VeraGrid 6.x | TTC (MW) | Slack Térmico | Slack Área | Estado Solver | Tiempo | Diagnóstico Técnico |
-|---|---:|---:|---:|:---:|---:|---|
-| **VeraGrid 6 `regular`** | 8.002,26 | 6.080,77 MW | Activo | `Relaxed` | 172 s | Capacidad inflada por absorción de sobrecargas en variables slack. |
-| **VeraGrid 6 `strict` (Upstream)** | — | — | — | `Infeasible` | 38 s | Infactible por signo invertido en PST ($-\tau$) y cota $\Delta \ge 0$. |
-| **VeraGrid 6 `strict` (Con correcciones)** | **5.298,61** | **0,00 MW** | **0,00 MW** | **`Optimal`** | **27,9 s** | **Resuelve con límites duros, slack cero, GSK activo ($P_{\max}$) y screening Lazy.** |
-
-* **En el modo `regular`:** Al incorporar variables de holgura térmica ($s \ge 0$) penalizadas en la función objetivo, el solver absorbe más de 6.000 MW de sobrecargas en lugar de modular a la baja el escalón de intercambio comercial $\Delta P$. Esto arroja un resultado relajado (8.002 MW) que supera la capacidad física admisible del sistema.
-* **En el modo `strict`:** La formulación no llega a resolver porque adolece de tres fallos concretos de implementación (signo del PST, ausencia de screening Lazy y bloqueo de cota inferior en $\Delta$) que provocan infactibilidad matemática o colapso por memoria.
-
-Una vez aplicadas las correcciones descritas a continuación, el modo estricto resuelve de forma natural en **23 segundos** con **Slack = 0 MW**.
+El criterio regulatorio que rige toda la propuesta se deriva directamente de los Reglamentos (UE) 2015/1222 (CACM), (UE) 2017/1485 (SO GL) y de los Procedimientos de Operación de REE (P.O. 3.1): **balance comercial bilateral 1:1 sin holguras de área y seguridad térmica estricta en estado base $N$ y post-contingencia $N-1$ sin variables *slack* térmicas**.
 
 ---
 
-## 3. Correcciones Necesarias en el Código
+## 2. Resumen de Resultados Validados
 
-### 3.1. Corrección del Signo en Transformadores Desfasadores (PST)
-* **Ubicación:** `ntc_opf_strict.py:908` y `ntc_opf.py:1363`.
-* **Problema:** El flujo se formula como $f = b(\theta_f - \theta_t - \tau)$.  
-  Físicamente, un adelanto angular $\tau > 0$ en el nudo *from* empuja flujo hacia el nudo *to* ($V_m e^{j(\theta + \tau)}$). El signo negativo frena o invierte el flujo, saturando artificialmente las interconexiones pirenaicas y provocando infactibilidades en el solver.
-* **Corrección requerida:** Reemplazar por la formulación canónica:
+### 2.1. Diagnóstico y Paridad en la Hora Canónica de Referencia (Hora 13 EF, Pmode 3)
+
+| Motor / Formulación en VeraGrid 6.x | TTC (MW) | NTC (MW) | Slack Térmico | Slack Área | Carga Máx. | Estado y Diagnóstico Técnico |
+|---|---:|---:|---:|---:|---:|---|
+| **VeraGrid 6.7.20 `regular` (Upstream)** | 8.002,26 | 7.602,26 | 6.080,77 MW | Activo | > 100 % | Inválido: absorbe sobrecargas masivas post-falta en variables *slack*. |
+| **VeraGrid 6.7.20 `strict` (Upstream)** | — | — | — | — | — | Infactible por signo invertido en PST ($-\tau$), cota $\Delta \ge 0$ y falta de *lazy screening*. |
+| **VeraGrid 6.x `strict` sin droop N-1 (`HvdcLine`)** | 5.298,61 | 4.898,61 | 0,00 MW | 0,00 MW | 193,27 %* | Sin realimentación pasiva Pmode 3 en N-1 (*). |
+| **VeraGrid 6.x `ntc-finalist-6x` (`HvdcLine`)** | **5.255,51** | **4.855,51** | **0,00 MW** | **0,00 MW** | **100,00 %** | **Validado:** droop N-1 en lazo cerrado, polo `%` y límites duros. |
+| **VeraGrid 6.x `ntc-finalist-6x` (`VSC` + bus DC)** | **5.255,51** | **4.855,51** | **0,00 MW** | **0,00 MW** | **100,00 %** | **Paridad exacta 0,00 MW** respecto a `HvdcLine`. |
+
+> \* *Nota:* Sin el acoplamiento de estatismo pasivo N-1 en la formulación estricta, el punto resuelto para Hora 13 presenta `max_loading_pct = 193,27 %` al reevaluarse posteriormente la respuesta pasiva real del enlace frente a la contingencia `13011_BESCANO_400_13060_SENTMENA_400`. Al acoplar el estatismo pasivo N-1 en lazo cerrado dentro del propio LP, la carga máxima converge exactamente al **100,00 %** en todas las horas y tipologías.
+
+---
+
+### 2.2. Validación Completa en 12 Horas Canónicas (`ntc-finalist-6x`: `HvdcLine` vs `VSC`)
+
+Ejecución estricta (`strict_formulation=True`, `consider_contingencies=True`, `corrective_contingencies=False`, `include_hvdc_exchange_sensitivity=False`, `skip_generation_limits=True`, $\text{TRM}=400\text{ MW}$) sobre las 12 horas canónicas del MOU (`[13, 22, 29, 66, 98, 144, 641, 1813, 3684, 3967, 8056, 8280]`), tanto en **Pmode 3** (estatismo angular pasivo) como en **Pmode 1** (consigna modulable), con modelos equivalentes `HvdcLine` (`MOU_pmode3_12h_hvdc_poles.gridcal` / `MOU_pmode1_12h.gridcal`) y convertidores `VSC` (`MOU_pmode3_12h_vsc.gridcal` / `MOU_pmode1_12h_vsc.gridcal`):
+
+| Hora | Pmode 3 Ref. MOU (sin droop N-1) | Pmode 3 `HvdcLine` (`ntc-finalist-6x`) | Pmode 3 `VSC` (`ntc-finalist-6x`) | Dif. Pmode 3 VSC − HVDC | Pmode 1 Ref. MOU | Pmode 1 `HvdcLine` (`ntc-finalist-6x`) | Pmode 1 `VSC` (`ntc-finalist-6x`) | Dif. Pmode 1 VSC − HVDC | Slack / Carga Máx. |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---:|
+| **13** | 5.297,0 | **5.255,51** | **5.255,51** | **0,00 MW** | 6.034,0 | **6.048,16** | **6.048,16** | **0,00 MW** | 0,00 MW / 100,00 % |
+| **22** | 6.515,0 | **6.295,97** | **6.295,97** | **0,00 MW** | 7.562,0 | **7.562,54** | **7.562,54** | **0,00 MW** | 0,00 MW / 100,00 % |
+| **29** | 8.853,0 | **8.873,70** | **8.873,70** | **0,00 MW** | 9.576,0 | **9.733,09** | **9.733,09** | **0,00 MW** | 0,00 MW / 100,00 % |
+| **66** | 6.699,0 | **6.722,28** | **6.722,28** | **0,00 MW** | 7.676,0 | **7.737,88** | **7.737,88** | **0,00 MW** | 0,00 MW / 100,00 % |
+| **98** | 8.624,0 | **8.645,57** | **8.645,57** | **0,00 MW** | 9.524,0 | **10.112,05** | **10.112,05** | **0,00 MW** | 0,00 MW / 100,00 % |
+| **144** | 9.010,0 | **9.028,43** | **9.028,43** | **0,00 MW** | 9.369,0 | **9.396,96** | **9.396,96** | **0,00 MW** | 0,00 MW / 100,00 % |
+| **641** | 5.199,0 | **5.212,66** | **5.212,66** | **0,00 MW** | 6.170,0 | **6.228,79** | **6.228,79** | **0,00 MW** | 0,00 MW / 100,00 % |
+| **1813** | 3.759,0 | **3.777,63** | **3.777,63** | **0,00 MW** | 5.106,0 | **5.115,62** | **5.115,62** | **0,00 MW** | 0,00 MW / 100,00 % |
+| **3684** | −3.055,0 | **−3.046,98** | **−3.046,98** | **0,00 MW** | −2.102,0 | **−2.102,04** | **−2.102,04** | **0,00 MW** | 0,00 MW / 100,00 % |
+| **3967** | 3.433,0 | **3.436,84** | **3.436,84** | **0,00 MW** | 4.964,0 | **4.964,70** | **4.964,70** | **0,00 MW** | 0,00 MW / 100,00 % |
+| **8056** | 9.033,0 | **9.057,15** | **9.057,15** | **0,00 MW** | 9.391,0 | **9.403,61** | **9.403,61** | **0,00 MW** | 0,00 MW / 100,00 % |
+| **8280** | 8.994,0 | **9.015,92** | **9.015,92** | **0,00 MW** | 9.882,0 | **9.943,03** | **9.943,03** | **0,00 MW** | 0,00 MW / 100,00 % |
+
+* **Convergencia y factibilidad:** 12/12 horas en estado `Optimal` en todas las variantes (`HvdcLine` Pmode 3, `VSC` Pmode 3, `HvdcLine` Pmode 1 y `VSC` Pmode 1), con **`0,00 MW` de slack** y carga máxima exactamente igual al **`100,00 %`**.
+* **Equivalencia exacta `HvdcLine` ↔ `VSC`:** desviación máxima inferior a **`0,000001 MW`** en las 24 ejecuciones horarias (`max|ΔPmode3| = 0,000000 MW`, `max|ΔPmode1| = 0,000001 MW`).
+
+---
+
+## 3. Correcciones Técnicas Implementadas en `ntc-finalist-6x`
+
+Todas las modificaciones enumeradas a continuación están consolidadas en código y verificadas sin degradar las pruebas de regresión estrictas.
+
+### 3.1. Signo Físico en Transformadores Desfasadores (PST)
+* **Ubicación:** `src/VeraGridEngine/Simulations/NTC/ntc_opf_strict.py` (`add_linear_branches_formulation`) y `ntc_opf.py`.
+* **Problema:** El flujo de ramas con desfasador se formulaba como $f_m = b_k(\theta_{\text{from}} - \theta_{\text{to}} - \tau_m)$. Físicamente, un adelanto angular $\tau_m > 0$ en el nudo *from* impulsa potencia activa hacia *to* ($V_{\text{from}} e^{j(\theta_{\text{from}}+\tau_m)}$). El signo invertido saturaba las interconexiones pirenaicas y producía infactibilidad espuria.
+* **Corrección aplicada:** Formulación física unificada con signo positivo:
   $$f_m = b_k (\theta_{\text{from}} - \theta_{\text{to}} + \tau_m)$$
 
-### 3.2. Integración del Screening Lazy en el Modo Estricto
-* **Ubicación:** `ntc_opf_strict.py` (función de construcción de contingencias).
-* **Problema:** En el modo `strict`, el código intentaba inyectar en el LP las restricciones térmicas de todas las ramas para todas las contingencias mediante bucles directos ($7.670 \times 4.000 \times 2 \approx \mathbf{61\text{ millones de restricciones}}$), colapsando la memoria RAM y bloqueando el solver durante horas.
-* **Corrección requerida:** Reutilizar el motor de screening matricial *Lazy* (`screen_contingency_violations`) que ya tenéis implementado en `ntc_opf.py`. Esto filtra en NumPy las contingencias y añade al LP únicamente las restricciones activas (~398 filas), reduciendo el tiempo de resolución a **23 segundos**.
+### 3.2. Integración del Screening *Lazy* Matricial en la Formulación Estricta
+* **Ubicación:** `src/VeraGridEngine/Simulations/NTC/ntc_opf_strict.py` (`run_linear_ntc_opf_strict`) y `ntc_opf.py` (`screen_contingency_violations`).
+* **Problema:** En `strict`, se intentaban añadir todas las restricciones rama × contingencia de golpe ($7.670 \times 4.000 \times 2 \approx 61{,}4\text{ millones de filas}$), provocando agotamiento de memoria y bloqueos de horas.
+* **Corrección aplicada:** Uso del screening *Lazy* vectorizado en NumPy (`screen_contingency_violations`), incorporando al LP únicamente las restricciones realmente activas en cada ronda de corte hasta certificar violación nula en todo el universo de contingencias.
 
-### 3.3. Liberación de la Cota Inferior del Intercambio en Rondas Lazy
-* **Ubicación:** `ntc_opf_strict.py:2005` y `ntc_opf.py:2080`.
-* **Problema:** En cada iteración del lazo lazy se re-fijaba `lb=0` a la variable de intercambio $\Delta$. En escenarios donde el flujo óptimo implica importación o un delta negativo, el problema se volvía infactible por construcción.
-* **Corrección requerida:** Declarar `transfer_lb = -INFINITY` en las llamadas de reoptimización del lazo lazy.
+### 3.3. Liberación de la Cota Inferior del Intercambio en Rondas *Lazy*
+* **Ubicación:** `src/VeraGridEngine/Simulations/NTC/ntc_opf_strict.py` y `ntc_opf.py` (`solve_least_control_effort`).
+* **Problema:** En el lazo iterativo *lazy* se re-imponía la cota `lb = 0` sobre la variable de intercambio $\Delta P$. En horas importadoras o con flujo base sobrecargado (como Hora 3684, $\text{TTC} = -3.046{,}98\text{ MW}$), el problema resultaba infactible por construcción.
+* **Corrección aplicada:** Se fija `transfer_lb = -INFINITY`, permitiendo que el dominio comercial admita libremente exportación positiva o reducción/importación negativa según los límites térmicos.
 
-### 3.4. Eliminación de Slacks de Área (Balance Comercial 1:1)
-* **Ubicación:** Formulación del balance inter-área en `ntc_opf_strict.py`.
-* **Problema:** La presencia de variables de holgura en el balance de área ($\Delta_{sl_1}, \Delta_{sl_2}$) permite inyectar o absorber potencia ficticia fuera de la red. Además, en la versión `strict` original, la vinculación algebraica cancelaba el término $\Delta_1$ en el objetivo.
-* **Corrección requerida:** Establecer un balancín comercial bilateral estricto:
-  $$\Delta P_{A_1} = -\Delta P_{A_2} = \Delta P, \quad \text{Maximizar } \Delta P$$
-  Sin variables de holgura en las áreas comercializadoras.
+### 3.4. Balance Comercial Bilateral Estricto 1:1 sin Holguras de Área ni Térmicas
+* **Ubicación:** `src/VeraGridEngine/Simulations/NTC/ntc_opf_strict.py` (`structural_area_balance=True`).
+* **Problema:** La inclusión de variables de holgura térmica ($s \ge 0$) o de área permitía absorber sobrecargas ficticias (caso `regular`: $6.080{,}77\text{ MW}$ de slack), y la vinculación algebraica previa de slacks de área cancelaba el término $\Delta_1$ del objetivo.
+* **Corrección aplicada:** Desplazamiento bilateral simétrico puro ($\Delta P_{A_1} = -\Delta P_{A_2} = \Delta P$) sin holguras térmicas ni de área en todo el bloque estricto.
 
-### 3.5. Corrección en el Parser de Carga de Red (`pack_unpack.py`)
-* **Ubicación:** `pack_unpack.py` al parsear transformadores y desfasadores de ficheros `.gridcal`.
-* **Problema:** El perfil de control temporal `tap_phase_control_mode_prof` se inicializaba por defecto en `Fixed`, pisando el atributo escalar del dispositivo (`Pt`). Esto provocaba que los desfasadores quedaran inmóviles durante la optimización.
-* **Corrección requerida:** Asegurar que `prof[0] = Pt` en la carga para que los PST mantengan su capacidad de modulación.
+### 3.5. Parser de Carga de Red (`pack_unpack.py`)
+* **Ubicación:** `src/VeraGridEngine/IO/veragrid/pack_unpack.py`.
+* **Problema:** Al importar `.gridcal`: (a) `tap_phase_control_mode_prof` se inicializaba a `Fixed`, anulando el modo `Pt` del transformador e inmovilizando los PST; y (b) el parser de columnas `contingency_enabled` instanciaba contingencias aunque el flag estuviese a `0`.
+* **Corrección aplicada:** Preservación de `prof[0] = Pt` en el perfil de control de fase durante la carga y filtrado explícito `enabled != 0` al generar contingencias heredadas.
 
 ### 3.6. Robustez de Tipos en el Enum `AvailableTransferMode`
-* **Ubicación:** `available_transfer_capacity_driver.py` (`compute_dP`).
-* **Problema:** En VeraGrid 6, `.value` del Enum devuelve una cadena de texto (`"InstalledPower"`), mientras que `compute_dP` discrimina mediante enteros (`if mode == 1`). Si una llamada pasa directamente el enum o su valor, cae silenciosamente en el bloque `else` (reparto sobre potencia base $P_0$ en vez de potencia instalada).
-* **Corrección requerida:** Modificar la firma y comprobaciones de `compute_dP` para aceptar y resolver directamente las instancias de `AvailableTransferMode`.
+* **Ubicación:** `src/VeraGridEngine/Simulations/ATC/available_transfer_capacity_driver.py` (`compute_dP`).
+* **Problema:** `compute_dP` comparaba el modo mediante enteros (`mode == 1`), mientras que VeraGrid 6 utiliza enumerados con valor textual (`AvailableTransferMode.InstalledPower`). Las llamadas con el enumerado caían silenciosamente en la rama por defecto ($P_0$).
+* **Corrección aplicada:** Soporte directo y uniforme de las instancias `AvailableTransferMode` dentro de `compute_dP`.
 
-### 3.7. Filtro de Contingencias Habilitadas (`contingency_enabled`)
-* **Ubicación:** `pack_unpack.py:1336`.
-* **Problema:** El lector procesa la columna de contingencias como señal de instanciación pero omite comprobar si el flag `contingency_enabled` está a 0, creando contingencias que el usuario había desactivado.
-* **Corrección requerida:** Comprobar `enabled != 0` antes de añadir la contingencia al circuito.
+### 3.7. Contingencias Parciales de Polo en `HvdcLine` y `VSC` (`PowerPercentage` `'%'` y Derrame con Signo)
+* **Ubicación:** `src/VeraGridEngine/Simulations/LinearFactors/linear_analysis.py` (`LinearMultiContingency.pole_spill`, `LinearMultiContingencies.compute`), `src/VeraGridEngine/Simulations/NTC/ntc_opf_strict.py` (`compute_pole_spill_expressions`), y `src/VeraGridEngine/Simulations/NTC/ntc_opf.py` (`fill_worst_contingency_per_branch`).
+* **Contexto y problema:**
+  1. Para representar el disparo de un polo en un enlace bipolar sin introducir atributos propietarios ni cablear constantes en el motor (`n_poles = 2`), basta reutilizar el tipo oficial `ContingencyOperationTypes.PowerPercentage` (`prop = '%'`, por ejemplo `value = 50.0` para perder el 50 % de la capacidad nominal). El polo superviviente conserva $R_{\text{surv}} = R \cdot (1 - \text{frac})$ y sólo el excedente se derrama hacia la red AC.
+  2. En el cálculo algebraico previo (`flow - r_surv`), el término omitía el signo del flujo: con $f = -1.622\text{ MW}$ y $R_{\text{surv}} = 1.000\text{ MW}$, declaraba $-2.622\text{ MW}$ de derrame en lugar de $-622\text{ MW}$.
+  3. En `fill_worst_contingency_per_branch` (`ntc_opf.py`), `hvdc_surviving_rates` y `vsc_surviving_rates` no estaban escalados por `sbase_val` al compararse con flujos en p.u.
+* **Corrección aplicada:**
+  1. Soporte nativo de `PowerPercentage` (`frac = value / 100.0`) tanto para `HvdcLine` como para `VSC`.
+  2. Expresión canónica compartida `pole_spill`:
+     $$\Delta f_{\text{spill}} = \operatorname{sign}(f) \cdot \max\left(0,\; |f| - R_{\text{surv}}\right)$$
+     formulada exactamente en el LP (`compute_pole_spill_expressions`) reutilizando `add_clipped_flow` (`spill = flow - carried`, con `carried` acotado a $[-R_{\text{surv}}, +R_{\text{surv}}]$) y las cotas exactas del propio enlace, evitando relajaciones que permitirían aliviar restricciones en ramas con ODF de signo opuesto.
+  3. Escalado uniforme de `hvdc_surviving_rates` y `vsc_surviving_rates` en `sbase_val` dentro del reporte de peores contingencias (`f34347d23`).
 
-### 3.8. Modelado de Contingencias HVDC (Declaración en el Modelo vs Parámetro Fijo en el Código)
-* **Ubicación:** `linear_analysis.py` (`ContingencyIndices`) y formulación de contingencias en el LP.
-* **Contexto y objetivo metodológico:**
-  En la primera iteración de nuestro pipeline de análisis, la regla del disparo de polo se resolvía con un parámetro fijado a nivel de script (se asumían 2 polos para cualquier enlace). Fue una simplificación razonable como punto de partida, suficiente para reproducir el comportamiento de los enlaces bipolares del caso de estudio, pero arrastra dos consecuencias que hoy queremos eliminar:
-  * El número de polos no queda registrado en ninguna parte del modelo de red, de modo que auditar una contingencia obliga a leer el código y no el fichero de datos.
-  * La regla deja de ser válida en cuanto aparece un enlace monopolar, un esquema con electrodos o un porcentaje de pérdida distinto del 50%.
+### 3.8. Filtrado Paritario $(m, c)$ en Screening *Lazy* y Re-evaluación de Saturación N-1
+* **Ubicación:** `src/VeraGridEngine/Simulations/NTC/ntc_opf.py` (`screen_contingency_violations`, `get_contingency_monitorable_branches`) y `src/VeraGridEngine/Simulations/NTC/ntc_opf_strict.py`.
+* **Problema:**
+  1. `get_contingency_monitorable_branches` aplicaba $\alpha_{\max} = \max_c |\alpha_{N-1}[m, c]|$ de forma global, arrastrando ramas internas remotas con sobrecargas base o locales no sensibles a esa contingencia concreta (caso Marsip 5050 en Hora 98).
+  2. Al cambiar la saturación de los enlaces HVDC/VSC entre rondas *lazy*, pares $(m, c)$ ya añadidos al LP con otro régimen de saturación podían quedar desactualizados si no se re-evaluaban con nombre de restricción único por ronda.
+* **Corrección aplicada:**
+  1. Criterio paritario por par rama-contingencia $(m, c)$ acorde con CACM Art. 29: una restricción entra únicamente si presenta impacto físico de la contingencia ($|\operatorname{MLODF}_{m,k}| > 0{,}05$ para algún $k \in c$), sensibilidad comercial ($|\alpha_m^N| > 0{,}05$ o $\max_{k \in c} |\alpha_{N-1}[m,k]| > 0{,}05$) y sobrecarga térmica efectiva ($|f_m^{(c)}| > \text{Rate}_m^{(c)}$).
+  2. Re-evaluación automática de pares ya añadidos (`recheck_already`) cuando el régimen de saturación del estatismo cambia entre rondas *lazy*, asignando identificadores de restricción únicos por ronda (`_r{lazy_round}`) (`f34347d23`).
 
-  El objetivo, por tanto, es **eliminar cualquier hardcodeo y trasladar la definición física de la contingencia formalmente al modelo de red**, de forma que el compilador se limite a ejecutar aritmética sobre lo que el usuario ha declarado.
-  
-  La física que debe quedar representada no cambia. En un enlace bipolar de gran capacidad (ej. 2.000 MW con dos polos nominales de 1.000 MW), la contingencia más representativa es la pérdida de un solo polo, es decir, la indisponibilidad del 50% de la capacidad de transporte. Cuando esto sucede:
-  * El polo superviviente puede transportar hasta su capacidad nominal ($1.000\text{ MW}$).
-  * Si el flujo previo era inferior a $1.000\text{ MW}$, el enlace no pierde potencia hacia la red AC ($\Delta f_{\text{spill}} = 0$).
-  * Si el flujo previo excedía la capacidad del polo superviviente ($|f_{\text{hvdc}}| > 1.000\text{ MW}$), el polo superviviente satura a $1.000\text{ MW}$ y únicamente el exceso se derrama hacia la red AC:
-    $$\text{Derrame} = \max\left(0, \ |f_{\text{hvdc}}| - R_{\text{surv}}\right) \times \text{signo}(f_{\text{hvdc}})$$
-  * Ese derrame se redistribuye en cada rama AC $m$ según los factores de distribución del enlace:
-    $$f_m^{(c)} = f_m^0 + \text{HvdcODF}[m, \text{hvdc}] \cdot \text{Derrame}$$
-
-* **Solución limpia propuesta (sin tocar la clase `HvdcLine` ni la GUI):**
-  Para no añadir atributos nuevos al dispositivo ni modificar la GUI de `HvdcLine`, basta con reutilizar el tipo de operación de contingencia que VeraGrid ya trae en su enumeración oficial:
-  ```python
-  ContingencyOperationTypes.PowerPercentage  # símbolo '%'
-  ```
-  1. **En el modelo de datos (`contingency.csv`):** el usuario declara explícitamente, en el catálogo de contingencias, el evento sobre el `HvdcLine` deseado:
-     - Disparo de 1 polo en un bipolo: `prop = '%'`, `value = 50.0` (o el porcentaje que corresponda al parque real).
-     - Disparo completo del enlace: `prop = 'active'`, `value = 0.0` (o `prop = '%'`, `value = 100.0`).
-  2. **En el compilador (`linear_analysis.py`):** si `cnt.tpe == DeviceType.HVDCLineDevice` y `cnt.prop == ContingencyOperationTypes.PowerPercentage`, el factor de indisponibilidad se extrae como $\text{frac} = \text{value} / 100$ y la capacidad superviviente resulta $R_{\text{surv}} = \text{Rate} \times (1 - \text{frac})$. El compilador no deduce nada sobre el número de polos: se limita a aplicar el porcentaje declarado.
-  3. **En el LP:** el término de derrame se evalúa con la capacidad superviviente $R_{\text{surv}}$, con lo que la regla queda desacoplada del código y el modelo conserva el control pleno de si el enlace dispara un polo, el enlace completo o una fracción arbitraria.
-
-  Con este esquema, pasar de un 50% a un 25% de indisponibilidad (enlace de cuatro polos) o modelar un enlace monopolar no exige tocar una sola línea de código: es un cambio de dato en el catálogo de contingencias.
-
-### 3.9. Filtrado Paritario de Sensibilidad $(m, c)$ e Impacto Topológico en el Screening Lazy
-* **Ubicación:** `ntc_opf.py` (`screen_contingency_violations`, `get_contingency_monitorable_branches`) y `ntc_opf_strict.py`.
-* **Problema:** En el código oficial de VeraGrid 6.x concurren dos factores en el cribado que distorsionan el problema de optimización:
-  1. `get_contingency_monitorable_branches` calculaba un vector booleano global a partir del máximo sobre *todas* las contingencias del sistema:
-     $$\alpha_{\max} = \max_{c} |\alpha_{N-1}[m, c]|$$
-     Si una rama interna remota superaba el umbral (5%) ante alguna contingencia cualquiera del sistema, quedaba marcada como monitorizable para el screening de **todas** las contingencias. Físicamente, esto inyectaba sobrecargas internas desacopladas (ej. la red local francesa tras Pragnères ante el disparo de un autotransformador de 400/225 kV) como cotas duras al LP, forzando al solver a invertir o ahogar el intercambio comercial.
-  2. El screening evaluaba ramas sin exigir un impacto físico real de la contingencia en la rama ($\operatorname{MLODF}_{m, c} \approx 0$) y admitía ramas preventivas al 90% de carga (`at_risk_fraction = 0.9`), lo que en un esquema de límites estrictos (sin variables de holgura) sobrecarga innecesariamente el problema con cotas que no están violadas.
-* **Corrección requerida:** Conforme al Reglamento UE 2015/1222 (CACM, Art. 29), una rama $m$ ante una contingencia $c$ solo debe incorporarse al LP si:
-  - Presenta impacto físico de la contingencia ($|\operatorname{MLODF}_{m, k}| > 0{,}05$ para algún elemento $k \in c$).
-  - Es sensible comercialmente al intercambio ($|\alpha_m^N| > 0{,}05 \lor \max_{k \in c} |\alpha_{N-1}[m, k]| > 0{,}05$).
-  - Incurre en una sobrecarga térmica efectiva ($|f_m^{(c)}| > \text{Rate}_m^{(c)}$).
-
-### 3.10. Resolución Directa de HiGHS vía Fichero LP en el Wrapper de PuLP
+### 3.9. Resolución Directa de HiGHS vía Fichero LP con `presolve="off"`
 * **Ubicación:** `src/VeraGridEngine/Utils/MIP/pulp_interface.py` (`PulpLpModel.solve`).
-* **Problema:** El backend in-memory de PuLP para HiGHS (`pulp.apis.highs.HiGHS` vía `highspy`) presenta un comportamiento errático cuando el modelo incluye variables binarias (como los indicadores de saturación en Pmode3):
-  1. En `buildSolverModel`, PuLP solo marca como enteros los elementos con `var.cat == constants.LpInteger`, omitiendo `constants.LpBinary`, lo que puede provocar que variables binarias queden relajadas en memoria.
-  2. El solver en memoria `highspy.Highs().run()` sobre la estructura construida por ctypes puede sufrir fallos de presolve en vértices degenerados, quedando atrapado en mínimos locales espurios y reportando erróneamente `kOptimal` sobre puntos no óptimos (por ejemplo, resolviendo a $0,0645\text{ p.u.}$ en lugar de $-107,38\text{ p.u.}$, arrojando un TTC aparente de $-6,45\text{ MW}$ en la Hora 8280).
-* **Corrección requerida:** En `PulpLpModel.solve`, cuando el solver seleccionado es `MIPSolvers.HIGHS`, resolver directamente exportando el modelo al formato canónico `.lp` (`model.writeLP`) y ejecutando `highspy.Highs().readModel(lp_path)`. El parser nativo en C++ de HiGHS preserva al 100% la integrality y la topología canónica, convergiendo sin degradación al óptimo global verdadero en todos los escenarios (8.899,80 MW en H8280 y 8.181,73 MW en H98) en tiempos idénticos (~15-20 s por resolución LP).
+* **Problema:** El puente in-memory de PuLP hacia HiGHS omitía marcas de integralidad en variables `LpBinary` y sufría fallos de *presolve* y *postsolve* sobre vértices degenerados, reportando falsos óptimos o falsos infactibles (por ejemplo, Hora 8280 caía a $-6{,}45\text{ MW}$).
+* **Corrección aplicada:** Exportación directa del LP mediante `model.writeLP(lp_path)` y resolución a través del lector nativo C++ `highspy.Highs().readModel(lp_path)` con `presolve="off"` y reintento robusto, preservando el 100 % de las variables binarias y convergiendo al óptimo global en las 12 horas.
 
-### 3.11. Propagación del Acoplamiento Droop de Enlaces HVDC en Pmode3 en la Formulación Estricta
-* **Ubicación:** `linear_analysis.py` (`LinearAnalysis`, `LinearMultiContingencies.compute`, `compute_hvdc_droop_lp_addon`) y `ntc_opf_strict.py` (`add_linear_branches_contingencies_formulation`).
-* **Problema:** En la rama oficial, la formulación estricta (`strict`) omite la respuesta pasiva droop de los enlaces HVDC ante el disparo de líneas de alterna. Al producirse una contingencia AC, los enlaces HVDC en Pmode3 modifican su flujo pasivamente según el equilibrio acoplado con la red AC; omitir este término en `ntc_opf_strict.py` deja la red de alterna sin la redistribución derivada del estatismo de continua.
-* **Corrección requerida:** Calcular los factores de acoplamiento `hvdc_droop_factors` en **lazo cerrado** mediante $(I + K Z_{\text{th}}^{(c)})^{-1}$ (sobre la impedancia de Thévenin post-contingencia $Z_{\text{th}}^{(c)}$ entre terminales HVDC) y propagarlos en `ntc_opf_strict.py` mediante `compute_hvdc_droop_lp_addon` como expresión lineal en las variables del LP.
+### 3.10. Estatismo Pasivo N-1 en Lazo Cerrado Unificado para `HvdcLine` y `VSC` (Pmode 3 y Pmode 1)
+* **Ubicación:** `src/VeraGridEngine/Simulations/LinearFactors/linear_analysis.py` (`LinearAnalysis`, `LinearMultiContingency.compute_hvdc_droop_addon`, `compute_hvdc_droop_lp_addon`, `LinearMultiContingencies.compute`), `ntc_opf_strict.py` (`add_linear_branches_contingencies_formulation`), y `ntc_opf.py` (`screen_contingency_violations`, `fill_worst_contingency_per_branch`, `run_linear_ntc_opf`).
+* **Problema:**
+  1. En `strict`, la respuesta pasiva de estatismo angular ante contingencias AC (`droop_addon`) no se calculaba ni se propagaba dentro del LP. Además, un enfoque en lazo abierto sobreestima el alivio post-falta al ignorar que la propia inyección DC descarga la red AC y frena la apertura angular.
+  2. El soporte en Pmode 1 y en Pmode 3 presentaba carencias para convertidores `VSC`: uso de `grid.vsc_converters` en lugar de `grid.vsc_devices`, ausencia de `vsc_vars.inter_space_vsc`, falta de factores de estatismo pasivo N-1 para `VSC` en `Pdc_angle_droop` y singularidad en la factorización de $B_{\text{bus}}$ al incluir buses DC aislados.
+* **Corrección aplicada:**
+  1. Formulación acoplada en **lazo cerrado** mediante la impedancia de Thévenin post-contingencia $Z_{\text{th}}^{(c)}$ entre terminales DC, propagada como expresión lineal exacta tanto en el screening como en el LP estricto (`compute_hvdc_droop_lp_addon`).
+  2. Extensión completa del mecanismo a convertidores `VSC` en `Pdc_angle_droop` (`39e8713f9`):
+     - Ensamblado de $B_{\text{bus}}$ exclusivamente sobre ramas AC pasivas activas con un nudo de referencia por componente conexa AC (evitando singularidad en subredes DC).
+     - Retorno de corriente del corredor DC sobre los convertidores reguladores `Vm_dc` de cada componente conexa DC (`dc_comp_slacks`) y tope por capacidad del corredor DC equivalente.
+     - Resolución conjunta VSC + HVDC dentro de `LinearMultiContingencies.compute` y cableado de `vsc_flow` / `vsc_vars.flows` en `ntc_opf_strict.py` y `ntc_opf.py` (saltando el *droop* AC en disparos de ramas DC).
+  3. Corrección integral de `VSC` Pmode 1 (`grid.vsc_devices`, `inter_space_vsc`) con paridad exacta respecto a `HvdcLine`.
 
-Adicionalmente, para asegurar la convergencia numérica de HiGHS y el soporte completo de convertidores VSC en `ntc_opf_strict.py`:
-* En `pulp_interface.py` (`PulpLpModel.solve`), desactivar `presolve` (`presolve="off"`) al resolver el fichero `.lp` con HiGHS evita errores de post-resolución y reducciones espurias en matrices mal escaladas.
-* En `linear_analysis.py` usar `grid.vsc_devices` (en lugar de `grid.vsc_converters`), y en `ntc_opf_strict.py` poblar `mip_vars.vsc_vars.inter_space_vsc = nc.vsc_data.get_inter_areas(...)`.
+### 3.11. Supresión de la Segunda Etapa (*Least Control Effort*) y Objetivo Directo
+* **Ubicación:** `src/VeraGridEngine/Simulations/NTC/ntc_opf_strict.py` (`run_linear_ntc_opf_strict`).
+* **Problema:** La segunda etapa (`solve_least_control_effort`) fijaba el intercambio y minimizaba el esfuerzo de control en PST y HVDC, replegando tomas preventivas y penalizando la evacuación HVDC hacia Francia, lo que volcaba flujo sobre la red AC pirenaica y deformaba la solución óptima.
+* **Corrección aplicada:** Eliminación de la llamada a `solve_least_control_effort` en la formulación estricta. El cálculo NTC preventivo se resuelve en una única etapa maximizando directamente el corte físico neto de interconexión (AC + HVDC + VSC).
 
-### 3.12. Supresión de la Segunda Etapa ("Least Control Effort") y Maximización Directa del Flujo de Interconexión
-* **Ubicación:** `ntc_opf_strict.py` (`run_linear_ntc_opf_strict`, llamadas a `solve_least_control_effort`).
-* **Problema:** Tras converger la resolución del LP con cribado lazy, se ejecutaba una segunda etapa (`solve_least_control_effort`) cuyo objetivo fijaba el intercambio comercial ($\Delta_1$) y minimizaba el esfuerzo de control sumando penalizaciones por desplazamiento angular de desfasadores ($\sum \frac{1}{X} |\Delta \tau|$) y potencia en enlaces de continua ($\sum |P_{\text{hvdc}}|$). Esta segunda etapa distorsionaba el despacho óptimo:
-  1. Penalizaba el flujo por los enlaces HVDC, reduciendo su evacuación forzada hacia Francia y vertiendo ese flujo sobre la red AC de interconexión (saturando prematuramente ramas críticas como Vic–Baixas y Hernani–Argia).
-  2. Forzaba a los transformadores desfasadores (PST) a replegar sus tomas hacia el neutro, desoptimizando el reparto de cargas preventivo entre base y contingencias.
-  3. Modificaba la función objetivo de maximización de intercambio comercial puro, sustituyéndola por una ponderación arbitraria de control.
-* **Corrección requerida:** Suprimir íntegramente la llamada a `solve_least_control_effort` en la formulación estricta. El cálculo de NTC es una optimización matemática preventiva en una sola etapa donde las tomas de los PST y los flujos HVDC en Pmode3 se co-optimizan simultáneamente para el estado base y todas las contingencias admitidas. Asimismo, la función objetivo se alinea estrictamente con la formulación de interconexión:
-  $$\max \left( \sum_{k \in \text{AC inter}} \text{sign}_k \cdot P_k + \sum_{h \in \text{HVDC inter}} \text{sign}_h \cdot P_h \right)$$
-  donde $\text{sign}_k \in \{+1.0, -1.0\}$ se obtiene mediante `get_inter_areas()` a partir de los nudos *from* y *to* de la línea respecto a las áreas de origen y destino. Esta formulación garantiza que todo flujo hacia Francia sume en positivo y cancela algebraicamente cualquier bucle de recirculación entre fronteras, impidiendo que recirculaciones espurias inflen la capacidad calculada.
+### 3.12. Clave de Reparto GSK en `InstalledPower` sobre $P_{\max}$ Activo y Unificación Screening–LP
+* **Ubicación:** `src/VeraGridEngine/Compilers/circuit_to_data.py`, `src/VeraGridEngine/Simulations/NTC/ntc_opf_strict.py` (`get_transfer_power_scaling_per_bus`) y `ntc_driver.py`.
+* **Problema:** `AvailableTransferMode.InstalledPower` acumulaba `elm.Snom` (MVA aparentes) sin filtrar unidades inactivas o no despachables. En el caso MOU existen 1.976 generadores con $S_{\text{nom}} \ne P_{\max}$, lo que distorsionaba el reparto nodal en el LP y diluía las sensibilidades $\alpha$ calculadas en el screening respecto a las proporciones reales del optimizador.
+* **Corrección aplicada:**
+  1. Acumulación de `installed_p` y `bus_data.installed_power` en `circuit_to_data.py` exclusivamente a partir de $P_{\max}$ de generadores activos y despachables (`active` y `dispatchable`).
+  2. Uso consistente de `gen_data_t.get_pmax_per_bus() / Sbase` en `ntc_opf_strict.py`, unificando la clave de reparto entre el screening $\alpha$ y las restricciones del LP.
 
-### 3.13. Clave de Reparto GSK en `AvailableTransferMode.InstalledPower`: Potencia Activa $P_{\max}$ vs Aparente $S_{\text{nom}}$ y Unificación Screening-LP
-* **Ubicación:** `src/VeraGridEngine/Compilers/circuit_to_data.py:1195`, `ntc_opf_strict.py:161, 1807` y `available_transfer_capacity_driver.py:89, 540`.
-* **Problema en dos capas:**
-  1. *Capa de datos (`circuit_to_data.py`):* Para el modo `InstalledPower`, el compilador acumulaba incondicionalmente la potencia aparente nominal de placa:
-     ```python
-     data.installed_p[k] = elm.Snom
-     bus_data.installed_power[i] += elm.Snom
-     ```
-     sin filtrar por estado de servicio (`active`) ni por capacidad de modulación (`dispatchable`). En el modelo del MOU, **1.976 generadores presentan $S_{\text{nom}} \ne P_{\max}$** y existen parques renovables con `dispatchable=False` que no participan en el redespacho.
-  2. *Capa de acoplamiento Screening vs LP:* La corrección previa en `ntc_opf_strict.py:165` (`p_ref = gen_data_t.get_pmax_per_bus() / Sbase * dispatchable_bus`) corrigió el redespacho en las restricciones del LP, pero el cribado de vigilancia calculaba el vector de sensibilidades $\alpha = \text{PTDF} \cdot dP$ a través de una tubería independiente (`compute_dP` alimentada por `bus_data.installed_power`). Al mantenerse `installed_power` con $S_{\text{nom}}$ de todos los grupos, el vector de perturbación $dP$ usado para screening divergía de la dirección real de transferencia $\bm{w}_{\text{LP}}$ del optimizador.
-  * *Impacto físico y metodológico:* La dilución del vector de perturbación debida al uso de $S_{\text{nom}}$ y la inclusión de máquinas no despachables provoca que ramas con acoplamiento a nudos con generación renovable o de potencia firme limitada presenten una sensibilidad calculada $\alpha$ inferior a la real. Si dicha sensibilidad artificial cae por debajo del umbral reglamentario de monitorización (e.g. 5%), la rama es indebidamente excluida del conjunto de restricciones vigiladas en el LP, permitiendo que el optimizador resuelva capacidades comerciales artificialmente sobreestimadas que violan los límites térmicos reales de la red.
-* **Corrección requerida e implementada:**
-  1. En `circuit_to_data.py`, poblar `data.installed_p[k]` y `bus_data.installed_power[i]` exclusivamente con la potencia activa máxima $P_{\max}$ de generadores activos y despachables:
-     ```python
-     inst_p = float(pmax) if (data.active[k] and data.dispatchable[k]) else 0.0
-     data.installed_p[k] = inst_p
-     bus_data.installed_power[i] += inst_p
-     ```
-  2. Unificar el cálculo de sensibilidades: `compute_alpha()` debe evaluarse directamente sobre el vector de inyecciones unitarias del LP (`bus_pref_t` / `proportions`), garantizando por construcción la identidad analítica $\alpha = \text{PTDF} \cdot \bm{w}_{\text{LP}}$ sin ruidos de redondeo a 6 decimales ni fallbacks silenciosos a $S_n$. Con esto se asegura que una rama se vigila bajo la mismísima ley de reparto con la que el LP la optimiza.
+### 3.13. Eliminación de la Susceptancia Parásita en Factores Lineales
+* **Ubicación:** `src/VeraGridEngine/Simulations/LinearFactors/linear_analysis.py` (`LinearAnalysis`, líneas 411 y 430).
+* **Problema:** Para evitar singularidades se inyectaba una susceptancia artificial $y_s = 0{,}01\text{ p.u.}$ en $B_{\text{bus}}$ sobre enlaces HVDC en consigna fija y convertidores VSC sin estatismo, creando caminos virtuales AC a través de enlaces de continua y alterando la matriz PTDF.
+* **Corrección aplicada:** Fijación de $y_s = 0{,}0$ en todo enlace o convertidor que no opere en estatismo angular pasivo (`88d9842f6`).
 
-### 3.14. Erradicación de la Susceptancia Parásita en Factores Lineales (`linear_analysis.py`)
-* **Ubicación:** `src/VeraGridEngine/Simulations/LinearFactors/linear_analysis.py:411, 430`.
-* **Problema:** En el ensamblado de la matriz de susceptancia nodal para cálculo lineal DC, se introdujo una susceptancia artificial parásita de acoplamiento de $y_s = 0,01\text{ p.u.}$ en convertidores VSC sin estatismo activo y en líneas HVDC con consigna fija de potencia $P_{\text{set}}$.
-  Físicamente, un enlace de corriente continua en control de potencia fija o sin estatismo no constituye un camino pasivo de alterna regido por la ley de Ohm en continua ($I \ne b \Delta\theta$). Introducir un valor artificial $y_s = 0,01$:
-  1. Crea lazos ficticios de circulación AC a través de los enlaces DC en la matriz $B_{\text{bus}}$, violando las leyes de Kirchhoff en corriente alterna.
-  2. Altera la matriz de sensibilidades PTDF ($\partial f / \partial P$), desvirtuando los factores de distribución transfronterizos hasta en varios puntos porcentuales.
-* **Corrección requerida:** Fijar estrictamente $y_s = 0,0$ para todos los dispositivos DC que no operen en modo estatismo angular puro. Esto asegura que la matriz de susceptancias refleje exclusivamente la topología física de alterna y garantiza la coherencia rigurosa de las sensibilidades PTDF.
-
-### 3.15. Unificación Metodológica: Adopción Exclusiva de la Formulación Estricta sin Holguras
-* **Ubicación:** Integración global del módulo NTC (`ntc_driver.py`).
-* **Problema:** La coexistencia de dos formulaciones (`regular` con penalizaciones de holgura $s \ge 0$, y `strict` con límites duros) genera confusión operativa y resultados contradictorios. La formulación `regular` tolera sobrecargas masivas post-contingencia (absorbidas en variables slack de holgura térmica), lo cual infringe frontalmente el mandato del Reglamento (UE) 2015/1222 (CACM) y el P.O. 3.1 de REE, que exigen capacidades firmes y seguras en N y N-1.
-* **Corrección requerida:** Estandarizar la formulación estricta (`strict_formulation = True`) como la única operativa en VeraGrid 6.x. Con las correcciones de screening Lazy, signo PST y GSK aquí detalladas, el modo estricto resuelve de manera factible, óptima y en tiempos de cómputo excelentes (~25 segundos), eliminando la necesidad de recurrir a relajaciones artificiales con holguras térmicas.
+### 3.14. Unificación Estricta, Exposición de Opciones en GUI y Alineación de Defaults
+* **Ubicación:** `src/VeraGridEngine/Simulations/NTC/ntc_options.py`, `ntc_ts_driver.py`, `ntc_opf.py`, `ntc_opf_strict.py`, `src/VeraGrid/Gui/Main/MainWindow.ui`, `MainWindow.py`, `configuration.py` y `simulations.py` (`df483d637`).
+* **Problema:** En la GUI faltaban controles relevantes o tenían valores por defecto incompatibles con la formulación validada: `include_hvdc_exchange_sensitivity` estaba oculto y activo por defecto (mezclando sensibilidades DC sin control visible del usuario), `corrective_ntc_contingencies_checkBox` no existía en pantalla, y tanto `strict_ntc_formulation_checkBox` como `consider_ntc_contingencies_checkBox` arrancaban desmarcados. Además, los umbrales de dispersión PTDF/LODF por defecto en la GUI (`0,05`) descartaban sensibilidades inferiores al 5 % en las ejecuciones manuales respecto al valor validado (`0,001`).
+* **Corrección aplicada:**
+  1. Exposición en la GUI de `include_hvdc_exchange_sensitivity_checkBox` (por defecto `False`, aplicando en el LP estricto la unión $\max(|\alpha_{\text{AC}}|, |\alpha_{\text{ACDC}}|)$ cuando el usuario lo marca) y `corrective_ntc_contingencies_checkBox` (por defecto `False`, cálculo preventivo estricto).
+  2. Alineación de valores por defecto tanto en `OptimalNetTransferCapacityOptions` como en la GUI (`MainWindow.ui` / `MainWindow.py` / `configuration.py` / `simulations.py`):
+     - `strict_formulation = True`
+     - `consider_contingencies = True`
+     - `corrective_contingencies = False`
+     - `include_hvdc_exchange_sensitivity = False`
+     - `ptdf_threshold = 0,001` y `lodf_threshold = 0,001`
+  3. **Aviso de despliegue para usuarios con instalación previa:** VeraGrid persiste las últimas preferencias en `~/.VeraGrid/gui_config.json` (en Windows `C:\Users\<usuario>\.VeraGrid\gui_config.json`). Tras actualizar a esta versión, se recomienda borrar o restablecer dicho fichero para que la interfaz adopte los nuevos valores por defecto validados.
 
 ---
 
-## 4. Corrección en el Volcado de Resultados al Snapshot (`ntc_driver.py`)
+## 4. Punto Pendiente en el Volcado de Resultados al Snapshot (`ntc_driver.py`)
 
-* **Ubicación:** `ntc_driver.py:163` (`get_ntc_operating_point_as_opf_results`).
-* **Problema:** La función calcula un supuesto desbalance de red (`imbalance = gen + batt - load`) y redistribuye las pérdidas alterando la potencia base de todos los generadores del modelo antes de aplicar el intercambio comercial:
+* **Ubicación:** `src/VeraGridEngine/Simulations/NTC/ntc_driver.py` (`get_ntc_operating_point_as_opf_results`, líneas 160–165).
+* **Observación técnica:** Al exportar el punto de operación NTC hacia resultados OPF/Power Flow, la función calcula un desbalance base (`imbalance = gen + batt - load`) y lo redistribuye proporcionalmente sobre todos los generadores de la red antes de aplicar `bus_change`:
   ```python
   imbalance = float(gen_injection.sum() + battery_injection.sum() + load_injection.sum())
   balanced_gen -= gen_injection / gen_total * imbalance
   ```
-  Esto desvirtúa el despacho base original de los generadores ajenos al intercambio.
-* **Corrección requerida:** Eliminar este rebalanceo global. Los incrementos de generación $\Delta P$ resueltos por el LP deben aplicarse **exclusivamente sobre los generadores de las áreas participantes en el intercambio**.
+* **Recomendación de cierre:** Suprimir esta redistribución global previa sobre generadores ajenos al intercambio comercial para que el punto exportado conserve intacto el despacho base fuera de las áreas $\mathcal{A}_1$ y $\mathcal{A}_2$.
 
 ---
 
-## 5. Demostración en Red Canónica Pública (IEEE 14 del Issue 372)
+## 5. Verificación Reproducible (Red Pública IEEE 14 y Test Unitario VSC)
 
-Para verificar estas correcciones en un entorno abierto directamente reproducible en vuestro repositorio (`IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal`):
-
+### 5.1. Demostración en Red Canónica Pública (IEEE 14 del Issue 372)
+Sobre el fichero público del repositorio (`IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal`):
 1. **Efecto del signo del desfasador (PST):**
-   * Con signo upstream ($-\tau$): La rama 7 se satura erróneamente al 100% (20 MW), reduciendo artificialmente el TTC N-1 a **78,07 MW**.
-   * Con signo corregido ($+\tau$): Flujo físico coherente y TTC N-1 de **96,26 MW**.
-2. **Efecto de límites duros frente a holguras (Rama crítica limitada a 4 MW):**
-   * Formulación `regular` (holguras): TTC inflado a **17,05 MW** con 12 MW de violación térmica post-falta (flujo al 400% de la capacidad).
-   * Formulación estricta corregida: TTC modulado de forma segura a **10,49 MW** con **Slack = 0,00 MW** y flujo en 4,00 MW (100%).
+   - Con signo upstream ($-\tau$): la rama 7 satura erróneamente al 100 % (20 MW), reduciendo el TTC N-1 a **78,07 MW**.
+   - Con signo corregido ($+\tau$): flujo físico coherente y TTC N-1 de **96,26 MW**.
+2. **Efecto de límites duros frente a holguras térmicas (rama crítica limitada a 4 MW):**
+   - Formulación `regular`: TTC inflado a **17,05 MW** tolerando **12,00 MW** de sobrecarga térmica post-contingencia (400 % de carga).
+   - Formulación estricta (`strict`): TTC modulado de forma segura a **10,49 MW** con **Slack = 0,00 MW** y flujo exacto en **4,00 MW** (100 %).
+
+### 5.2. Test Automatizado de Equivalencia HVDC ↔ VSC en Pmode 3 N-1
+En `src/tests/NTC/test_ntc_strict_formulation.py` se ha incorporado la prueba unitaria `test_vsc_pmode3_passive_n1_droop_matches_hvdc`, que construye tres variantes equivalentes del mismo sistema AC/DC con estatismo pasivo `Pdc_angle_droop` y verifica la coincidencia numérica exacta entre:
+1. Enlace clásico `HvdcLine` (`type_0_free`),
+2. Pareja `VSC` conectada a un nudo DC común, y
+3. Pareja `VSC` conectada mediante dos nudos DC unidos por una `DcLine`.
+
+*(Nota de entorno sobre la batería `test_ntc_strict_formulation.py`: el test nuevo `test_vsc_pmode3_passive_n1_droop_matches_hvdc` y los 14 tests estrictos existentes pasan; persisten 3 fallos preexistentes en upstream no relacionados con estos cambios: `test_issue_372_5`, `test_ntc_vsc_contingencies` y `test_issue_372_congested_thermal_slacks`.)*
 
 ---
 
-## 6. Conclusión
+## 6. Referencia de Implementación y Conclusión
 
-Estas correcciones permiten que la formulación estricta de VeraGrid 6.x sea 100% factible, numéricamente robusta, rápida (23 s gracias al screening Lazy) y conforme a las exigencias de operación segura de la red.
+La implementación completa de referencia se encuentra publicada en la rama **`ntc-finalist-6x`** del repositorio `ramferan/VeraGrid`:
 
-Quedamos a vuestra disposición para facilitar los parches y colaborar en la integración de estas correcciones en la rama oficial de VeraGrid.
+| Commit | Alcance Principal |
+|---|---|
+| `9bafe2e37` .. `fe71818fe` | Signo PST $+\tau$, cota libre $\Delta$, reintento HiGHS sin presolve, parser PST (`Pt`) y máscara 4.8 |
+| `d82fc9c93` | Filtrado paritario $(m, c)$ en screening *lazy* y resolución directa de HiGHS vía fichero `.lp` |
+| `e121b55f7` / `bddf34b89` | Contingencias `PowerPercentage` (`'%'`) y derrame exacto con signo mediante `add_clipped_flow` |
+| `a7ee9de73` / `88d9842f6` | GSK activo sobre $P_{\max}$, retirada de Fase 2 (*least control effort*) y eliminación de $y_s = 0{,}01$ |
+| `1bfb15b8d` | Estatismo N-1 HVDC en lazo cerrado, unión $\alpha$ configurable, VSC Pmode 1 y `presolve="off"` en HiGHS |
+| `f34347d23` | Re-evaluación *lazy* tras cambios de saturación N-1, escalado `sbase` en polo y propagación de `include_hvdc_exchange_sensitivity` |
+| `df483d637` | Exposición de opciones NTC faltantes en la GUI y alineación de valores por defecto validados |
+| `39e8713f9` | Soporte completo de estatismo pasivo N-1 en lazo cerrado para convertidores `VSC` y prueba de paridad HVDC ↔ VSC |
+
+Con estos cambios, la formulación estricta de VeraGrid 6.x es plenamente operativa, convergente en las 12 horas de referencia con **0,00 MW de holguras**, coherente entre modelos **`HvdcLine` y `VSC`** tanto en Pmode 3 como en Pmode 1, y conforme a la normativa europea CACM / SO GL y P.O. 3.1. Quedamos a vuestra disposición para coordinar la revisión e integración de estos cambios en la rama principal de VeraGrid.
