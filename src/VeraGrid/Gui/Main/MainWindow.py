@@ -2648,7 +2648,7 @@ class Ui_mainWindow(object):
         self.ptdf_threshold_doubleSpinBox.setDecimals(6)
         self.ptdf_threshold_doubleSpinBox.setMaximum(1.000000000000000)
         self.ptdf_threshold_doubleSpinBox.setSingleStep(0.001000000000000)
-        self.ptdf_threshold_doubleSpinBox.setValue(0.010000000000000)
+        self.ptdf_threshold_doubleSpinBox.setValue(0.001000000000000)
 
         self.gridLayout_14.addWidget(self.ptdf_threshold_doubleSpinBox, 6, 1, 1, 1)
 
@@ -2676,7 +2676,7 @@ class Ui_mainWindow(object):
         self.lodf_threshold_doubleSpinBox.setDecimals(6)
         self.lodf_threshold_doubleSpinBox.setMaximum(1.000000000000000)
         self.lodf_threshold_doubleSpinBox.setSingleStep(0.001000000000000)
-        self.lodf_threshold_doubleSpinBox.setValue(0.050000000000000)
+        self.lodf_threshold_doubleSpinBox.setValue(0.001000000000000)
 
         self.gridLayout_14.addWidget(self.lodf_threshold_doubleSpinBox, 7, 1, 1, 1)
 
@@ -3517,7 +3517,7 @@ class Ui_mainWindow(object):
         self.ntcSelectBasedOnAcerCriteriaCheckBox.setObjectName(u"ntcSelectBasedOnAcerCriteriaCheckBox")
         self.ntcSelectBasedOnAcerCriteriaCheckBox.setFont(font)
 
-        self.gridLayout_15.addWidget(self.ntcSelectBasedOnAcerCriteriaCheckBox, 7, 0, 1, 1)
+        self.gridLayout_15.addWidget(self.ntcSelectBasedOnAcerCriteriaCheckBox, 8, 0, 1, 1)
 
         self.skipNtcGenerationLimitsCheckBox = QCheckBox(self.groupBox_5)
         self.skipNtcGenerationLimitsCheckBox.setObjectName(u"skipNtcGenerationLimitsCheckBox")
@@ -3539,8 +3539,16 @@ class Ui_mainWindow(object):
         self.consider_ntc_contingencies_checkBox = QCheckBox(self.groupBox_5)
         self.consider_ntc_contingencies_checkBox.setObjectName(u"consider_ntc_contingencies_checkBox")
         self.consider_ntc_contingencies_checkBox.setFont(font)
+        self.consider_ntc_contingencies_checkBox.setChecked(True)
 
-        self.gridLayout_15.addWidget(self.consider_ntc_contingencies_checkBox, 11, 0, 1, 2)
+        self.gridLayout_15.addWidget(self.consider_ntc_contingencies_checkBox, 12, 0, 1, 2)
+
+        self.corrective_ntc_contingencies_checkBox = QCheckBox(self.groupBox_5)
+        self.corrective_ntc_contingencies_checkBox.setObjectName(u"corrective_ntc_contingencies_checkBox")
+        self.corrective_ntc_contingencies_checkBox.setFont(font)
+        self.corrective_ntc_contingencies_checkBox.setChecked(False)
+
+        self.gridLayout_15.addWidget(self.corrective_ntc_contingencies_checkBox, 13, 0, 1, 2)
 
         self.ntcSelectBasedOnExchangeSensitivityCheckBox = QCheckBox(self.groupBox_5)
         self.ntcSelectBasedOnExchangeSensitivityCheckBox.setObjectName(u"ntcSelectBasedOnExchangeSensitivityCheckBox")
@@ -3549,22 +3557,29 @@ class Ui_mainWindow(object):
 
         self.gridLayout_15.addWidget(self.ntcSelectBasedOnExchangeSensitivityCheckBox, 5, 0, 1, 1)
 
+        self.include_hvdc_exchange_sensitivity_checkBox = QCheckBox(self.groupBox_5)
+        self.include_hvdc_exchange_sensitivity_checkBox.setObjectName(u"include_hvdc_exchange_sensitivity_checkBox")
+        self.include_hvdc_exchange_sensitivity_checkBox.setFont(font)
+        self.include_hvdc_exchange_sensitivity_checkBox.setChecked(False)
+
+        self.gridLayout_15.addWidget(self.include_hvdc_exchange_sensitivity_checkBox, 7, 0, 1, 2)
+
         self.ntcLoadRuleSpinBox = QSpinBox(self.groupBox_5)
         self.ntcLoadRuleSpinBox.setObjectName(u"ntcLoadRuleSpinBox")
         self.ntcLoadRuleSpinBox.setFont(font)
         self.ntcLoadRuleSpinBox.setMaximum(100)
         self.ntcLoadRuleSpinBox.setValue(70)
 
-        self.gridLayout_15.addWidget(self.ntcLoadRuleSpinBox, 8, 0, 1, 1)
+        self.gridLayout_15.addWidget(self.ntcLoadRuleSpinBox, 9, 0, 1, 1)
 
         self.label_26 = QLabel(self.groupBox_5)
         self.label_26.setObjectName(u"label_26")
 
-        self.gridLayout_15.addWidget(self.label_26, 9, 0, 1, 1)
+        self.gridLayout_15.addWidget(self.label_26, 10, 0, 1, 1)
 
         self.verticalSpacer_23 = QSpacerItem(20, 168, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
-        self.gridLayout_15.addItem(self.verticalSpacer_23, 13, 1, 1, 1)
+        self.gridLayout_15.addItem(self.verticalSpacer_23, 15, 1, 1, 1)
 
         self.label_36 = QLabel(self.groupBox_5)
         self.label_36.setObjectName(u"label_36")
@@ -3595,7 +3610,7 @@ class Ui_mainWindow(object):
         self.label_105.setPalette(palette13)
         self.label_105.setFont(font)
 
-        self.gridLayout_15.addWidget(self.label_105, 10, 0, 1, 2)
+        self.gridLayout_15.addWidget(self.label_105, 11, 0, 1, 2)
 
         self.ntcAlphaSpinBox = QSpinBox(self.groupBox_5)
         self.ntcAlphaSpinBox.setObjectName(u"ntcAlphaSpinBox")
@@ -3614,8 +3629,9 @@ class Ui_mainWindow(object):
         self.strict_ntc_formulation_checkBox = QCheckBox(self.groupBox_5)
         self.strict_ntc_formulation_checkBox.setObjectName(u"strict_ntc_formulation_checkBox")
         self.strict_ntc_formulation_checkBox.setFont(font)
+        self.strict_ntc_formulation_checkBox.setChecked(True)
 
-        self.gridLayout_15.addWidget(self.strict_ntc_formulation_checkBox, 12, 0, 1, 2)
+        self.gridLayout_15.addWidget(self.strict_ntc_formulation_checkBox, 14, 0, 1, 2)
 
 
         self.gridLayout_13.addWidget(self.groupBox_5, 2, 2, 2, 1)
@@ -6779,11 +6795,19 @@ class Ui_mainWindow(object):
 #if QT_CONFIG(tooltip)
         self.consider_ntc_contingencies_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"If checked, the NTC optimization will use the system declared contingencies", None))
 #endif // QT_CONFIG(tooltip)
-        self.consider_ntc_contingencies_checkBox.setText(QCoreApplication.translate("mainWindow", u"Consider constingencies", None))
+        self.consider_ntc_contingencies_checkBox.setText(QCoreApplication.translate("mainWindow", u"Consider contingencies", None))
+#if QT_CONFIG(tooltip)
+        self.corrective_ntc_contingencies_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"Allow corrective post-contingency re-dispatch of VSC/HVDC converters in N-1. Unchecked enforces preventive N-1 security (validated default).", None))
+#endif // QT_CONFIG(tooltip)
+        self.corrective_ntc_contingencies_checkBox.setText(QCoreApplication.translate("mainWindow", u"Corrective contingencies (post-contingency HVDC/VSC redispatch)", None))
 #if QT_CONFIG(tooltip)
         self.ntcSelectBasedOnExchangeSensitivityCheckBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>A branch is monitored solely based on its contribution to the inter-area excahge sensitivity. Therefore a branch is selected if it's alpha value is greater than the set alpha %</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.ntcSelectBasedOnExchangeSensitivityCheckBox.setText(QCoreApplication.translate("mainWindow", u"Branch exchange sensitivity (\u03b1)", None))
+#if QT_CONFIG(tooltip)
+        self.include_hvdc_exchange_sensitivity_checkBox.setToolTip(QCoreApplication.translate("mainWindow", u"Include HVDC/VSC converter flows in the exchange sensitivity (\u03b1) calculation (union with AC-only \u03b1). Unchecked uses converters as fixed setpoints (validated default).", None))
+#endif // QT_CONFIG(tooltip)
+        self.include_hvdc_exchange_sensitivity_checkBox.setText(QCoreApplication.translate("mainWindow", u"Include HVDC/VSC in exchange sensitivity (\u03b1)", None))
         self.ntcLoadRuleSpinBox.setSuffix(QCoreApplication.translate("mainWindow", u"%", None))
         self.label_26.setText("")
         self.label_36.setText("")

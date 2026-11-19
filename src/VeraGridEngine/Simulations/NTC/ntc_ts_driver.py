@@ -236,6 +236,8 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                     mip_framework=self.options.opf_options.mip_framework,
                     structural_area_balance=True,
                     include_hvdc_exchange_sensitivity=self.options.include_hvdc_exchange_sensitivity,
+                    use_srap=self.options.use_srap,
+                    srap_max_power=self.options.srap_max_power,
                     linear_analysis=cached_ls,
                     multi_contingencies=cached_mctg,
                     bus_dict=bus_dict,

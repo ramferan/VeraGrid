@@ -614,7 +614,9 @@ class ConfigurationMain(ResultsMain):
                 "branch_rating_contribution": self.ui.ntcLoadRuleSpinBox,
 
                 "ntc_opt_consider_contingencies": self.ui.consider_ntc_contingencies_checkBox,
+                "corrective_contingencies": self.ui.corrective_ntc_contingencies_checkBox,
                 "strict_formulation": self.ui.strict_ntc_formulation_checkBox,
+                "include_hvdc_exchange_sensitivity": self.ui.include_hvdc_exchange_sensitivity_checkBox,
                 "use_pf_values_for_atc": self.ui.usePfValuesForAtcCheckBox,
             },
             "nodal_hosting_capacity": {

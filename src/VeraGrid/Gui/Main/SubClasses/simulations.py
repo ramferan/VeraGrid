@@ -3299,7 +3299,9 @@ class SimulationsMain(TimeEventsMain):
             branch_rating_contribution=self.ui.ntcLoadRuleSpinBox.value() / 100.0,
             monitor_only_ntc_load_rule_branches=self.ui.ntcSelectBasedOnAcerCriteriaCheckBox.isChecked(),
             consider_contingencies=self.ui.consider_ntc_contingencies_checkBox.isChecked(),
+            corrective_contingencies=self.ui.corrective_ntc_contingencies_checkBox.isChecked(),
             strict_formulation=self.ui.strict_ntc_formulation_checkBox.isChecked(),
+            include_hvdc_exchange_sensitivity=self.ui.include_hvdc_exchange_sensitivity_checkBox.isChecked(),
             opf_options=self.get_opf_options(),
             lin_options=self.get_linear_options()
         )
