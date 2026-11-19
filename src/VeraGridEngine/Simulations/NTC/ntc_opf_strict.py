@@ -1209,6 +1209,7 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                                                    allowed_srap_gen_indices: IntVec | None = None,
                                                    base_branch_flow_num: Vec | None = None,
                                                    hvdc_flow_num: Vec | None = None,
+                                                   vsc_flow_num: Vec | None = None,
                                                    lazy_round: int | None = None):
     """
     Formulate the branches
@@ -1274,7 +1275,7 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
         rows_to_limit = None if group_rows is None else group_rows.get(int(c), None)
 
         droop_addon_c = None
-        if base_branch_flow_num is not None and hvdc_flow_num is not None and len(contingency.branch_indices) > 0:
+        if base_branch_flow_num is not None and (hvdc_flow_num is not None or vsc_flow_num is not None) and len(contingency.branch_indices) > 0:
             row_mask_c = np.zeros(branch_data_t.nelm, dtype=bool)
             if rows_to_limit is not None:
                 row_mask_c[rows_to_limit] = True
@@ -1286,6 +1287,8 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                 hvdc_flow_lp=hvdc_vars.flows[t_idx, :],
                 hvdc_flow_num=hvdc_flow_num,
                 row_filter=row_mask_c,
+                vsc_flow_lp=vsc_vars.flows[t_idx, :],
+                vsc_flow_num=vsc_flow_num,
             )
 
         contingency_flows, mask, changed_idx = contingency.get_lp_contingency_flows(
@@ -2177,6 +2180,7 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
                     allowed_srap_gen_indices=allowed_srap_gen_indices,
                     base_branch_flow_num=f0_num,
                     hvdc_flow_num=hvdc0_num,
+                    vsc_flow_num=vsc0_num,
                     lazy_round=lazy_round,
                 )
 

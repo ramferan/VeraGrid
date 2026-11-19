@@ -1527,6 +1527,110 @@ def test_issue_372_congested_thermal_slacks():
     assert np.isclose(reg_ctg_slacks, 12.00, atol=0.1)
 
 
+def test_vsc_pmode3_passive_n1_droop_matches_hvdc() -> None:
+    """
+    Passive Pmode3 angle-droop coupling in N-1 for VSC (single DC bus and 2 DC buses + DcLine)
+    must match the equivalent HvdcLine Pmode3 N-1 droop solution.
+    """
+    from VeraGridEngine.enumerations import HvdcControlType, ConverterControlType
+
+    def _build_grid(variant: str) -> gce.MultiCircuit:
+        grid = gce.MultiCircuit(name=f"vsc_droop_{variant}")
+        a1 = gce.Area(name="ES")
+        a2 = gce.Area(name="FR")
+        grid.add_area(a1)
+        grid.add_area(a2)
+
+        b1 = gce.Bus(name="B1", Vnom=400.0, area=a1, is_slack=True)
+        b2 = gce.Bus(name="B2", Vnom=400.0, area=a1)
+        b3 = gce.Bus(name="B3", Vnom=400.0, area=a2)
+        for b in (b1, b2, b3):
+            grid.add_bus(b)
+
+        g1 = gce.Generator(name="G1", P=300.0, Pmin=0.0, Pmax=5000.0, enabled_dispatch=True)
+        g2 = gce.Generator(name="G3", P=100.0, Pmin=0.0, Pmax=5000.0, enabled_dispatch=True)
+        grid.add_generator(b1, g1)
+        grid.add_generator(b3, g2)
+        grid.add_load(b3, gce.Load(name="L3", P=400.0))
+
+        # Two parallel AC tie lines (losing l_a transfers extra flow + angle opening to l_b)
+        grid.add_line(gce.Line(bus_from=b1, bus_to=b2, name="L12", r=0.0, x=0.05, rate=1000.0))
+        l_a = gce.Line(bus_from=b2, bus_to=b3, name="L23A", r=0.0, x=0.10, rate=400.0, contingency_factor=1.0)
+        l_b = gce.Line(bus_from=b2, bus_to=b3, name="L23B", r=0.0, x=0.10, rate=400.0, contingency_factor=1.0)
+        grid.add_line(l_a)
+        grid.add_line(l_b)
+
+        cg = gce.ContingencyGroup(name="CG_L23A")
+        grid.add_contingency_group(cg)
+        grid.add_contingency(gce.Contingency(device=l_a, name="Trip_L23A", prop="active", value=100.0, group=cg))
+
+        if variant == "hvdc":
+            grid.add_hvdc(gce.HvdcLine(
+                bus_from=b1, bus_to=b3, name="H13",
+                rate=500.0, Pset=0.0, angle_droop=15.0,
+                control_mode=HvdcControlType.type_0_free,
+            ))
+        elif variant == "vsc_1dc":
+            dc1 = gce.Bus(name="DC1", Vnom=320.0, is_dc=True, area=a2)
+            grid.add_bus(dc1)
+            grid.add_vsc(gce.VSC(
+                bus_from=dc1, bus_to=b1, name="V_from", rate=500.0,
+                control1=ConverterControlType.Vm_dc, control1_val=1.0,
+                control2=ConverterControlType.Pac, control2_val=0.0,
+            ))
+            grid.add_vsc(gce.VSC(
+                bus_from=dc1, bus_to=b3, name="V_to", rate=500.0,
+                control1=ConverterControlType.Pdc_angle_droop, control1_val=15.0, control1_dev=b1,
+                control2=ConverterControlType.Pac, control2_val=0.0,
+            ))
+        else:
+            dc1 = gce.Bus(name="DC1", Vnom=320.0, is_dc=True, area=a1)
+            dc2 = gce.Bus(name="DC2", Vnom=320.0, is_dc=True, area=a2)
+            grid.add_bus(dc1)
+            grid.add_bus(dc2)
+            grid.add_dc_line(gce.DcLine(bus_from=dc1, bus_to=dc2, name="DCL13", r=0.01, rate=500.0))
+            grid.add_vsc(gce.VSC(
+                bus_from=dc1, bus_to=b1, name="V_from", rate=500.0,
+                control1=ConverterControlType.Vm_dc, control1_val=1.0,
+                control2=ConverterControlType.Pac, control2_val=0.0,
+            ))
+            grid.add_vsc(gce.VSC(
+                bus_from=dc2, bus_to=b3, name="V_to", rate=500.0,
+                control1=ConverterControlType.Pdc_angle_droop, control1_val=15.0, control1_dev=b1,
+                control2=ConverterControlType.Pac, control2_val=0.0,
+            ))
+        return grid
+
+    ttcs = {}
+    for variant in ("hvdc", "vsc_1dc", "vsc_2dc"):
+        grid = _build_grid(variant)
+        info = grid.get_inter_aggregation_info(objects_from=[grid.areas[0]], objects_to=[grid.areas[1]])
+        opts = gce.OptimalNetTransferCapacityOptions(
+            sending_bus_idx=info.idx_bus_from,
+            receiving_bus_idx=info.idx_bus_to,
+            transfer_method=gce.AvailableTransferMode.InstalledPower,
+            skip_generation_limits=True,
+            transmission_reliability_margin=0.0,
+            branch_exchange_sensitivity=0.01,
+            use_branch_exchange_sensitivity=True,
+            consider_contingencies=True,
+            corrective_contingencies=False,
+            strict_formulation=True,
+            include_hvdc_exchange_sensitivity=False,
+            opf_options=gce.OptimalPowerFlowOptions(contingency_groups_used=grid.contingency_groups),
+            lin_options=gce.LinearAnalysisOptions(),
+        )
+        drv = gce.OptimalNetTransferCapacityDriver(grid, opts)
+        drv.run()
+        res = drv.results
+        assert bool(np.all(res.converged)), f"{variant} did not converge"
+        assert float(res.get_total_slack_mw()) < 1e-4, f"{variant} slack != 0"
+        ttcs[variant] = float(res.inter_area_flows)
+
+    assert np.isclose(ttcs["vsc_1dc"], ttcs["hvdc"], atol=1e-2), ttcs
+    assert np.isclose(ttcs["vsc_2dc"], ttcs["hvdc"], atol=1e-2), ttcs
+
+
 if __name__ == '__main__':
     # test_issue_372_1()
     # test_issue_372_2()

@@ -2176,7 +2176,10 @@ def screen_contingency_violations(multi_contingencies: List[LinearMultiContingen
             pending = monitorable & (~already)
             recheck_already = (
                 monitorable & already
-                if (contingency.hvdc_droop_factors is not None and len(contingency.branch_indices) > 0)
+                if (
+                    (contingency.hvdc_droop_factors is not None or getattr(contingency, "vsc_droop_factors", None) is not None)
+                    and len(contingency.branch_indices) > 0
+                )
                 else None
             )
 
@@ -2199,6 +2202,13 @@ def screen_contingency_violations(multi_contingencies: List[LinearMultiContingen
                     h_post = np.clip(hvdc0 + dh_droop, -contingency.hvdc_rates, contingency.hvdc_rates)
                     delta_h = h_post - hvdc0
                     fc += contingency.hvdc_df @ delta_h
+                if (getattr(contingency, "vsc_droop_factors", None) is not None
+                        and getattr(contingency, "vsc_rates", None) is not None
+                        and getattr(contingency, "vsc_df", None) is not None):
+                    dv_droop = contingency.vsc_droop_factors @ f0[contingency.branch_indices]
+                    v_post = np.clip(vsc0 + dv_droop, -contingency.vsc_rates, contingency.vsc_rates)
+                    delta_v = v_post - vsc0
+                    fc += contingency.vsc_df @ delta_v
             else:
                 pass  # no branch outages in this group
             if len(contingency.hvdc_indices) > 0:
@@ -2390,6 +2400,14 @@ def fill_worst_contingency_per_branch(grid: MultiCircuit,
                         h_post: Vec = np.clip(hvdc0 + dh_droop, -rates_mw, rates_mw)
                         delta_h: Vec = h_post - hvdc0
                         fc = fc + contingency.hvdc_df @ delta_h
+                    if (getattr(contingency, "vsc_droop_factors", None) is not None
+                            and getattr(contingency, "vsc_rates", None) is not None
+                            and getattr(contingency, "vsc_df", None) is not None):
+                        dv_droop = contingency.vsc_droop_factors @ f0[contingency.branch_indices]
+                        v_rates_mw: Vec = contingency.vsc_rates * sbase_val
+                        v_post: Vec = np.clip(vsc0 + dv_droop, -v_rates_mw, v_rates_mw)
+                        delta_v: Vec = v_post - vsc0
+                        fc = fc + contingency.vsc_df @ delta_v
                 else:
                     pass  # this group outages no AC branch
 
@@ -3463,7 +3481,7 @@ def run_linear_ntc_opf(grid: MultiCircuit,
                 for c_new, rows_new in admissions:
                     group_rows_now[int(c_new)] = rows_new
                     c_obj = lazy_mctg.multi_contingencies[int(c_new)]
-                    addon = c_obj.compute_hvdc_droop_addon(base_branch_flow=f0_num, hvdc_flow=hvdc0_num)
+                    addon = c_obj.compute_hvdc_droop_addon(base_branch_flow=f0_num, hvdc_flow=hvdc0_num, vsc_flow=vsc0_num)
                     if addon is not None:
                         droop_addons_now[int(c_new)] = addon
 

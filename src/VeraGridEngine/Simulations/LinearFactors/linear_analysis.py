@@ -634,6 +634,17 @@ class LinearAnalysis:
         "hvdc_phi",
         "hvdc_Z0",
         "hvdc_K_p3",
+        "branch_is_dc",
+        "vsc_rates_pu",
+        "vsc_droop_pu",
+        "vsc_active_pmode3",
+        "vsc_p3_idx",
+        "vsc_droop_df",
+        "vsc_meas_df",
+        "droop_phi_inj",
+        "droop_phi_meas",
+        "droop_Z0",
+        "droop_K_p3",
     )
 
     def __init__(self,
@@ -789,6 +800,8 @@ class LinearAnalysis:
         self.branch_X = nc.passive_branch_data.X.copy()
         self.branch_from = nc.passive_branch_data.F.copy()
         self.branch_to = nc.passive_branch_data.T.copy()
+        is_dc_bus = nc.bus_data.is_dc.astype(bool)
+        self.branch_is_dc = nc.passive_branch_data.dc.astype(bool).copy()
 
         # Cache HVDC Pmode3 droop and ratings
         self.hvdc_rates_pu = nc.hvdc_data.rates / nc.Sbase
@@ -799,43 +812,180 @@ class LinearAnalysis:
                 self.hvdc_active_pmode3[h] = True
                 self.hvdc_droop_pu[h] = nc.hvdc_data.get_angle_droop_in_pu_rad_at(h, nc.Sbase)
 
-        # Precompute closed-loop Thevenin impedance seen by active Pmode3 HVDC links
+        # Cache VSC Pmode3 droop, effective DC-corridor ratings, and AC-side distribution factors
+        dc_rate_per_bus = np.zeros(n_bus, dtype=float)
+        dc_parent = np.arange(n_bus, dtype=int)
+
+        def _dc_find(x: int) -> int:
+            while dc_parent[x] != x:
+                dc_parent[x] = dc_parent[dc_parent[x]]
+                x = dc_parent[x]
+            return x
+
+        for k_br in range(n_br):
+            if nc.passive_branch_data.active[k_br]:
+                f_b = int(nc.passive_branch_data.F[k_br])
+                t_b = int(nc.passive_branch_data.T[k_br])
+                if is_dc_bus[f_b] and is_dc_bus[t_b]:
+                    dc_rate_per_bus[f_b] += nc.passive_branch_data.rates[k_br]
+                    dc_rate_per_bus[t_b] += nc.passive_branch_data.rates[k_br]
+                    ra, rb = _dc_find(f_b), _dc_find(t_b)
+                    if ra != rb:
+                        dc_parent[rb] = ra
+
+        dc_comp_slacks: Dict[int, List[int]] = dict()
+        for v in range(n_vsc):
+            if not nc.vsc_data.active[v]:
+                continue
+            c1 = nc.vsc_data.control1_int[v]
+            c2 = nc.vsc_data.control2_int[v]
+            is_vm_dc = (
+                c1 == ConverterControlType.Vm_dc.idx() or c2 == ConverterControlType.Vm_dc.idx()
+            ) and c1 != ConverterControlType.Pdc_angle_droop.idx()
+            if is_vm_dc:
+                f_v = int(nc.vsc_data.F[v])
+                t_v = int(nc.vsc_data.T[v])
+                if not is_dc_bus[t_v]:
+                    dc_comp_slacks.setdefault(_dc_find(f_v), []).append(t_v)
+
+        self.vsc_rates_pu = nc.vsc_data.rates.copy()
+        for v in range(n_vsc):
+            f_v = int(nc.vsc_data.F[v])
+            if is_dc_bus[f_v] and dc_rate_per_bus[f_v] > 0.0:
+                self.vsc_rates_pu[v] = min(self.vsc_rates_pu[v], dc_rate_per_bus[f_v])
+        self.vsc_rates_pu = self.vsc_rates_pu / nc.Sbase
+
+        self.vsc_droop_pu = np.zeros(n_vsc, dtype=float)
+        self.vsc_active_pmode3 = np.zeros(n_vsc, dtype=bool)
+        self.vsc_droop_df = np.zeros((n_br, n_vsc), dtype=float)
+        self.vsc_meas_df = np.zeros((n_br, n_vsc), dtype=float)
+        vsc_return_buses: Dict[int, List[int]] = dict()
+        vsc_ctrl_buses: Dict[int, int] = dict()
+
+        for v in range(n_vsc):
+            if (nc.vsc_data.active[v]
+                    and nc.vsc_data.control1_int[v] == ConverterControlType.Pdc_angle_droop.idx()
+                    and nc.vsc_data.control2_int[v] == ConverterControlType.Pac.idx()):
+                ctrl = int(nc.vsc_data.control1_bus_idx[v])
+                f_v = int(nc.vsc_data.F[v])
+                t_v = int(nc.vsc_data.T[v])
+                if 0 <= ctrl < n_bus and not is_dc_bus[ctrl] and not is_dc_bus[t_v]:
+                    slacks = dc_comp_slacks.get(_dc_find(f_v), [])
+                    ret = slacks if len(slacks) > 0 else [ctrl]
+                    self.vsc_active_pmode3[v] = True
+                    self.vsc_droop_pu[v] = float(nc.vsc_data.control1_val[v]) * 57.295779513 / nc.Sbase
+                    vsc_return_buses[v] = ret
+                    vsc_ctrl_buses[v] = ctrl
+                    ac_ret_ptdf = np.mean(self.PTDF[:, ret], axis=1)
+                    self.vsc_droop_df[:, v] = self.PTDF[:, t_v] - ac_ret_ptdf - self.PTDF[:, f_v]
+                    self.vsc_meas_df[:, v] = self.PTDF[:, t_v] - self.PTDF[:, ctrl]
+
+        # Precompute closed-loop Thevenin impedance seen by active Pmode3 HVDC links and VSC converters
         self.hvdc_p3_idx = np.where(self.hvdc_active_pmode3)[0]
+        self.vsc_p3_idx = np.where(self.vsc_active_pmode3)[0]
         self.hvdc_phi = None
         self.hvdc_Z0 = None
         self.hvdc_K_p3 = None
-        vd_idx = np.flatnonzero(nc.bus_data.bus_types == 3)
-        if len(self.hvdc_p3_idx) > 0 and len(vd_idx) > 0:
+        self.droop_phi_inj = None
+        self.droop_phi_meas = None
+        self.droop_Z0 = None
+        self.droop_K_p3 = None
+
+        n_hp3 = len(self.hvdc_p3_idx)
+        n_vp3 = len(self.vsc_p3_idx)
+        n_p3 = n_hp3 + n_vp3
+        if n_p3 > 0 and np.any(nc.bus_data.bus_types == 3):
             import scipy.sparse.linalg as spla
-            slack_bus = int(vd_idx[0])
-            bus_mask = np.ones(n_bus, dtype=bool)
-            bus_mask[slack_bus] = False
+            from scipy.sparse.csgraph import connected_components
+
             br_act = nc.passive_branch_data.active
             br_x = nc.passive_branch_data.X
-            b_val = np.where((br_act != 0) & (np.abs(br_x) > 1e-12), 1.0 / br_x, 0.0)
             f_br = nc.passive_branch_data.F
             t_br = nc.passive_branch_data.T
+            ac_br_valid = (br_act != 0) & (~is_dc_bus[f_br]) & (~is_dc_bus[t_br]) & (np.abs(br_x) > 1e-12)
+            b_val = np.where(ac_br_valid, 1.0 / np.where(ac_br_valid, br_x, 1.0), 0.0)
             Bbus = sp.csc_matrix(
                 (np.concatenate([b_val, b_val, -b_val, -b_val]),
                  (np.concatenate([f_br, t_br, f_br, t_br]),
                   np.concatenate([f_br, t_br, t_br, f_br]))),
                 shape=(n_bus, n_bus),
             )
-            Bred = Bbus[np.ix_(bus_mask, bus_mask)].tocsc()
-            solve_B = spla.factorized(Bred)
-            phi = np.zeros((n_bus, len(self.hvdc_p3_idx)), dtype=float)
-            for j, h in enumerate(self.hvdc_p3_idx):
-                rhs = np.zeros(n_bus, dtype=float)
-                rhs[nc.hvdc_data.F[h]] = 1.0
-                rhs[nc.hvdc_data.T[h]] = -1.0
-                sol = np.zeros(n_bus, dtype=float)
-                sol[bus_mask] = solve_B(rhs[bus_mask])
-                phi[:, j] = sol
-            hf_p3 = nc.hvdc_data.F[self.hvdc_p3_idx]
-            ht_p3 = nc.hvdc_data.T[self.hvdc_p3_idx]
-            self.hvdc_phi = phi
-            self.hvdc_Z0 = phi[hf_p3, :] - phi[ht_p3, :]
-            self.hvdc_K_p3 = np.diag(self.hvdc_droop_pu[self.hvdc_p3_idx])
+            diag_abs = np.abs(Bbus.diagonal())
+            ac_active_bus = (~is_dc_bus) & (diag_abs > 1e-12)
+            bus_mask = np.zeros(n_bus, dtype=bool)
+            if np.any(ac_active_bus):
+                _, comp_labels = connected_components(Bbus, directed=False)
+                comp_groups: Dict[int, List[int]] = dict()
+                for b_i in np.flatnonzero(ac_active_bus):
+                    comp_groups.setdefault(int(comp_labels[b_i]), []).append(int(b_i))
+                bus_mask[:] = ac_active_bus
+                for members in comp_groups.values():
+                    vd_members = [b_i for b_i in members if nc.bus_data.bus_types[b_i] == 3]
+                    ref_bus = vd_members[0] if vd_members else members[0]
+                    bus_mask[ref_bus] = False
+
+            if np.any(bus_mask):
+                Bred = Bbus[np.ix_(bus_mask, bus_mask)].tocsc()
+                solve_B = spla.factorized(Bred)
+
+                phi_inj = np.zeros((n_bus, n_p3), dtype=float)
+                phi_meas = np.zeros((n_bus, n_p3), dtype=float)
+                ctrl_rows = np.zeros(n_p3, dtype=int)
+                to_rows = np.zeros(n_p3, dtype=int)
+                k_all = np.zeros(n_p3, dtype=float)
+
+                for j, h in enumerate(self.hvdc_p3_idx):
+                    hf = int(nc.hvdc_data.F[h])
+                    ht = int(nc.hvdc_data.T[h])
+                    rhs = np.zeros(n_bus, dtype=float)
+                    rhs[hf] = 1.0
+                    rhs[ht] = -1.0
+                    sol = np.zeros(n_bus, dtype=float)
+                    sol[bus_mask] = solve_B(rhs[bus_mask])
+                    phi_inj[:, j] = sol
+                    phi_meas[:, j] = sol
+                    ctrl_rows[j] = hf
+                    to_rows[j] = ht
+                    k_all[j] = self.hvdc_droop_pu[h]
+
+                for j_v, v in enumerate(self.vsc_p3_idx):
+                    col = n_hp3 + j_v
+                    ctrl = vsc_ctrl_buses[int(v)]
+                    vt = int(nc.vsc_data.T[v])
+                    ret = vsc_return_buses[int(v)]
+
+                    rhs_inj = np.zeros(n_bus, dtype=float)
+                    w_ret = 1.0 / len(ret)
+                    for rb in ret:
+                        rhs_inj[rb] += w_ret
+                    rhs_inj[vt] -= 1.0
+                    sol_inj = np.zeros(n_bus, dtype=float)
+                    sol_inj[bus_mask] = solve_B(rhs_inj[bus_mask])
+                    phi_inj[:, col] = sol_inj
+
+                    if len(ret) == 1 and ret[0] == ctrl:
+                        phi_meas[:, col] = sol_inj
+                    else:
+                        rhs_m = np.zeros(n_bus, dtype=float)
+                        rhs_m[ctrl] = 1.0
+                        rhs_m[vt] = -1.0
+                        sol_m = np.zeros(n_bus, dtype=float)
+                        sol_m[bus_mask] = solve_B(rhs_m[bus_mask])
+                        phi_meas[:, col] = sol_m
+
+                    ctrl_rows[col] = ctrl
+                    to_rows[col] = vt
+                    k_all[col] = self.vsc_droop_pu[v]
+
+                self.droop_phi_inj = phi_inj
+                self.droop_phi_meas = phi_meas
+                self.droop_Z0 = phi_inj[ctrl_rows, :] - phi_inj[to_rows, :]
+                self.droop_K_p3 = np.diag(k_all)
+
+                if n_hp3 > 0:
+                    self.hvdc_phi = phi_inj[:, :n_hp3]
+                    self.hvdc_Z0 = self.droop_Z0[:n_hp3, :n_hp3]
+                    self.hvdc_K_p3 = np.diag(self.hvdc_droop_pu[self.hvdc_p3_idx])
 
     def get_transfer_limits(self, flows: np.ndarray, rates: Vec):
         """
@@ -1015,6 +1165,9 @@ class LinearMultiContingency:
         "effective_droop_lodf",
         "hvdc_rates",
         "hvdc_df",
+        "vsc_droop_factors",
+        "vsc_rates",
+        "vsc_df",
         "enabled",
     )
 
@@ -1037,7 +1190,10 @@ class LinearMultiContingency:
                  hvdc_droop_factors: Mat | None = None,
                  effective_droop_lodf: sp.csc_matrix | None = None,
                  hvdc_rates: Vec | None = None,
-                 hvdc_df: Mat | None = None):
+                 hvdc_df: Mat | None = None,
+                 vsc_droop_factors: Mat | None = None,
+                 vsc_rates: Vec | None = None,
+                 vsc_df: Mat | None = None):
         """
         Linear multi contingency object
         :param branch_indices: contingency branch indices.
@@ -1096,11 +1252,14 @@ class LinearMultiContingency:
         self.compensated_vsc_df: sp.csc_matrix | None = compensated_vsc_df
         self.compensated_hvdc_df: sp.csc_matrix | None = compensated_hvdc_df
 
-        # passive Pmode3 HVDC droop coupling for AC branch outages
+        # passive Pmode3 HVDC & VSC droop coupling for AC branch outages
         self.hvdc_droop_factors: Mat | None = hvdc_droop_factors
         self.effective_droop_lodf: sp.csc_matrix | None = effective_droop_lodf
         self.hvdc_rates: Vec | None = hvdc_rates
         self.hvdc_df: Mat | None = hvdc_df
+        self.vsc_droop_factors: Mat | None = vsc_droop_factors
+        self.vsc_rates: Vec | None = vsc_rates
+        self.vsc_df: Mat | None = vsc_df
 
         # store flag for contingency emptyness
         # self.enabled: bool = (self.mlodf_factors.nnz > 0
@@ -1135,12 +1294,18 @@ class LinearMultiContingency:
             # MLODF[k, βδ] x Pf0[βδ]
             flow += self.mlodf_factors @ base_branches_flow[self.branch_indices]
 
-            # Physical passive droop response of Pmode3 HVDC links to AC branch outages
+            # Physical passive droop response of Pmode3 HVDC links and VSCs to AC branch outages
             if self.hvdc_droop_factors is not None and hvdc_flow is not None and self.hvdc_rates is not None and self.hvdc_df is not None:
                 dh_droop = self.hvdc_droop_factors @ base_branches_flow[self.branch_indices]
                 h_post = np.clip(hvdc_flow + dh_droop, -self.hvdc_rates, self.hvdc_rates)
                 delta_h = h_post - hvdc_flow
                 flow += self.hvdc_df @ delta_h
+
+            if self.vsc_droop_factors is not None and vsc_flow is not None and self.vsc_rates is not None and self.vsc_df is not None:
+                dv_droop = self.vsc_droop_factors @ base_branches_flow[self.branch_indices]
+                v_post = np.clip(vsc_flow + dv_droop, -self.vsc_rates, self.vsc_rates)
+                delta_v = v_post - vsc_flow
+                flow += self.vsc_df @ delta_v
 
         if len(self.hvdc_indices) and hvdc_flow is not None:
             h_flows = hvdc_flow[self.hvdc_indices]
@@ -1196,60 +1361,87 @@ class LinearMultiContingency:
             return 0.0
         return f - (r_surv if f > 0.0 else -r_surv)
 
-    def compute_hvdc_droop_addon(self, base_branch_flow: Vec, hvdc_flow: Vec) -> Vec | None:
+    def compute_hvdc_droop_addon(self, base_branch_flow: Vec, hvdc_flow: Vec | None, vsc_flow: Vec | None = None) -> Vec | None:
         """
-        Evaluate the physical saturated droop flow change on AC branches.
+        Evaluate the physical saturated droop flow change on AC branches for Pmode3 HVDC links and VSCs.
         :param base_branch_flow: solved base AC branch flows (pu)
         :param hvdc_flow: solved base HVDC link flows (pu)
-        :return: flow increment on AC branches from saturated HVDC droop response (pu)
+        :param vsc_flow: solved base VSC converter flows (pu)
+        :return: flow increment on AC branches from saturated droop response (pu)
         """
-        if (self.hvdc_droop_factors is None or self.hvdc_rates is None
-                or self.hvdc_df is None or len(self.branch_indices) == 0):
+        if len(self.branch_indices) == 0:
             return None
-        dh_droop = self.hvdc_droop_factors @ base_branch_flow[self.branch_indices]
-        h_post = np.clip(hvdc_flow + dh_droop, -self.hvdc_rates, self.hvdc_rates)
-        delta_h = h_post - hvdc_flow
-        return self.hvdc_df @ delta_h
+        total_addon: Vec | None = None
+        if (self.hvdc_droop_factors is not None and self.hvdc_rates is not None
+                and self.hvdc_df is not None and hvdc_flow is not None):
+            dh_droop = self.hvdc_droop_factors @ base_branch_flow[self.branch_indices]
+            h_post = np.clip(hvdc_flow + dh_droop, -self.hvdc_rates, self.hvdc_rates)
+            total_addon = self.hvdc_df @ (h_post - hvdc_flow)
+        if (self.vsc_droop_factors is not None and self.vsc_rates is not None
+                and self.vsc_df is not None and vsc_flow is not None):
+            dv_droop = self.vsc_droop_factors @ base_branch_flow[self.branch_indices]
+            v_post = np.clip(vsc_flow + dv_droop, -self.vsc_rates, self.vsc_rates)
+            vsc_addon = self.vsc_df @ (v_post - vsc_flow)
+            total_addon = vsc_addon if total_addon is None else (total_addon + vsc_addon)
+        return total_addon
 
     def compute_hvdc_droop_lp_addon(self,
                                     base_branch_flow_lp: ObjVec,
                                     base_branch_flow_num: Vec,
-                                    hvdc_flow_lp: ObjVec,
-                                    hvdc_flow_num: Vec,
-                                    row_filter: BoolVec | None = None) -> ObjVec | None:
+                                    hvdc_flow_lp: ObjVec | None,
+                                    hvdc_flow_num: Vec | None,
+                                    row_filter: BoolVec | None = None,
+                                    vsc_flow_lp: ObjVec | None = None,
+                                    vsc_flow_num: Vec | None = None) -> ObjVec | None:
         """
-        Compute linear LP expressions for passive Pmode3 HVDC droop response to AC branch outages.
+        Compute linear LP expressions for passive Pmode3 HVDC and VSC droop response to AC branch outages.
         """
-        if (self.hvdc_droop_factors is None or self.hvdc_rates is None or self.hvdc_df is None
-                or len(self.branch_indices) == 0 or hvdc_flow_lp is None):
+        if len(self.branch_indices) == 0:
             return None
 
-        dh_droop = self.hvdc_droop_factors @ base_branch_flow_num[self.branch_indices]
-        n_h = self.hvdc_droop_factors.shape[0]
-        delta_h_lp = np.zeros(n_h, dtype=object)
-        active_h = []
-        for h in range(n_h):
-            if not np.any(np.abs(self.hvdc_droop_factors[h, :]) > 1e-12):
-                continue
-            h_unclipped = float(hvdc_flow_num[h] + dh_droop[h])
-            r_h = float(self.hvdc_rates[h])
-            if h_unclipped > r_h:
-                delta_h_lp[h] = r_h - hvdc_flow_lp[h]
-            elif h_unclipped < -r_h:
-                delta_h_lp[h] = -r_h - hvdc_flow_lp[h]
-            else:
-                expr_h = 0.0
-                for k_col, c_br in enumerate(self.branch_indices):
-                    coef = float(self.hvdc_droop_factors[h, k_col])
-                    if abs(coef) > 1e-12:
-                        expr_h += coef * base_branch_flow_lp[c_br]
-                delta_h_lp[h] = expr_h
-            active_h.append(h)
+        def _collect_channel(droop_factors: Mat | None,
+                             rates: Vec | None,
+                             df_mat: Mat | None,
+                             flow_lp: ObjVec | None,
+                             flow_num: Vec | None):
+            if droop_factors is None or rates is None or df_mat is None or flow_lp is None or flow_num is None:
+                return None, []
+            d_droop = droop_factors @ base_branch_flow_num[self.branch_indices]
+            n_dev = droop_factors.shape[0]
+            delta_lp = np.zeros(n_dev, dtype=object)
+            active_dev = []
+            for d_idx in range(n_dev):
+                if not np.any(np.abs(droop_factors[d_idx, :]) > 1e-12):
+                    continue
+                f_unclipped = float(flow_num[d_idx] + d_droop[d_idx])
+                r_d = float(rates[d_idx])
+                if f_unclipped > r_d:
+                    delta_lp[d_idx] = r_d - flow_lp[d_idx]
+                elif f_unclipped < -r_d:
+                    delta_lp[d_idx] = -r_d - flow_lp[d_idx]
+                else:
+                    expr_d = 0.0
+                    for k_col, c_br in enumerate(self.branch_indices):
+                        coef = float(droop_factors[d_idx, k_col])
+                        if abs(coef) > 1e-12:
+                            expr_d += coef * base_branch_flow_lp[c_br]
+                    delta_lp[d_idx] = expr_d
+                active_dev.append(d_idx)
+            if not active_dev:
+                return None, []
+            return delta_lp, active_dev
 
-        if not active_h:
+        delta_h_lp, active_h = _collect_channel(
+            self.hvdc_droop_factors, self.hvdc_rates, self.hvdc_df, hvdc_flow_lp, hvdc_flow_num
+        )
+        delta_v_lp, active_v = _collect_channel(
+            self.vsc_droop_factors, self.vsc_rates, self.vsc_df, vsc_flow_lp, vsc_flow_num
+        )
+
+        if not active_h and not active_v:
             return None
 
-        n_br = self.hvdc_df.shape[0]
+        n_br = self.hvdc_df.shape[0] if active_h else self.vsc_df.shape[0]
         addon = np.zeros(n_br, dtype=object)
         rows = np.flatnonzero(row_filter) if row_filter is not None else np.arange(n_br)
         for m in rows:
@@ -1258,6 +1450,10 @@ class LinearMultiContingency:
                 w = float(self.hvdc_df[m, h])
                 if abs(w) > 1e-12:
                     expr_m += w * delta_h_lp[h]
+            for v in active_v:
+                w = float(self.vsc_df[m, v])
+                if abs(w) > 1e-12:
+                    expr_m += w * delta_v_lp[v]
             addon[m] = expr_m
         return addon
 
@@ -1720,53 +1916,89 @@ class LinearMultiContingencies:
                 rate_pu = rate_mw / lin.Sbase
                 vsc_surviving_rates.append(rate_pu * (1.0 - frac))
 
-            # Calculate passive Pmode3 HVDC droop coupling for AC branch outages
+            # Calculate passive Pmode3 HVDC & VSC droop coupling for AC branch outages
             hvdc_droop_factors: Mat | None = None
+            vsc_droop_factors: Mat | None = None
             effective_droop_lodf: sp.csc_matrix | None = None
             br_con_idx: IntVec = contingency_indices.branch_contingency_indices
-            if len(br_con_idx) > 0 and hasattr(lin, "hvdc_active_pmode3") and np.any(lin.hvdc_active_pmode3):
+            has_h_p3 = hasattr(lin, "hvdc_active_pmode3") and np.any(lin.hvdc_active_pmode3)
+            has_v_p3 = hasattr(lin, "vsc_active_pmode3") and np.any(lin.vsc_active_pmode3)
+            if len(br_con_idx) > 0 and (has_h_p3 or has_v_p3):
                 n_h: int = len(lin.hvdc_active_pmode3)
+                n_v: int = len(lin.vsc_active_pmode3) if hasattr(lin, "vsc_active_pmode3") else 0
                 n_c: int = len(br_con_idx)
-                droop_mat: Mat = np.zeros((n_h, n_c), dtype=float)
-                if n_c == 1:
-                    c_single: int = int(br_con_idx[0])
+                droop_mat_h: Mat = np.zeros((n_h, n_c), dtype=float)
+                droop_mat_v: Mat = np.zeros((n_v, n_c), dtype=float)
+                is_dc_br = getattr(lin, "branch_is_dc", None)
+                ac_pos = np.flatnonzero(~is_dc_br[br_con_idx]) if is_dc_br is not None else np.arange(n_c)
+
+                hp3_idx = getattr(lin, "hvdc_p3_idx", np.where(lin.hvdc_active_pmode3)[0])
+                vp3_idx = getattr(lin, "vsc_p3_idx", np.where(lin.vsc_active_pmode3)[0]) if has_v_p3 else np.zeros(0, dtype=int)
+                n_hp3 = len(hp3_idx)
+                n_vp3 = len(vp3_idx)
+
+                if len(ac_pos) == 1:
+                    col_pos = int(ac_pos[0])
+                    c_single: int = int(br_con_idx[col_pos])
                     x_c: float = float(lin.branch_X[c_single])
                     f_node: int = int(lin.branch_from[c_single])
                     t_node: int = int(lin.branch_to[c_single])
                     denom: float = 1.0 - float(lin.PTDF[c_single, f_node] - lin.PTDF[c_single, t_node])
                     if abs(denom) < 1e-10:
                         denom = 1.0
-                    p3_idx = getattr(lin, "hvdc_p3_idx", np.where(lin.hvdc_active_pmode3)[0])
-                    g_open_p3 = np.array([
+
+                    g_open_h = np.array([
                         - lin.hvdc_droop_pu[h_idx] * x_c * lin.HvdcDF[c_single, h_idx] / denom
-                        for h_idx in p3_idx
+                        for h_idx in hp3_idx
                     ], dtype=float)
-                    if getattr(lin, "hvdc_Z0", None) is not None and getattr(lin, "hvdc_phi", None) is not None:
-                        phi_c = lin.hvdc_phi[f_node, :] - lin.hvdc_phi[t_node, :]
+                    g_open_v = np.array([
+                        - lin.vsc_droop_pu[v_idx] * x_c * lin.vsc_meas_df[c_single, v_idx] / denom
+                        for v_idx in vp3_idx
+                    ], dtype=float)
+                    g_open_all = np.concatenate([g_open_h, g_open_v])
+
+                    if getattr(lin, "droop_Z0", None) is not None and getattr(lin, "droop_phi_inj", None) is not None:
+                        phi_inj_c = lin.droop_phi_inj[f_node, :] - lin.droop_phi_inj[t_node, :]
+                        phi_meas_src = getattr(lin, "droop_phi_meas", lin.droop_phi_inj)
+                        phi_meas_c = phi_meas_src[f_node, :] - phi_meas_src[t_node, :]
                         if abs(x_c) > 1e-12:
-                            Zc = lin.hvdc_Z0 + np.outer(phi_c, phi_c) / (x_c * denom)
+                            Zc = lin.droop_Z0 + np.outer(phi_meas_c, phi_inj_c) / (x_c * denom)
                         else:
-                            Zc = lin.hvdc_Z0.copy()
-                        g_closed_p3 = np.linalg.solve(np.eye(len(p3_idx)) + lin.hvdc_K_p3 @ Zc, g_open_p3)
-                        droop_mat[p3_idx, 0] = g_closed_p3
+                            Zc = lin.droop_Z0.copy()
+                        g_closed_all = np.linalg.solve(np.eye(n_hp3 + n_vp3) + lin.droop_K_p3 @ Zc, g_open_all)
+                        if n_hp3 > 0:
+                            droop_mat_h[hp3_idx, col_pos] = g_closed_all[:n_hp3]
+                        if n_vp3 > 0:
+                            droop_mat_v[vp3_idx, col_pos] = g_closed_all[n_hp3:]
                     else:
-                        droop_mat[p3_idx, 0] = g_open_p3
-                else:
-                    X_diag: Vec = lin.branch_X[br_con_idx]
-                    f_nodes: IntVec = lin.branch_from[br_con_idx]
-                    t_nodes: IntVec = lin.branch_to[br_con_idx]
-                    H_block: Mat = lin.PTDF[np.ix_(br_con_idx, t_nodes)] - lin.PTDF[np.ix_(br_con_idx, f_nodes)]
-                    M_block: Mat = np.eye(n_c) + H_block
+                        if n_hp3 > 0:
+                            droop_mat_h[hp3_idx, col_pos] = g_open_h
+                        if n_vp3 > 0:
+                            droop_mat_v[vp3_idx, col_pos] = g_open_v
+
+                elif len(ac_pos) > 1:
+                    ac_br_idx = br_con_idx[ac_pos]
+                    X_diag: Vec = lin.branch_X[ac_br_idx]
+                    f_nodes: IntVec = lin.branch_from[ac_br_idx]
+                    t_nodes: IntVec = lin.branch_to[ac_br_idx]
+                    H_block: Mat = lin.PTDF[np.ix_(ac_br_idx, t_nodes)] - lin.PTDF[np.ix_(ac_br_idx, f_nodes)]
+                    M_block: Mat = np.eye(len(ac_pos)) + H_block
                     try:
                         M_inv: Mat = np.linalg.inv(M_block)
                     except np.linalg.LinAlgError:
                         M_inv = np.linalg.pinv(M_block)
-                    for h_idx in range(n_h):
-                        if lin.hvdc_active_pmode3[h_idx]:
-                            droop_mat[h_idx, :] = - lin.hvdc_droop_pu[h_idx] * (lin.HvdcDF[br_con_idx, h_idx] * X_diag) @ M_inv
+                    for h_idx in hp3_idx:
+                        droop_mat_h[h_idx, ac_pos] = - lin.hvdc_droop_pu[h_idx] * (lin.HvdcDF[ac_br_idx, h_idx] * X_diag) @ M_inv
+                    for v_idx in vp3_idx:
+                        droop_mat_v[v_idx, ac_pos] = - lin.vsc_droop_pu[v_idx] * (lin.vsc_meas_df[ac_br_idx, v_idx] * X_diag) @ M_inv
 
-                hvdc_droop_factors = droop_mat
-                eff_mat: Mat = lin.HvdcDF @ droop_mat
+                eff_mat = np.zeros_like(lin.PTDF[:, :1] @ np.zeros((1, n_c)))
+                if has_h_p3:
+                    hvdc_droop_factors = droop_mat_h
+                    eff_mat = eff_mat + (lin.HvdcDF @ droop_mat_h)
+                if has_v_p3:
+                    vsc_droop_factors = droop_mat_v
+                    eff_mat = eff_mat + (lin.vsc_droop_df @ droop_mat_v)
                 effective_droop_lodf = dense_to_csc(eff_mat, threshold=lodf_threshold)
 
             # append values
@@ -1790,7 +2022,10 @@ class LinearMultiContingencies:
                     hvdc_droop_factors=hvdc_droop_factors,
                     effective_droop_lodf=effective_droop_lodf,
                     hvdc_rates=lin.hvdc_rates_pu if hasattr(lin, "hvdc_rates_pu") else None,
-                    hvdc_df=lin.HvdcDF
+                    hvdc_df=lin.HvdcDF,
+                    vsc_droop_factors=vsc_droop_factors,
+                    vsc_rates=getattr(lin, "vsc_rates_pu", None),
+                    vsc_df=getattr(lin, "vsc_droop_df", None),
                 )
             )
 
