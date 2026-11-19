@@ -1024,7 +1024,8 @@ def add_preventive_contingency_formulation_strict(t_idx: int,
                                                   prob: OrToolsLpModel,
                                                   rows_to_limit: Union[IntVec, None] = None,
                                                   branch_terms: Union[Dict[int, LpExp], None] = None,
-                                                  alpha: Vec | None = None) -> float:
+                                                  alpha: Vec | None = None,
+                                                  lazy_round: int | None = None) -> float:
     """
     Formulate a single contingency with the preventive N-1 rule in the strict formulation
 
@@ -1084,13 +1085,15 @@ def add_preventive_contingency_formulation_strict(t_idx: int,
                 # record the flow so the result extraction can evaluate the post-contingency loading later
                 branch_vars.add_contingency_flow(t=t_idx, m=m, c=c, flow_var=flow_to_check)
 
+                name_parts = [t_idx, m, c] if (lazy_round is None or lazy_round == 0) else [t_idx, m, c, f"r{lazy_round}"]
+
                 # hard upper rate constraint
                 prob.add_cst(cst=flow_to_check <= branch_data_t.contingency_rates[m] / Sbase,
-                             name=join("br_cst_flow_upper_lim_", [t_idx, m, c]))
+                             name=join("br_cst_flow_upper_lim_", name_parts))
 
                 # hard lower rate constraint
                 prob.add_cst(cst=flow_to_check >= -branch_data_t.contingency_rates[m] / Sbase,
-                             name=join("br_cst_flow_lower_lim_", [t_idx, m, c]))
+                             name=join("br_cst_flow_lower_lim_", name_parts))
             else:
                 # the branch is not monitored under this contingency: nothing to enforce
                 pass
@@ -1205,7 +1208,8 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                                                    srap_delta_store: Union[Dict[int, Dict[int, LpVar]], None] = None,
                                                    allowed_srap_gen_indices: IntVec | None = None,
                                                    base_branch_flow_num: Vec | None = None,
-                                                   hvdc_flow_num: Vec | None = None):
+                                                   hvdc_flow_num: Vec | None = None,
+                                                   lazy_round: int | None = None):
     """
     Formulate the branches
     :param t_idx: time index
@@ -1342,7 +1346,8 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                 alpha_threshold=alpha_threshold, alpha_n1_abs=alpha_n1_abs, prob=prob,
                 rows_to_limit=rows_to_limit,
                 branch_terms=branch_terms if len(branch_terms) > 0 else None,
-                alpha=alpha)
+                alpha=alpha,
+                lazy_round=lazy_round)
 
     return f_obj
 
@@ -2172,6 +2177,7 @@ def run_linear_ntc_opf_strict(grid: MultiCircuit,
                     allowed_srap_gen_indices=allowed_srap_gen_indices,
                     base_branch_flow_num=f0_num,
                     hvdc_flow_num=hvdc0_num,
+                    lazy_round=lazy_round,
                 )
 
                 for c_new, rows_new in admissions:

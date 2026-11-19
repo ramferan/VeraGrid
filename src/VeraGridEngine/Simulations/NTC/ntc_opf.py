@@ -2171,8 +2171,14 @@ def screen_contingency_violations(multi_contingencies: List[LinearMultiContingen
         already: Union[BoolVec, None] = admitted_rows.get(c, None)
         if already is None:
             pending: BoolVec = monitorable
+            recheck_already: Union[BoolVec, None] = None
         else:
             pending = monitorable & (~already)
+            recheck_already = (
+                monitorable & already
+                if (contingency.hvdc_droop_factors is not None and len(contingency.branch_indices) > 0)
+                else None
+            )
 
         # 4.8 Parity: only rows sensitive in N or in this specific N-1 can bind
         if alpha is not None:
@@ -2180,8 +2186,10 @@ def screen_contingency_violations(multi_contingencies: List[LinearMultiContingen
             if alpha_n1 is not None and len(contingency.branch_indices) > 0:
                 sens_mask = sens_mask | np.any(np.abs(alpha_n1[:, contingency.branch_indices]) > alpha_threshold, axis=1)
             pending = pending & sens_mask
+            if recheck_already is not None:
+                recheck_already = recheck_already & sens_mask
 
-        if np.any(pending):
+        if np.any(pending) or (recheck_already is not None and np.any(recheck_already)):
             fc: Vec = f0.copy()
             if len(contingency.branch_indices) > 0:
                 fc += contingency.mlodf_factors @ f0[contingency.branch_indices]
@@ -2223,9 +2231,15 @@ def screen_contingency_violations(multi_contingencies: List[LinearMultiContingen
                 pass  # preventive screening only
 
             fc_abs: Vec = np.abs(fc)
-            if np.any(pending & (fc_abs > limits)):
+            new_viol: BoolVec = pending & (fc_abs > limits)
+            recheck_viol: BoolVec = (
+                recheck_already & (fc_abs > limits)
+                if recheck_already is not None
+                else np.zeros_like(pending)
+            )
+            if np.any(new_viol) or np.any(recheck_viol):
                 # admit the violated rows plus the near-limit rows of the same group
-                admit_mask: BoolVec = pending & (fc_abs > at_risk_fraction * con_rates_pu)
+                admit_mask: BoolVec = (pending & (fc_abs > at_risk_fraction * con_rates_pu)) | recheck_viol
                 admissions.append((c, np.flatnonzero(admit_mask)))
             else:
                 # the current solution survives this outage on every pending row
@@ -2359,6 +2373,7 @@ def fill_worst_contingency_per_branch(grid: MultiCircuit,
             worst_position: IntVec = np.full(len(worst_idx), -1, dtype=int)
             tie_candidates: List[Tuple[int, IntVec, Vec, Vec, Vec]] = list()
             position: int
+            sbase_val: float = float(getattr(grid, "Sbase", 100.0))
             for position in range(n_used):
                 c = int(visit_order[position])
                 contingency: LinearMultiContingency = multi_contingencies.multi_contingencies[c]
@@ -2371,7 +2386,6 @@ def fill_worst_contingency_per_branch(grid: MultiCircuit,
                     if (contingency.hvdc_droop_factors is not None and contingency.hvdc_rates is not None
                             and contingency.hvdc_df is not None):
                         dh_droop = contingency.hvdc_droop_factors @ f0[contingency.branch_indices]
-                        sbase_val: float = float(getattr(grid, "Sbase", 100.0))
                         rates_mw: Vec = contingency.hvdc_rates * sbase_val
                         h_post: Vec = np.clip(hvdc0 + dh_droop, -rates_mw, rates_mw)
                         delta_h: Vec = h_post - hvdc0
@@ -2381,14 +2395,14 @@ def fill_worst_contingency_per_branch(grid: MultiCircuit,
 
                 if len(contingency.hvdc_indices) > 0 and hvdc0.size > 0:
                     h_flows = hvdc0[contingency.hvdc_indices]
-                    h_loss = np.maximum(0.0, np.abs(h_flows) - contingency.hvdc_surviving_rates) * np.sign(h_flows)
+                    h_loss = np.maximum(0.0, np.abs(h_flows) - contingency.hvdc_surviving_rates * sbase_val) * np.sign(h_flows)
                     fc = fc + contingency.hvdc_odf @ h_loss
                 else:
                     pass  # this group outages no HVDC
 
                 if len(contingency.vsc_indices) > 0 and vsc0.size > 0:
                     v_flows = vsc0[contingency.vsc_indices]
-                    v_loss = np.maximum(0.0, np.abs(v_flows) - contingency.vsc_surviving_rates) * np.sign(v_flows)
+                    v_loss = np.maximum(0.0, np.abs(v_flows) - contingency.vsc_surviving_rates * sbase_val) * np.sign(v_flows)
                     fc = fc + contingency.vsc_odf @ v_loss
                 else:
                     pass  # this group outages no VSC
@@ -3040,6 +3054,7 @@ def run_linear_ntc_opf(grid: MultiCircuit,
                        monitor_only_ntc_load_rule_branches: bool = False,
                        ntc_load_rule: float = 0.7,  # 70%
                        slack_all_limits: bool = False,
+                       include_hvdc_exchange_sensitivity: bool = False,
                        logger: Logger = Logger(),
                        progress_text: Union[None, Callable[[str], None]] = None,
                        progress_func: Union[None, Callable[[float], None]] = None,
@@ -3230,7 +3245,7 @@ def run_linear_ntc_opf(grid: MultiCircuit,
         ls = LinearAnalysis(nc=nc,
                             distributed_slack=False,
                             correct_values=True,
-                            converters_as_setpoint=True,
+                            converters_as_setpoint=not include_hvdc_exchange_sensitivity,
                             logger=logger)
 
         # compute the power flow

@@ -371,6 +371,7 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 verbose=self.options.opf_options.verbose,
                 robust=self.options.opf_options.robust,
                 mip_framework=self.options.opf_options.mip_framework,
+                include_hvdc_exchange_sensitivity=self.options.include_hvdc_exchange_sensitivity,
                 use_srap=self.options.use_srap,
                 srap_max_power=self.options.srap_max_power
             )
@@ -397,7 +398,8 @@ class OptimalNetTransferCapacityDriver(DriverTemplate):
                 progress_func=self.report_progress,
                 verbose=self.options.opf_options.verbose,
                 robust=self.options.opf_options.robust,
-                mip_framework=self.options.opf_options.mip_framework
+                mip_framework=self.options.opf_options.mip_framework,
+                include_hvdc_exchange_sensitivity=self.options.include_hvdc_exchange_sensitivity
             )
 
         # pack the results

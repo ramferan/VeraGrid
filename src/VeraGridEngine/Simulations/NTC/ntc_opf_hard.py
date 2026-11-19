@@ -77,6 +77,9 @@ def add_linear_injections_formulation_hard(t,
         decimals=6
     )
     ntc_vars.bus_vars.proportions[t, :] = proportions
+    # Same contract as the strict formulation: the exchange sensitivity (alpha) is
+    # derived from these raw weights, not from the installed MVA.
+    ntc_vars.bus_vars.exchange_weights[t, :] = bus_pref_t
 
     # One exchange variable for both areas.  The proportion carries the sign
     # (positive in area 1, negative in area 2), so the same variable increases

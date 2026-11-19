@@ -1191,8 +1191,7 @@ def fill_generator_parent(
     control_mode: GeneratorControlMode = elm.get_control_mode_prof_at(t_idx)
     data.control_mode_int[k] = control_mode.idx()
     data.conn[k] = elm.conn.idx()
-    data.installed_p[k] = elm.Snom
-    bus_data.installed_power[i] += elm.Snom
+    # Note: data.installed_p and bus_data.installed_power are populated below after pmax/active/dispatchable resolution
 
     # r0, r1, r2, x0, x1, x2
     data.r0[k] = elm.R0
@@ -1257,6 +1256,11 @@ def fill_generator_parent(
     data.cost_1[k] = elm.get_Cost_at(t_idx)
     data.cost_2[k] = elm.get_Cost2_at(t_idx)
     data.shift_key[k] = elm.get_shift_key_at(t_idx)
+
+    # Installed power calculation: use active Pmax of active dispatchable generators (REE Fix #11)
+    inst_p = float(pmax) if (data.active[k] and data.dispatchable[k]) else 0.0
+    data.installed_p[k] = inst_p
+    bus_data.installed_power[i] += inst_p
 
     if data.active[k]:
         if elm.get_srap_enabled_at(t_idx) and data.p[k] > 0.0:
