@@ -1346,7 +1346,7 @@ def add_linear_branches_formulation(t_idx: int,
                     # is a phase shifter device (like phase shifter transformer or VSC with P control)
                     prob.add_cst(
                         cst=branch_vars.flows[t_idx, m] == bk * (bus_vars.Va[t_idx, fr] -
-                                                                 bus_vars.Va[t_idx, to] +
+                                                                 bus_vars.Va[t_idx, to] -
                                                                  branch_vars.tap_angles[t_idx, m]),
                         name=join("ac_flows_ps_", [t_idx, m], "_")
                     )
@@ -1359,7 +1359,7 @@ def add_linear_branches_formulation(t_idx: int,
                         # rest of the branches
                         prob.add_cst(
                             cst=branch_vars.flows[t_idx, m] == bk * (bus_vars.Va[t_idx, fr] -
-                                                                     bus_vars.Va[t_idx, to] +
+                                                                     bus_vars.Va[t_idx, to] -
                                                                      branch_vars.tap_angles[t_idx, m]),
                             name=join("ac_flow_ps_fix", [t_idx, m], "_")
                         )
@@ -2202,6 +2202,7 @@ def screen_contingency_violations(multi_contingencies: List[LinearMultiContingen
                     h_post = np.clip(hvdc0 + dh_droop, -contingency.hvdc_rates, contingency.hvdc_rates)
                     delta_h = h_post - hvdc0
                     fc += contingency.hvdc_df @ delta_h
+                    fc += contingency.mlodf_factors @ (contingency.hvdc_df[contingency.branch_indices, :] @ delta_h)
                 if (getattr(contingency, "vsc_droop_factors", None) is not None
                         and getattr(contingency, "vsc_rates", None) is not None
                         and getattr(contingency, "vsc_df", None) is not None):
@@ -2209,6 +2210,7 @@ def screen_contingency_violations(multi_contingencies: List[LinearMultiContingen
                     v_post = np.clip(vsc0 + dv_droop, -contingency.vsc_rates, contingency.vsc_rates)
                     delta_v = v_post - vsc0
                     fc += contingency.vsc_df @ delta_v
+                    fc += contingency.mlodf_factors @ (contingency.vsc_df[contingency.branch_indices, :] @ delta_v)
             else:
                 pass  # no branch outages in this group
             if len(contingency.hvdc_indices) > 0:
@@ -2400,6 +2402,7 @@ def fill_worst_contingency_per_branch(grid: MultiCircuit,
                         h_post: Vec = np.clip(hvdc0 + dh_droop, -rates_mw, rates_mw)
                         delta_h: Vec = h_post - hvdc0
                         fc = fc + contingency.hvdc_df @ delta_h
+                        fc = fc + contingency.mlodf_factors @ (contingency.hvdc_df[contingency.branch_indices, :] @ delta_h)
                     if (getattr(contingency, "vsc_droop_factors", None) is not None
                             and getattr(contingency, "vsc_rates", None) is not None
                             and getattr(contingency, "vsc_df", None) is not None):
@@ -2408,6 +2411,7 @@ def fill_worst_contingency_per_branch(grid: MultiCircuit,
                         v_post: Vec = np.clip(vsc0 + dv_droop, -v_rates_mw, v_rates_mw)
                         delta_v: Vec = v_post - vsc0
                         fc = fc + contingency.vsc_df @ delta_v
+                        fc = fc + contingency.mlodf_factors @ (contingency.vsc_df[contingency.branch_indices, :] @ delta_v)
                 else:
                     pass  # this group outages no AC branch
 

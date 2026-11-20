@@ -642,6 +642,7 @@ def test_issue_372_5():
         branch_rating_contribution=1.0,
         monitor_only_ntc_load_rule_branches=True,
         consider_contingencies=True,
+        corrective_contingencies=True,
         opf_options=opf_options,
         lin_options=lin_options
     )

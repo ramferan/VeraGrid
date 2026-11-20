@@ -934,7 +934,7 @@ def add_linear_branches_formulation(t_idx: int,
                     # is a phase shifter device (like phase shifter transformer or VSC with P control)
                     prob.add_cst(
                         cst=branch_vars.flows[t_idx, m] == bk * (bus_vars.Va[t_idx, fr] -
-                                                                 bus_vars.Va[t_idx, to] +
+                                                                 bus_vars.Va[t_idx, to] -
                                                                  branch_vars.tap_angles[t_idx, m]),
                         name=join("ac_flows_ps_", [t_idx, m], "_")
                     )
@@ -947,7 +947,7 @@ def add_linear_branches_formulation(t_idx: int,
                         # rest of the branches
                         prob.add_cst(
                             cst=branch_vars.flows[t_idx, m] == bk * (bus_vars.Va[t_idx, fr] -
-                                                                     bus_vars.Va[t_idx, to] +
+                                                                     bus_vars.Va[t_idx, to] -
                                                                      branch_vars.tap_angles[t_idx, m]),
                             name=join("ac_flow_ps_fix", [t_idx, m], "_")
                         )
@@ -1169,6 +1169,11 @@ def compute_pole_spill_expressions(prob,
                 vsc_spill.append(flow)
                 continue
             rate_pu = float(vsc_vars.rates[t_idx, int(v_idx)]) / Sbase
+            if getattr(contingency, "vsc_rates", None) is not None and int(v_idx) < len(contingency.vsc_rates):
+                rate_pu = min(rate_pu, float(contingency.vsc_rates[int(v_idx)]))
+            if rate_pu <= r_surv + 1e-9:
+                vsc_spill.append(0.0)
+                continue
             tag = join("pole_surv_vsc_", [t_idx, cont_index, int(v_idx)])
             carried = prob.add_var(lb=-r_surv, ub=r_surv, name=tag + "_flow")
             add_clipped_flow(prob=prob, flow=carried, demand=flow, rate=r_surv,

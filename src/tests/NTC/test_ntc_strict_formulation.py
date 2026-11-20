@@ -612,6 +612,7 @@ def test_issue_372_5():
         branch_rating_contribution=1.0,
         monitor_only_ntc_load_rule_branches=True,
         consider_contingencies=True,
+        corrective_contingencies=True,
         strict_formulation=True,
         opf_options=opf_options,
         lin_options=lin_options
@@ -1459,72 +1460,59 @@ def test_issue_372_congested_thermal_slacks():
     under congested grid conditions vs hard physical adherence in strict formulation.
 
     Using grid: 'IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal'
-    with branch 7 (Trafo 11) choked to 4.0 MW to create a binding contingency bottleneck.
+    with branch 7 (Trafo 11) choked to 4.0 MW to create a binding contingency bottleneck:
+    - Under preventive N-1 (corrective_contingencies=False), strict detects physical
+      infeasibility while regular absorbs 9.84 MW into thermal overload slacks to report
+      an inflated 41.06 MW inter-area flow.
+    - With corrective N-1 HVDC redispatch enabled (corrective_contingencies=True), strict
+      converges cleanly at 19.63 MW (26.19 MW inter-area) with 0.00 MW thermal slack.
     """
     fname = get_grid_path('IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal')
 
-    # 1. Run strict formulation (hard thermal bounds, zero slack, 1:1 area balance)
-    grid_strict = gce.open_file(fname)
-    grid_strict.transformers2w[6].tap_phase_control_mode = gce.TapPhaseControl.Pt
-    grid_strict.hvdc_lines[0].control_mode = gce.HvdcControlType.type_1_Pset
-    grid_strict.transformers2w[11].rate = 4.0
+    def _run_case(strict: bool, corrective: bool):
+        grid = gce.open_file(fname)
+        grid.transformers2w[6].tap_phase_control_mode = gce.TapPhaseControl.Pt
+        grid.hvdc_lines[0].control_mode = gce.HvdcControlType.type_1_Pset
+        grid.transformers2w[11].rate = 4.0
+        info = grid.get_inter_aggregation_info(objects_from=[grid.areas[1]], objects_to=[grid.areas[0]])
+        opts = gce.OptimalNetTransferCapacityOptions(
+            sending_bus_idx=info.idx_bus_from,
+            receiving_bus_idx=info.idx_bus_to,
+            transfer_method=gce.AvailableTransferMode.InstalledPower,
+            loading_threshold_to_report=98.0,
+            skip_generation_limits=True,
+            transmission_reliability_margin=0.0,
+            use_branch_exchange_sensitivity=False,
+            branch_rating_contribution=1.0,
+            monitor_only_ntc_load_rule_branches=False,
+            consider_contingencies=True,
+            corrective_contingencies=corrective,
+            strict_formulation=strict,
+            opf_options=gce.OptimalPowerFlowOptions(contingency_groups_used=grid.contingency_groups),
+            lin_options=gce.LinearAnalysisOptions()
+        )
+        drv = gce.OptimalNetTransferCapacityDriver(grid, opts)
+        drv.run()
+        return grid, drv.results
 
-    info_s = grid_strict.get_inter_aggregation_info(objects_from=[grid_strict.areas[1]], objects_to=[grid_strict.areas[0]])
-    opts_strict = gce.OptimalNetTransferCapacityOptions(
-        sending_bus_idx=info_s.idx_bus_from,
-        receiving_bus_idx=info_s.idx_bus_to,
-        transfer_method=gce.AvailableTransferMode.InstalledPower,
-        loading_threshold_to_report=98.0,
-        skip_generation_limits=True,
-        transmission_reliability_margin=0.0,
-        use_branch_exchange_sensitivity=False,
-        branch_rating_contribution=1.0,
-        monitor_only_ntc_load_rule_branches=False,
-        consider_contingencies=True,
-        strict_formulation=True,
-        opf_options=gce.OptimalPowerFlowOptions(contingency_groups_used=grid_strict.contingency_groups),
-        lin_options=gce.LinearAnalysisOptions()
-    )
-    drv_strict = gce.OptimalNetTransferCapacityDriver(grid_strict, opts_strict)
-    drv_strict.run()
-    res_strict = drv_strict.results
+    # 1. Preventive N-1: strict refuses hard thermal violation while regular inflates slacks
+    _, res_strict_prev = _run_case(strict=True, corrective=False)
+    assert not bool(res_strict_prev.converged[0])
 
-    # 2. Run regular formulation (penalized slack variables)
-    grid_reg = gce.open_file(fname)
-    grid_reg.transformers2w[6].tap_phase_control_mode = gce.TapPhaseControl.Pt
-    grid_reg.hvdc_lines[0].control_mode = gce.HvdcControlType.type_1_Pset
-    grid_reg.transformers2w[11].rate = 4.0
+    _, res_reg_prev = _run_case(strict=False, corrective=False)
+    assert bool(res_reg_prev.converged[0])
+    reg_ctg_slacks = sum(neg_sl + pos_sl for _, _, _, _, neg_sl, pos_sl in res_reg_prev.contingency_flows_list)
+    assert np.isclose(reg_ctg_slacks, 9.84, atol=0.1)
+    assert np.isclose(float(res_reg_prev.inter_area_flows), 41.06, atol=0.2)
 
-    info_r = grid_reg.get_inter_aggregation_info(objects_from=[grid_reg.areas[1]], objects_to=[grid_reg.areas[0]])
-    opts_reg = gce.OptimalNetTransferCapacityOptions(
-        sending_bus_idx=info_r.idx_bus_from,
-        receiving_bus_idx=info_r.idx_bus_to,
-        transfer_method=gce.AvailableTransferMode.InstalledPower,
-        loading_threshold_to_report=98.0,
-        skip_generation_limits=True,
-        transmission_reliability_margin=0.0,
-        use_branch_exchange_sensitivity=False,
-        branch_rating_contribution=1.0,
-        monitor_only_ntc_load_rule_branches=False,
-        consider_contingencies=True,
-        strict_formulation=False,
-        opf_options=gce.OptimalPowerFlowOptions(contingency_groups_used=grid_reg.contingency_groups),
-        lin_options=gce.LinearAnalysisOptions()
-    )
-    drv_reg = gce.OptimalNetTransferCapacityDriver(grid_reg, opts_reg)
-    drv_reg.run()
-    res_reg = drv_reg.results
-
-    # Strict converges with 0 slack and exact 1:1 balance
-    assert res_strict.converged[0]
-    assert np.isclose(res_strict.nodal_balance.sum(), 0.0, atol=1e-5)
-    a2_s = np.where(grid_strict.get_bus_area_indices() == 1)[0]
-    ttc_strict = res_strict.dSbus[a2_s].sum()
-    assert np.isclose(ttc_strict, 10.49, atol=0.1)
-
-    # Regular introduces 12.0 MW of contingency thermal slack on branch 7 (rate 4.0 MW overloaded to 16.0 MW, 400%)
-    reg_ctg_slacks = sum(neg_sl + pos_sl for _, _, _, _, neg_sl, pos_sl in res_reg.contingency_flows_list)
-    assert np.isclose(reg_ctg_slacks, 12.00, atol=0.1)
+    # 2. Corrective N-1: strict converges cleanly with 0 slack and exact 1:1 area balance
+    grid_corr, res_strict_corr = _run_case(strict=True, corrective=True)
+    assert bool(res_strict_corr.converged[0])
+    assert np.isclose(res_strict_corr.nodal_balance.sum(), 0.0, atol=1e-5)
+    assert float(res_strict_corr.get_total_slack_mw()) < 1e-4
+    a2_s = np.where(grid_corr.get_bus_area_indices() == 1)[0]
+    assert np.isclose(float(res_strict_corr.dSbus[a2_s].sum()), 19.63, atol=0.1)
+    assert np.isclose(float(res_strict_corr.inter_area_flows), 26.19, atol=0.1)
 
 
 def test_vsc_pmode3_passive_n1_droop_matches_hvdc() -> None:
@@ -1629,6 +1617,122 @@ def test_vsc_pmode3_passive_n1_droop_matches_hvdc() -> None:
 
     assert np.isclose(ttcs["vsc_1dc"], ttcs["hvdc"], atol=1e-2), ttcs
     assert np.isclose(ttcs["vsc_2dc"], ttcs["hvdc"], atol=1e-2), ttcs
+
+
+def test_vsc_parallel_dcline_pole_outage_matches_hvdc() -> None:
+    """
+    Tripping one DcLine in a VSC bipole with parallel DC cables must model automatic
+    converter run-back to surviving cable capacity and project only the excess spill
+    onto the AC grid, matching an equivalent HvdcLine 50% PowerPercentage contingency
+    in both Pmode 3 and Pmode 1.
+    """
+    from VeraGridEngine.enumerations import HvdcControlType, ConverterControlType
+
+    def _build_grid(variant: str, pmode3: bool) -> gce.MultiCircuit:
+        grid = gce.MultiCircuit(name=f"vsc_parallel_pole_{variant}_{pmode3}")
+        a1 = gce.Area(name="Area1")
+        a2 = gce.Area(name="Area2")
+        grid.add_area(a1)
+        grid.add_area(a2)
+
+        b1 = gce.Bus(name="B1", Vnom=400.0, area=a1, is_slack=True)
+        b2 = gce.Bus(name="B2", Vnom=400.0, area=a1)
+        b3 = gce.Bus(name="B3", Vnom=400.0, area=a2)
+        b4 = gce.Bus(name="B4", Vnom=400.0, area=a2)
+        for b in (b1, b2, b3, b4):
+            grid.add_bus(b)
+
+        grid.add_generator(b1, gce.Generator(name="G1", P=500.0, Pmin=0.0, Pmax=5000.0, enabled_dispatch=True))
+        grid.add_generator(b3, gce.Generator(name="G3", P=100.0, Pmin=0.0, Pmax=5000.0, enabled_dispatch=True))
+        grid.add_load(b2, gce.Load(name="L2", P=300.0))
+        grid.add_load(b3, gce.Load(name="L3", P=300.0))
+
+        grid.add_line(gce.Line(bus_from=b1, bus_to=b2, name="L_A1", r=0.0, x=0.05, rate=1500.0))
+        grid.add_line(gce.Line(bus_from=b3, bus_to=b4, name="L_A2", r=0.0, x=0.05, rate=1500.0))
+        tie1 = gce.Line(bus_from=b1, bus_to=b3, name="TIE1", r=0.0, x=0.10, rate=600.0, contingency_factor=1.0)
+        tie2 = gce.Line(bus_from=b2, bus_to=b4, name="TIE2", r=0.0, x=0.10, rate=600.0, contingency_factor=1.0)
+        grid.add_line(tie1)
+        grid.add_line(tie2)
+
+        cg_ac = gce.ContingencyGroup(name="CG_TIE1")
+        grid.add_contingency_group(cg_ac)
+        grid.add_contingency(gce.Contingency(device=tie1, name="Trip_TIE1", prop="active", value=0.0, group=cg_ac))
+
+        if variant == "hvdc":
+            hl = gce.HvdcLine(
+                bus_from=b1, bus_to=b3, name="HVDC1",
+                rate=2000.0, Pset=0.0, angle_droop=200.0,
+                control_mode=HvdcControlType.type_0_free if pmode3 else HvdcControlType.type_1_Pset,
+            )
+            grid.add_hvdc(hl)
+            cg_pole = gce.ContingencyGroup(name="CG_POLE")
+            grid.add_contingency_group(cg_pole)
+            grid.add_contingency(gce.Contingency(device=hl, name="Pole50", prop="%", value=50.0, group=cg_pole))
+        else:
+            dc1 = gce.Bus(name="DC1", Vnom=320.0, is_dc=True, area=a1)
+            dc2 = gce.Bus(name="DC2", Vnom=320.0, is_dc=True, area=a2)
+            grid.add_bus(dc1)
+            grid.add_bus(dc2)
+            dl1 = gce.DcLine(bus_from=dc1, bus_to=dc2, name="DCL1", r=0.01, rate=1000.0, contingency_factor=1.0)
+            dl2 = gce.DcLine(bus_from=dc1, bus_to=dc2, name="DCL2", r=0.01, rate=1000.0, contingency_factor=1.0)
+            grid.add_dc_line(dl1)
+            grid.add_dc_line(dl2)
+            v1 = gce.VSC(
+                bus_from=dc1, bus_to=b1, name="VSC_A1", rate=9999.0,
+                control1=ConverterControlType.Vm_dc, control1_val=1.0,
+                control2=ConverterControlType.Pac, control2_val=0.0,
+            )
+            if pmode3:
+                v2 = gce.VSC(
+                    bus_from=dc2, bus_to=b3, name="VSC_A2", rate=9999.0,
+                    control1=ConverterControlType.Pdc_angle_droop, control1_val=200.0, control1_dev=b1,
+                    control2=ConverterControlType.Pac, control2_val=0.0,
+                )
+            else:
+                v2 = gce.VSC(
+                    bus_from=dc2, bus_to=b3, name="VSC_A2", rate=9999.0,
+                    control1=ConverterControlType.Pdc, control1_val=0.0,
+                    control2=ConverterControlType.Pac, control2_val=0.0,
+                )
+            grid.add_vsc(v1)
+            grid.add_vsc(v2)
+            cg1 = gce.ContingencyGroup(name="CG_DCL1")
+            cg2 = gce.ContingencyGroup(name="CG_DCL2")
+            grid.add_contingency_group(cg1)
+            grid.add_contingency_group(cg2)
+            grid.add_contingency(gce.Contingency(device=dl1, name="Trip_DCL1", prop="active", value=0.0, group=cg1))
+            grid.add_contingency(gce.Contingency(device=dl2, name="Trip_DCL2", prop="active", value=0.0, group=cg2))
+        return grid
+
+    for pmode3 in (True, False):
+        ttcs = {}
+        for variant in ("hvdc", "vsc_parallel_dc"):
+            grid = _build_grid(variant, pmode3)
+            info = grid.get_inter_aggregation_info(objects_from=[grid.areas[0]], objects_to=[grid.areas[1]])
+            opts = gce.OptimalNetTransferCapacityOptions(
+                sending_bus_idx=info.idx_bus_from,
+                receiving_bus_idx=info.idx_bus_to,
+                transfer_method=gce.AvailableTransferMode.InstalledPower,
+                skip_generation_limits=True,
+                transmission_reliability_margin=0.0,
+                branch_exchange_sensitivity=0.01,
+                use_branch_exchange_sensitivity=True,
+                consider_contingencies=True,
+                corrective_contingencies=False,
+                strict_formulation=True,
+                include_hvdc_exchange_sensitivity=False,
+                opf_options=gce.OptimalPowerFlowOptions(contingency_groups_used=grid.contingency_groups),
+                lin_options=gce.LinearAnalysisOptions(),
+            )
+            drv = gce.OptimalNetTransferCapacityDriver(grid, opts)
+            drv.run()
+            res = drv.results
+            assert bool(np.all(res.converged)), f"pmode3={pmode3} {variant} did not converge"
+            assert float(res.get_total_slack_mw()) < 1e-4, f"pmode3={pmode3} {variant} slack != 0"
+            assert abs(float(res.nodal_balance.sum())) < 1e-6
+            ttcs[variant] = float(res.inter_area_flows)
+
+        assert np.isclose(ttcs["vsc_parallel_dc"], ttcs["hvdc"], atol=1e-2), (pmode3, ttcs)
 
 
 if __name__ == '__main__':

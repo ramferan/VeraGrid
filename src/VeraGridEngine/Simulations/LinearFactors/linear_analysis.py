@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
+from collections import deque
 import numpy as np
 import numba as nb
 import warnings
@@ -635,6 +636,17 @@ class LinearAnalysis:
         "hvdc_Z0",
         "hvdc_K_p3",
         "branch_is_dc",
+        "branch_R",
+        "branch_active",
+        "branch_rates_pu",
+        "branch_contingency_rates_pu",
+        "bus_is_dc",
+        "vsc_from",
+        "vsc_to",
+        "vsc_active",
+        "vsc_raw_rates_pu",
+        "vsc_control1_int",
+        "vsc_control2_int",
         "vsc_rates_pu",
         "vsc_droop_pu",
         "vsc_active_pmode3",
@@ -796,12 +808,23 @@ class LinearAnalysis:
 
         # self.VscDF = self.PTDF @ A_vsc
 
-        # Cache branch properties for AC-contingency reactive droop calculations
+        # Cache branch & converter properties for AC-contingency droop and DC-cable pole outages
         self.branch_X = nc.passive_branch_data.X.copy()
         self.branch_from = nc.passive_branch_data.F.copy()
         self.branch_to = nc.passive_branch_data.T.copy()
         is_dc_bus = nc.bus_data.is_dc.astype(bool)
+        self.bus_is_dc = is_dc_bus.copy()
         self.branch_is_dc = nc.passive_branch_data.dc.astype(bool).copy()
+        self.branch_R = nc.passive_branch_data.R.copy()
+        self.branch_active = nc.passive_branch_data.active.astype(bool).copy()
+        self.branch_rates_pu = nc.passive_branch_data.rates / nc.Sbase
+        self.branch_contingency_rates_pu = nc.passive_branch_data.contingency_rates / nc.Sbase
+        self.vsc_from = nc.vsc_data.F.copy()
+        self.vsc_to = nc.vsc_data.T.copy()
+        self.vsc_active = nc.vsc_data.active.astype(bool).copy()
+        self.vsc_raw_rates_pu = nc.vsc_data.rates / nc.Sbase
+        self.vsc_control1_int = nc.vsc_data.control1_int.copy()
+        self.vsc_control2_int = nc.vsc_data.control2_int.copy()
 
         # Cache HVDC Pmode3 droop and ratings
         self.hvdc_rates_pu = nc.hvdc_data.rates / nc.Sbase
@@ -834,25 +857,34 @@ class LinearAnalysis:
                         dc_parent[rb] = ra
 
         dc_comp_slacks: Dict[int, List[int]] = dict()
+        dc_comp_vscs: Dict[int, List[int]] = dict()
         for v in range(n_vsc):
             if not nc.vsc_data.active[v]:
                 continue
+            f_v = int(nc.vsc_data.F[v])
+            t_v = int(nc.vsc_data.T[v])
+            dc_v = f_v if is_dc_bus[f_v] else (t_v if is_dc_bus[t_v] else -1)
+            ac_v = t_v if is_dc_bus[f_v] else (f_v if is_dc_bus[t_v] else -1)
+            if dc_v >= 0:
+                dc_comp_vscs.setdefault(_dc_find(dc_v), []).append(v)
             c1 = nc.vsc_data.control1_int[v]
             c2 = nc.vsc_data.control2_int[v]
             is_vm_dc = (
                 c1 == ConverterControlType.Vm_dc.idx() or c2 == ConverterControlType.Vm_dc.idx()
             ) and c1 != ConverterControlType.Pdc_angle_droop.idx()
-            if is_vm_dc:
-                f_v = int(nc.vsc_data.F[v])
-                t_v = int(nc.vsc_data.T[v])
-                if not is_dc_bus[t_v]:
-                    dc_comp_slacks.setdefault(_dc_find(f_v), []).append(t_v)
+            if is_vm_dc and dc_v >= 0 and ac_v >= 0:
+                dc_comp_slacks.setdefault(_dc_find(dc_v), []).append(ac_v)
 
         self.vsc_rates_pu = nc.vsc_data.rates.copy()
         for v in range(n_vsc):
             f_v = int(nc.vsc_data.F[v])
             if is_dc_bus[f_v] and dc_rate_per_bus[f_v] > 0.0:
                 self.vsc_rates_pu[v] = min(self.vsc_rates_pu[v], dc_rate_per_bus[f_v])
+        for v_list in dc_comp_vscs.values():
+            if len(v_list) == 2:
+                pair_cap = min(float(self.vsc_rates_pu[v_list[0]]), float(self.vsc_rates_pu[v_list[1]]))
+                self.vsc_rates_pu[v_list[0]] = pair_cap
+                self.vsc_rates_pu[v_list[1]] = pair_cap
         self.vsc_rates_pu = self.vsc_rates_pu / nc.Sbase
 
         self.vsc_droop_pu = np.zeros(n_vsc, dtype=float)
@@ -1295,17 +1327,20 @@ class LinearMultiContingency:
             flow += self.mlodf_factors @ base_branches_flow[self.branch_indices]
 
             # Physical passive droop response of Pmode3 HVDC links and VSCs to AC branch outages
+            # projected onto the post-contingency network: cDF = DF + MLODF * DF[br_con, :].
             if self.hvdc_droop_factors is not None and hvdc_flow is not None and self.hvdc_rates is not None and self.hvdc_df is not None:
                 dh_droop = self.hvdc_droop_factors @ base_branches_flow[self.branch_indices]
                 h_post = np.clip(hvdc_flow + dh_droop, -self.hvdc_rates, self.hvdc_rates)
                 delta_h = h_post - hvdc_flow
                 flow += self.hvdc_df @ delta_h
+                flow += self.mlodf_factors @ (self.hvdc_df[self.branch_indices, :] @ delta_h)
 
             if self.vsc_droop_factors is not None and vsc_flow is not None and self.vsc_rates is not None and self.vsc_df is not None:
                 dv_droop = self.vsc_droop_factors @ base_branches_flow[self.branch_indices]
                 v_post = np.clip(vsc_flow + dv_droop, -self.vsc_rates, self.vsc_rates)
                 delta_v = v_post - vsc_flow
                 flow += self.vsc_df @ delta_v
+                flow += self.mlodf_factors @ (self.vsc_df[self.branch_indices, :] @ delta_v)
 
         if len(self.hvdc_indices) and hvdc_flow is not None:
             h_flows = hvdc_flow[self.hvdc_indices]
@@ -1363,7 +1398,7 @@ class LinearMultiContingency:
 
     def compute_hvdc_droop_addon(self, base_branch_flow: Vec, hvdc_flow: Vec | None, vsc_flow: Vec | None = None) -> Vec | None:
         """
-        Evaluate the physical saturated droop flow change on AC branches for Pmode3 HVDC links and VSCs.
+        Evaluate the physical saturated droop flow change on post-contingency AC branches for Pmode3 HVDC links and VSCs.
         :param base_branch_flow: solved base AC branch flows (pu)
         :param hvdc_flow: solved base HVDC link flows (pu)
         :param vsc_flow: solved base VSC converter flows (pu)
@@ -1376,12 +1411,14 @@ class LinearMultiContingency:
                 and self.hvdc_df is not None and hvdc_flow is not None):
             dh_droop = self.hvdc_droop_factors @ base_branch_flow[self.branch_indices]
             h_post = np.clip(hvdc_flow + dh_droop, -self.hvdc_rates, self.hvdc_rates)
-            total_addon = self.hvdc_df @ (h_post - hvdc_flow)
+            delta_h = h_post - hvdc_flow
+            total_addon = (self.hvdc_df @ delta_h) + self.mlodf_factors @ (self.hvdc_df[self.branch_indices, :] @ delta_h)
         if (self.vsc_droop_factors is not None and self.vsc_rates is not None
                 and self.vsc_df is not None and vsc_flow is not None):
             dv_droop = self.vsc_droop_factors @ base_branch_flow[self.branch_indices]
             v_post = np.clip(vsc_flow + dv_droop, -self.vsc_rates, self.vsc_rates)
-            vsc_addon = self.vsc_df @ (v_post - vsc_flow)
+            delta_v = v_post - vsc_flow
+            vsc_addon = (self.vsc_df @ delta_v) + self.mlodf_factors @ (self.vsc_df[self.branch_indices, :] @ delta_v)
             total_addon = vsc_addon if total_addon is None else (total_addon + vsc_addon)
         return total_addon
 
@@ -1444,14 +1481,25 @@ class LinearMultiContingency:
         n_br = self.hvdc_df.shape[0] if active_h else self.vsc_df.shape[0]
         addon = np.zeros(n_br, dtype=object)
         rows = np.flatnonzero(row_filter) if row_filter is not None else np.arange(n_br)
-        for m in rows:
+        if len(rows) == 0:
+            return addon
+        mlodf_rows = self.mlodf_factors.tocsr()[rows, :]
+        c_hvdc_rows = (
+            self.hvdc_df[np.ix_(rows, active_h)]
+            + mlodf_rows @ self.hvdc_df[np.ix_(self.branch_indices, active_h)]
+        ) if active_h else None
+        c_vsc_rows = (
+            self.vsc_df[np.ix_(rows, active_v)]
+            + mlodf_rows @ self.vsc_df[np.ix_(self.branch_indices, active_v)]
+        ) if active_v else None
+        for pos_r, m in enumerate(rows):
             expr_m = 0.0
-            for h in active_h:
-                w = float(self.hvdc_df[m, h])
+            for pos_h, h in enumerate(active_h):
+                w = float(c_hvdc_rows[pos_r, pos_h])
                 if abs(w) > 1e-12:
                     expr_m += w * delta_h_lp[h]
-            for v in active_v:
-                w = float(self.vsc_df[m, v])
+            for pos_v, v in enumerate(active_v):
+                w = float(c_vsc_rows[pos_r, pos_v])
                 if abs(w) > 1e-12:
                     expr_m += w * delta_v_lp[v]
             addon[m] = expr_m
@@ -1681,6 +1729,78 @@ class ContingencyIndices:
         self.vsc_factors: Vec = np.array(vsc_factors_list, dtype=float)
 
 
+def _solve_dc_corridor_rating_pu(dc_ref: int,
+                                 dc_other: int,
+                                 dc_branches: List[int],
+                                 lin: LinearAnalysis,
+                                 use_contingency_rates: bool) -> float:
+    """
+    Compute the maximum power transfer (p.u.) between two DC terminals over surviving DC branches.
+    Returns 0.0 if disconnected, or np.inf if the two terminals coincide on the same DC bus.
+    """
+    if dc_ref == dc_other:
+        return float(np.inf)
+
+    adj: Dict[int, List[int]] = dict()
+    for b in dc_branches:
+        fb = int(lin.branch_from[b])
+        tb = int(lin.branch_to[b])
+        adj.setdefault(fb, []).append(tb)
+        adj.setdefault(tb, []).append(fb)
+
+    reachable = {dc_other}
+    queue = deque([dc_other])
+    while queue:
+        cur = queue.popleft()
+        for nb_bus in adj.get(cur, ()):
+            if nb_bus not in reachable:
+                reachable.add(nb_bus)
+                queue.append(nb_bus)
+
+    if dc_ref not in reachable:
+        return 0.0
+
+    loc = {bus_i: idx for idx, bus_i in enumerate(sorted(reachable))}
+    n_loc = len(loc)
+    G = np.zeros((n_loc, n_loc), dtype=float)
+    branch_terms: List[Tuple[int, int, int, float]] = list()
+    for b in dc_branches:
+        fb = int(lin.branch_from[b])
+        tb = int(lin.branch_to[b])
+        if fb not in loc or tb not in loc:
+            continue
+        i, j = loc[fb], loc[tb]
+        g = 1.0 / max(abs(float(lin.branch_R[b])), 1e-6)
+        G[i, i] += g
+        G[j, j] += g
+        G[i, j] -= g
+        G[j, i] -= g
+        branch_terms.append((b, i, j, g))
+
+    if not branch_terms:
+        return 0.0
+
+    ref_i = loc[dc_other]
+    keep = [idx for idx in range(n_loc) if idx != ref_i]
+    inj = np.zeros(n_loc, dtype=float)
+    inj[loc[dc_ref]] = -1.0
+    vdc = np.zeros(n_loc, dtype=float)
+    if keep:
+        G_red = G[np.ix_(keep, keep)]
+        try:
+            vdc[keep] = np.linalg.solve(G_red, inj[keep])
+        except np.linalg.LinAlgError:
+            vdc[keep] = np.linalg.lstsq(G_red, inj[keep], rcond=None)[0]
+
+    rates_arr = lin.branch_contingency_rates_pu if use_contingency_rates else lin.branch_rates_pu
+    cap = float(np.inf)
+    for b, i, j, g in branch_terms:
+        flow_b = (vdc[i] - vdc[j]) * g
+        if abs(flow_b) > 1e-9:
+            cap = min(cap, abs(float(rates_arr[b])) / abs(flow_b))
+    return cap
+
+
 class LinearMultiContingencies:
     """
     LinearMultiContingencies
@@ -1766,12 +1886,123 @@ class LinearMultiContingencies:
         # ptdf: Mat = lin.PTDF
         self.multi_contingencies.clear()
 
+        # Precompute active DC subgrids so DcLine outages can be translated into converter run-back + AC spillover
+        has_dc_subgrid_info = (
+            getattr(lin, "branch_is_dc", None) is not None
+            and getattr(lin, "branch_R", None) is not None
+            and getattr(lin, "bus_is_dc", None) is not None
+            and getattr(lin, "vsc_active", None) is not None
+            and np.any(lin.branch_is_dc)
+        )
+        dc_br_to_comp: Dict[int, int] = dict()
+        dc_comp_records: Dict[int, Tuple[List[int], List[int]]] = dict()
+        if has_dc_subgrid_info:
+            n_bus_lin = len(lin.bus_is_dc)
+            dc_par = np.arange(n_bus_lin, dtype=int)
+
+            def _find_dc_root(x: int) -> int:
+                while dc_par[x] != x:
+                    dc_par[x] = dc_par[dc_par[x]]
+                    x = dc_par[x]
+                return x
+
+            act_dc_branches = np.flatnonzero(lin.branch_is_dc & lin.branch_active)
+            for b_dc in act_dc_branches:
+                fb = int(lin.branch_from[b_dc])
+                tb = int(lin.branch_to[b_dc])
+                ra, rb = _find_dc_root(fb), _find_dc_root(tb)
+                if ra != rb:
+                    dc_par[rb] = ra
+
+            comp_dc_brs: Dict[int, List[int]] = dict()
+            comp_vscs: Dict[int, List[int]] = dict()
+            for b_dc in act_dc_branches:
+                b_i = int(b_dc)
+                r = _find_dc_root(int(lin.branch_from[b_i]))
+                comp_dc_brs.setdefault(r, []).append(b_i)
+                dc_br_to_comp[b_i] = r
+
+            for v_i in np.flatnonzero(lin.vsc_active):
+                v_int = int(v_i)
+                fv = int(lin.vsc_from[v_int])
+                tv = int(lin.vsc_to[v_int])
+                dc_b = fv if lin.bus_is_dc[fv] else (tv if lin.bus_is_dc[tv] else -1)
+                ac_b = tv if lin.bus_is_dc[fv] else (fv if lin.bus_is_dc[tv] else -1)
+                if dc_b >= 0 and ac_b >= 0:
+                    comp_vscs.setdefault(_find_dc_root(dc_b), []).append(v_int)
+
+            for r, dc_list in comp_dc_brs.items():
+                dc_comp_records[r] = (comp_vscs.get(r, []), dc_list)
+
+        def _vsc_dc_ac_sgn(v_i: int) -> Tuple[int, int, float]:
+            fv = int(lin.vsc_from[v_i])
+            tv = int(lin.vsc_to[v_i])
+            if lin.bus_is_dc[fv] and not lin.bus_is_dc[tv]:
+                return fv, tv, 1.0
+            if lin.bus_is_dc[tv] and not lin.bus_is_dc[fv]:
+                return tv, fv, -1.0
+            return -1, -1, 1.0
+
+        p3_c1 = ConverterControlType.Pdc_angle_droop.idx()
+        vm_dc_c = ConverterControlType.Vm_dc.idx()
+
         # for each contingency group
         for ic, contingency_group in enumerate(self.contingency_groups_used):
 
             contingency_indices: ContingencyIndices = self.contingency_indices_list[ic]
+            raw_br_idx: IntVec = contingency_indices.branch_contingency_indices
 
-            if len(contingency_indices.branch_contingency_indices) > 1:
+            # Translate outages of DC cables in 2-terminal DC subgrids into surviving corridor run-back + AC spillover
+            handled_dc_br: set[int] = set()
+            extra_vsc_spills: List[Tuple[int, float, Vec, float]] = list()
+            if has_dc_subgrid_info and len(raw_br_idx) > 0:
+                dc_by_comp: Dict[int, set[int]] = dict()
+                for b_raw in raw_br_idx:
+                    b_int = int(b_raw)
+                    if lin.branch_is_dc[b_int] and b_int in dc_br_to_comp:
+                        dc_by_comp.setdefault(dc_br_to_comp[b_int], set()).add(b_int)
+
+                for comp_r, out_dc_set in dc_by_comp.items():
+                    vscs_r, dc_list_r = dc_comp_records.get(comp_r, ([], []))
+                    if len(vscs_r) != 2:
+                        continue
+                    v_ref, v_other = sorted(
+                        vscs_r,
+                        key=lambda vi: (
+                            0 if int(lin.vsc_control1_int[vi]) == p3_c1 else 1,
+                            0 if (int(lin.vsc_control1_int[vi]) != vm_dc_c and int(lin.vsc_control2_int[vi]) != vm_dc_c) else 1,
+                            vi,
+                        ),
+                    )
+                    dc_ref, ac_ref, sgn_ref = _vsc_dc_ac_sgn(v_ref)
+                    dc_other, ac_other, _ = _vsc_dc_ac_sgn(v_other)
+                    if dc_ref < 0 or dc_other < 0:
+                        continue
+
+                    handled_dc_br.update(out_dc_set)
+                    r_vsc_cap = min(float(lin.vsc_raw_rates_pu[v_ref]), float(lin.vsc_raw_rates_pu[v_other]))
+                    r_pre_pu = min(
+                        r_vsc_cap,
+                        _solve_dc_corridor_rating_pu(dc_ref, dc_other, dc_list_r, lin, use_contingency_rates=False),
+                    )
+                    surv_dc_brs = [b for b in dc_list_r if b not in out_dc_set]
+                    r_surv_pu = min(
+                        r_vsc_cap,
+                        _solve_dc_corridor_rating_pu(dc_ref, dc_other, surv_dc_brs, lin, use_contingency_rates=True),
+                    )
+                    if r_surv_pu < r_pre_pu - 1e-9:
+                        odf_base = sgn_ref * (lin.PTDF[:, ac_other] - lin.PTDF[:, ac_ref])
+                        odf_base[lin.branch_is_dc] = 0.0
+                        frac_eff = 1.0 - (max(r_surv_pu, 0.0) / r_pre_pu) if r_pre_pu > 1e-9 else 1.0
+                        extra_vsc_spills.append((v_ref, float(max(r_surv_pu, 0.0)), odf_base, float(min(1.0, frac_eff))))
+
+            eff_br_idx: IntVec = (
+                np.array([int(b) for b in raw_br_idx if int(b) not in handled_dc_br], dtype=int)
+                if handled_dc_br
+                else raw_br_idx
+            )
+
+            if len(eff_br_idx) > 1:
 
                 # Flow =
                 #   Pf0[k]
@@ -1781,8 +2012,8 @@ class LinearMultiContingencies:
 
                 # Compute M matrix [n, n] (lodf relating the outaged lines to each other)
                 M = create_M_numba(lodf=lin.LODF,
-                                   branch_contingency_indices=contingency_indices.branch_contingency_indices)
-                L = lin.LODF[:, contingency_indices.branch_contingency_indices]
+                                   branch_contingency_indices=eff_br_idx)
+                L = lin.LODF[:, eff_br_idx]
 
                 try:
                     # Compute LODF for the multiple failure MLODF[k, βδ]
@@ -1800,7 +2031,7 @@ class LinearMultiContingencies:
                                             threshold=ptdf_threshold)
                     # PTDF[βδ, i]
                     ptdf_bd_i = dense_to_csc(
-                        mat=lin.PTDF[np.ix_(contingency_indices.branch_contingency_indices,
+                        mat=lin.PTDF[np.ix_(eff_br_idx,
                                             contingency_indices.bus_contingency_indices)],
                         threshold=ptdf_threshold
                     )
@@ -1809,13 +2040,13 @@ class LinearMultiContingencies:
                     ptdf_k_i = sp.csc_matrix((lin.PTDF.shape[0], lin.PTDF.shape[1]))
 
                     # PTDF[βδ, i]
-                    ptdf_bd_i = dense_to_csc(mat=lin.PTDF[contingency_indices.branch_contingency_indices, :],
+                    ptdf_bd_i = dense_to_csc(mat=lin.PTDF[eff_br_idx, :],
                                              threshold=ptdf_threshold)
 
                 # must compute: MLODF[k, βδ] x PTDF[βδ, i] + PTDF[k, i]
                 compensated_ptdf_factors = mlodf_factors @ ptdf_bd_i + ptdf_k_i
 
-            elif len(contingency_indices.branch_contingency_indices) == 1:
+            elif len(eff_br_idx) == 1:
 
                 # Pf0[k]
                 # + LODF[k, c] * Pf0[c]
@@ -1823,7 +2054,7 @@ class LinearMultiContingencies:
                 # + PTDF[k, i] * dPi
 
                 # append values
-                mlodf_factors = dense_to_csc(mat=lin.LODF[:, contingency_indices.branch_contingency_indices],
+                mlodf_factors = dense_to_csc(mat=lin.LODF[:, eff_br_idx],
                                              threshold=lodf_threshold)
 
                 if len(contingency_indices.bus_contingency_indices) > 0:
@@ -1834,7 +2065,7 @@ class LinearMultiContingencies:
                                             threshold=ptdf_threshold)
                     # PTDF[βδ, i]
                     ptdf_bd_i = dense_to_csc(
-                        mat=lin.PTDF[np.ix_(contingency_indices.branch_contingency_indices,
+                        mat=lin.PTDF[np.ix_(eff_br_idx,
                                             contingency_indices.bus_contingency_indices)],
                         threshold=ptdf_threshold
                     )
@@ -1874,7 +2105,7 @@ class LinearMultiContingencies:
             compensated_hvdc_df: sp.csc_matrix | None = None
             if with_corrective_converter_df:
                 # indices of the branches tripped by this contingency (empty for pure injection contingencies)
-                br_idx: IntVec = contingency_indices.branch_contingency_indices
+                br_idx: IntVec = eff_br_idx
 
                 # VSC converters: compensate the base factors with the outaged branches when there are any
                 if lin.VscDF.shape[1] > 0:
@@ -1910,17 +2141,43 @@ class LinearMultiContingencies:
                 rate_pu = rate_mw / lin.Sbase
                 hvdc_surviving_rates.append(rate_pu * (1.0 - frac))
 
+            eff_vsc_indices = list(int(x) for x in contingency_indices.vsc_contingency_indices)
+            eff_vsc_factors = list(float(x) for x in contingency_indices.vsc_factors)
             vsc_surviving_rates = []
-            for v_idx, frac in zip(contingency_indices.vsc_contingency_indices, contingency_indices.vsc_factors):
+            for v_idx, frac in zip(eff_vsc_indices, eff_vsc_factors):
                 rate_mw = float(self.grid.vsc_devices[v_idx].rate)
                 rate_pu = rate_mw / lin.Sbase
                 vsc_surviving_rates.append(rate_pu * (1.0 - frac))
+
+            if extra_vsc_spills:
+                extra_odf_cols = []
+                for v_ref, r_surv_pu, odf_base, frac_eff in extra_vsc_spills:
+                    if v_ref in eff_vsc_indices:
+                        pos_v = eff_vsc_indices.index(v_ref)
+                        if r_surv_pu < vsc_surviving_rates[pos_v]:
+                            vsc_surviving_rates[pos_v] = r_surv_pu
+                            eff_vsc_factors[pos_v] = max(eff_vsc_factors[pos_v], frac_eff)
+                        continue
+                    odf_col = (
+                        odf_base + (mlodf_factors @ odf_base[eff_br_idx])
+                        if len(eff_br_idx) > 0
+                        else odf_base
+                    )
+                    if getattr(lin, "branch_is_dc", None) is not None:
+                        odf_col[lin.branch_is_dc] = 0.0
+                    eff_vsc_indices.append(v_ref)
+                    eff_vsc_factors.append(frac_eff)
+                    vsc_surviving_rates.append(r_surv_pu)
+                    extra_odf_cols.append(odf_col[:, None])
+                if extra_odf_cols:
+                    extra_odf_csc = dense_to_csc(mat=np.hstack(extra_odf_cols), threshold=lodf_threshold)
+                    vsc_odf = sp.hstack([vsc_odf, extra_odf_csc], format="csc")
 
             # Calculate passive Pmode3 HVDC & VSC droop coupling for AC branch outages
             hvdc_droop_factors: Mat | None = None
             vsc_droop_factors: Mat | None = None
             effective_droop_lodf: sp.csc_matrix | None = None
-            br_con_idx: IntVec = contingency_indices.branch_contingency_indices
+            br_con_idx: IntVec = eff_br_idx
             has_h_p3 = hasattr(lin, "hvdc_active_pmode3") and np.any(lin.hvdc_active_pmode3)
             has_v_p3 = hasattr(lin, "vsc_active_pmode3") and np.any(lin.vsc_active_pmode3)
             if len(br_con_idx) > 0 and (has_h_p3 or has_v_p3):
@@ -1992,21 +2249,21 @@ class LinearMultiContingencies:
                     for v_idx in vp3_idx:
                         droop_mat_v[v_idx, ac_pos] = - lin.vsc_droop_pu[v_idx] * (lin.vsc_meas_df[ac_br_idx, v_idx] * X_diag) @ M_inv
 
-                eff_mat = np.zeros_like(lin.PTDF[:, :1] @ np.zeros((1, n_c)))
+                eff_mat = np.zeros((lin.PTDF.shape[0], n_c), dtype=float)
                 if has_h_p3:
                     hvdc_droop_factors = droop_mat_h
-                    eff_mat = eff_mat + (lin.HvdcDF @ droop_mat_h)
+                    eff_mat = eff_mat + (lin.HvdcDF @ droop_mat_h) + (mlodf_factors @ (lin.HvdcDF[br_con_idx, :] @ droop_mat_h))
                 if has_v_p3:
                     vsc_droop_factors = droop_mat_v
-                    eff_mat = eff_mat + (lin.vsc_droop_df @ droop_mat_v)
+                    eff_mat = eff_mat + (lin.vsc_droop_df @ droop_mat_v) + (mlodf_factors @ (lin.vsc_droop_df[br_con_idx, :] @ droop_mat_v))
                 effective_droop_lodf = dense_to_csc(eff_mat, threshold=lodf_threshold)
 
             # append values
             self.multi_contingencies.append(
                 LinearMultiContingency(
-                    branch_indices=contingency_indices.branch_contingency_indices,
+                    branch_indices=eff_br_idx,
                     hvdc_indices=contingency_indices.hvdc_contingency_indices,
-                    vsc_indices=contingency_indices.vsc_contingency_indices,
+                    vsc_indices=np.array(eff_vsc_indices, dtype=int),
                     bus_indices=contingency_indices.bus_contingency_indices,
                     mlodf_factors=mlodf_factors,
                     compensated_ptdf_factors=compensated_ptdf_factors,
@@ -2016,7 +2273,7 @@ class LinearMultiContingencies:
                     compensated_vsc_df=compensated_vsc_df,
                     compensated_hvdc_df=compensated_hvdc_df,
                     hvdc_factors=contingency_indices.hvdc_factors,
-                    vsc_factors=contingency_indices.vsc_factors,
+                    vsc_factors=np.array(eff_vsc_factors, dtype=float),
                     hvdc_surviving_rates=np.array(hvdc_surviving_rates, dtype=float),
                     vsc_surviving_rates=np.array(vsc_surviving_rates, dtype=float),
                     hvdc_droop_factors=hvdc_droop_factors,
