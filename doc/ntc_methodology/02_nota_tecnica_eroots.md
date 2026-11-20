@@ -47,17 +47,15 @@ Las mejoras recogidas a continuación parten directamente de la base actual de V
 * **Corrección aplicada:** Soporte directo y uniforme de los miembros `AvailableTransferMode` dentro de `compute_dP`.
 
 ### 2.6. Contingencias Parciales de Polo en `HvdcLine` y Disparo de Cables `DcLine` en `VSC`
-* **Ubicación:** `src/VeraGridEngine/Simulations/LinearFactors/linear_analysis.py` (`LinearMultiContingency.pole_spill`, `LinearMultiContingencies.compute`), `src/VeraGridEngine/Simulations/NTC/ntc_opf_strict.py` (`compute_pole_spill_expressions`), y `src/VeraGridEngine/Simulations/NTC/ntc_opf.py` (`fill_worst_contingency_per_branch`).
+* **Ubicación:** `src/VeraGridEngine/Simulations/LinearFactors/linear_analysis.py` (`LinearMultiContingency.pole_spill`, `LinearMultiContingencies.compute`) y `src/VeraGridEngine/Simulations/NTC/ntc_opf_strict.py` (`compute_pole_spill_expressions`).
 * **Contexto y problema:**
   1. Para representar el disparo de un polo en un enlace `HvdcLine` bipolar, desde REE habíamos probado inicialmente añadir un parámetro propio `n_poles` en el código; sin embargo, ese planteamiento contaminaba tanto el dispositivo `HvdcLine` como la interfaz gráfica. En lugar de `n_poles`, en VeraGrid basta reutilizar la operación estándar `ContingencyOperationTypes.PowerPercentage` (`prop = '%'`, por ejemplo `value = 50.0` para modelar la pérdida del 50 % de capacidad nominal), manteniendo intacto el objeto `HvdcLine` y la GUI.
   2. Cuando el enlace se modela de forma física detallada mediante convertidores **`VSC`** y un cable `DcLine` por polo entre barras de continua, la contingencia de polo **no** se aplica con `PowerPercentage` sobre el convertidor `VSC`, sino disparando directamente el cable `DcLine` afectado (`prop = 'active'`, `value = 0.0`). Hasta ahora faltaba la reducción automática de esa contingencia en subredes DC de 2 terminales para recalcular la capacidad superviviente sobre los cables paralelos sanos y propagar el derrame AC equivalente.
-  3. Además, en la expresión algebraica previa (`flow - r_surv`) faltaba considerar el signo del flujo (con $f = -1.622\text{ MW}$ y $R_{\text{surv}} = 1.000\text{ MW}$, declaraba $-2.622\text{ MW}$ de derrame en vez de $-622\text{ MW}$), y en `fill_worst_contingency_per_branch` los límites `hvdc_surviving_rates` y `vsc_surviving_rates` no estaban escalados en `sbase_val` al compararse con flujos en p.u.
 * **Corrección aplicada:**
   1. Soporte nativo de `PowerPercentage` (`frac = value / 100.0`) para `HvdcLine` y `VSC`, más traducción automática de disparos de `DcLine` (`active=0`) en corredores `VSC` de 2 terminales: el motor calcula la nueva capacidad superviviente $R_{\text{surv}}$ del corredor con los cables restantes y convierte cualquier excedente pre-falta en el dipolo AC equilibrado entre los nudos de los convertidores.
   2. Expresión canónica compartida de derrame con signo (`pole_spill`):
      $$\Delta f_{\text{spill}} = \operatorname{sign}(f) \cdot \max\left(0,\; |f| - R_{\text{surv}}\right)$$
      formulada exactamente dentro del LP (`compute_pole_spill_expressions`) mediante `add_clipped_flow` (`spill = flow - carried`, con `carried` acotado en $[-R_{\text{surv}}, +R_{\text{surv}}]$) y las cotas propias de cada enlace.
-  3. Escalado uniforme de `hvdc_surviving_rates` y `vsc_surviving_rates` por `sbase_val` en el diagnóstico de peores contingencias (`f34347d23`).
 
 ### 2.7. Filtrado Paritario $(m, c)$ en Screening *Lazy* y Re-evaluación de Saturación N-1
 * **Ubicación:** `src/VeraGridEngine/Simulations/NTC/ntc_opf.py` (`screen_contingency_violations`, `get_contingency_monitorable_branches`) y `src/VeraGridEngine/Simulations/NTC/ntc_opf_strict.py`.
@@ -90,9 +88,12 @@ Las mejoras recogidas a continuación parten directamente de la base actual de V
   3. Retorno exacto de corriente del corredor DC sobre los convertidores reguladores `Vm_dc`, acotación de cada corredor de 2 terminales al mínimo físico entre convertidores y suma de cables `DcLine` paralelos supervivientes, y resolución conjunta `VSC + HvdcLine` dentro de `LinearMultiContingencies.compute` (con paridad exacta frente a `HvdcLine`).
 
 ### 2.11. Supresión de la Segunda Etapa (*Least Control Effort*)
-* **Ubicación:** `src/VeraGridEngine/Simulations/NTC/ntc_opf_strict.py` (`run_linear_ntc_opf_strict`).
-* **Problema:** El objetivo del cálculo NTC es **obtener el valor óptimo de la capacidad de transferencia (NTC)**, no minimizar el movimiento de los controles de red. Sin embargo, la segunda etapa (`solve_least_control_effort`) fijaba el intercambio y minimizaba el esfuerzo de PST y HVDC, replegando tomas preventivas y penalizando la evacuación por continua hacia la red AC paralela, deformando el despacho óptimo resultante.
-* **Corrección aplicada:** Eliminación de la llamada a `solve_least_control_effort` en la formulación estricta; el problema se resuelve en una única etapa maximizando directamente el corte físico neto de interconexión (AC + HVDC + VSC).
+* **Ubicación:** `src/VeraGridEngine/Simulations/NTC/ntc_opf_strict.py` (`run_linear_ntc_opf_strict`) y `ntc_opf.py` (`solve_least_control_effort`, `add_base_control_effort`).
+* **Problema:** Aunque la segunda etapa (`solve_least_control_effort`) fija la variable de intercambio en el valor obtenido en la Etapa 1 (`lb = ub = value`), en la formulación estricta introducía tres defectos técnicos concretos:
+  1. **Ejecución fuera del bucle *lazy* sin re-cribado N-1:** se resolvía una única vez sobre el subconjunto parcial de contingencias activadas en la Etapa 1; al replegar tomas de desfasadores y reducir flujos HVDC/VSC hacia la malla AC paralela, podía provocar sobrecargas térmicas en contingencias que no estaban activas en la Etapa 1 y que ya no se volvían a comprobar.
+  2. **Penalización hacia `0 MW` en lugar del punto base ($P_0$):** `add_base_control_effort` minimizaba $|P_{\text{hvdc}}|$ y $|P_{\text{vsc}}|$ hacia cero (en vez de su consigna inicial $P_0$), haciéndolo incluso cuando el flujo HVDC era una variable en estatismo pasivo (`Pmode 3`), lo que forzaba el vaciado artificial de los corredores de continua hacia las líneas AC.
+  3. **Coste computacional y fragilidad numérica:** añadía una segunda resolución completa del MILP con una restricción de igualdad en coma flotante (`lb == ub`) propensa a infactibilidades numéricas (de ahí el *fallback* de advertencia existente), cuando el propósito del cálculo NTC es determinar el óptimo seguro de transferencia y no optimizar el coste de maniobra.
+* **Corrección aplicada:** Eliminación de la llamada a `solve_least_control_effort` en la formulación estricta; el problema se resuelve en una única etapa dentro del bucle *lazy* maximizando directamente el intercambio físico neto de interconexión (AC + HVDC + VSC) con seguridad N-1 verificada sobre el conjunto completo de contingencias.
 
 ### 2.12. Clave de Reparto GSK en `InstalledPower` sobre $P_{\max}$ Activo y Despachable
 * **Ubicación:** `src/VeraGridEngine/Compilers/circuit_to_data.py`, `src/VeraGridEngine/Simulations/NTC/ntc_opf_strict.py` (`get_transfer_power_scaling_per_bus`) y `ntc_driver.py`.
@@ -238,9 +239,9 @@ La implementación completa propuesta para revisión se encuentra consolidada en
 | `e121b55f7` / `bddf34b89` | Contingencias `PowerPercentage` (`'%'`) y derrame exacto con signo mediante `add_clipped_flow` |
 | `a7ee9de73` / `88d9842f6` | GSK activo sobre $P_{\max}$, supresión de Fase 2 (*least control effort*) y eliminación de $y_s = 0{,}01$ |
 | `1bfb15b8d` | Estatismo N-1 HVDC en lazo cerrado, unión $\alpha$ configurable, VSC `Pmode 1` y `presolve="off"` en HiGHS |
-| `f34347d23` | Re-evaluación *lazy* tras cambios de saturación N-1, escalado `sbase` en polo y propagación de `include_hvdc_exchange_sensitivity` |
+| `f34347d23` | Re-evaluación *lazy* tras cambios de saturación N-1 y propagación de `include_hvdc_exchange_sensitivity` |
 | `df483d637` | Exposición de opciones NTC faltantes en la GUI y alineación de valores por defecto validados |
 | `39e8713f9` | Soporte de estatismo pasivo N-1 en lazo cerrado para convertidores `VSC` y prueba de paridad HVDC ↔ VSC |
-| `5ed92e261` | Proyección exacta post-contingencia `cDF` en N-1, disparo nativo de cables `DcLine` en VSC, restauración consistente $-\tau$ y cierre `27/27` en tests públicos |
+| `5ed92e261` | Proyección exacta post-contingencia `cDF` en N-1, disparo nativo de cables `DcLine` en VSC y cierre `27/27` en tests públicos |
 
 Con estas correcciones, la formulación estricta de VeraGrid 6.x resulta plenamente operativa, converge de forma robusta en las 12 horas de prueba con **`0,00 MW` de holguras** y **carga máxima ≤ 100,00 %**, mantiene coherencia numérica completa entre **`HvdcLine` y `VSC`** tanto en `Pmode 3` como en `Pmode 1`, y queda verificada mediante pruebas automatizadas reproducibles sobre redes públicas. Quedamos a vuestra disposición para revisar e integrar estos cambios en la rama principal de VeraGrid.
