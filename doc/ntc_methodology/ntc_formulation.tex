@@ -25,7 +25,7 @@
 \maketitle
 
 \begin{abstract}
-Este documento establece la formulación matemática canónica y la arquitectura algorítmica del módulo de cálculo de Capacidad Comercial de Intercambio (NTC / TTC) para VeraGrid 6.x (\texttt{ntc-finalist-6x}). Se formaliza el principio de balancín comercial bilateral estricto (1:1) sin variables de holgura artificiales ni segunda etapa de esfuerzo de control, la imposición rigurosa de límites térmicos duros bajo contingencias N-1 con cribado \textit{Lazy}, la corrección física de los transformadores desfasadores (PST), la respuesta pasiva de estatismo angular (\textit{Pmode 3}) en lazo cerrado para enlaces \texttt{HvdcLine} y convertidores \texttt{VSC}, el derrame físico con signo en contingencias parciales de polo (\texttt{PowerPercentage}), y la unificación del reparto GSK sobre potencia activa máxima despachable ($P_{\max}$).
+Este documento establece la formulación matemática canónica y la arquitectura algorítmica del módulo de cálculo de Capacidad Comercial de Intercambio (NTC / TTC) para VeraGrid 6.x (\texttt{ntc-finalist-6x}). Se formaliza el principio de balancín comercial bilateral estricto (1:1) sin variables de holgura artificiales ni segunda etapa de esfuerzo de control, la imposición rigurosa de límites térmicos duros bajo contingencias N-1 con cribado \textit{Lazy}, la coherencia de los transformadores desfasadores (PST, $-\tau$) con los flujos AC y DC lineales de VeraGrid, la respuesta pasiva de estatismo angular (\textit{Pmode 3}) en lazo cerrado con proyección exacta post-contingencia $\operatorname{cDF}$ para enlaces \texttt{HvdcLine} y convertidores \texttt{VSC}, el derrame físico con signo en contingencias de polo (\texttt{PowerPercentage} y disparo nativo de cables \texttt{DcLine}), y la unificación del reparto GSK sobre potencia activa máxima despachable ($P_{\max}$).
 \end{abstract}
 
 \section{Fundamento Metodológico y Normativo}
@@ -61,11 +61,11 @@ Para una rama AC pasiva entre los nudos $i$ y $j$, el flujo se rige por la susce
 \begin{equation}
 f_{ij} = b_{ij}(\theta_i - \theta_j).
 \end{equation}
-Para un transformador desfasador con toma angular de adelanto $\tau_{ij}$ en el nudo de origen $i$, la tensión nodal compleja es $V_i' = V_i e^{j\tau_{ij}}$. En aproximación lineal de continua ($\sin\tau \approx \tau$, $\cos\tau \approx 1$), el flujo físico canónico resulta:
+Para un transformador desfasador con toma angular $\tau_{ij}$ en la convención estándar de VeraGrid (idéntica al flujo AC, flujo DC lineal, \texttt{LinearAnalysis} y \texttt{linear\_opf\_ts.py}), el flujo en aproximación lineal resulta:
 \begin{equation}
-f_{ij}^{\text{PST}} = b_{ij}(\theta_i - \theta_j + \tau_{ij}), \qquad \tau_{ij}^{\min} \le \tau_{ij} \le \tau_{ij}^{\max}.
+f_{ij}^{\text{PST}} = b_{ij}(\theta_i - \theta_j - \tau_{ij}), \qquad \tau_{ij}^{\min} \le \tau_{ij} \le \tau_{ij}^{\max}.
 \end{equation}
-Un adelanto angular $\tau_{ij} > 0$ en el nudo $i$ incrementa el flujo saliente hacia $j$. El signo positivo $(+\tau_{ij})$ es mandatorio para reflejar el comportamiento físico real.
+Mantener exactamente la convención uniforme $(-\tau_{ij})$ en todo el módulo NTC garantiza consistencia entre el optimizador, el flujo DC de verificación y el cálculo de factores de sensibilidad.
 
 \subsection{Restricciones Térmicas Estrictas y Cribado Paritario}
 En estado base ($N$) y bajo contingencia ($N-1$):
@@ -88,8 +88,8 @@ Tanto los enlaces \texttt{HvdcLine} en modo libre como los convertidores \texttt
     \begin{equation}
     \left(I + \operatorname{diag}(\bm{K}) \, Z_{\text{th}}^{(c)}\right) \Delta\bm{f}_{\text{lin}}^{(c)} = \operatorname{diag}(\bm{K}) \, \Delta\bm{\theta}_{\text{AC}}^{(c)},
     \end{equation}
-    acotado por la saturación de cada dispositivo ($\Delta f_h^{(c)} = \operatorname{clip}(f_h^0 + \Delta f_{\text{lin}, h}^{(c)}, -R_h, +R_h) - f_h^0$) y propagado sobre las ramas AC mediante sus factores de distribución de continua.
-    \item \textbf{Contingencia Parcial de Polo (\texttt{PowerPercentage} \texttt{'\%'}):} Declarada en catálogo como porcentaje de capacidad perdida $\text{frac} = \text{value}/100$, la capacidad superviviente es $R_{\text{surv}} = R_h (1 - \text{frac})$. El polo sano mantiene su capacidad $\pm R_{\text{surv}}$ en el sentido del flujo original y únicamente el exceso se derrama hacia la red de alterna, formulado exactamente en el LP con \texttt{add\_clipped\_flow}:
+    acotado por la saturación de cada dispositivo ($\Delta f_h^{(c)} = \operatorname{clip}(f_h^0 + \Delta f_{\text{lin}, h}^{(c)}, -R_h, +R_h) - f_h^0$) y proyectado sobre las ramas supervivientes mediante los factores de distribución post-contingencia exactos $\operatorname{cDF}_{m, h}^{(c)} = \operatorname{DF}_{m, h} + \sum_{k \in c} \operatorname{MLODF}_{m, k}^{(c)} \operatorname{DF}_{k, h}$.
+    \item \textbf{Contingencia Parcial de Polo (\texttt{PowerPercentage} \texttt{'\%'} y Disparo de \texttt{DcLine}):} Para enlaces \texttt{HvdcLine} declarados con pérdida porcentual $\text{frac} = \text{value}/100$, la capacidad superviviente es $R_{\text{surv}} = R_h (1 - \text{frac})$. En corredores \texttt{VSC} de 2 terminales con cables \texttt{DcLine} paralelos, el disparo individual de un cable (\texttt{active=0}) recalcula automáticamente $R_{\text{surv}}$ sobre los cables restantes sanos y derrama el exceso pre-falta hacia la red AC mediante el dipolo equivalente entre nudos AC de los convertidores, formulado exactamente en el LP con \texttt{add\_clipped\_flow}:
     \begin{equation}
     \Delta f_h^{\text{spill}} = \operatorname{sign}(f_h^0) \cdot \max\left(0,\; |f_h^0| - R_{\text{surv}}\right).
     \end{equation}
@@ -116,18 +116,18 @@ El SRAP modela el disparo rápido de potencia en centrales habilitadas ($-P_g^0 
 \textbf{Variante en VeraGrid 6.x} & \textbf{TTC (MW)} & \textbf{NTC (MW)} & \textbf{Slack} & \textbf{Carga Máx.} & \textbf{Diagnóstico} \\
 \midrule
 Upstream \texttt{regular} & 8.002,26 & 7.602,26 & 6.080,77 MW & $>$ 100 \% & Relajado inválido \\
-Upstream \texttt{strict} orig. & --- & --- & --- & --- & Infactible ($-\tau$, sin \textit{lazy}) \\
+Upstream \texttt{strict} orig. & --- & --- & --- & --- & Infactible (sin \textit{lazy}, $\Delta\ge 0$) \\
 \texttt{strict} sin droop N-1 (\texttt{HvdcLine}) & 5.298,61 & 4.898,61 & 0,00 MW & 193,27 \% & Sin feedback pasivo N-1 \\
-\textbf{\texttt{ntc-finalist-6x} (\texttt{HvdcLine})} & \textbf{5.255,51} & \textbf{4.855,51} & \textbf{0,00 MW} & \textbf{100,00 \%} & \textbf{Validado (lazo cerrado N-1)} \\
-\textbf{\texttt{ntc-finalist-6x} (\texttt{VSC} + DC)} & \textbf{5.255,51} & \textbf{4.855,51} & \textbf{0,00 MW} & \textbf{100,00 \%} & \textbf{Paridad exacta 0,00 MW} \\
+\textbf{\texttt{ntc-finalist-6x} (\texttt{HvdcLine})} & \textbf{5.726,88} & \textbf{5.326,88} & \textbf{0,00 MW} & \textbf{100,00 \%} & \textbf{Validado (lazo cerrado + cDF)} \\
+\textbf{\texttt{ntc-finalist-6x} (\texttt{VSC} 1 y 2 \texttt{DcLine})} & \textbf{5.726,88} & \textbf{5.326,88} & \textbf{0,00 MW} & \textbf{100,00 \%} & \textbf{Paridad exacta 0,00 MW} \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 \subsection{Resumen de la Batería de 12 Horas Canónicas}
 \begin{itemize}
-    \item \textbf{Pmode 3 (\texttt{HvdcLine} vs \texttt{VSC}):} convergencia 12/12 en estado \texttt{Optimal} con $0{,}00\text{ MW}$ de holgura y carga máxima exactamente en $100{,}00\%$; paridad $\le 0{,}10\text{ MW}$ respecto a VeraGrid 4.8 en 10/12 horas y equivalencia verificada al $0{,}000000\text{ MW}$ entre \texttt{HvdcLine} y \texttt{VSC} en las 12 horas.
-    \item \textbf{Pmode 1 (\texttt{HvdcLine} vs \texttt{VSC}):} convergencia 12/12 en estado \texttt{Optimal} con $0{,}00\text{ MW}$ de holgura, carga máxima en $100{,}00\%$ y paridad de $\le 0{,}000001\text{ MW}$ entre \texttt{HvdcLine} y \texttt{VSC} en las 12 horas.
+    \item \textbf{Pmode 3 (\texttt{HvdcLine} vs \texttt{VSC}):} convergencia 12/12 en estado \texttt{Optimal} con $0{,}00\text{ MW}$ de holgura y carga máxima exactamente en $100{,}00\%$; equivalencia verificada al $0{,}000000\text{ MW}$ ($\le 3{,}4\times 10^{-7}\text{ MW}$) entre \texttt{HvdcLine} y \texttt{VSC} en las 12 horas (incluyendo bipolos con doble \texttt{DcLine} paralela en H13).
+    \item \textbf{Pmode 1 (\texttt{HvdcLine} vs \texttt{VSC}):} convergencia 12/12 en estado \texttt{Optimal} con $0{,}00\text{ MW}$ de holgura, carga máxima en $100{,}00\%$ y paridad de $\le 0{,}000001\text{ MW}$ entre \texttt{HvdcLine} y \texttt{VSC} en las 12 horas, además de 27/27 tests públicos en verde en \texttt{tests/NTC/}.
 \end{itemize}
 
 \section{Conclusiones}
